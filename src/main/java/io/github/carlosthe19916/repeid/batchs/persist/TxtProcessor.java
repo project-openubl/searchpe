@@ -1,4 +1,4 @@
-package io.github.carlosthe19916.repeid.batchs;
+package io.github.carlosthe19916.repeid.batchs.persist;
 
 import io.github.carlosthe19916.repeid.model.Company;
 import io.github.carlosthe19916.repeid.instantiators.BeanInstantiator;

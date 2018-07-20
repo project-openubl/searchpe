@@ -1,4 +1,4 @@
-package io.github.carlosthe19916.repeid.controller;
+package io.github.carlosthe19916.repeid.indexation;
 
 import org.hibernate.search.jpa.FullTextEntityManager;
 import org.hibernate.search.jpa.Search;
@@ -12,9 +12,9 @@ import javax.persistence.PersistenceContext;
 
 @Startup
 @Singleton
-public class LuceneReindexController {
+public class ReindexModels {
 
-    private static final Logger logger = Logger.getLogger(LuceneReindexController.class);
+    private static final Logger logger = Logger.getLogger(ReindexModels.class);
 
     @PersistenceContext
     private EntityManager em;

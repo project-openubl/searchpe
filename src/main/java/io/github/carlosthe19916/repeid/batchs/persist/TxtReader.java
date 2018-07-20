@@ -1,17 +1,21 @@
-package io.github.carlosthe19916.repeid.batchs;
+package io.github.carlosthe19916.repeid.batchs.persist;
+
+import io.github.carlosthe19916.repeid.batchs.BatchConstants;
 
 import javax.batch.api.BatchProperty;
 import javax.batch.api.chunk.ItemReader;
+import javax.batch.runtime.context.JobContext;
 import javax.inject.Inject;
 import javax.inject.Named;
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
 import java.io.*;
 import java.nio.charset.Charset;
-import java.util.Optional;
+import java.util.Properties;
 
 @Named
 public class TxtReader implements ItemReader {
+
+    @Inject
+    private JobContext jobContext;
 
     @Inject
     @BatchProperty
@@ -34,7 +38,16 @@ public class TxtReader implements ItemReader {
 
     @Override
     public void open(Serializable checkpoint) throws Exception {
-        File file = new File(fileLocation);
+        File file;
+        if (fileLocation != null) {
+            file = new File(fileLocation);
+        } else {
+            Properties jobContextProperties = jobContext.getProperties();
+            String downloadedFileName = jobContextProperties.getProperty(BatchConstants.UNZIP_FILE);
+
+            file = new File(downloadedFileName);
+        }
+
         FileInputStream fileInputStream = new FileInputStream(file);
 
         String charset = charsetName != null ? charsetName : Charset.defaultCharset().name();

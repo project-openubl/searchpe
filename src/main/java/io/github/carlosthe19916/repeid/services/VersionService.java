@@ -5,9 +5,8 @@ import io.github.carlosthe19916.repeid.model.Version;
 
 import java.util.Optional;
 
-public interface CompanyService {
+public interface VersionService {
 
-    Optional<Company> getCompany(long id);
+    Optional<Version> getLastVersion();
 
-    Optional<Company> getCompanyByRuc(Version version, String ruc);
 }

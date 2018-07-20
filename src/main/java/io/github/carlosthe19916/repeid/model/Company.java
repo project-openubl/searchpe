@@ -1,5 +1,6 @@
 package io.github.carlosthe19916.repeid.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.hibernate.search.annotations.Indexed;
 
 import javax.persistence.*;
@@ -7,9 +8,11 @@ import javax.validation.constraints.NotNull;
 
 @Indexed
 @Entity
-@Table(name = "company")
+@Table(name = "company", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"version", "ruc"})
+})
 @NamedQueries(value = {
-        @NamedQuery(name = "getCompaniesByRuc", query = "select c from Company c where c.ruc=:ruc")
+        @NamedQuery(name = "getCompaniesByVersionIdAndRuc", query = "select c from Company c inner join c.version v where v.id=:versionId and c.ruc=:ruc")
 })
 public class Company {
 
@@ -18,48 +21,70 @@ public class Company {
     private Long id;
 
     @NotNull
+    @Column(name = "ruc")
     private String ruc;
 
     @NotNull
+    @Column(name = "razon_social")
     private String razonSocial;
 
     @NotNull
+    @Column(name = "estado_contribuyente")
     private String estadoContribuyente;
 
     @NotNull
+    @Column(name = "condicion_domicilio")
     private String condicionDomicilio;
 
     @NotNull
+    @Column(name = "ubigeo")
     private String ubigeo;
 
     @NotNull
+    @Column(name = "tipo_via")
     private String tipoVia;
 
+    @NotNull
+    @Column(name = "nombre_via")
     private String nombreVia;
 
     @NotNull
+    @Column(name = "codigo_zona")
     private String codigoZona;
 
     @NotNull
+    @Column(name = "tipo_zona")
     private String tipoZona;
 
     @NotNull
+    @Column(name = "numero")
     private String numero;
 
     @NotNull
+    @Column(name = "interior")
     private String interior;
 
     @NotNull
+    @Column(name = "lote")
     private String lote;
 
     @NotNull
+    @Column(name = "departamento")
     private String departamento;
 
     @NotNull
+    @Column(name = "manzana")
     private String manzana;
 
     @NotNull
+    @Column(name = "kilometro")
     private String kilometro;
+
+    @JsonIgnore
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "version", foreignKey = @ForeignKey)
+    private Version version;
 
     public Long getId() {
         return id;
@@ -189,4 +214,11 @@ public class Company {
         this.kilometro = kilometro;
     }
 
+    public Version getVersion() {
+        return version;
+    }
+
+    public void setVersion(Version version) {
+        this.version = version;
+    }
 }

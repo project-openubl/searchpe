@@ -1,6 +1,7 @@
 package io.github.carlosthe19916.repeid.repository;
 
 import io.github.carlosthe19916.repeid.model.Company;
+import io.github.carlosthe19916.repeid.model.Version;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.persistence.EntityManager;
@@ -26,8 +27,15 @@ public class CompanyRepositoryImpl implements CompanyRepository {
     }
 
     @Override
-    public Optional<Company> getCompanyByRuc(String ruc) {
-        TypedQuery<Company> query = em.createNamedQuery("getCompaniesByRuc", Company.class);
+    public Optional<Company> getCompany(long id) {
+        Company company = em.find(Company.class, id);
+        return Optional.ofNullable(company);
+    }
+
+    @Override
+    public Optional<Company> getCompanyByRuc(Version version, String ruc) {
+        TypedQuery<Company> query = em.createNamedQuery("getCompaniesByVersionIdAndRuc", Company.class);
+        query.setParameter("versionId", version.getId());
         query.setParameter("ruc", ruc);
 
         List<Company> resultList = query.getResultList();

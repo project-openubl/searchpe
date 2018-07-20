@@ -4,14 +4,28 @@
      xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/jobXML_1_0.xsd"
      version="1.0">
 
+    <properties>
+        <property name="downloadedFileName" value="sunat.zip"/>
+        <property name="unzipFileName" value="sunat.txt"/>
+    </properties>
 
     <flow id="start" next="end">
-        <step id="updateDatabase">
+        <step id="prepareFlow" next="downloadDB">
+            <batchlet ref="cleanDataBatchlet"/>
+        </step>
+        <step id="downloadDB" next="updateDatabase">
+            <batchlet ref="downloadDatabaseBatchlet">
+                <properties>
+                    <!--<property name="url" value="http://www2.sunat.gob.pe/padron_reducido_ruc.zip"/>-->
+                    <property name="url" value="https://raw.githubusercontent.com/carlosthe19916/repeid/master/padron_reducido_ruc.zip"/>
+                </properties>
+            </batchlet>
+        </step>
+        <step id="updateDatabase" next="cleanData">
             <chunk>
                 <reader ref="txtReader">
                     <properties>
                         <property name="charsetName" value="ISO-8859-1"/>
-                        <property name="fileLocation" value="/home/admin/Music/padron_reducido_ruc.txt"/>
                         <property name="skip" value="1"/>
                     </properties>
                 </reader>
@@ -21,12 +35,11 @@
                         <property name="header" value="RUC|NOMBRE O RAZÓN SOCIAL|ESTADO DEL CONTRIBUYENTE|CONDICIÓN DE DOMICILIO|UBIGEO|TIPO DE VÍA|NOMBRE DE VÍA|CÓDIGO DE ZONA|TIPO DE ZONA|NÚMERO|INTERIOR|LOTE|DEPARTAMENTO|MANZANA|KILÓMETRO|"/>
                     </properties>
                 </processor>
-                <writer ref="jpaItemWriter">
-                    <properties>
-                        <property name="persistenceUnitName" value="RepeidPU"/>
-                    </properties>
-                </writer>
+                <writer ref="txtWriter"/>
             </chunk>
+        </step>
+        <step id="cleanData">
+            <batchlet ref="cleanDataBatchlet"/>
         </step>
     </flow>
     <step id="end">
