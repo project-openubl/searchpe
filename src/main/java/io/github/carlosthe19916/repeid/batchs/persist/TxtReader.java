@@ -23,36 +23,25 @@ public class TxtReader implements ItemReader {
 
     @Inject
     @BatchProperty
-    private String fileLocation;
-
-    @Inject
-    @BatchProperty
     private Long skip;
 
     @Inject
     @BatchProperty
-    private Long limit;
+    private String fileLocation;
 
     private BufferedReader reader;
     private long readPosition;
 
+    private String getCharset() {
+        return charsetName != null ? charsetName : Charset.defaultCharset().name();
+    }
+
     @Override
     public void open(Serializable checkpoint) throws Exception {
-        File file;
-        if (fileLocation != null) {
-            file = new File(fileLocation);
-        } else {
-            Properties jobContextProperties = jobContext.getProperties();
-            String downloadedFileName = jobContextProperties.getProperty(BatchConstants.UNZIP_FILE);
+        File txtFile = new File(fileLocation);
+        InputStream is = new FileInputStream(txtFile);
 
-            file = new File(downloadedFileName);
-        }
-
-        FileInputStream fileInputStream = new FileInputStream(file);
-
-        String charset = charsetName != null ? charsetName : Charset.defaultCharset().name();
-
-        InputStreamReader inputStreamReader = new InputStreamReader(fileInputStream, charset);
+        InputStreamReader inputStreamReader = new InputStreamReader(is, getCharset());
         reader = new BufferedReader(inputStreamReader);
     }
 
@@ -69,9 +58,6 @@ public class TxtReader implements ItemReader {
                 readPosition++;
                 reader.readLine();
             }
-        }
-        if (limit != null && limit > readPosition) {
-            return null;
         }
 
         readPosition++;

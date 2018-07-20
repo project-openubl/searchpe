@@ -4,42 +4,63 @@
      xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/jobXML_1_0.xsd"
      version="1.0">
 
-    <properties>
-        <property name="downloadedFileName" value="sunat.zip"/>
-        <property name="unzipFileName" value="sunat.txt"/>
-    </properties>
+    <!--<properties>-->
+        <!--<property name="downloadedFileName" value="#{jobParameters['downloadFileLocation']}"/>-->
+        <!--<property name="unzipFileName" value="#{jobParameters['unzipFileLocation']}"/>-->
+    <!--</properties>-->
 
     <flow id="start" next="end">
-        <step id="prepareFlow" next="downloadDB">
-            <batchlet ref="cleanDataBatchlet"/>
-        </step>
-        <step id="downloadDB" next="updateDatabase">
-            <batchlet ref="downloadDatabaseBatchlet">
+        <step id="cleanTempFilesBefore" next="downloadFile">
+            <batchlet ref="cleanFilesBatchlet">
                 <properties>
-                    <!--<property name="url" value="http://www2.sunat.gob.pe/padron_reducido_ruc.zip"/>-->
-                    <property name="url" value="https://raw.githubusercontent.com/carlosthe19916/repeid/master/padron_reducido_ruc.zip"/>
+                    <property name="files" value="#{jobParameters['downloadFileLocation']},#{jobParameters['unzipFileLocation']}"/>
                 </properties>
             </batchlet>
         </step>
-        <step id="updateDatabase" next="cleanData">
+        <step id="downloadFile" next="unzipFile">
+            <batchlet ref="downloadFileBatchlet">
+                <properties>
+                    <!--<property name="url" value="http://www2.sunat.gob.pe/padron_reducido_ruc.zip"/>-->
+                    <!--<property name="url" value="https://raw.githubusercontent.com/carlosthe19916/repeid/master/padron_reducido_ruc.zip"/>-->
+                    <property name="url" value="#{jobParameters['databaseURL']}"/>
+                    <property name="fileLocation" value="#{jobParameters['downloadFileLocation']}"/>
+                </properties>
+            </batchlet>
+        </step>
+        <step id="unzipFile" next="import">
+            <batchlet ref="unzipFileBatchlet">
+                <properties>
+                    <property name="fileLocation" value="#{jobParameters['downloadFileLocation']}"/>
+                    <property name="unzipFileLocation" value="#{jobParameters['unzipFileLocation']}"/>
+                </properties>
+            </batchlet>
+        </step>
+        <step id="import" next="cleanTempFilesAfter">
             <chunk>
                 <reader ref="txtReader">
                     <properties>
-                        <property name="charsetName" value="ISO-8859-1"/>
-                        <property name="skip" value="1"/>
+                        <property name="charsetName" value="#{jobParameters['fileCharset']}"/>
+                        <property name="skip" value="#{jobParameters['fileRowSkip']}"/>
+                        <property name="fileLocation" value="#{jobParameters['unzipFileLocation']}"/>
                     </properties>
                 </reader>
                 <processor ref="txtProcessor">
                     <properties>
-                        <property name="regex" value="\|"/>
-                        <property name="header" value="RUC|NOMBRE O RAZÓN SOCIAL|ESTADO DEL CONTRIBUYENTE|CONDICIÓN DE DOMICILIO|UBIGEO|TIPO DE VÍA|NOMBRE DE VÍA|CÓDIGO DE ZONA|TIPO DE ZONA|NÚMERO|INTERIOR|LOTE|DEPARTAMENTO|MANZANA|KILÓMETRO|"/>
+                        <!--<property name="regex" value="\|"/>-->
+                        <property name="regex" value="#{jobParameters['fileColumnSeparator']}"/>
+                        <property name="header" value="#{jobParameters['fileColumnHeaders']}"/>
+                        <property name="headerColumns" value="#{jobParameters['fileColumnValues']}"/>
                     </properties>
                 </processor>
                 <writer ref="txtWriter"/>
             </chunk>
         </step>
-        <step id="cleanData">
-            <batchlet ref="cleanDataBatchlet"/>
+        <step id="cleanTempFilesAfter">
+            <batchlet ref="cleanFilesBatchlet">
+                <properties>
+                    <property name="files" value="#{jobParameters['downloadFileLocation']},#{jobParameters['unzipFileLocation']}"/>
+                </properties>
+            </batchlet>
         </step>
     </flow>
     <step id="end">
