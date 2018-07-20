@@ -15,22 +15,17 @@
  *  limitations under the License.
  *
  */
-package io.openshift.booster;
 
-public class Greeting {
+package io.github.carlosthe19916.repeid.controller;
 
-    private final String content;
+import javax.ws.rs.ApplicationPath;
+import javax.ws.rs.core.Application;
 
-    public Greeting() {
-        this.content = null;
-    }
-
-    public Greeting(String content) {
-        this.content = content;
-    }
-
-    public String getContent() {
-        return content;
-    }
+/**
+ * Resource entry point
+ */
+@ApplicationPath("/api")
+public class RepeidApplication extends Application {
 
 }
+

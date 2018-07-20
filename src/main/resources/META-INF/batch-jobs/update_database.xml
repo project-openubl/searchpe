@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<job id="update_database" restartable="true" xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/jobXML_1_0.xsd"
+     version="1.0">
+
+
+    <flow id="start" next="end">
+        <step id="updateDatabase">
+            <chunk>
+                <reader ref="txtReader">
+                    <properties>
+                        <property name="charsetName" value="ISO-8859-1"/>
+                        <property name="fileLocation" value="/home/admin/Music/padron_reducido_ruc.txt"/>
+                    </properties>
+                </reader>
+                <processor ref="txtProcessor">
+                    <properties>
+                        <property name="regex" value="\\|"/>
+                        <property name="header" value="RUC|NOMBRE O RAZÓN SOCIAL|ESTADO DEL CONTRIBUYENTE|CONDICIÓN DE DOMICILIO|UBIGEO|TIPO DE VÍA|NOMBRE DE VÍA|CÓDIGO DE ZONA|TIPO DE ZONA|NÚMERO|INTERIOR|LOTE|DEPARTAMENTO|MANZANA|KILÓMETRO|"/>
+                    </properties>
+                </processor>
+                <writer ref="jpaItemWriter">
+                    <properties>
+                        <property name="persistenceUnitName" value="RepeidPU"/>
+                    </properties>
+                </writer>
+            </chunk>
+        </step>
+    </flow>
+    <step id="end">
+        <batchlet ref="endBatchlet"/>
+        <end on="COMPLETED"/>
+    </step>
+</job>
