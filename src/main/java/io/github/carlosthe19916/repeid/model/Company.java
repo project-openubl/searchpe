@@ -8,6 +8,9 @@ import javax.validation.constraints.NotNull;
 @Indexed
 @Entity
 @Table(name = "company")
+@NamedQueries(value = {
+        @NamedQuery(name = "getCompaniesByRuc", query = "select c from Company c where c.ruc=:ruc")
+})
 public class Company {
 
     @Id

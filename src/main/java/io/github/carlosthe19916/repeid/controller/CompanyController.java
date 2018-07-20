@@ -1,20 +1,27 @@
 package io.github.carlosthe19916.repeid.controller;
 
 import io.github.carlosthe19916.repeid.model.Company;
+import io.github.carlosthe19916.repeid.services.CompanyService;
 
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
+import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.inject.Instance;
+import javax.inject.Inject;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import javax.ws.rs.*;
 
 @Path("/companies")
+@ApplicationScoped
 public class CompanyController {
 
+    @Inject
+    private CompanyService companyService;
+
     @GET
-    @Path("/greeting")
+    @Path("/{ruc}")
     @Produces("application/json")
-    public Company greeting(@QueryParam("name") String name) {
-        return new Company();
+    public Company getCompany(@PathParam("ruc") String ruc) {
+        return companyService.getCompanyByRuc(ruc).orElseThrow(NotFoundException::new);
     }
 
 }

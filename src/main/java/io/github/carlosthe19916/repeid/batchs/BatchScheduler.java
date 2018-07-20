@@ -16,8 +16,9 @@ public class BatchScheduler {
     private static final Logger logger = Logger.getLogger(BatchScheduler.class);
 
 //    @Schedule(hour = "3", persistent = false, timezone = "America/Lima")
-    @Schedule(hour = "*", minute = "*", second = "*/1", persistent = false)
+    @Schedule(hour = "*", minute = "*/1", persistent = false)
     public void startBatch() {
+        logger.info("Starting batch");
         Properties properties = new Properties();
         BatchRuntime.getJobOperator().start("update_database", properties);
     }

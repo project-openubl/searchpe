@@ -12,11 +12,12 @@
                     <properties>
                         <property name="charsetName" value="ISO-8859-1"/>
                         <property name="fileLocation" value="/home/admin/Music/padron_reducido_ruc.txt"/>
+                        <property name="skip" value="1"/>
                     </properties>
                 </reader>
                 <processor ref="txtProcessor">
                     <properties>
-                        <property name="regex" value="\\|"/>
+                        <property name="regex" value="\|"/>
                         <property name="header" value="RUC|NOMBRE O RAZÓN SOCIAL|ESTADO DEL CONTRIBUYENTE|CONDICIÓN DE DOMICILIO|UBIGEO|TIPO DE VÍA|NOMBRE DE VÍA|CÓDIGO DE ZONA|TIPO DE ZONA|NÚMERO|INTERIOR|LOTE|DEPARTAMENTO|MANZANA|KILÓMETRO|"/>
                     </properties>
                 </processor>

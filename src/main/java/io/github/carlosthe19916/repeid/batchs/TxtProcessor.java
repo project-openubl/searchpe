@@ -4,6 +4,7 @@ import io.github.carlosthe19916.repeid.model.Company;
 import io.github.carlosthe19916.repeid.instantiators.BeanInstantiator;
 import io.github.carlosthe19916.repeid.instantiators.BeanInstantiatorFactory;
 
+import javax.annotation.PostConstruct;
 import javax.batch.api.BatchProperty;
 import javax.batch.api.chunk.ItemProcessor;
 import javax.inject.Inject;
@@ -24,7 +25,12 @@ public class TxtProcessor implements ItemProcessor {
     @BatchProperty
     private String regex;
 
-    private BeanInstantiator<Company> instantiator = BeanInstantiatorFactory.txtInstantiator(Company.class, header, regex, MAPPER);
+    private BeanInstantiator<Company> instantiator;
+
+    @PostConstruct
+    protected void postConstruct() {
+        instantiator = BeanInstantiatorFactory.txtInstantiator(Company.class, header, regex, MAPPER);
+    }
 
     @Override
     public Object processItem(Object item) throws Exception {
@@ -46,9 +52,9 @@ public class TxtProcessor implements ItemProcessor {
             case "UBIGEO":
                 return "ubigeo";
             case "TIPO DE VÍA":
-                return "tipoDeVia";
+                return "tipoVia";
             case "NOMBRE DE VÍA":
-                return "nombreDeVia";
+                return "nombreVia";
             case "CÓDIGO DE ZONA":
                 return "codigoZona";
             case "TIPO DE ZONA":

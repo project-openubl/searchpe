@@ -1,13 +1,10 @@
-package io.github.carlosthe19916.repeid.repository;
+package io.github.carlosthe19916.repeid.services;
 
 import io.github.carlosthe19916.repeid.model.Company;
 
 import java.util.Optional;
 
-public interface CompanyRepository {
-
-    Company save(Company company);
+public interface CompanyService {
 
     Optional<Company> getCompanyByRuc(String ruc);
-
 }
