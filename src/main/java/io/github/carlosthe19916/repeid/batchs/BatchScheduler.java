@@ -6,7 +6,6 @@ import javax.batch.runtime.BatchRuntime;
 import javax.ejb.Schedule;
 import javax.ejb.Singleton;
 import javax.ejb.Startup;
-import java.time.LocalDateTime;
 import java.util.Properties;
 
 @Startup

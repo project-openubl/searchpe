@@ -6,12 +6,8 @@ import io.github.carlosthe19916.repeid.services.CompanyService;
 import io.github.carlosthe19916.repeid.services.VersionService;
 
 import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
 import javax.ws.rs.*;
-import java.util.Optional;
 
 @Path("/companies")
 @ApplicationScoped

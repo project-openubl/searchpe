@@ -1,19 +1,15 @@
 package io.github.carlosthe19916.repeid.batchs.persist;
 
-import io.github.carlosthe19916.repeid.batchs.BatchConstants;
 import io.github.carlosthe19916.repeid.model.Company;
 import io.github.carlosthe19916.repeid.model.Version;
 import org.jberet.support.io.JpaItemWriter;
 
-import javax.batch.api.BatchProperty;
-import javax.batch.api.chunk.ItemReader;
-import javax.batch.runtime.context.JobContext;
-import javax.inject.Inject;
 import javax.inject.Named;
 import javax.persistence.TypedQuery;
-import java.io.*;
-import java.nio.charset.Charset;
-import java.util.*;
+import java.util.Calendar;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Named
 public class TxtWriter extends JpaItemWriter {

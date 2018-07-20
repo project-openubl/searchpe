@@ -1,8 +1,8 @@
 package io.github.carlosthe19916.repeid.batchs.persist;
 
-import io.github.carlosthe19916.repeid.model.Company;
 import io.github.carlosthe19916.repeid.instantiators.BeanInstantiator;
 import io.github.carlosthe19916.repeid.instantiators.BeanInstantiatorFactory;
+import io.github.carlosthe19916.repeid.model.Company;
 
 import javax.annotation.PostConstruct;
 import javax.batch.api.BatchProperty;
