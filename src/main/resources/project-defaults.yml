@@ -12,7 +12,7 @@ repeid:
     enabled: true
     downloadFileLocation: "sunat.zip"
     unzipFileLocation: "sunat.txt"
-    databaseURL: "https://raw.githubusercontent.com/carlosthe19916/repeid/master/padron_reducido_ruc.zip"
+    databaseURL: "https://raw.githubusercontent.com/searchpe/searchpe/master/padron_reducido_ruc.zip"
     fileCharset: "ISO-8859-1"
     fileRowSkip: 1
     fileColumnSeparator: "\\|"

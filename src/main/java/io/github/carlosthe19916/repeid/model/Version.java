@@ -1,5 +1,7 @@
 package io.github.carlosthe19916.repeid.model;
 
+import org.hibernate.annotations.Type;
+
 import javax.persistence.*;
 import javax.validation.constraints.NotNull;
 import java.util.Date;
@@ -22,6 +24,11 @@ public class Version {
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "date")
     private Date date;
+
+    @NotNull
+    @Type(type = "org.hibernate.type.TrueFalseType")
+    @Column(name = "complete")
+    private boolean complete;
 
     public String getId() {
         return id;
@@ -47,4 +54,11 @@ public class Version {
         this.date = date;
     }
 
+    public boolean isComplete() {
+        return complete;
+    }
+
+    public void setComplete(boolean complete) {
+        this.complete = complete;
+    }
 }

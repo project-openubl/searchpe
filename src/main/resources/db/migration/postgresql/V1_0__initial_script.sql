@@ -23,6 +23,7 @@ create sequence hibernate_sequence start 1 increment 1;
 
     create table import (
        id varchar(255) not null,
+        complete char(1),
         date timestamp,
         number int8,
         primary key (id)

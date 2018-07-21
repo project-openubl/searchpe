@@ -36,6 +36,9 @@
             </batchlet>
         </step>
         <step id="import" next="cleanTempFilesAfter">
+            <listeners>
+                <listener ref="txtListener"/>
+            </listeners>
             <chunk>
                 <reader ref="txtReader">
                     <properties>

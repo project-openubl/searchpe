@@ -1,7 +1,5 @@
 package io.github.carlosthe19916.repeid.batchs.persist;
 
-import io.github.carlosthe19916.repeid.batchs.BatchConstants;
-
 import javax.batch.api.BatchProperty;
 import javax.batch.api.chunk.ItemReader;
 import javax.batch.runtime.context.JobContext;
@@ -9,7 +7,6 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import java.io.*;
 import java.nio.charset.Charset;
-import java.util.Properties;
 
 @Named
 public class TxtReader implements ItemReader {

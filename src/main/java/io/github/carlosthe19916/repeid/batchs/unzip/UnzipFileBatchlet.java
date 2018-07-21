@@ -3,7 +3,6 @@ package io.github.carlosthe19916.repeid.batchs.unzip;
 import javax.batch.api.BatchProperty;
 import javax.batch.api.Batchlet;
 import javax.batch.runtime.BatchStatus;
-import javax.batch.runtime.context.JobContext;
 import javax.inject.Inject;
 import javax.inject.Named;
 import java.io.File;
