@@ -5,15 +5,16 @@
      version="1.0">
 
     <!--<properties>-->
-        <!--<property name="downloadedFileName" value="#{jobParameters['downloadFileLocation']}"/>-->
-        <!--<property name="unzipFileName" value="#{jobParameters['unzipFileLocation']}"/>-->
+    <!--<property name="downloadedFileName" value="#{jobParameters['downloadFileLocation']}"/>-->
+    <!--<property name="unzipFileName" value="#{jobParameters['unzipFileLocation']}"/>-->
     <!--</properties>-->
 
     <flow id="start" next="end">
         <step id="cleanTempFilesBefore" next="downloadFile">
             <batchlet ref="cleanFilesBatchlet">
                 <properties>
-                    <property name="files" value="#{jobParameters['downloadFileLocation']},#{jobParameters['unzipFileLocation']}"/>
+                    <property name="files"
+                              value="#{jobParameters['downloadFileLocation']},#{jobParameters['unzipFileLocation']}"/>
                 </properties>
             </batchlet>
         </step>
@@ -37,7 +38,11 @@
         </step>
         <step id="import" next="cleanTempFilesAfter">
             <listeners>
-                <listener ref="txtListener"/>
+                <listener ref="txtListener">
+                    <properties>
+                        <property name="entityManagerLookupName" value="java:app/RepeidEm"/>
+                    </properties>
+                </listener>
             </listeners>
             <chunk>
                 <reader ref="txtReader">
@@ -61,7 +66,8 @@
         <step id="cleanTempFilesAfter">
             <batchlet ref="cleanFilesBatchlet">
                 <properties>
-                    <property name="files" value="#{jobParameters['downloadFileLocation']},#{jobParameters['unzipFileLocation']}"/>
+                    <property name="files"
+                              value="#{jobParameters['downloadFileLocation']},#{jobParameters['unzipFileLocation']}"/>
                 </properties>
             </batchlet>
         </step>
