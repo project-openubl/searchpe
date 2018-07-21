@@ -7,6 +7,8 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.batch.api.BatchProperty;
 import javax.batch.api.chunk.listener.ChunkListener;
+import javax.batch.runtime.Metric;
+import javax.batch.runtime.context.StepContext;
 import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -17,9 +19,13 @@ import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
 import javax.persistence.TypedQuery;
 import java.util.*;
+import java.util.stream.Stream;
 
 @Named
 public class TxtListener implements ChunkListener {
+
+    @Inject
+    private StepContext stepContext;
 
     @Inject
     private TxtVersion txtVersion;
@@ -90,8 +96,14 @@ public class TxtListener implements ChunkListener {
         }
 
         Version version = txtVersion.getVersion();
-
         version.setComplete(true);
+
+        Map<String, Long> metrics = new HashMap<>();
+        for (Metric metric : stepContext.getMetrics()) {
+            metrics.put(metric.getType().toString(), metric.getValue());
+        }
+        version.setMetrics(metrics);
+
         em.merge(version);
 
         if (entityTransaction) {

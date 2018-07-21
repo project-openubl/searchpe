@@ -29,10 +29,22 @@ create sequence hibernate_sequence start 1 increment 1;
         primary key (id)
     );
 
+    create table version_metrics (
+       version_id varchar(255) not null,
+        value int8,
+        name varchar(255) not null,
+        primary key (version_id, name)
+    );
+
     alter table company
        add constraint UKbp4h8nqno63ltev28my13t061 unique (version, ruc);
 
     alter table company
        add constraint FKp01662g0ahyh41a21o7tq5uya
        foreign key (version)
+       references import;
+
+    alter table version_metrics
+       add constraint FKhpchx0qi14sf20fi79pwqnutb
+       foreign key (version_id)
        references import;
