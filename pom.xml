@@ -9,8 +9,8 @@
         <version>23</version>
     </parent>
 
-    <groupId>io.github.carlosthe19916</groupId>
-    <artifactId>repeid</artifactId>
+    <groupId>io.searchpe</groupId>
+    <artifactId>searchpe</artifactId>
     <version>1.0.0</version>
     <packaging>war</packaging>
 
