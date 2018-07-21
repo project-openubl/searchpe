@@ -4,6 +4,6 @@ import javax.ws.rs.ApplicationPath;
 import javax.ws.rs.core.Application;
 
 @ApplicationPath("/api")
-public class RepeidApplication extends Application {
+public class SearchpeApplication extends Application {
 }
 
