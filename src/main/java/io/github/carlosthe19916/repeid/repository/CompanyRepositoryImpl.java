@@ -48,4 +48,22 @@ public class CompanyRepositoryImpl implements CompanyRepository {
         }
     }
 
+    @Override
+    public List<Company> getCompanyByRazonSocial(Version version, String razonSocial) {
+        TypedQuery<Company> query = em.createNamedQuery("getCompaniesByVersionIdAndRazonSocial", Company.class);
+        query.setParameter("versionId", version.getId());
+        query.setParameter("razonSocial", "%" + razonSocial.toLowerCase());
+
+        return query.getResultList();
+    }
+
+    @Override
+    public List<Company> getCompanyByFilterText(Version version, String filterText) {
+        TypedQuery<Company> query = em.createNamedQuery("getCompaniesByVersionIdAndFilterText", Company.class);
+        query.setParameter("versionId", version.getId().toLowerCase());
+        query.setParameter("filterText", "%" + filterText);
+
+        return query.getResultList();
+    }
+
 }

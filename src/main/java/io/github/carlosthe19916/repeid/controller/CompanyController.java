@@ -8,6 +8,9 @@ import io.github.carlosthe19916.repeid.services.VersionService;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.ws.rs.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
 @Path("/companies")
 @ApplicationScoped
@@ -22,13 +25,22 @@ public class CompanyController {
     @GET
     @Path("/")
     @Produces("application/json")
-    public Company getCompanies(
-            @QueryParam("ruc") String ruc
+    public List<Company> getCompanies(
+            @QueryParam("ruc") String ruc,
+            @QueryParam("razonSocial") String razonSocial,
+            @QueryParam("filterText") String filterText
     ) {
         Version lastVersion = versionService.getLastVersion().orElseThrow(NotFoundException::new);
 
         if (ruc != null) {
-            return companyService.getCompanyByRuc(lastVersion, ruc).orElseThrow(NotFoundException::new);
+            Optional<Company> company = companyService.getCompanyByRuc(lastVersion, ruc);
+            List<Company> companies = new ArrayList<>();
+            company.ifPresent(companies::add);
+            return companies;
+        } else if (razonSocial != null) {
+            return companyService.getCompanyByRazonSocial(lastVersion, razonSocial);
+        } else if (filterText != null) {
+            return companyService.getCompanyByFilterText(lastVersion, filterText);
         }
 
         throw new BadRequestException();

@@ -12,7 +12,9 @@ import javax.validation.constraints.NotNull;
         @UniqueConstraint(columnNames = {"version", "ruc"})
 })
 @NamedQueries(value = {
-        @NamedQuery(name = "getCompaniesByVersionIdAndRuc", query = "select c from Company c inner join c.version v where v.id=:versionId and c.ruc=:ruc")
+        @NamedQuery(name = "getCompaniesByVersionIdAndRuc", query = "select c from Company c inner join c.version v where v.id=:versionId and c.ruc=:ruc"),
+        @NamedQuery(name = "getCompaniesByVersionIdAndRazonSocial", query = "select c from Company c inner join c.version v where v.id=:versionId and lower(c.razonSocial) like :razonSocial"),
+        @NamedQuery(name = "getCompaniesByVersionIdAndFilterText", query = "select c from Company c inner join c.version v where v.id=:versionId and ( lower(c.ruc) like :filterText or lower(c.razonSocial) like :filterText)")
 })
 public class Company {
 
