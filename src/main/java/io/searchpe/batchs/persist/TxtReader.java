@@ -1,6 +1,5 @@
 package io.searchpe.batchs.persist;
 
-import io.searchpe.utils.FileUtils;
 import org.jboss.logging.Logger;
 
 import javax.batch.api.BatchProperty;
@@ -31,8 +30,9 @@ public class TxtReader implements ItemReader {
     @BatchProperty
     private String fileLocation;
 
-    private BufferedReader reader;
     private long readPosition;
+    private BufferedReader reader;
+    private InputStream inputStream;
 
     private String getCharset() {
         return charsetName != null ? charsetName : Charset.defaultCharset().name();
@@ -41,15 +41,20 @@ public class TxtReader implements ItemReader {
     @Override
     public void open(Serializable checkpoint) throws Exception {
         File txtFile = new File(fileLocation);
-        InputStream is = new FileInputStream(txtFile);
+        inputStream = new FileInputStream(txtFile);
 
-        InputStreamReader inputStreamReader = new InputStreamReader(is, getCharset());
+        InputStreamReader inputStreamReader = new InputStreamReader(inputStream, getCharset());
         reader = new BufferedReader(inputStreamReader);
     }
 
     @Override
     public void close() throws Exception {
-        reader.close();
+        if (inputStream != null) {
+            inputStream.close();
+        }
+        if (reader != null) {
+            reader.close();
+        }
     }
 
     @Override
