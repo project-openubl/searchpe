@@ -1,5 +1,8 @@
 package io.searchpe.batchs.persist;
 
+import io.searchpe.utils.FileUtils;
+import org.jboss.logging.Logger;
+
 import javax.batch.api.BatchProperty;
 import javax.batch.api.chunk.ItemReader;
 import javax.batch.runtime.context.JobContext;
@@ -10,6 +13,8 @@ import java.nio.charset.Charset;
 
 @Named
 public class TxtReader implements ItemReader {
+
+    private static final Logger logger = Logger.getLogger(TxtReader.class);
 
     @Inject
     private JobContext jobContext;
@@ -53,7 +58,8 @@ public class TxtReader implements ItemReader {
         if (readPosition < start) {
             while (readPosition < start) {
                 readPosition++;
-                reader.readLine();
+                String line = reader.readLine();
+                logger.debugf("Line %s ommited [%s]", readPosition, line);
             }
         }
 
