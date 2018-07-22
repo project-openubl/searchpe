@@ -1,5 +1,8 @@
 package io.searchpe.utils;
 
+import io.searchpe.migration.FlywayIntegrator;
+import org.jboss.logging.Logger;
+
 import java.io.*;
 import java.net.URL;
 import java.net.URLConnection;
@@ -10,6 +13,8 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class FileUtils {
+
+    private static final Logger logger = Logger.getLogger(FileUtils.class);
 
     private FileUtils() {
         // Just utils
@@ -27,18 +32,20 @@ public class FileUtils {
     public static void downloadFile(String url, String destination) throws IOException {
         URLConnection urlCon = new URL(url).openConnection();
         InputStream is = urlCon.getInputStream();
-        FileOutputStream fos = new FileOutputStream(destination);
+        try (FileOutputStream fos = new FileOutputStream(destination)) {
+            byte[] buffer = new byte[1000];
+            int bytesRead = is.read(buffer);
 
-        byte[] buffer = new byte[1000];
-        int bytesRead = is.read(buffer);
+            while (bytesRead > 0) {
+                fos.write(buffer, 0, bytesRead);
+                bytesRead = is.read(buffer);
+            }
 
-        while (bytesRead > 0) {
-            fos.write(buffer, 0, bytesRead);
-            bytesRead = is.read(buffer);
+            is.close();
+            fos.close();
+        } finally {
+            logger.debug("Download finished");
         }
-
-        is.close();
-        fos.close();
     }
 
     public static void unzipFile(String zipFile, String unzipLocation) throws IOException {
