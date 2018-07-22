@@ -1,5 +1,6 @@
 package io.searchpe.batchs.clean;
 
+import io.searchpe.utils.FileUtils;
 import org.jboss.logging.Logger;
 
 import javax.batch.api.BatchProperty;
@@ -22,17 +23,10 @@ public class CleanFilesBatchlet implements Batchlet {
 
     @Override
     public String process() throws Exception {
-        logger.info("Cleaning files:" + files);
-
+        logger.infof("Deleting files if exists: %s", files);
         if (files != null) {
-            for (int i = 0; i < files.length; i++) {
-                Path path = Paths.get(files[i]);
-                if (Files.exists(path)) {
-                    Files.delete(path);
-                }
-            }
+            FileUtils.deleteFilesIfExists(files);
         }
-
         return BatchStatus.COMPLETED.toString();
     }
 
