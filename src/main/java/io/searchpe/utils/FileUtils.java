@@ -1,9 +1,13 @@
 package io.searchpe.utils;
 
-import java.io.IOException;
+import java.io.*;
+import java.net.URL;
+import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 public class FileUtils {
 
@@ -18,5 +22,40 @@ public class FileUtils {
                 Files.delete(path);
             }
         }
+    }
+
+    public static void downloadFile(String url, String destination) throws IOException {
+        URLConnection urlCon = new URL(url).openConnection();
+        InputStream is = urlCon.getInputStream();
+        FileOutputStream fos = new FileOutputStream(destination);
+
+        byte[] buffer = new byte[1000];
+        int bytesRead = is.read(buffer);
+
+        while (bytesRead > 0) {
+            fos.write(buffer, 0, bytesRead);
+            bytesRead = is.read(buffer);
+        }
+
+        is.close();
+        fos.close();
+    }
+
+    public static void unzipFile(String zipFile, String unzipLocation) throws IOException {
+        byte[] buffer = new byte[1024];
+        ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFile));
+        ZipEntry zipEntry = zis.getNextEntry();
+        while (zipEntry != null) {
+            File newFile = new File(unzipLocation);
+            FileOutputStream fos = new FileOutputStream(newFile);
+            int len;
+            while ((len = zis.read(buffer)) > 0) {
+                fos.write(buffer, 0, len);
+            }
+            fos.close();
+            zipEntry = zis.getNextEntry();
+        }
+        zis.closeEntry();
+        zis.close();
     }
 }

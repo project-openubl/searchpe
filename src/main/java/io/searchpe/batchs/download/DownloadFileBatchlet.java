@@ -1,5 +1,6 @@
 package io.searchpe.batchs.download;
 
+import io.searchpe.utils.FileUtils;
 import org.jboss.logging.Logger;
 
 import javax.batch.api.BatchProperty;
@@ -28,23 +29,9 @@ public class DownloadFileBatchlet implements Batchlet {
     @Override
     public String process() throws Exception {
         logger.info("Downloading:" + url);
-
-        URLConnection urlCon = new URL(url).openConnection();
-        InputStream is = urlCon.getInputStream();
-        FileOutputStream fos = new FileOutputStream(fileLocation);
-
-        byte[] buffer = new byte[1000];
-        int bytesRead = is.read(buffer);
-
-        while (bytesRead > 0) {
-            fos.write(buffer, 0, bytesRead);
-            bytesRead = is.read(buffer);
-        }
-
-        is.close();
-        fos.close();
-
+        FileUtils.downloadFile(url, fileLocation);
         logger.info("Download finished");
+
         return BatchStatus.COMPLETED.toString();
     }
 

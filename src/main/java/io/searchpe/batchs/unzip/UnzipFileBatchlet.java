@@ -1,6 +1,7 @@
 package io.searchpe.batchs.unzip;
 
 import io.searchpe.batchs.download.DownloadFileBatchlet;
+import io.searchpe.utils.FileUtils;
 import org.jboss.logging.Logger;
 
 import javax.batch.api.BatchProperty;
@@ -30,23 +31,7 @@ public class UnzipFileBatchlet implements Batchlet {
     @Override
     public String process() throws Exception {
         logger.info("Unzip:" + fileLocation + " into:" + unzipFileLocation);
-
-        byte[] buffer = new byte[1024];
-        ZipInputStream zis = new ZipInputStream(new FileInputStream(fileLocation));
-        ZipEntry zipEntry = zis.getNextEntry();
-        while (zipEntry != null) {
-            File newFile = new File(unzipFileLocation);
-            FileOutputStream fos = new FileOutputStream(newFile);
-            int len;
-            while ((len = zis.read(buffer)) > 0) {
-                fos.write(buffer, 0, len);
-            }
-            fos.close();
-            zipEntry = zis.getNextEntry();
-        }
-        zis.closeEntry();
-        zis.close();
-
+        FileUtils.unzipFile(fileLocation, unzipFileLocation);
         logger.info("Unzip finished");
         return BatchStatus.COMPLETED.toString();
     }
