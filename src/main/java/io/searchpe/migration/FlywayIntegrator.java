@@ -35,7 +35,7 @@ public class FlywayIntegrator implements Integrator {
             final Method method = connection != null ? connection.getClass().getMethod("getDataSource", null) : null;
             dataSource = (DataSource) (method != null ? method.invoke(connection, null) : null);
         } catch (IllegalAccessException | NoSuchMethodException | InvocationTargetException | SQLException e) {
-            e.printStackTrace();
+            logger.error(e);
         }
 
 
