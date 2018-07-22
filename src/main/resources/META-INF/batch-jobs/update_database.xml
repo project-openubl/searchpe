@@ -21,8 +21,6 @@
         <step id="downloadFile" next="unzipFile">
             <batchlet ref="downloadFileBatchlet">
                 <properties>
-                    <!--<property name="url" value="http://www2.sunat.gob.pe/padron_reducido_ruc.zip"/>-->
-                    <!--<property name="url" value="https://raw.githubusercontent.com/carlosthe19916/repeid/master/padron_reducido_ruc.zip"/>-->
                     <property name="url" value="#{jobParameters['databaseURL']}"/>
                     <property name="fileLocation" value="#{jobParameters['downloadFileLocation']}"/>
                 </properties>

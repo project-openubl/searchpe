@@ -402,7 +402,7 @@
                         <configuration>
                             <outputPath>${project.build.directory}/generated-sources/h2/database.sql</outputPath>
                             <packages>
-                                <package>io.github.carlosthe19916.repeid</package>
+                                <package>io.searchpe</package>
                             </packages>
                             <jpaProperties>
                                 <property>
@@ -428,7 +428,7 @@
                         <configuration>
                             <outputPath>${project.build.directory}/generated-sources/postgresql/database.sql</outputPath>
                             <packages>
-                                <package>io.github.carlosthe19916.repeid</package>
+                                <package>io.searchpe</package>
                             </packages>
                             <jpaProperties>
                                 <property>

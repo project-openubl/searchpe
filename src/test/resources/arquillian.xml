@@ -4,6 +4,6 @@
     <!-- when switching namespace.use.current to false, switch enableImageStreamDetection to true -->
     <property name="enableImageStreamDetection">false</property>
     <property name="env.init.enabled">true</property>
-    <property name="app.name">repeid</property>
+    <property name="app.name">searchpe</property>
   </extension>
 </arquillian>
