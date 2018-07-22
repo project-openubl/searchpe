@@ -50,19 +50,30 @@ public class FileUtils {
 
     public static void unzipFile(String zipFile, String unzipLocation) throws IOException {
         byte[] buffer = new byte[1024];
-        ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFile));
-        ZipEntry zipEntry = zis.getNextEntry();
-        while (zipEntry != null) {
-            File newFile = new File(unzipLocation);
-            FileOutputStream fos = new FileOutputStream(newFile);
-            int len;
-            while ((len = zis.read(buffer)) > 0) {
-                fos.write(buffer, 0, len);
+        try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFile))) {
+            ZipEntry zipEntry = zis.getNextEntry();
+            while (zipEntry != null) {
+                File newFile = new File(unzipLocation);
+                FileOutputStream fos = null;
+                try  {
+                    fos = new FileOutputStream(newFile);
+                    int len;
+                    while ((len = zis.read(buffer)) > 0) {
+                        fos.write(buffer, 0, len);
+                    }
+                    fos.close();
+                    zipEntry = zis.getNextEntry();
+                } finally {
+                    if (fos != null) {
+                        fos.close();
+                    }
+                }
             }
-            fos.close();
-            zipEntry = zis.getNextEntry();
+            zis.closeEntry();
+            zis.close();
+        } finally {
+            logger.debug("Unzip finished");
         }
-        zis.closeEntry();
-        zis.close();
     }
+    
 }
