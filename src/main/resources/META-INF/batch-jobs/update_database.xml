@@ -4,17 +4,11 @@
      xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/jobXML_1_0.xsd"
      version="1.0">
 
-    <!--<properties>-->
-    <!--<property name="downloadedFileName" value="#{jobParameters['downloadFileLocation']}"/>-->
-    <!--<property name="unzipFileName" value="#{jobParameters['unzipFileLocation']}"/>-->
-    <!--</properties>-->
-
     <flow id="start" next="end">
         <step id="cleanTempFilesBefore" next="downloadFile">
             <batchlet ref="cleanFilesBatchlet">
                 <properties>
-                    <property name="files"
-                              value="#{jobParameters['downloadFileLocation']},#{jobParameters['unzipFileLocation']}"/>
+                    <property name="files" value="#{jobParameters['downloadFileLocation']},#{jobParameters['unzipFileLocation']}"/>
                 </properties>
             </batchlet>
         </step>
@@ -52,7 +46,6 @@
                 </reader>
                 <processor ref="txtProcessor">
                     <properties>
-                        <!--<property name="regex" value="\|"/>-->
                         <property name="regex" value="#{jobParameters['fileColumnSeparator']}"/>
                         <property name="header" value="#{jobParameters['fileColumnHeaders']}"/>
                         <property name="headerColumns" value="#{jobParameters['fileColumnValues']}"/>
@@ -61,11 +54,17 @@
                 <writer ref="txtWriter"/>
             </chunk>
         </step>
-        <step id="cleanTempFilesAfter">
+        <step id="cleanTempFilesAfter" next="purgeIncompleteVersions">
             <batchlet ref="cleanFilesBatchlet">
                 <properties>
-                    <property name="files"
-                              value="#{jobParameters['downloadFileLocation']},#{jobParameters['unzipFileLocation']}"/>
+                    <property name="files" value="#{jobParameters['downloadFileLocation']},#{jobParameters['unzipFileLocation']}"/>
+                </properties>
+            </batchlet>
+        </step>
+        <step id="purgeIncompleteVersions" next="deleteRowsAfterComplete">
+            <batchlet ref="purgeIncompleteVersionsBatchlet">
+                <properties>
+                    <property name="purgeIncompleteVersions" value="#{jobParameters['purgeIncompleteVersions']}"/>
                 </properties>
             </batchlet>
         </step>

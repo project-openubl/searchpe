@@ -10,6 +10,7 @@ import java.util.Optional;
 public interface VersionService {
 
     Optional<Version> getLastVersion();
+
     List<Version> getVersionByIssueDate(Date date);
 
     void deleteVersion(Version version);
