@@ -35,4 +35,9 @@ public class CompanyServiceImpl implements CompanyService {
         return companyRepository.getCompanyByFilterText(version, filterText);
     }
 
+    @Override
+    public int deleteCompanyByVersion(Version version) {
+        return companyRepository.deleteCompanyByVersion(version);
+    }
+
 }

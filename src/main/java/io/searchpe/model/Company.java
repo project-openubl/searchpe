@@ -14,7 +14,8 @@ import javax.validation.constraints.NotNull;
 @NamedQueries(value = {
         @NamedQuery(name = "getCompaniesByVersionIdAndRuc", query = "select c from Company c inner join c.version v where v.id=:versionId and c.ruc=:ruc"),
         @NamedQuery(name = "getCompaniesByVersionIdAndRazonSocial", query = "select c from Company c inner join c.version v where v.id=:versionId and lower(c.razonSocial) like :razonSocial"),
-        @NamedQuery(name = "getCompaniesByVersionIdAndFilterText", query = "select c from Company c inner join c.version v where v.id=:versionId and ( lower(c.ruc) like :filterText or lower(c.razonSocial) like :filterText)")
+        @NamedQuery(name = "getCompaniesByVersionIdAndFilterText", query = "select c from Company c inner join c.version v where v.id=:versionId and ( lower(c.ruc) like :filterText or lower(c.razonSocial) like :filterText)"),
+        @NamedQuery(name = "deleteCompaniesByVersionId", query = "delete from Company c where c.version.id=:versionId")
 })
 public class Company {
 

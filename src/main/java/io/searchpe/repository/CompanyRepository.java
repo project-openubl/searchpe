@@ -17,4 +17,6 @@ public interface CompanyRepository {
     List<Company> getCompanyByRazonSocial(Version version, String razonSocial);
 
     List<Company> getCompanyByFilterText(Version version, String filterText);
+
+    int deleteCompanyByVersion(Version version);
 }

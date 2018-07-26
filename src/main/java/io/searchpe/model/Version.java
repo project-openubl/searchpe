@@ -9,9 +9,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Entity
-@Table(name = "import")
+@Table(name = "version")
 @NamedQueries(value = {
-        @NamedQuery(name = "getVersions", query = "select v from Version v order by v.number desc")
+        @NamedQuery(name = "getVersions", query = "select v from Version v order by v.number desc"),
+        @NamedQuery(name = "getVersionByIssueDate", query = "select v from Version v where v.date < :date")
 })
 public class Version {
 

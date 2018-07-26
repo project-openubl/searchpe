@@ -69,6 +69,13 @@
                 </properties>
             </batchlet>
         </step>
+        <step id="deleteRowsAfterComplete">
+            <batchlet ref="deleteRowsBatchlet">
+                <properties>
+                    <property name="deleteComplete" value="1"/>
+                </properties>
+            </batchlet>
+        </step>
     </flow>
     <step id="end">
         <batchlet ref="endBatchlet"/>
