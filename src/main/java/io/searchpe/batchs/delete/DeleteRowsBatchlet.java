@@ -31,7 +31,7 @@ public class DeleteRowsBatchlet implements Batchlet {
     @Override
     public String process() throws Exception {
         logger.infof("Deleting rows");
-        Version lastVersion = versionService.getLastVersion().orElseThrow(NotFoundException::new);
+        Version lastVersion = versionService.getLastCompletedVersion().orElseThrow(NotFoundException::new);
         if (lastVersion.isComplete()) {
             List<Version> versions = versionService.getVersionByIssueDate(lastVersion.getDate());
             versions.forEach(v -> {

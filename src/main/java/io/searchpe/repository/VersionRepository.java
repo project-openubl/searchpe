@@ -1,18 +1,22 @@
 package io.searchpe.repository;
 
+import io.searchpe.model.Company;
 import io.searchpe.model.Version;
 
 import java.time.LocalDate;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public interface VersionRepository {
 
-    Optional<Version> getLastVersion();
+    Optional<Version> getLastCompletedVersion();
 
-    List<Version> getVersionByIssueDate(Date date);
+    List<Version> getVersionsBefore(Date date);
 
-    void deleteVersion(Version version);
+    List<Version> getVersionsByParameters(Map<String, Object> parameters);
+
+    boolean deleteVersion(Version version);
 
 }
