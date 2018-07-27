@@ -60,7 +60,7 @@ public class CompanyRepositoryImpl implements CompanyRepository {
     @Override
     public List<Company> getCompanyByFilterText(Version version, String filterText) {
         TypedQuery<Company> query = em.createNamedQuery("getCompaniesByVersionIdAndFilterText", Company.class);
-        query.setParameter("versionId", version.getId().toLowerCase());
+        query.setParameter("versionId", version.getId());
         query.setParameter("filterText", "%" + filterText);
 
         return query.getResultList();

@@ -71,7 +71,7 @@
         <step id="deleteExpiredVersions">
             <batchlet ref="deleteExpiredVersionsBatchlet">
                 <properties>
-                    <property name="deleteComplete" value="#{jobParameters['expirationVersionDays']}"/>
+                    <property name="deleteComplete" value="#{jobParameters['expirationTimeInMilis']}"/>
                 </properties>
             </batchlet>
         </step>

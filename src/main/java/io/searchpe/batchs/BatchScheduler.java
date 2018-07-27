@@ -3,15 +3,14 @@ package io.searchpe.batchs;
 import org.jboss.logging.Logger;
 import org.wildfly.swarm.spi.runtime.annotations.ConfigurationValue;
 
+import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
 import javax.batch.runtime.BatchRuntime;
-import javax.ejb.Schedule;
-import javax.ejb.Singleton;
-import javax.ejb.Startup;
+import javax.ejb.*;
+import javax.ejb.Timer;
 import javax.inject.Inject;
 import java.nio.charset.Charset;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.UUID;
+import java.util.*;
 
 @Startup
 @Singleton
@@ -19,9 +18,24 @@ public class BatchScheduler {
 
     private static final Logger logger = Logger.getLogger(BatchScheduler.class);
 
+    @Resource
+    private TimerService timerService;
+
     @Inject
     @ConfigurationValue("repeid.scheduler.enabled")
     private Optional<Boolean> schedulerEnabled;
+
+    @Inject
+    @ConfigurationValue("repeid.scheduler.initialExpiration")
+    private Optional<String> schedulerInitialExpiration;
+
+    @Inject
+    @ConfigurationValue("repeid.scheduler.timeZone")
+    private Optional<String> schedulerTimeZone;
+
+    @Inject
+    @ConfigurationValue("repeid.scheduler.intervalDuration")
+    private Optional<Long> schedulerIntervalDuration;
 
     @Inject
     @ConfigurationValue("repeid.scheduler.downloadFileLocation")
@@ -60,31 +74,40 @@ public class BatchScheduler {
     private Optional<Boolean> schedulerPurgeIncompleteVersions;
 
     @Inject
-    @ConfigurationValue("repeid.scheduler.expirationVersionDays")
-    private Optional<Integer> schedulerExpirationVersionDays;
+    @ConfigurationValue("repeid.scheduler.expirationTimeInMilis")
+    private Optional<Integer> schedulerExpirationTimeInMilis;
 
-    @Schedule(hour = "12", minute = "49", timezone = "America/Lima", persistent = false)
-    public void schedule() {
+    @PostConstruct
+    public void initialize() {
         if (schedulerEnabled.isPresent() && schedulerEnabled.get()) {
-            logger.info("Starting batch...");
+            String[] time = schedulerInitialExpiration.orElse("00:00:00").split(":"); // Midnight
 
-            Properties properties = new Properties();
-            properties.put("downloadFileLocation", schedulerDownloadFileLocation.orElse(UUID.randomUUID().toString() + ".zip"));
-            properties.put("unzipFileLocation", schedulerUnzipFileLocation.orElse(UUID.randomUUID().toString() + ".txt"));
-            properties.put("databaseURL", schedulerDatabaseURL);
-            properties.put("fileCharset", schedulerFileCharset.orElse(Charset.defaultCharset().name()));
-            properties.put("fileRowSkip", schedulerFileRowSkip.orElse(0L));
-            properties.put("fileColumnSeparator", schedulerFileColumnSeparator);
-            properties.put("fileColumnHeaders", schedulerFileColumnHeaders);
-            properties.put("fileColumnValues", schedulerFileColumnValues);
-            properties.put("purgeIncompleteVersions", schedulerPurgeIncompleteVersions.orElse(false));
-            properties.put("expirationVersionDays", schedulerExpirationVersionDays.orElse(0));
+            Calendar calendar = Calendar.getInstance();
+            calendar.set(Calendar.HOUR, Integer.parseInt(time[0]));
+            calendar.set(Calendar.MINUTE, Integer.parseInt(time[1]));
+            calendar.set(Calendar.SECOND, Integer.parseInt(time[2]));
 
-            BatchRuntime.getJobOperator().start("update_database", properties);
+            schedulerTimeZone.ifPresent(timeZone -> calendar.setTimeZone(TimeZone.getTimeZone(timeZone)));
+            Long intervalDuration = schedulerIntervalDuration.orElse(3_600_000L); //One hour
 
-            logger.info("Finishing batch...");
+            timerService.createTimer(calendar.getTime(), intervalDuration, null);
         }
-
     }
 
+    @Timeout
+    public void programmaticTimeout(Timer timer) {
+        Properties properties = new Properties();
+        properties.put("downloadFileLocation", schedulerDownloadFileLocation.orElse(UUID.randomUUID().toString() + ".zip"));
+        properties.put("unzipFileLocation", schedulerUnzipFileLocation.orElse(UUID.randomUUID().toString() + ".txt"));
+        properties.put("databaseURL", schedulerDatabaseURL);
+        properties.put("fileCharset", schedulerFileCharset.orElse(Charset.defaultCharset().name()));
+        properties.put("fileRowSkip", schedulerFileRowSkip.orElse(0L));
+        properties.put("fileColumnSeparator", schedulerFileColumnSeparator);
+        properties.put("fileColumnHeaders", schedulerFileColumnHeaders);
+        properties.put("fileColumnValues", schedulerFileColumnValues);
+        properties.put("purgeIncompleteVersions", schedulerPurgeIncompleteVersions.orElse(false));
+        properties.put("expirationTimeInMilis", schedulerExpirationTimeInMilis.orElse(0));
+
+        BatchRuntime.getJobOperator().start("update_database", properties);
+    }
 }
