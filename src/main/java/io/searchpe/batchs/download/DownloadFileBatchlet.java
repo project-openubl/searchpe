@@ -8,10 +8,6 @@ import javax.batch.api.Batchlet;
 import javax.batch.runtime.BatchStatus;
 import javax.inject.Inject;
 import javax.inject.Named;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.net.URL;
-import java.net.URLConnection;
 
 @Named
 public class DownloadFileBatchlet implements Batchlet {
@@ -28,11 +24,17 @@ public class DownloadFileBatchlet implements Batchlet {
 
     @Override
     public String process() throws Exception {
-        logger.info("Downloading:" + url);
+        logger.infof("--------------------------------------");
+        logger.infof("--------------------------------------");
+        logger.infof("Downloading file: %s into %s", url, fileLocation);
+
         FileUtils.downloadFile(url, fileLocation);
         logger.info("Download finished");
 
-        return BatchStatus.COMPLETED.toString();
+        BatchStatus batchStatus = BatchStatus.COMPLETED;
+        logger.infof("Batch %s finished BatchStatus[%s]", DownloadFileBatchlet.class.getSimpleName(), batchStatus);
+
+        return batchStatus.toString();
     }
 
     @Override

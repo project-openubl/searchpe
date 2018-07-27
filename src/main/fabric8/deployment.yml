@@ -18,10 +18,8 @@ spec:
               fieldPath: metadata.namespace
         - name: JAVA_APP_DIR
           value: /deployments
-        - name: SSO_AUTH_SERVER_URL
-          value: ${SSO_AUTH_SERVER_URL}
         - name: JAVA_OPTIONS
-          value: -Dsso.auth.server.url=${SSO_AUTH_SERVER_URL} -Dsso.realm=${SSO_REALM} -Dswarm.project.stage.file=file:///deployments/config/searchpe-stages.yml -Dswarm.project.stage=production
+          value: -Dswarm.project.stage.file=file:///deployments/config/searchpe-stages.yml -Dswarm.project.stage=production
         - name: GC_MAX_METASPACE_SIZE
           value: 250
         name: ${project.artifactId}

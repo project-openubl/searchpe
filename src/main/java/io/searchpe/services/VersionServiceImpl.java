@@ -1,6 +1,5 @@
 package io.searchpe.services;
 
-import io.searchpe.model.Company;
 import io.searchpe.model.Version;
 import io.searchpe.repository.VersionRepository;
 

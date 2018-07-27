@@ -1,6 +1,5 @@
 package io.searchpe.utils;
 
-import io.searchpe.migration.FlywayIntegrator;
 import org.jboss.logging.Logger;
 
 import java.io.*;

@@ -63,7 +63,7 @@ public class BatchScheduler {
     @ConfigurationValue("repeid.scheduler.expirationVersionDays")
     private Optional<Integer> schedulerExpirationVersionDays;
 
-    @Schedule(hour = "9", minute = "30", timezone = "America/Lima", persistent = false)
+    @Schedule(hour = "10", minute = "20", timezone = "America/Lima", persistent = false)
     public void schedule() {
         if (schedulerEnabled.isPresent() && schedulerEnabled.get()) {
             logger.info("Starting batch...");

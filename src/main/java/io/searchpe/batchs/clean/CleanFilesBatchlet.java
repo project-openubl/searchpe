@@ -8,9 +8,6 @@ import javax.batch.api.Batchlet;
 import javax.batch.runtime.BatchStatus;
 import javax.inject.Inject;
 import javax.inject.Named;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 @Named
 public class CleanFilesBatchlet implements Batchlet {
@@ -23,11 +20,18 @@ public class CleanFilesBatchlet implements Batchlet {
 
     @Override
     public String process() throws Exception {
+        logger.infof("--------------------------------------");
+        logger.infof("--------------------------------------");
         logger.infof("Deleting files if exists: %s", files);
+
         if (files != null) {
             FileUtils.deleteFilesIfExists(files);
         }
-        return BatchStatus.COMPLETED.toString();
+
+        BatchStatus batchStatus = BatchStatus.COMPLETED;
+        logger.infof("Batch %s finished BatchStatus[%s]", CleanFilesBatchlet.class.getSimpleName(), batchStatus);
+
+        return batchStatus.toString();
     }
 
     @Override
