@@ -7,10 +7,9 @@ import org.junit.Test;
 import javax.batch.operations.JobOperator;
 import javax.batch.runtime.BatchRuntime;
 import javax.batch.runtime.BatchStatus;
-
 import java.util.Properties;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 @Ignore
 public class CleanFilesBatchletTest {

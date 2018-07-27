@@ -1,19 +1,13 @@
 package io.searchpe.utils;
 
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
-import javax.validation.constraints.AssertTrue;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-
-import static org.junit.Assert.*;
 
 public class FileUtilsTest {
 
