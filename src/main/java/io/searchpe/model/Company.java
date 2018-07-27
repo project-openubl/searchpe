@@ -1,12 +1,10 @@
 package io.searchpe.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import org.hibernate.search.annotations.Indexed;
 
 import javax.persistence.*;
 import javax.validation.constraints.NotNull;
 
-@Indexed
 @Entity
 @Table(name = "company", uniqueConstraints = {
         @UniqueConstraint(columnNames = {"version", "ruc"})
