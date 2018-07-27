@@ -7,7 +7,7 @@ import org.junit.Test;
 public class BeanInstantiatorTest {
 
     @Test
-    public void shoudlCreatePojo() throws IllegalAccessException, NoSuchFieldException, InstantiationException {
+    public void shouldCreatePojo() throws IllegalAccessException, NoSuchFieldException, InstantiationException {
         BeanInstantiator<Company> instantiator = new BeanInstantiator<>(Company.class, new String[]{"ruc", "razonSocial", "ubigeo"});
 
         Object[] columns = {"10467793549", "Carlos Feria", "050101"};

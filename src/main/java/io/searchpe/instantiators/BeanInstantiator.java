@@ -16,7 +16,7 @@ public class BeanInstantiator<T> {
 
     public T create(Object[] columns) throws IllegalAccessException, NoSuchFieldException, InstantiationException {
         Map<String, Object> map = new HashMap<>();
-        for (int i = 0; i < columns.length; i++) {
+        for (int i = 0; i < headers.length; i++) {
             map.put(headers[i], columns[i]);
         }
 
