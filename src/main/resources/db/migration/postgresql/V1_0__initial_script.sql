@@ -21,7 +21,7 @@ create sequence hibernate_sequence start 1 increment 1;
         primary key (id)
     );
 
-    create table import (
+    create table version (
        id varchar(255) not null,
         complete char(1),
         date timestamp,
@@ -42,9 +42,9 @@ create sequence hibernate_sequence start 1 increment 1;
     alter table company
        add constraint FKp01662g0ahyh41a21o7tq5uya
        foreign key (version)
-       references import;
+       references version;
 
     alter table version_metrics
        add constraint FKhpchx0qi14sf20fi79pwqnutb
        foreign key (version_id)
-       references import;
+       references version;

@@ -68,10 +68,4 @@ public class CompanyRepositoryImpl implements CompanyRepository {
         return query.getResultList();
     }
 
-    @Override
-    public int deleteCompanyByVersion(Version version) {
-        TypedQuery<Company> query = em.createNamedQuery("deleteCompaniesByVersionId", Company.class);
-        query.setParameter("versionId", version.getId().toLowerCase());
-       return query.getMaxResults();
-    }
 }

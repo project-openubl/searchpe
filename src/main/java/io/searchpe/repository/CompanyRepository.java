@@ -18,5 +18,4 @@ public interface CompanyRepository {
 
     List<Company> getCompanyByFilterText(Version version, String filterText);
 
-    int deleteCompanyByVersion(Version version);
 }

@@ -30,7 +30,7 @@ public class CompanyController {
             @QueryParam("razonSocial") String razonSocial,
             @QueryParam("filterText") String filterText
     ) {
-        Version lastVersion = versionService.getLastVersion().orElseThrow(NotFoundException::new);
+        Version lastVersion = versionService.getLastCompletedVersion().orElseThrow(NotFoundException::new);
 
         if (ruc != null) {
             Optional<Company> company = companyService.getCompanyByRuc(lastVersion, ruc);
