@@ -1,7 +1,7 @@
 swarm:
   datasources:
     data-sources:
-      ClarksnutDS:
+      RepeidDS:
         jndi-name: java:jboss/datasources/RepeidDS
         driver-name: h2
         connection-url: jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
@@ -10,6 +10,7 @@ swarm:
 repeid:
   scheduler:
     enabled: true
+    expirationVersionDays: 1
     downloadFileLocation: "sunat.zip"
     unzipFileLocation: "sunat.txt"
     databaseURL: "https://raw.githubusercontent.com/searchpe/searchpe/master/padron_reducido_ruc.zip"

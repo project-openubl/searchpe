@@ -30,7 +30,7 @@ items:
     - ReadWriteOnce
     resources:
       requests:
-        storage: 5Gi
+        storage: 1Gi
 - apiVersion: v1
   kind: DeploymentConfig
   metadata:
@@ -56,7 +56,7 @@ items:
         containers:
         - env:
           - name: POSTGRESQL_DATABASE
-            value: openfact
+            value: searchpe
           - name: POSTGRESQL_USER
             valueFrom:
               secretKeyRef:

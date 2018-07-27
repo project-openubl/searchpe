@@ -59,9 +59,12 @@ public class BatchScheduler {
     @ConfigurationValue("repeid.scheduler.purgeIncompleteVersions")
     private Optional<Boolean> schedulerPurgeIncompleteVersions;
 
-    //    @Schedule(hour = "3", persistent = false, timezone = "America/Lima")
-    @Schedule(dayOfWeek = "7", hour = "5", minute = "0", second= "0", persistent = false, timezone = "America/Lima")
-    public void startBatch() {
+    @Inject
+    @ConfigurationValue("repeid.scheduler.expirationVersionDays")
+    private Optional<Integer> schedulerExpirationVersionDays;
+
+    @Schedule(hour = "9", minute = "30", timezone = "America/Lima", persistent = false)
+    public void schedule() {
         if (schedulerEnabled.isPresent() && schedulerEnabled.get()) {
             logger.info("Starting batch...");
 
@@ -75,6 +78,7 @@ public class BatchScheduler {
             properties.put("fileColumnHeaders", schedulerFileColumnHeaders);
             properties.put("fileColumnValues", schedulerFileColumnValues);
             properties.put("purgeIncompleteVersions", schedulerPurgeIncompleteVersions.orElse(false));
+            properties.put("expirationVersionDays", schedulerExpirationVersionDays.orElse(0));
 
             BatchRuntime.getJobOperator().start("update_database", properties);
 

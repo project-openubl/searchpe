@@ -61,17 +61,17 @@
                 </properties>
             </batchlet>
         </step>
-        <step id="purgeIncompleteVersions" next="deleteRowsAfterComplete">
+        <step id="purgeIncompleteVersions" next="deleteExpiredVersions">
             <batchlet ref="purgeIncompleteVersionsBatchlet">
                 <properties>
                     <property name="purgeIncompleteVersions" value="#{jobParameters['purgeIncompleteVersions']}"/>
                 </properties>
             </batchlet>
         </step>
-        <step id="deleteRowsAfterComplete">
-            <batchlet ref="deleteRowsBatchlet">
+        <step id="deleteExpiredVersions">
+            <batchlet ref="deleteExpiredVersionsBatchlet">
                 <properties>
-                    <property name="deleteComplete" value="1"/>
+                    <property name="deleteComplete" value="#{jobParameters['expirationVersionDays']}"/>
                 </properties>
             </batchlet>
         </step>

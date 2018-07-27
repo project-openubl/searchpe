@@ -28,7 +28,7 @@ public class VersionServiceImpl implements VersionService {
     }
 
     @Override
-    public List<Company> getVersionsByParameters(Map<String, Object> parameters) {
+    public List<Version> getVersionsByParameters(Map<String, Object> parameters) {
         return versionRepository.getVersionsByParameters(parameters);
     }
 

@@ -3,14 +3,15 @@ project:
 swarm:
   datasources:
     data-sources:
-      OpenfactDS:
+      RepeidDS:
         driver-name: postgresql
-        user-name: openfact
-        password: openfact
-        connection-url: jdbc:postgresql://searchpe-db:5432/openfact
+        user-name: searchpe
+        password: searchpe
+        connection-url: jdbc:postgresql://searchpe-db:5432/searchpe
 repeid:
   scheduler:
     enabled: true
+    expirationVersionDays: 1
     downloadFileLocation: "sunat.zip"
     unzipFileLocation: "sunat.txt"
     databaseURL: "http://www2.sunat.gob.pe/padron_reducido_ruc.zip"
