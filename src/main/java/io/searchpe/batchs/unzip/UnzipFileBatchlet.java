@@ -1,6 +1,5 @@
 package io.searchpe.batchs.unzip;
 
-import io.searchpe.batchs.clean.CleanFilesBatchlet;
 import io.searchpe.batchs.download.DownloadFileBatchlet;
 import io.searchpe.utils.FileUtils;
 import org.jboss.logging.Logger;

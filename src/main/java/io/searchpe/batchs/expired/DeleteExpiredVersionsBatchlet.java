@@ -1,4 +1,4 @@
-package io.searchpe.batchs.delete;
+package io.searchpe.batchs.expired;
 
 import io.searchpe.model.Version;
 import io.searchpe.services.VersionService;
@@ -27,6 +27,10 @@ public class DeleteExpiredVersionsBatchlet implements Batchlet {
 
     @Override
     public String process() throws Exception {
+        logger.infof("--------------------------------------");
+        logger.infof("--------------------------------------");
+        logger.infof("Deleting expired versions using expiration[%s]", expirationVersionDays);
+
         if (expirationVersionDays != null && expirationVersionDays > 0) {
             Calendar calendar = Calendar.getInstance();
             calendar.add(Calendar.DAY_OF_MONTH, 0 - expirationVersionDays);
@@ -34,10 +38,15 @@ public class DeleteExpiredVersionsBatchlet implements Batchlet {
 
             List<Version> expiredVersions = versionService.getVersionsBefore(date);
             for (Version version : expiredVersions) {
+                logger.infof("Deleting version id[%s], number[%s], date[%s]", version.getId(), version.getNumber(), version.getDate());
                 versionService.deleteVersion(version);
             }
         }
-        return BatchStatus.COMPLETED.toString();
+
+        BatchStatus batchStatus = BatchStatus.COMPLETED;
+        logger.infof("Batch %s finished BatchStatus[%s]", DeleteExpiredVersionsBatchlet.class.getSimpleName(), batchStatus);
+
+        return batchStatus.toString();
     }
 
     @Override

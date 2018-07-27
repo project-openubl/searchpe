@@ -2,9 +2,11 @@ package io.searchpe.utils;
 
 import org.jboss.logging.Logger;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.net.URL;
-import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -29,22 +31,23 @@ public class FileUtils {
     }
 
     public static void downloadFile(String url, String destination) throws IOException {
-        URLConnection urlCon = new URL(url).openConnection();
-        InputStream is = urlCon.getInputStream();
-        try (FileOutputStream fos = new FileOutputStream(destination)) {
-            byte[] buffer = new byte[1000];
-            int bytesRead = is.read(buffer);
-
-            while (bytesRead > 0) {
-                fos.write(buffer, 0, bytesRead);
-                bytesRead = is.read(buffer);
-            }
-
-            is.close();
-            fos.close();
-        } finally {
-            logger.debug("Download finished");
-        }
+        org.apache.commons.io.FileUtils.copyURLToFile(new URL(url), new File(destination), 10000, 10000);
+//        URLConnection urlCon = new URL(url).openConnection();
+//        InputStream is = urlCon.getInputStream();
+//        try (FileOutputStream fos = new FileOutputStream(destination)) {
+//            byte[] buffer = new byte[1000];
+//            int bytesRead = is.read(buffer);
+//
+//            while (bytesRead > 0) {
+//                fos.write(buffer, 0, bytesRead);
+//                bytesRead = is.read(buffer);
+//            }
+//
+//            is.close();
+//            fos.close();
+//        } finally {
+//            logger.debug("Download finished");
+//        }
     }
 
     public static void unzipFile(String zipFile, String unzipLocation) throws IOException {

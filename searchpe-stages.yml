@@ -14,7 +14,7 @@ repeid:
     expirationVersionDays: 1
     downloadFileLocation: "sunat.zip"
     unzipFileLocation: "sunat.txt"
-    databaseURL: "http://www2.sunat.gob.pe/padron_reducido_ruc.zip"
+    databaseURL: "https://raw.githubusercontent.com/searchpe/searchpe/master/padron_reducido_ruc.zip"
     fileCharset: "ISO-8859-1"
     fileRowSkip: 1
     fileColumnSeparator: "\\|"

@@ -28,15 +28,24 @@ public class PurgeIncompleteVersionsBatchlet implements Batchlet {
 
     @Override
     public String process() throws Exception {
+        logger.infof("--------------------------------------");
+        logger.infof("--------------------------------------");
+        logger.infof("Purging incomplete versions");
+
         if (purgeIncompleteVersions != null && purgeIncompleteVersions) {
             Map<String, Object> parameters = new HashMap<>();
             parameters.put(VersionAttributes.complete, false);
             List<Version> versions = versionService.getVersionsByParameters(parameters);
             for (Version version : versions) {
+                logger.infof("Purging version id[%s], number[%s], date[%s]", version.getId(), version.getNumber(), version.getDate());
                 versionService.deleteVersion(version);
             }
         }
-        return BatchStatus.COMPLETED.toString();
+
+        BatchStatus batchStatus = BatchStatus.COMPLETED;
+        logger.infof("Batch %s finished BatchStatus[%s]", PurgeIncompleteVersionsBatchlet.class.getSimpleName(), batchStatus);
+
+        return batchStatus.toString();
     }
 
     @Override

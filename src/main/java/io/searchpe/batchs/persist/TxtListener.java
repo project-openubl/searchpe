@@ -7,6 +7,7 @@ import org.jboss.logging.Logger;
 import javax.annotation.Resource;
 import javax.batch.api.BatchProperty;
 import javax.batch.api.listener.StepListener;
+import javax.batch.runtime.BatchStatus;
 import javax.batch.runtime.Metric;
 import javax.batch.runtime.context.StepContext;
 import javax.enterprise.inject.Instance;
@@ -55,12 +56,12 @@ public class TxtListener implements StepListener {
 
     @Override
     public void beforeStep() throws Exception {
-        initEntityManager();
+        logger.infof("--------------------------------------");
+        logger.infof("--------------------------------------");
+        logger.infof("%s BeforeStep", TxtListener.class.getSimpleName());
+        logger.infof("Trying to create Version");
 
-        logger.info("=====================================");
-        logger.info("=====================================");
-        logger.info("=====================================");
-        logger.info("Starting txt listener...");
+        initEntityManager();
 
         userTransaction.begin();
 
@@ -78,20 +79,25 @@ public class TxtListener implements StepListener {
 
         userTransaction.commit();
 
-        logger.info("Txt listener finished");
+        logger.infof("Version created");
+        logger.infof("%s BeforeStep finished", TxtListener.class.getSimpleName());
     }
 
     @Override
     public void afterStep() throws Exception {
-        logger.info("=====================================");
-        logger.info("=====================================");
-        logger.info("=====================================");
-        logger.info("Executing after chunk listener...");
+        logger.infof("--------------------------------------");
+        logger.infof("--------------------------------------");
+        logger.infof("%s AfterStep", TxtListener.class.getSimpleName());
+        logger.infof("Trying to close version and create metrics");
 
         userTransaction.begin();
 
+        BatchStatus batchStatus = stepContext.getBatchStatus();
+
         Version version = txtVersion.getVersion();
-        version.setComplete(true);
+        if (batchStatus.equals(BatchStatus.COMPLETED)) {
+            version.setComplete(true);
+        }
 
         Map<String, Long> metrics = new HashMap<>();
         for (Metric metric : stepContext.getMetrics()) {
@@ -104,8 +110,10 @@ public class TxtListener implements StepListener {
 
         userTransaction.commit();
 
-        logger.info("Finishing after chunk listener");
         closeEntityManager();
+
+        logger.infof("Version closed and metrics added");
+        logger.infof("%s AfterStep finished", TxtListener.class.getSimpleName());
     }
 
     private void initEntityManager() {

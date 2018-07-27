@@ -36,7 +36,7 @@
                     </properties>
                 </listener>
             </listeners>
-            <chunk>
+            <chunk item-count="1000">
                 <reader ref="txtReader">
                     <properties>
                         <property name="charsetName" value="#{jobParameters['fileCharset']}"/>
