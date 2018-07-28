@@ -112,7 +112,7 @@ public class TxtListener implements StepListener {
 
         closeEntityManager();
 
-        logger.infof("Version closed and metrics added");
+        logger.infof("Version closed and metrics added. Status complete[%s]", version.isComplete());
         logger.infof("%s AfterStep finished", TxtListener.class.getSimpleName());
     }
 

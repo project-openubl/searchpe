@@ -5,10 +5,17 @@
      version="1.0">
 
     <flow id="start" next="end">
-        <step id="cleanTempFilesBefore" next="downloadFile">
+        <step id="cleanTempFilesBefore" next="purgeIncompleteVersions1">
             <batchlet ref="cleanFilesBatchlet">
                 <properties>
                     <property name="files" value="#{jobParameters['downloadFileLocation']},#{jobParameters['unzipFileLocation']}"/>
+                </properties>
+            </batchlet>
+        </step>
+        <step id="purgeIncompleteVersions1" next="downloadFile">
+            <batchlet ref="purgeIncompleteVersionsBatchlet">
+                <properties>
+                    <property name="purgeIncompleteVersions" value="#{jobParameters['purgeIncompleteVersions']}"/>
                 </properties>
             </batchlet>
         </step>
@@ -36,7 +43,7 @@
                     </properties>
                 </listener>
             </listeners>
-            <chunk item-count="1000">
+            <chunk item-count="100">
                 <reader ref="txtReader">
                     <properties>
                         <property name="charsetName" value="#{jobParameters['fileCharset']}"/>
@@ -54,14 +61,14 @@
                 <writer ref="txtWriter"/>
             </chunk>
         </step>
-        <step id="cleanTempFilesAfter" next="purgeIncompleteVersions">
+        <step id="cleanTempFilesAfter" next="purgeIncompleteVersions2">
             <batchlet ref="cleanFilesBatchlet">
                 <properties>
                     <property name="files" value="#{jobParameters['downloadFileLocation']},#{jobParameters['unzipFileLocation']}"/>
                 </properties>
             </batchlet>
         </step>
-        <step id="purgeIncompleteVersions" next="deleteExpiredVersions">
+        <step id="purgeIncompleteVersions2" next="deleteExpiredVersions">
             <batchlet ref="purgeIncompleteVersionsBatchlet">
                 <properties>
                     <property name="purgeIncompleteVersions" value="#{jobParameters['purgeIncompleteVersions']}"/>

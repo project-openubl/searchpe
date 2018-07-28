@@ -80,15 +80,18 @@ public class BatchScheduler {
     @PostConstruct
     public void initialize() {
         if (schedulerEnabled.isPresent() && schedulerEnabled.get()) {
-            String[] time = schedulerInitialExpiration.orElse("00:00:00").split(":"); // Midnight
-
             Calendar calendar = Calendar.getInstance();
-            calendar.set(Calendar.HOUR, Integer.parseInt(time[0]));
-            calendar.set(Calendar.MINUTE, Integer.parseInt(time[1]));
-            calendar.set(Calendar.SECOND, Integer.parseInt(time[2]));
+            if (schedulerInitialExpiration.isPresent()) {
+                String[] time = schedulerInitialExpiration.get().split(":");
+                calendar.set(Calendar.HOUR, Integer.parseInt(time[0]));
+                calendar.set(Calendar.MINUTE, Integer.parseInt(time[1]));
+                calendar.set(Calendar.SECOND, Integer.parseInt(time[2]));
+            } else {
+                calendar.add(Calendar.MINUTE, 1);
+            }
 
             schedulerTimeZone.ifPresent(timeZone -> calendar.setTimeZone(TimeZone.getTimeZone(timeZone)));
-            Long intervalDuration = schedulerIntervalDuration.orElse(3_600_000L); //One hour
+            Long intervalDuration = schedulerIntervalDuration.orElse(3_600_000L); // One hour
 
             timerService.createTimer(calendar.getTime(), intervalDuration, null);
         }

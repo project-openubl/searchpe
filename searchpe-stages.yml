@@ -12,7 +12,6 @@ repeid:
   scheduler:
     enabled: true
     timeZone: "America/Lima"
-    initialExpiration: "00:00:00"
     intervalDuration: 3600000
     expirationTimeInMilis: 10800000
     downloadFileLocation: "sunat.zip"

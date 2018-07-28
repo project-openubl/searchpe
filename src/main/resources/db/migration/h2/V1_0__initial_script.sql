@@ -1,4 +1,4 @@
-create sequence sequence start with 1 increment by 100;
+create sequence sequence start with 1 increment by 50;
 
     create table company (
        id bigint not null,
