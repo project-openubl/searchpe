@@ -1,4 +1,4 @@
-create sequence hibernate_sequence start 1 increment 1;
+create sequence sequence start 1 increment 100;
 
     create table company (
        id int8 not null,
@@ -40,11 +40,11 @@ create sequence hibernate_sequence start 1 increment 1;
        add constraint UKbp4h8nqno63ltev28my13t061 unique (version, ruc);
 
     alter table company
-       add constraint FKp01662g0ahyh41a21o7tq5uya
+       add constraint FKe8jbnj2wkjv3di24a5da5mj0e
        foreign key (version)
        references version;
 
     alter table version_metrics
-       add constraint FKhpchx0qi14sf20fi79pwqnutb
+       add constraint FKna6siv7x5ipel6gywm739s7qt
        foreign key (version_id)
        references version;
