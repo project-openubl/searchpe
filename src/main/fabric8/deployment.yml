@@ -42,11 +42,6 @@ spec:
           periodSeconds: 30
         securityContext:
           privileged: false
-        resources:
-          requests:
-            memory: 500Mi
-          limits:
-            memory: 1Gi
         volumeMounts:
         - name: searchpe-config
           mountPath: /deployments/config
