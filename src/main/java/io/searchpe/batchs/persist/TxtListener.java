@@ -66,6 +66,7 @@ public class TxtListener implements StepListener {
         userTransaction.begin();
 
         Version version = new Version();
+        version.setId(UUID.randomUUID().toString());
         version.setDate(Calendar.getInstance().getTime());
         version.setComplete(false);
         version.setNumber(1);

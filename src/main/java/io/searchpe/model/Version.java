@@ -19,14 +19,7 @@ import java.util.Map;
 public class Version {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "version-pooled-lo")
-    @GenericGenerator(name = "version-pooled-lo", strategy = "org.hibernate.id.enhanced.SequenceStyleGenerator", parameters = {
-            @org.hibernate.annotations.Parameter(name = "sequence_name", value = "sequence"),
-            @org.hibernate.annotations.Parameter(name = "initial_value", value = "1"),
-            @org.hibernate.annotations.Parameter(name = "increment_size", value = "3"),
-            @org.hibernate.annotations.Parameter(name = "optimizer", value = "pooled-lo")
-    })
-    private Long id;
+    private String id;
 
     @NotNull
     @Column(name = "number")
@@ -48,11 +41,11 @@ public class Version {
     @CollectionTable(name="version_metrics", joinColumns={ @JoinColumn(name="version_id") })
     private Map<String, Long> metrics = new HashMap<>();
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
