@@ -15,7 +15,7 @@ create sequence sequence start with 1 increment by 50;
         razon_social varchar(255),
         ruc varchar(11),
         tipo_via varchar(5),
-        tipo_zona varchar(20),
+        tipo_zona varchar(30),
         ubigeo varchar(6),
         version varchar(255),
         primary key (id)
