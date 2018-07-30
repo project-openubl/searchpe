@@ -46,8 +46,6 @@ public class FlywayIntegrator implements Integrator {
             flyway.setLocations("classpath:db/migration/h2");
         } else if (dialect instanceof PostgreSQL9Dialect) {
             flyway.setLocations("classpath:db/migration/postgresql");
-        } else if (dialect instanceof MariaDBDialect) {
-            flyway.setLocations("classpath:db/migration/mariadb");
         } else if (dialect instanceof MySQLDialect) {
             flyway.setLocations("classpath:db/migration/mysql");
         } else {

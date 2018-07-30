@@ -3,4 +3,4 @@
 mvn clean
 mvn clean package
 
-mvn fabric8:deploy -Popenshift
+mvn fabric8:deploy -Popenshift -DDATABASE_VENDOR=$1

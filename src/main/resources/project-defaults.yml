@@ -11,7 +11,7 @@ repeid:
   scheduler:
     enabled: true
     intervalDuration: 3600000
-    expirationTimeInMilis: 10800000
+    expirationTimeInMillis: 10800000
     downloadFileLocation: "sunat.zip"
     unzipFileLocation: "sunat.txt"
     databaseURL: "https://raw.githubusercontent.com/searchpe/searchpe/master/padron_reducido_ruc.zip"

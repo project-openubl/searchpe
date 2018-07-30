@@ -20,7 +20,7 @@ public class DeleteExpiredVersionsBatchlet implements Batchlet {
 
     @Inject
     @BatchProperty
-    private Integer expirationTimeInMilis;
+    private Integer expirationTimeInMillis;
 
     @Inject
     private VersionService versionService;
@@ -29,11 +29,11 @@ public class DeleteExpiredVersionsBatchlet implements Batchlet {
     public String process() throws Exception {
         logger.infof("--------------------------------------");
         logger.infof("--------------------------------------");
-        logger.infof("Deleting expired versions using expiration[%s]", expirationTimeInMilis);
+        logger.infof("Deleting expired versions using expiration[%s]", expirationTimeInMillis);
 
-        if (expirationTimeInMilis != null && expirationTimeInMilis > 0) {
+        if (expirationTimeInMillis != null && expirationTimeInMillis > 0) {
             Calendar calendar = Calendar.getInstance();
-            calendar.add(Calendar.MILLISECOND, 0 - expirationTimeInMilis);
+            calendar.add(Calendar.MILLISECOND, 0 - expirationTimeInMillis);
             Date date = calendar.getTime();
 
             List<Version> expiredVersions = versionService.getVersionsBefore(date);

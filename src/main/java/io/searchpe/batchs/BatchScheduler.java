@@ -74,8 +74,8 @@ public class BatchScheduler {
     private Optional<Boolean> schedulerPurgeIncompleteVersions;
 
     @Inject
-    @ConfigurationValue("repeid.scheduler.expirationTimeInMilis")
-    private Optional<Integer> schedulerExpirationTimeInMilis;
+    @ConfigurationValue("repeid.scheduler.expirationTimeInMillis")
+    private Optional<Integer> schedulerExpirationTimeInMillis;
 
     @PostConstruct
     public void initialize() {
@@ -97,7 +97,7 @@ public class BatchScheduler {
                 logger.infof("Creating timer initialDayExpiration[%s], intervalDuration[%s]", initialExpirationDate, intervalDuration);
                 timer = timerService.createTimer(initialExpirationDate, intervalDuration, null);
             } else {
-                long initialDuration = 10 * 1000; // 10 Seconds
+                long initialDuration = 5 * 1000; // 5 Seconds
                 logger.infof("Creating default timer");
                 logger.infof("Creating timer initialDuration[%s], intervalDuration[%s]", initialDuration, intervalDuration);
                 timer = timerService.createTimer(initialDuration, intervalDuration, null);
@@ -112,7 +112,7 @@ public class BatchScheduler {
 
     @Timeout
     public void programmaticTimeout(Timer timer) {
-        logger.infof("Scheduder execution...");
+        logger.infof("Scheduler execution...");
 
         Properties properties = new Properties();
         properties.put("downloadFileLocation", schedulerDownloadFileLocation.orElse(UUID.randomUUID().toString() + ".zip"));
@@ -124,7 +124,7 @@ public class BatchScheduler {
         properties.put("fileColumnHeaders", schedulerFileColumnHeaders);
         properties.put("fileColumnValues", schedulerFileColumnValues);
         properties.put("purgeIncompleteVersions", schedulerPurgeIncompleteVersions.orElse(false));
-        properties.put("expirationTimeInMilis", schedulerExpirationTimeInMilis.orElse(0));
+        properties.put("expirationTimeInMillis", schedulerExpirationTimeInMillis.orElse(0));
 
         BatchRuntime.getJobOperator().start("update_database", properties);
     }
