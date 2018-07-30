@@ -4,15 +4,15 @@ swarm:
   datasources:
     data-sources:
       RepeidDS:
-        driver-name: h2
-        connection-url: jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-        user-name: sa
-        password: sa
+        driver-name: postgresql
+        user-name: searchpe
+        password: searchpe
+        connection-url: jdbc:postgresql://searchpe-db:5432/searchpe
 repeid:
   scheduler:
     enabled: true
-    intervalDuration: 3600000
-    expirationTimeInMilis: 10800000
+    intervalDuration: 86400000
+    expirationTimeInMilis: 172800000
     downloadFileLocation: "sunat.zip"
     unzipFileLocation: "sunat.txt"
     databaseURL: "http://www2.sunat.gob.pe/padron_reducido_ruc.zip"

@@ -97,7 +97,7 @@ public class BatchScheduler {
                 logger.infof("Creating timer initialDayExpiration[%s], intervalDuration[%s]", initialExpirationDate, intervalDuration);
                 timer = timerService.createTimer(initialExpirationDate, intervalDuration, null);
             } else {
-                long initialDuration = 0;
+                long initialDuration = 10 * 1000; // 10 Seconds
                 logger.infof("Creating default timer");
                 logger.infof("Creating timer initialDuration[%s], intervalDuration[%s]", initialDuration, intervalDuration);
                 timer = timerService.createTimer(initialDuration, intervalDuration, null);

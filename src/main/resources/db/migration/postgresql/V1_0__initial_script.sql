@@ -2,27 +2,27 @@ create sequence sequence start 1 increment 50;
 
     create table company (
        id int8 not null,
-        codigo_zona varchar(20),
+        codigo_zona varchar(30),
         condicion_domicilio varchar(30),
-        departamento varchar(20),
+        departamento varchar(30),
         estado_contribuyente varchar(30),
-        interior varchar(10),
-        kilometro varchar(10),
-        lote varchar(10),
-        manzana varchar(10),
+        interior varchar(30),
+        kilometro varchar(30),
+        lote varchar(30),
+        manzana varchar(30),
         nombre_via varchar(100),
-        numero varchar(10),
+        numero varchar(30),
         razon_social varchar(255),
         ruc varchar(11),
-        tipo_via varchar(20),
+        tipo_via varchar(30),
         tipo_zona varchar(30),
         ubigeo varchar(6),
-        version varchar(255),
+        version varchar(40),
         primary key (id)
     );
 
     create table version (
-       id varchar(255) not null,
+       id varchar(40) not null,
         complete char(1),
         date timestamp,
         number int8,
@@ -30,9 +30,9 @@ create sequence sequence start 1 increment 50;
     );
 
     create table version_metrics (
-       version_id varchar(255) not null,
+       version_id varchar(40) not null,
         value int8,
-        name varchar(255) not null,
+        name varchar(100) not null,
         primary key (version_id, name)
     );
 
