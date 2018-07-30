@@ -3,8 +3,8 @@ package io.searchpe.repository;
 import io.searchpe.model.Version;
 
 import javax.enterprise.context.ApplicationScoped;
+import javax.inject.Inject;
 import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
 import javax.persistence.TypedQuery;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
@@ -16,13 +16,24 @@ import java.util.function.Function;
 @ApplicationScoped
 public class VersionRepositoryImpl implements VersionRepository {
 
-    @PersistenceContext(unitName = "RepeidPU")
+    @Inject
     private EntityManager em;
 
     private final static Function<String, String> fieldsFunction = VersionRepositoryImpl::fieldName;
 
     private static String fieldName(String fieldName) {
         return fieldName;
+    }
+
+    @Override
+    public Optional<Version> getLastVersion() {
+        TypedQuery<Version> query = em.createNamedQuery("getVersions", Version.class);
+        query.setMaxResults(1);
+        List<Version> resultList = query.getResultList();
+        if (resultList.size() == 1) {
+            return Optional.of(resultList.get(0));
+        }
+        return Optional.empty();
     }
 
     @Override

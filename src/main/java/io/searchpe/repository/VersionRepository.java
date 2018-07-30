@@ -9,6 +9,8 @@ import java.util.Optional;
 
 public interface VersionRepository {
 
+    Optional<Version> getLastVersion();
+
     Optional<Version> getLastCompletedVersion();
 
     List<Version> getVersionsBefore(Date date);

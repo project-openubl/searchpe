@@ -17,6 +17,11 @@ public class VersionServiceImpl implements VersionService {
     private VersionRepository versionRepository;
 
     @Override
+    public Optional<Version> getLastVersion() {
+        return versionRepository.getLastVersion();
+    }
+
+    @Override
     public Optional<Version> getLastCompletedVersion() {
         return versionRepository.getLastCompletedVersion();
     }

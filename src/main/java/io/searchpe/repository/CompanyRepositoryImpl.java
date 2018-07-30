@@ -4,8 +4,8 @@ import io.searchpe.model.Company;
 import io.searchpe.model.Version;
 
 import javax.enterprise.context.ApplicationScoped;
+import javax.inject.Inject;
 import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
 import javax.persistence.TypedQuery;
 import java.util.List;
 import java.util.Optional;
@@ -13,7 +13,7 @@ import java.util.Optional;
 @ApplicationScoped
 public class CompanyRepositoryImpl implements CompanyRepository {
 
-    @PersistenceContext(unitName = "RepeidPU")
+    @Inject
     private EntityManager em;
 
     @Override

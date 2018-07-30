@@ -1,6 +1,7 @@
 package io.searchpe.batchs.persist;
 
 import io.searchpe.model.Version;
+import io.searchpe.services.VersionService;
 import org.jberet.support._private.SupportMessages;
 import org.jboss.logging.Logger;
 
@@ -18,7 +19,6 @@ import javax.naming.NamingException;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
-import javax.persistence.TypedQuery;
 import javax.transaction.UserTransaction;
 import java.util.*;
 
@@ -26,6 +26,9 @@ import java.util.*;
 public class TxtListener implements StepListener {
 
     private static final Logger logger = Logger.getLogger(TxtListener.class);
+
+    @Inject
+    private VersionService versionService;
 
     @Inject
     private StepContext stepContext;
@@ -71,7 +74,7 @@ public class TxtListener implements StepListener {
         version.setComplete(false);
         version.setNumber(1);
 
-        Optional<Version> lastVersion = getLastVersion();
+        Optional<Version> lastVersion = versionService.getLastVersion();
         lastVersion.ifPresent(c -> version.setNumber(c.getNumber() + 1));
 
         em.persist(version);
@@ -153,13 +156,4 @@ public class TxtListener implements StepListener {
         }
     }
 
-    private Optional<Version> getLastVersion() {
-        TypedQuery<Version> query = em.createNamedQuery("getVersions", Version.class);
-        query.setMaxResults(1);
-        List<Version> resultList = query.getResultList();
-        if (resultList.size() == 1) {
-            return Optional.of(resultList.get(0));
-        }
-        return Optional.empty();
-    }
 }

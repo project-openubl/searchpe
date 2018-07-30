@@ -1,18 +1,24 @@
 package io.searchpe.producers;
 
-import javax.ejb.Stateless;
+import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.inject.Produces;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 
-@Stateless
+@ApplicationScoped
 public class EntityManagerProducer {
 
-    @PersistenceContext(unitName = "RepeidPU")
+    @PersistenceContext(unitName = "SearchpePU")
     private EntityManager em;
 
     @Produces
     public EntityManager createEntityManager() {
+        return em;
+    }
+
+    @Produces
+    @ContainerEntityManager
+    public EntityManager createContainerEntityManager() {
         return em;
     }
 
