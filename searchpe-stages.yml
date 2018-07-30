@@ -4,14 +4,13 @@ swarm:
   datasources:
     data-sources:
       RepeidDS:
-        driver-name: postgresql
-        user-name: searchpe
-        password: searchpe
-        connection-url: jdbc:postgresql://searchpe-db:5432/searchpe
+        driver-name: h2
+        connection-url: jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+        user-name: sa
+        password: sa
 repeid:
   scheduler:
     enabled: true
-    timeZone: "America/Lima"
     intervalDuration: 3600000
     expirationTimeInMilis: 10800000
     downloadFileLocation: "sunat.zip"

@@ -80,25 +80,40 @@ public class BatchScheduler {
     @PostConstruct
     public void initialize() {
         if (schedulerEnabled.isPresent() && schedulerEnabled.get()) {
-            Calendar calendar = Calendar.getInstance();
+            long intervalDuration = schedulerIntervalDuration.orElse(3_600_000L); // One hour
+            Timer timer;
             if (schedulerInitialExpiration.isPresent()) {
                 String[] time = schedulerInitialExpiration.get().split(":");
+
+                Calendar calendar = Calendar.getInstance();
                 calendar.set(Calendar.HOUR, Integer.parseInt(time[0]));
                 calendar.set(Calendar.MINUTE, Integer.parseInt(time[1]));
                 calendar.set(Calendar.SECOND, Integer.parseInt(time[2]));
+
+                schedulerTimeZone.ifPresent(timeZone -> calendar.setTimeZone(TimeZone.getTimeZone(timeZone)));
+                Date initialExpirationDate = calendar.getTime();
+
+                logger.infof("Creating timer from time");
+                logger.infof("Creating timer initialDayExpiration[%s], intervalDuration[%s]", initialExpirationDate, intervalDuration);
+                timer = timerService.createTimer(initialExpirationDate, intervalDuration, null);
             } else {
-                calendar.add(Calendar.MINUTE, 1);
+                long initialDuration = 0;
+                logger.infof("Creating default timer");
+                logger.infof("Creating timer initialDuration[%s], intervalDuration[%s]", initialDuration, intervalDuration);
+                timer = timerService.createTimer(initialDuration, intervalDuration, null);
             }
 
-            schedulerTimeZone.ifPresent(timeZone -> calendar.setTimeZone(TimeZone.getTimeZone(timeZone)));
-            Long intervalDuration = schedulerIntervalDuration.orElse(3_600_000L); // One hour
-
-            timerService.createTimer(calendar.getTime(), intervalDuration, null);
+            logger.infof("Timer Next Timeout at %s", timer.getNextTimeout());
+            logger.infof("Time remaining %s", timer.getTimeRemaining());
+        } else {
+            logger.infof("Scheduler disabled, this node will not execute schedulers");
         }
     }
 
     @Timeout
     public void programmaticTimeout(Timer timer) {
+        logger.infof("Scheduder execution...");
+
         Properties properties = new Properties();
         properties.put("downloadFileLocation", schedulerDownloadFileLocation.orElse(UUID.randomUUID().toString() + ".zip"));
         properties.put("unzipFileLocation", schedulerUnzipFileLocation.orElse(UUID.randomUUID().toString() + ".txt"));
