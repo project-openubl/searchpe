@@ -3,9 +3,7 @@ package io.searchpe.migration;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationInfo;
 import org.hibernate.boot.Metadata;
-import org.hibernate.dialect.Dialect;
-import org.hibernate.dialect.H2Dialect;
-import org.hibernate.dialect.PostgreSQL9Dialect;
+import org.hibernate.dialect.*;
 import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.integrator.spi.Integrator;
@@ -48,6 +46,10 @@ public class FlywayIntegrator implements Integrator {
             flyway.setLocations("classpath:db/migration/h2");
         } else if (dialect instanceof PostgreSQL9Dialect) {
             flyway.setLocations("classpath:db/migration/postgresql");
+        } else if (dialect instanceof MariaDBDialect) {
+            flyway.setLocations("classpath:db/migration/mariadb");
+        } else if (dialect instanceof MySQLDialect) {
+            flyway.setLocations("classpath:db/migration/mysql");
         } else {
             throw new IllegalStateException("Not supported Dialect");
         }
@@ -55,8 +57,7 @@ public class FlywayIntegrator implements Integrator {
         MigrationInfo migrationInfo = flyway.info().current();
         if (migrationInfo == null) {
             logger.info("No existing database at the actual datasource");
-        }
-        else {
+        } else {
             logger.infof("Found a database with the version: %s", migrationInfo.getVersion());
         }
 

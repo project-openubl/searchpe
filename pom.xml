@@ -26,6 +26,7 @@
         <version.h2>1.4.187</version.h2>
         <version.postgresql>42.1.4</version.postgresql>
         <version.mysql>8.0.11</version.mysql>
+        <version.mariadb>2.2.6</version.mariadb>
     </properties>
 
     <dependencyManagement>
@@ -156,6 +157,11 @@
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
             <version>${version.mysql}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mariadb.jdbc</groupId>
+            <artifactId>mariadb-java-client</artifactId>
+            <version>${version.mariadb}</version>
         </dependency>
     </dependencies>
 
@@ -436,6 +442,58 @@
                                 <property>
                                     <name>hibernate.dialect</name>
                                     <value>org.hibernate.dialect.PostgreSQL9Dialect</value>
+                                </property>
+                            </jpaProperties>
+                            <formatOutput>true</formatOutput>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>flywaydb-mysql</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.devskiller.jpa2ddl</groupId>
+                        <artifactId>jpa2ddl-maven-plugin</artifactId>
+                        <version>0.9.11</version>
+                        <extensions>true</extensions> <!-- required to run automatically -->
+                        <configuration>
+                            <outputPath>${project.build.directory}/generated-sources/mysql/database.sql</outputPath>
+                            <packages>
+                                <package>io.searchpe</package>
+                            </packages>
+                            <jpaProperties>
+                                <property>
+                                    <name>hibernate.dialect</name>
+                                    <value>org.hibernate.dialect.MySQL5Dialect</value>
+                                </property>
+                            </jpaProperties>
+                            <formatOutput>true</formatOutput>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>flywaydb-mariadb</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.devskiller.jpa2ddl</groupId>
+                        <artifactId>jpa2ddl-maven-plugin</artifactId>
+                        <version>0.9.11</version>
+                        <extensions>true</extensions> <!-- required to run automatically -->
+                        <configuration>
+                            <outputPath>${project.build.directory}/generated-sources/mariadb/database.sql</outputPath>
+                            <packages>
+                                <package>io.searchpe</package>
+                            </packages>
+                            <jpaProperties>
+                                <property>
+                                    <name>hibernate.dialect</name>
+                                    <value>org.hibernate.dialect.MariaDBDialect</value>
                                 </property>
                             </jpaProperties>
                             <formatOutput>true</formatOutput>
