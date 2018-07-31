@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<job id="unzip_files" restartable="true" xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/jobXML_1_0.xsd"
+     version="1.0">
+
+    <step id="unzip_files_step">
+        <batchlet ref="io.searchpe.batchs.unzip.UnzipFileBatchlet">
+            <properties>
+                <property name="fileLocation" value="#{jobParameters['zipFile']}"/>
+                <property name="unzipFileLocation" value="#{jobParameters['fileDestiny']}"/>
+            </properties>
+        </batchlet>
+    </step>
+
+</job>

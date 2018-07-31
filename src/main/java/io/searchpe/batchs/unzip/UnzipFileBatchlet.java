@@ -1,6 +1,5 @@
 package io.searchpe.batchs.unzip;
 
-import io.searchpe.batchs.download.DownloadFileBatchlet;
 import io.searchpe.utils.FileUtils;
 import org.jboss.logging.Logger;
 
@@ -13,7 +12,7 @@ import javax.inject.Named;
 @Named
 public class UnzipFileBatchlet implements Batchlet {
 
-    private static final Logger logger = Logger.getLogger(DownloadFileBatchlet.class);
+    private static final Logger logger = Logger.getLogger(UnzipFileBatchlet.class);
 
     @Inject
     @BatchProperty
@@ -25,16 +24,12 @@ public class UnzipFileBatchlet implements Batchlet {
 
     @Override
     public String process() throws Exception {
-        logger.infof("--------------------------------------");
-        logger.infof("--------------------------------------");
-        logger.infof("Unzipping %s into: %s", fileLocation, unzipFileLocation);
+        logger.infof("Unzipping file %s into %s", fileLocation, unzipFileLocation);
 
         FileUtils.unzipFile(fileLocation, unzipFileLocation);
 
-        BatchStatus batchStatus = BatchStatus.COMPLETED;
-        logger.infof("Batch %s finished BatchStatus[%s]", UnzipFileBatchlet.class.getSimpleName(), batchStatus);
-
-        return batchStatus.toString();
+        logger.infof("File has been unzipped");
+        return BatchStatus.COMPLETED.toString();
     }
 
     @Override

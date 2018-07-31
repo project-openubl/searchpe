@@ -1,4 +1,4 @@
-package io.searchpe.batchs.download;
+package io.searchpe.batchs.unzip;
 
 import io.searchpe.utils.FileUtils;
 import org.jboss.arquillian.container.test.api.Deployment;
@@ -8,6 +8,7 @@ import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.asset.EmptyAsset;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.wildfly.swarm.jaxrs.JAXRSArchive;
@@ -20,8 +21,9 @@ import java.net.URL;
 import java.nio.file.Paths;
 import java.util.Properties;
 
+@Ignore
 @RunWith(Arquillian.class)
-public class DownloadFileBatchletTest {
+public class UnzipFileBatchletTest {
 
     private int sleepTime = 3000;
     private JobOperator jobOperator;
@@ -40,30 +42,33 @@ public class DownloadFileBatchletTest {
         JAXRSArchive deployment = ShrinkWrap.create(JAXRSArchive.class);
 
         deployment.setContextRoot("/");
-        deployment.addClasses(DownloadFileBatchlet.class, FileUtils.class);
+        deployment.addClasses(UnzipFileBatchlet.class, FileUtils.class);
 
         deployment.addAsResource(projectDefaults, "/project-defaults.yml");
         deployment.addAsResource("persistence-test.xml", "META-INF/persistence.xml");
         deployment.addAsManifestResource(EmptyAsset.INSTANCE, "WEB-INF/beans.xml");
-        deployment.addAsResource("batch-jobs/download_files.xml", "META-INF/batch-jobs/download_files.xml");
+        deployment.addAsResource("batch-jobs/unzip_files.xml", "META-INF/batch-jobs/unzip_files.xml");
+        deployment.addAsResource("padron_reducido_ruc.zip", "padron_reducido_ruc.zip");
         deployment.addAllDependencies();
 
         return deployment;
     }
 
     @Test
-    public void testDownloadFile() throws Exception {
-        Assert.assertFalse(Paths.get("padron_reducido_ruc.zip").toFile().exists());
+    public void testUnzipFile() throws Exception {
+        URL url = getClass().getClassLoader().getResource("/padron_reducido_ruc.zip");
+        Assert.assertNotNull(url);
+        String path = url.getPath();
 
         Properties properties = new Properties();
-        properties.setProperty("fileURL", "https://raw.githubusercontent.com/searchpe/searchpe/master/padron_reducido_ruc.zip");
-        properties.setProperty("fileDestiny", "padron_reducido_ruc.zip");
+        properties.setProperty("zipFile", path);
+        properties.setProperty("fileDestiny", "padron_reducido_ruc.txt");
 
-        long execId = jobOperator.start("download_files", properties);
+        long execId = jobOperator.start("unzip_files", properties);
         Thread.sleep(sleepTime);
 
         Assert.assertEquals("Didn't pass as expected", BatchStatus.COMPLETED, jobOperator.getJobExecution(execId).getBatchStatus());
-        Assert.assertTrue(Paths.get("padron_reducido_ruc.zip").toFile().exists());
+        Assert.assertTrue(Paths.get("padron_reducido_ruc.txt").toFile().exists());
     }
 
 }
