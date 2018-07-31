@@ -42,7 +42,6 @@ public class FlywayIntegrator implements Integrator {
 
         Flyway flyway = new Flyway();
         flyway.setDataSource(dataSource);
-        flyway.setCallbacks(new FlywayMigrationCallback(sessionFactory));
 
 
         Dialect dialect = jdbcServices.getDialect();
