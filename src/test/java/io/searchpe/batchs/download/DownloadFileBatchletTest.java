@@ -1,14 +1,15 @@
-package io.searchpe.batchs.clean;
+package io.searchpe.batchs.download;
 
+import io.searchpe.batchs.clean.CleanFilesBatchlet;
 import io.searchpe.utils.FileUtils;
 import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.arquillian.junit.Arquillian;
 import org.jboss.shrinkwrap.api.Archive;
-import org.jboss.shrinkwrap.api.ArchivePaths;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.asset.EmptyAsset;
-import org.jboss.shrinkwrap.api.asset.StringAsset;
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.wildfly.swarm.jaxrs.JAXRSArchive;
 
@@ -21,10 +22,10 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Properties;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 @RunWith(Arquillian.class)
-public class CleanFilesBatchletTest {
+public class DownloadFileBatchletTest {
 
     private static int sleepTime = 3000;
     private JobOperator jobOperator;
@@ -43,32 +44,32 @@ public class CleanFilesBatchletTest {
         JAXRSArchive deployment = ShrinkWrap.create(JAXRSArchive.class);
 
         deployment.setContextRoot("/");
-        deployment.addClasses(CleanFilesBatchlet.class, FileUtils.class);
+        deployment.addClasses(DownloadFileBatchlet.class, FileUtils.class);
 
         deployment.addAsResource(projectDefaults, "/project-defaults.yml");
         deployment.addAsResource("persistence-test.xml", "META-INF/persistence.xml");
         deployment.addAsManifestResource(EmptyAsset.INSTANCE, "WEB-INF/beans.xml");
-        deployment.addAsResource("batch-jobs/clean_files.xml", "META-INF/batch-jobs/clean_files.xml");
+        deployment.addAsResource("batch-jobs/download_files.xml", "META-INF/batch-jobs/download_files.xml");
         deployment.addAllDependencies();
 
         return deployment;
     }
 
     @Test
-    public void testCleanFiles() throws Exception {
+    public void testDownloadFile() throws Exception {
         Files.write(Paths.get("file1.txt"), new byte[]{1, 2});
         Assert.assertTrue(Paths.get("file1.txt").toFile().exists());
         Assert.assertFalse(Paths.get("file2.txt").toFile().exists());
 
         Properties properties = new Properties();
-        properties.setProperty("file1", "file1.txt");
-        properties.setProperty("file2", "file2.txt");
+        properties.setProperty("fileURL", "https://raw.githubusercontent.com/searchpe/searchpe/master/padron_reducido_ruc.zip");
+        properties.setProperty("fileDestiny", "padron_reducido_ruc.zip");
 
-        long execId = jobOperator.start("clean_files", properties);
+        long execId = jobOperator.start("download_files", properties);
         Thread.sleep(sleepTime);
 
         Assert.assertEquals("Didn't pass as expected", BatchStatus.COMPLETED, jobOperator.getJobExecution(execId).getBatchStatus());
-        Assert.assertFalse(Paths.get("file1.txt").toFile().exists());
+        Assert.assertTrue(Paths.get("padron_reducido_ruc.zip").toFile().exists());
     }
 
 }
