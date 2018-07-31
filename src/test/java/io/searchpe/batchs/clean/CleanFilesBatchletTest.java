@@ -56,7 +56,9 @@ public class CleanFilesBatchletTest {
 
     @Test
     public void testRestartAfterRestartAfterComplete() throws Exception {
-        Files.write(Paths.get("file.txt"), new byte[]{1, 2});
+        Files.write(Paths.get("file1.txt"), new byte[]{1, 2});
+        Assert.assertTrue(Paths.get("file1.txt").toFile().exists());
+        Assert.assertFalse(Paths.get("file2.txt").toFile().exists());
 
         Properties properties = new Properties();
         properties.setProperty("file1", "file1.txt");
@@ -64,7 +66,9 @@ public class CleanFilesBatchletTest {
 
         long execId = jobOperator.start("clean_files", properties);
         Thread.sleep(sleepTime);
-        assertEquals("Didn't pass as expected", BatchStatus.COMPLETED, jobOperator.getJobExecution(execId).getBatchStatus());
+
+        Assert.assertEquals("Didn't pass as expected", BatchStatus.COMPLETED, jobOperator.getJobExecution(execId).getBatchStatus());
+        Assert.assertFalse(Paths.get("file1.txt").toFile().exists());
     }
 
 }

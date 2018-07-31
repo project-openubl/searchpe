@@ -24,17 +24,12 @@ public class DownloadFileBatchlet implements Batchlet {
 
     @Override
     public String process() throws Exception {
-        logger.infof("--------------------------------------");
-        logger.infof("--------------------------------------");
         logger.infof("Downloading file: %s into %s", url, fileLocation);
 
         FileUtils.downloadFile(url, fileLocation);
-        logger.info("Download finished");
 
-        BatchStatus batchStatus = BatchStatus.COMPLETED;
-        logger.infof("Batch %s finished BatchStatus[%s]", DownloadFileBatchlet.class.getSimpleName(), batchStatus);
-
-        return batchStatus.toString();
+        logger.infof("File has been downloaded");
+        return BatchStatus.COMPLETED.toString();
     }
 
     @Override

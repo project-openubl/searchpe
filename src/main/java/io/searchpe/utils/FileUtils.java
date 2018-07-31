@@ -22,8 +22,8 @@ public class FileUtils {
     }
 
     public static void deleteFilesIfExists(String[] files) throws IOException {
-        for (int i = 0; i < files.length; i++) {
-            Path path = Paths.get(files[i]);
+        for (String file : files) {
+            Path path = Paths.get(file);
             if (path.toFile().exists()) {
                 Files.delete(path);
             }
@@ -45,7 +45,6 @@ public class FileUtils {
                     while ((len = zis.read(buffer)) > 0) {
                         fos.write(buffer, 0, len);
                     }
-                    fos.close();
                     zipEntry = zis.getNextEntry();
                 }
             }

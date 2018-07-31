@@ -22,9 +22,11 @@ public class CleanFilesBatchlet implements Batchlet {
     public String process() throws Exception {
         if (files != null) {
             FileUtils.deleteFilesIfExists(files);
+        } else {
+            logger.warn("No files were defined");
         }
 
-        logger.debugf("Files %s has been cleaned", files);
+        logger.infof("Files %s has been deleted", files);
         return BatchStatus.COMPLETED.toString();
     }
 
