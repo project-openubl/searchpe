@@ -68,7 +68,7 @@ public class FlywayIntegrator implements Integrator {
 
     @Override
     public void disintegrate(SessionFactoryImplementor sessionFactory, SessionFactoryServiceRegistry serviceRegistry) {
-
+        // Nothing to do
     }
 
 }

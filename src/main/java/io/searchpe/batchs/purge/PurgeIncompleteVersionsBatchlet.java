@@ -34,7 +34,7 @@ public class PurgeIncompleteVersionsBatchlet implements Batchlet {
 
         if (purgeIncompleteVersions != null && purgeIncompleteVersions) {
             Map<String, Object> parameters = new HashMap<>();
-            parameters.put(VersionAttributes.complete, false);
+            parameters.put(VersionAttributes.COMPLETE, false);
             List<Version> versions = versionService.getVersionsByParameters(parameters);
             for (Version version : versions) {
                 logger.infof("Purging version id[%s], number[%s], date[%s]", version.getId(), version.getNumber(), version.getDate());
@@ -50,6 +50,6 @@ public class PurgeIncompleteVersionsBatchlet implements Batchlet {
 
     @Override
     public void stop() throws Exception {
-
+        // Nothing to do
     }
 }

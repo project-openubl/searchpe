@@ -39,7 +39,7 @@ public class DownloadFileBatchlet implements Batchlet {
 
     @Override
     public void stop() throws Exception {
-
+        // Nothing to do
     }
 
 }

@@ -51,6 +51,6 @@ public class DeleteExpiredVersionsBatchlet implements Batchlet {
 
     @Override
     public void stop() throws Exception {
-
+        // Nothing to do
     }
 }

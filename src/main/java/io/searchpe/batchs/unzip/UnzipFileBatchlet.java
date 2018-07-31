@@ -39,7 +39,7 @@ public class UnzipFileBatchlet implements Batchlet {
 
     @Override
     public void stop() throws Exception {
-
+        // Nothing to do
     }
 
 }

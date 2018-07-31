@@ -24,7 +24,7 @@ public class FileUtils {
     public static void deleteFilesIfExists(String[] files) throws IOException {
         for (int i = 0; i < files.length; i++) {
             Path path = Paths.get(files[i]);
-            if (Files.exists(path)) {
+            if (path.toFile().exists()) {
                 Files.delete(path);
             }
         }
@@ -40,19 +40,13 @@ public class FileUtils {
             ZipEntry zipEntry = zis.getNextEntry();
             while (zipEntry != null) {
                 File newFile = new File(unzipLocation);
-                FileOutputStream fos = null;
-                try {
-                    fos = new FileOutputStream(newFile);
+                try (FileOutputStream fos = new FileOutputStream(newFile)) {
                     int len;
                     while ((len = zis.read(buffer)) > 0) {
                         fos.write(buffer, 0, len);
                     }
                     fos.close();
                     zipEntry = zis.getNextEntry();
-                } finally {
-                    if (fos != null) {
-                        fos.close();
-                    }
                 }
             }
             zis.closeEntry();

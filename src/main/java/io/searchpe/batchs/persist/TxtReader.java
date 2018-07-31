@@ -74,6 +74,7 @@ public class TxtReader implements ItemReader {
 
     @Override
     public Serializable checkpointInfo() throws Exception {
+        // No checkpoint
         return null;
     }
 

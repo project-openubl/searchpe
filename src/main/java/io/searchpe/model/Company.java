@@ -20,7 +20,7 @@ public class Company {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "company-pooled-lo")
-    @GenericGenerator(name = "company-pooled-lo", strategy = "org.hibernate.id.enhanced.SequenceStyleGenerator", parameters = {
+    @GenericGenerator(name = "company-pooled-lo", strategy = "org.hibernate.d.enhanced.SequenceStyleGenerator", parameters = {
             @org.hibernate.annotations.Parameter(name = "sequence_name", value = "sequence"),
             @org.hibernate.annotations.Parameter(name = "initial_value", value = "1"),
             @org.hibernate.annotations.Parameter(name = "increment_size", value = "50"),
