@@ -39,7 +39,7 @@
             <listeners>
                 <listener ref="txtListener">
                     <properties>
-                        <property name="entityManagerLookupName" value="java:app/RepeidEm"/>
+                        <property name="entityManagerLookupName" value="java:app/SearchpeEM"/>
                     </properties>
                 </listener>
             </listeners>
