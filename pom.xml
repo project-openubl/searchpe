@@ -47,26 +47,26 @@
     </dependencyManagement>
 
     <dependencies>
-        <dependency>
-            <groupId>io.thorntail</groupId>
-            <artifactId>config-api-runtime</artifactId>
-            <version>1.4.0</version>
-        </dependency>
+        <!--<dependency>-->
+            <!--<groupId>io.thorntail</groupId>-->
+            <!--<artifactId>config-api-runtime</artifactId>-->
+            <!--<version>1.4.0</version>-->
+        <!--</dependency>-->
 
-        <dependency>
-            <groupId>io.thorntail</groupId>
-            <artifactId>microprofile</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.wildfly.swarm</groupId>
-                    <artifactId>config-api-runtime</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>io.thorntail</groupId>
-            <artifactId>microprofile-health</artifactId>
-        </dependency>
+        <!--<dependency>-->
+            <!--<groupId>io.thorntail</groupId>-->
+            <!--<artifactId>microprofile</artifactId>-->
+            <!--<exclusions>-->
+                <!--<exclusion>-->
+                    <!--<groupId>org.wildfly.swarm</groupId>-->
+                    <!--<artifactId>config-api-runtime</artifactId>-->
+                <!--</exclusion>-->
+            <!--</exclusions>-->
+        <!--</dependency>-->
+        <!--<dependency>-->
+            <!--<groupId>io.thorntail</groupId>-->
+            <!--<artifactId>microprofile-health</artifactId>-->
+        <!--</dependency>-->
 
         <dependency>
             <groupId>io.thorntail</groupId>

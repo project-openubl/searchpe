@@ -4,7 +4,7 @@ project:
 swarm:
   datasources:
     data-sources:
-      RepeidDS:
+      SearchpeDS:
         driver-name: postgresql
         user-name: searchpe
         password: searchpe
@@ -28,7 +28,7 @@ project:
 swarm:
   datasources:
     data-sources:
-      RepeidDS:
+      SearchpeDS:
         driver-name: mysql
         user-name: searchpe
         password: searchpe

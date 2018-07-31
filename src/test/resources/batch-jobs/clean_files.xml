@@ -5,7 +5,7 @@
      version="1.0">
 
     <step id="clean_files_step">
-        <batchlet ref="cleanFilesBatchlet">
+        <batchlet ref="io.searchpe.batchs.clean.CleanFilesBatchlet">
             <properties>
                 <property name="files" value="#{jobParameters['file1']},#{jobParameters['file2']}"/>
             </properties>
