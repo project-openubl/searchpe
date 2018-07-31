@@ -16,10 +16,10 @@ import java.util.function.Function;
 @ApplicationScoped
 public class VersionRepositoryImpl implements VersionRepository {
 
+    private final static Function<String, String> fieldsFunction = VersionRepositoryImpl::fieldName;
+
     @Inject
     private EntityManager em;
-
-    private final static Function<String, String> fieldsFunction = VersionRepositoryImpl::fieldName;
 
     private static String fieldName(String fieldName) {
         return fieldName;

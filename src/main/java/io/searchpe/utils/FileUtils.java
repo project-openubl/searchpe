@@ -56,7 +56,6 @@ public class FileUtils {
                 }
             }
             zis.closeEntry();
-            zis.close();
         } finally {
             logger.debug("Unzip finished");
         }
