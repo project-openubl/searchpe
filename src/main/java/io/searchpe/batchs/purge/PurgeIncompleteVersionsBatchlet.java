@@ -21,35 +21,44 @@ public class PurgeIncompleteVersionsBatchlet implements Batchlet {
 
     @Inject
     @BatchProperty
-    private Boolean purgeIncompleteVersions;
+    private Boolean deleteIncompleteVersions;
 
     @Inject
     private VersionService versionService;
 
+    private boolean isDeleteIncompleteVersions() {
+        return getDeleteIncompleteVersions() != null && getDeleteIncompleteVersions();
+    }
+
     @Override
     public String process() throws Exception {
-        logger.infof("--------------------------------------");
-        logger.infof("--------------------------------------");
-        logger.infof("Purging incomplete versions");
+        logger.infof("Deleting incomplete versions...");
 
-        if (purgeIncompleteVersions != null && purgeIncompleteVersions) {
+        if (isDeleteIncompleteVersions()) {
             Map<String, Object> parameters = new HashMap<>();
             parameters.put(VersionAttributes.COMPLETE, false);
-            List<Version> versions = versionService.getVersionsByParameters(parameters);
+            List<Version> versions = getVersionService().getVersionsByParameters(parameters);
+
             for (Version version : versions) {
-                logger.infof("Purging version id[%s], number[%s], date[%s]", version.getId(), version.getNumber(), version.getDate());
-                versionService.deleteVersion(version);
+                logger.infof("Deleting version id[%s], number[%s], date[%s]", version.getId(), version.getNumber(), version.getDate());
+                getVersionService().deleteVersion(version);
             }
         }
 
-        BatchStatus batchStatus = BatchStatus.COMPLETED;
-        logger.infof("Batch %s finished BatchStatus[%s]", PurgeIncompleteVersionsBatchlet.class.getSimpleName(), batchStatus);
-
-        return batchStatus.toString();
+        logger.infof("Incomplete versions has been deleted");
+        return BatchStatus.COMPLETED.toString();
     }
 
     @Override
     public void stop() throws Exception {
         // Nothing to do
+    }
+
+    public Boolean getDeleteIncompleteVersions() {
+        return deleteIncompleteVersions;
+    }
+
+    public VersionService getVersionService() {
+        return versionService;
     }
 }

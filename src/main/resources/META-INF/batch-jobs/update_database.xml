@@ -71,7 +71,7 @@
         <step id="purgeIncompleteVersions2" next="deleteExpiredVersions">
             <batchlet ref="purgeIncompleteVersionsBatchlet">
                 <properties>
-                    <property name="purgeIncompleteVersions" value="#{jobParameters['purgeIncompleteVersions']}"/>
+                    <property name="deleteIncompleteVersions" value="#{jobParameters['purgeIncompleteVersions']}"/>
                 </properties>
             </batchlet>
         </step>
