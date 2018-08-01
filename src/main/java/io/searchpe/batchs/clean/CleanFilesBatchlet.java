@@ -8,6 +8,8 @@ import javax.batch.api.Batchlet;
 import javax.batch.runtime.BatchStatus;
 import javax.inject.Inject;
 import javax.inject.Named;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Named
 public class CleanFilesBatchlet implements Batchlet {
@@ -20,19 +22,21 @@ public class CleanFilesBatchlet implements Batchlet {
 
     @Override
     public String process() throws Exception {
-        if (files != null) {
-            FileUtils.deleteFilesIfExists(files);
-        } else {
-            logger.warn("No files were defined");
+        if (getFiles() != null) {
+            FileUtils.deleteFilesIfExists(getFiles());
+            logger.infof("Files %s has been deleted", Stream.of(getFiles()).collect(Collectors.joining(",")));
         }
 
-        logger.infof("Files %s has been deleted", files);
         return BatchStatus.COMPLETED.toString();
     }
 
     @Override
     public void stop() throws Exception {
         // Nothing to do
+    }
+
+    public String[] getFiles() {
+        return files;
     }
 
 }
