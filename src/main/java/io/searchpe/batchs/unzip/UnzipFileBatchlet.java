@@ -24,9 +24,9 @@ public class UnzipFileBatchlet implements Batchlet {
 
     @Override
     public String process() throws Exception {
-        logger.infof("Unzipping file %s into %s", fileLocation, unzipFileLocation);
+        logger.infof("Unzipping file %s into %s", getFileName(), getOutput());
 
-        FileUtils.unzipFile(fileLocation, unzipFileLocation);
+        FileUtils.unzipFile(getFileName(), getOutput());
 
         logger.infof("File has been unzipped");
         return BatchStatus.COMPLETED.toString();
@@ -35,6 +35,14 @@ public class UnzipFileBatchlet implements Batchlet {
     @Override
     public void stop() throws Exception {
         // Nothing to do
+    }
+
+    public String getFileName() {
+        return fileLocation;
+    }
+
+    public String getOutput() {
+        return unzipFileLocation;
     }
 
 }

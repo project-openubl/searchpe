@@ -23,7 +23,7 @@
             <batchlet ref="downloadFileBatchlet">
                 <properties>
                     <property name="url" value="#{jobParameters['databaseURL']}"/>
-                    <property name="fileLocation" value="#{jobParameters['downloadFileLocation']}"/>
+                    <property name="output" value="#{jobParameters['downloadFileLocation']}"/>
                 </properties>
             </batchlet>
         </step>

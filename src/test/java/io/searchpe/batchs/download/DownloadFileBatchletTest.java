@@ -56,8 +56,8 @@ public class DownloadFileBatchletTest {
         Assert.assertFalse(Paths.get("padron_reducido_ruc.zip").toFile().exists());
 
         Properties properties = new Properties();
-        properties.setProperty("fileURL", "https://raw.githubusercontent.com/searchpe/searchpe/master/padron_reducido_ruc.zip");
-        properties.setProperty("fileDestiny", "padron_reducido_ruc.zip");
+        properties.setProperty("url", "https://raw.githubusercontent.com/searchpe/searchpe/master/padron_reducido_ruc.zip");
+        properties.setProperty("output", "padron_reducido_ruc.zip");
 
         long execId = jobOperator.start("download_files", properties);
         Thread.sleep(sleepTime);

@@ -7,8 +7,8 @@
     <step id="download_files_step">
         <batchlet ref="io.searchpe.batchs.download.DownloadFileBatchlet">
             <properties>
-                <property name="url" value="#{jobParameters['fileURL']}"/>
-                <property name="fileLocation" value="#{jobParameters['fileDestiny']}"/>
+                <property name="url" value="#{jobParameters['url']}"/>
+                <property name="output" value="#{jobParameters['output']}"/>
             </properties>
         </batchlet>
     </step>

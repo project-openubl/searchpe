@@ -20,13 +20,13 @@ public class DownloadFileBatchlet implements Batchlet {
 
     @Inject
     @BatchProperty
-    private String fileLocation;
+    private String output;
 
     @Override
     public String process() throws Exception {
-        logger.infof("Downloading file: %s into %s", url, fileLocation);
+        logger.infof("Downloading file: %s into %s", getUrl(), getOutput());
 
-        FileUtils.downloadFile(url, fileLocation);
+        FileUtils.downloadFile(getUrl(), getOutput());
 
         logger.infof("File has been downloaded");
         return BatchStatus.COMPLETED.toString();
@@ -35,6 +35,14 @@ public class DownloadFileBatchlet implements Batchlet {
     @Override
     public void stop() throws Exception {
         // Nothing to do
+    }
+
+    public String getUrl() {
+        return url;
+    }
+
+    public String getOutput() {
+        return output;
     }
 
 }

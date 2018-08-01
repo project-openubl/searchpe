@@ -7,8 +7,8 @@
     <step id="unzip_files_step">
         <batchlet ref="io.searchpe.batchs.unzip.UnzipFileBatchlet">
             <properties>
-                <property name="fileLocation" value="#{jobParameters['zipFile']}"/>
-                <property name="unzipFileLocation" value="#{jobParameters['fileDestiny']}"/>
+                <property name="fileName" value="#{jobParameters['fileName']}"/>
+                <property name="output" value="#{jobParameters['output']}"/>
             </properties>
         </batchlet>
     </step>

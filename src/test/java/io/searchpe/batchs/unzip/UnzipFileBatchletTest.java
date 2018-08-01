@@ -61,8 +61,8 @@ public class UnzipFileBatchletTest {
         String path = url.getPath();
 
         Properties properties = new Properties();
-        properties.setProperty("zipFile", path);
-        properties.setProperty("fileDestiny", "padron_reducido_ruc.txt");
+        properties.setProperty("fileName", path);
+        properties.setProperty("output", "padron_reducido_ruc.txt");
 
         long execId = jobOperator.start("unzip_files", properties);
         Thread.sleep(sleepTime);
