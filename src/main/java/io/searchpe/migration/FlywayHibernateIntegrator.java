@@ -2,6 +2,7 @@ package io.searchpe.migration;
 
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationInfo;
+import org.flywaydb.core.api.callback.Callback;
 import org.hibernate.boot.Metadata;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.H2Dialect;
@@ -25,23 +26,22 @@ public class FlywayHibernateIntegrator implements Integrator {
 
     @Override
     public void integrate(Metadata metadata, SessionFactoryImplementor sessionFactory, SessionFactoryServiceRegistry serviceRegistry) {
-        logger.info("Starting Flyway Migration");
-
         final JdbcServices jdbcServices = serviceRegistry.getService(JdbcServices.class);
         Connection connection;
-        DataSource dataSource = null;
+        DataSource dataSource;
 
         try {
             connection = jdbcServices.getBootstrapJdbcConnectionAccess().obtainConnection();
             final Method method = connection != null ? connection.getClass().getMethod("getDataSource", null) : null;
             dataSource = (DataSource) (method != null ? method.invoke(connection, null) : null);
         } catch (IllegalAccessException | NoSuchMethodException | InvocationTargetException | SQLException e) {
-            logger.error(e);
+            throw new FlywayMigrationException(e);
         }
 
 
         Flyway flyway = new Flyway();
         flyway.setDataSource(dataSource);
+        flyway.setCallbacks(getCallBacks());
 
 
         Dialect dialect = jdbcServices.getDialect();
@@ -69,6 +69,17 @@ public class FlywayHibernateIntegrator implements Integrator {
     @Override
     public void disintegrate(SessionFactoryImplementor sessionFactory, SessionFactoryServiceRegistry serviceRegistry) {
         // Nothing to do
+    }
+
+    private Callback[] getCallBacks() {
+        // No Callbacks
+        return null;
+    }
+
+    public class FlywayMigrationException extends RuntimeException {
+        public FlywayMigrationException(Exception e) {
+            super(e);
+        }
     }
 
 }
