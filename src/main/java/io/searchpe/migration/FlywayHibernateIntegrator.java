@@ -19,9 +19,9 @@ import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.SQLException;
 
-public class FlywayIntegrator implements Integrator {
+public class FlywayHibernateIntegrator implements Integrator {
 
-    private static final Logger logger = Logger.getLogger(FlywayIntegrator.class);
+    private static final Logger logger = Logger.getLogger(FlywayHibernateIntegrator.class);
 
     @Override
     public void integrate(Metadata metadata, SessionFactoryImplementor sessionFactory, SessionFactoryServiceRegistry serviceRegistry) {
