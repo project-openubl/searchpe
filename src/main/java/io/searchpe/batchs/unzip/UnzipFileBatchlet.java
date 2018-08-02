@@ -20,7 +20,7 @@ public class UnzipFileBatchlet implements Batchlet {
 
     @Inject
     @BatchProperty
-    private String unzipFileLocation;
+    private String sunatUnzipFileName;
 
     @Override
     public String process() throws Exception {
@@ -42,7 +42,7 @@ public class UnzipFileBatchlet implements Batchlet {
     }
 
     public String getOutput() {
-        return unzipFileLocation;
+        return sunatUnzipFileName;
     }
 
 }

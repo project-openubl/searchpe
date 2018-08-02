@@ -15,9 +15,9 @@ import java.util.List;
 import java.util.Map;
 
 @Named
-public class PurgeIncompleteVersionsBatchlet implements Batchlet {
+public class DeleteIncompleteVersionsBatchlet implements Batchlet {
 
-    private static final Logger logger = Logger.getLogger(PurgeIncompleteVersionsBatchlet.class);
+    private static final Logger logger = Logger.getLogger(DeleteIncompleteVersionsBatchlet.class);
 
     @Inject
     @BatchProperty

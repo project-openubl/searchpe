@@ -15,13 +15,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 @RunWith(MockitoJUnitRunner.class)
-public class PurgeIncompleteVersionsBatchletUnitTest {
+public class DeleteIncompleteVersionsBatchletUnitTest {
 
     @Mock
     private VersionService versionService;
 
     @Spy
-    private PurgeIncompleteVersionsBatchlet batchlet = new PurgeIncompleteVersionsBatchlet();
+    private DeleteIncompleteVersionsBatchlet batchlet = new DeleteIncompleteVersionsBatchlet();
 
     @Test
     public void shouldNeverDeleteAnyVersion() throws Exception {

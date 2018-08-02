@@ -7,16 +7,18 @@ swarm:
         connection-url: jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
         user-name: sa
         password: sa
-repeid:
+searchpe:
   scheduler:
     enabled: true
     intervalDuration: 3600000
     expirationTimeInMillis: 10800000
-    downloadFileLocation: "sunat.zip"
-    unzipFileLocation: "sunat.txt"
-    databaseURL: "https://raw.githubusercontent.com/searchpe/searchpe/master/padron_reducido_ruc.zip"
-    fileCharset: "ISO-8859-1"
-    fileRowSkip: 1
-    fileColumnSeparator: "\\|"
-    fileColumnHeaders: "RUC|NOMBRE O RAZÓN SOCIAL|ESTADO DEL CONTRIBUYENTE|CONDICIÓN DE DOMICILIO|UBIGEO|TIPO DE VÍA|NOMBRE DE VÍA|CÓDIGO DE ZONA|TIPO DE ZONA|NÚMERO|INTERIOR|LOTE|DEPARTAMENTO|MANZANA|KILÓMETRO"
-    fileColumnValues: "ruc,razonSocial,estadoContribuyente,condicionDomicilio,ubigeo,tipoVia,nombreVia,codigoZona,tipoZona,numero,interior,lote,departamento,manzana,kilometro"
+    deleteIncompleteVersions: true
+    sunat:
+      zipFileName: "sunat.zip"
+      unzipFileName: "sunat.txt"
+      zipURL: "https://raw.githubusercontent.com/searchpe/searchpe/master/padron_reducido_ruc.zip"
+      txtCharset: "ISO-8859-1"
+      txtRowSkips: 1
+      txtColumnSplitRegex: "\\|"
+      txtHeadersTemplate: "RUC|NOMBRE O RAZÓN SOCIAL|ESTADO DEL CONTRIBUYENTE|CONDICIÓN DE DOMICILIO|UBIGEO|TIPO DE VÍA|NOMBRE DE VÍA|CÓDIGO DE ZONA|TIPO DE ZONA|NÚMERO|INTERIOR|LOTE|DEPARTAMENTO|MANZANA|KILÓMETRO"
+      modelHeadersTemplate: "ruc,razonSocial,estadoContribuyente,condicionDomicilio,ubigeo,tipoVia,nombreVia,codigoZona,tipoZona,numero,interior,lote,departamento,manzana,kilometro"

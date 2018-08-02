@@ -22,59 +22,59 @@ public class BatchScheduler {
     private TimerService timerService;
 
     @Inject
-    @ConfigurationValue("repeid.scheduler.enabled")
+    @ConfigurationValue("searchpe.scheduler.enabled")
     private Optional<Boolean> schedulerEnabled;
 
     @Inject
-    @ConfigurationValue("repeid.scheduler.initialExpiration")
+    @ConfigurationValue("searchpe.scheduler.initialExpiration")
     private Optional<String> schedulerInitialExpiration;
 
     @Inject
-    @ConfigurationValue("repeid.scheduler.timeZone")
+    @ConfigurationValue("searchpe.scheduler.timeZone")
     private Optional<String> schedulerTimeZone;
 
     @Inject
-    @ConfigurationValue("repeid.scheduler.intervalDuration")
+    @ConfigurationValue("searchpe.scheduler.intervalDuration")
     private Optional<Long> schedulerIntervalDuration;
 
     @Inject
-    @ConfigurationValue("repeid.scheduler.downloadFileLocation")
-    private Optional<String> schedulerDownloadFileLocation;
+    @ConfigurationValue("searchpe.scheduler.sunat.zipFileName")
+    private Optional<String> sunatZipFileName;
 
     @Inject
-    @ConfigurationValue("repeid.scheduler.unzipFileLocation")
-    private Optional<String> schedulerUnzipFileLocation;
+    @ConfigurationValue("searchpe.scheduler.sunat.unzipFileName")
+    private Optional<String> sunatUnzipFileName;
 
     @Inject
-    @ConfigurationValue("repeid.scheduler.databaseURL")
-    private String schedulerDatabaseURL;
+    @ConfigurationValue("searchpe.scheduler.sunat.zipURL")
+    private String sunatZipURL;
 
     @Inject
-    @ConfigurationValue("repeid.scheduler.fileCharset")
-    private Optional<String> schedulerFileCharset;
+    @ConfigurationValue("searchpe.scheduler.sunat.txtCharset")
+    private Optional<String> sunatTxtCharset;
 
     @Inject
-    @ConfigurationValue("repeid.scheduler.fileRowSkip")
-    private Optional<Long> schedulerFileRowSkip;
+    @ConfigurationValue("searchpe.scheduler.sunat.txtRowSkips")
+    private Optional<Long> sunatTxtRowSkips;
 
     @Inject
-    @ConfigurationValue("repeid.scheduler.fileColumnSeparator")
-    private String schedulerFileColumnSeparator;
+    @ConfigurationValue("searchpe.scheduler.sunat.txtColumnSplitRegex")
+    private String sunatTxtColumnSplitRegex;
 
     @Inject
-    @ConfigurationValue("repeid.scheduler.fileColumnHeaders")
-    private String schedulerFileColumnHeaders;
+    @ConfigurationValue("searchpe.scheduler.sunat.txtHeadersTemplate")
+    private String sunatTxtHeadersTemplate;
 
     @Inject
-    @ConfigurationValue("repeid.scheduler.fileColumnValues")
-    private String schedulerFileColumnValues;
+    @ConfigurationValue("searchpe.scheduler.sunat.modelHeadersTemplate")
+    private String sunatModelHeadersTemplate;
 
     @Inject
-    @ConfigurationValue("repeid.scheduler.purgeIncompleteVersions")
-    private Optional<Boolean> schedulerPurgeIncompleteVersions;
+    @ConfigurationValue("searchpe.scheduler.deleteIncompleteVersions")
+    private Optional<Boolean> deleteIncompleteVersions;
 
     @Inject
-    @ConfigurationValue("repeid.scheduler.expirationTimeInMillis")
+    @ConfigurationValue("searchpe.scheduler.expirationTimeInMillis")
     private Optional<Integer> schedulerExpirationTimeInMillis;
 
     @PostConstruct
@@ -113,18 +113,19 @@ public class BatchScheduler {
     @Timeout
     public void programmaticTimeout(Timer timer) {
         logger.infof("Scheduler execution...");
-
         Properties properties = new Properties();
-        properties.put("downloadFileLocation", schedulerDownloadFileLocation.orElse(UUID.randomUUID().toString() + ".zip"));
-        properties.put("unzipFileLocation", schedulerUnzipFileLocation.orElse(UUID.randomUUID().toString() + ".txt"));
-        properties.put("databaseURL", schedulerDatabaseURL);
-        properties.put("fileCharset", schedulerFileCharset.orElse(Charset.defaultCharset().name()));
-        properties.put("fileRowSkip", schedulerFileRowSkip.orElse(0L));
-        properties.put("fileColumnSeparator", schedulerFileColumnSeparator);
-        properties.put("fileColumnHeaders", schedulerFileColumnHeaders);
-        properties.put("fileColumnValues", schedulerFileColumnValues);
-        properties.put("purgeIncompleteVersions", schedulerPurgeIncompleteVersions.orElse(false));
+
+        properties.put("deleteIncompleteVersions", deleteIncompleteVersions.orElse(false));
         properties.put("expirationTimeInMillis", schedulerExpirationTimeInMillis.orElse(0));
+
+        properties.put("sunatZipURL", sunatZipURL);
+        properties.put("sunatZipFileName", sunatZipFileName.orElse(UUID.randomUUID().toString() + ".zip"));
+        properties.put("sunatUnzipFileName", sunatUnzipFileName.orElse(UUID.randomUUID().toString() + ".txt"));
+        properties.put("sunatTxtCharset", sunatTxtCharset.orElse(Charset.defaultCharset().name()));
+        properties.put("sunatTxtRowSkips", sunatTxtRowSkips.orElse(1L));
+        properties.put("sunatTxtColumnSplitRegex", sunatTxtColumnSplitRegex);
+        properties.put("sunatTxtHeadersTemplate", sunatTxtHeadersTemplate);
+        properties.put("sunatModelHeadersTemplate", sunatModelHeadersTemplate);
 
         BatchRuntime.getJobOperator().start("update_database", properties);
     }
