@@ -73,7 +73,7 @@ public class FlywayHibernateIntegrator implements Integrator {
 
     private Callback[] getCallBacks() {
         // No Callbacks
-        return null;
+        return new Callback[]{};
     }
 
     public class FlywayMigrationException extends RuntimeException {

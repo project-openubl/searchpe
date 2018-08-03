@@ -343,7 +343,7 @@
                         <configuration>
                             <images>
                                 <image>
-                                    <name>openfact/${project.artifactId}</name>
+                                    <name>searchpe/${project.artifactId}</name>
                                     <run>
                                         <ports>
                                             <port>8080:8080</port>
