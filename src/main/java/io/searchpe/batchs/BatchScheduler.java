@@ -1,5 +1,6 @@
 package io.searchpe.batchs;
 
+import io.searchpe.utils.DateUtils;
 import org.jboss.logging.Logger;
 import org.wildfly.swarm.spi.runtime.annotations.ConfigurationValue;
 
@@ -10,7 +11,9 @@ import javax.ejb.*;
 import javax.ejb.Timer;
 import javax.inject.Inject;
 import java.nio.charset.Charset;
+import java.time.LocalTime;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 @Startup
 @Singleton
@@ -88,15 +91,8 @@ public class BatchScheduler {
 
             Timer timer;
             if (initialExpiration.isPresent()) {
-                String[] time = initialExpiration.get().split(":");
-
-                Calendar calendar = Calendar.getInstance();
-                calendar.set(Calendar.HOUR, Integer.parseInt(time[0]));
-                calendar.set(Calendar.MINUTE, Integer.parseInt(time[1]));
-                calendar.set(Calendar.SECOND, Integer.parseInt(time[2]));
-
-                timeZone.ifPresent(timeZone -> calendar.setTimeZone(TimeZone.getTimeZone(timeZone)));
-                Date initialExpirationDate = calendar.getTime();
+                LocalTime time = LocalTime.parse(initialExpiration.get());
+                Date initialExpirationDate = DateUtils.getNearestExpirationDate(time);
 
                 logger.infof("Creating timer from time");
                 logger.infof("Creating timer initialDayExpiration[%s], intervalDuration[%s]", initialExpirationDate, intervalDuration);
@@ -112,8 +108,10 @@ public class BatchScheduler {
                 timer = timerService.createTimer(initialDuration, intervalDuration, null);
             }
 
-            logger.infof("Timer Next Timeout at %s", timer.getNextTimeout());
-            logger.infof("Time remaining %s", timer.getTimeRemaining());
+            long timeRemaining = timer.getTimeRemaining();
+            Date nextTimeout = timer.getNextTimeout();
+            logger.infof("Timer Next Timeout at %s", nextTimeout);
+            logger.infof("Time remaining %s milliseconds [%s hours %s minutes %s seconds]", timeRemaining, TimeUnit.MILLISECONDS.toHours(timeRemaining), TimeUnit.MILLISECONDS.toMinutes(timeRemaining), TimeUnit.MILLISECONDS.toSeconds(timeRemaining));
         } else {
             logger.infof("Scheduler disabled, this node will not execute schedulers");
         }
