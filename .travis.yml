@@ -2,6 +2,7 @@ sudo: required
 
 language: java
 jdk:
+- oraclejdk9
 - oraclejdk8
 
 addons:
@@ -14,10 +15,13 @@ services:
   - docker
 
 install: mvn install -P !build-extras -DskipTests=true -Dmaven.javadoc.skip=true -B -V
+
 script:
   - mvn test -P !build-extras -B
   - mvn jacoco:report coveralls:report -Dcoveralls.token=$COVERALLS_TOKEN
   - sonar-scanner
+  - mvn package -Pkubernetes -DskipTests
+  - mvn fabric8:build -Dfabric8.mode=kubernetes
 
 cache:
   directories:
@@ -26,3 +30,9 @@ cache:
 after_success:
 - "./cd/before-deploy.sh"
 - "./cd/deploy.sh"
+
+deploy:
+  provider: script
+  script: bash ./cd/docker_push.sh
+  on:
+    branch: master

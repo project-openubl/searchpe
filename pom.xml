@@ -47,27 +47,6 @@
     </dependencyManagement>
 
     <dependencies>
-        <!--<dependency>-->
-            <!--<groupId>io.thorntail</groupId>-->
-            <!--<artifactId>config-api-runtime</artifactId>-->
-            <!--<version>1.4.0</version>-->
-        <!--</dependency>-->
-
-        <!--<dependency>-->
-            <!--<groupId>io.thorntail</groupId>-->
-            <!--<artifactId>microprofile</artifactId>-->
-            <!--<exclusions>-->
-                <!--<exclusion>-->
-                    <!--<groupId>org.wildfly.swarm</groupId>-->
-                    <!--<artifactId>config-api-runtime</artifactId>-->
-                <!--</exclusion>-->
-            <!--</exclusions>-->
-        <!--</dependency>-->
-        <!--<dependency>-->
-            <!--<groupId>io.thorntail</groupId>-->
-            <!--<artifactId>microprofile-health</artifactId>-->
-        <!--</dependency>-->
-
         <dependency>
             <groupId>io.thorntail</groupId>
             <artifactId>jaxrs</artifactId>
@@ -92,10 +71,6 @@
             <groupId>io.thorntail</groupId>
             <artifactId>batch-jberet</artifactId>
         </dependency>
-        <!--<dependency>-->
-            <!--<groupId>io.thorntail</groupId>-->
-            <!--<artifactId>hibernate-search</artifactId>-->
-        <!--</dependency>-->
 
         <dependency>
             <groupId>org.jberet</groupId>
@@ -191,6 +166,7 @@
                         <classpathDependencyExclude>org.arquillian.cube:arquillian-cube-openshift</classpathDependencyExclude>
                         <classpathDependencyExclude>org.arquillian.cube:arquillian-cube-kubernetes</classpathDependencyExclude>
                     </classpathDependencyExcludes>
+                    <skipTests>${skipTests}</skipTests>
                 </configuration>
             </plugin>
 
@@ -331,6 +307,31 @@
                 </plugins>
             </build>
             <activation/>
+        </profile>
+
+        <profile>
+            <id>kubernetes</id>
+            <dependencies>
+                <dependency>
+                    <groupId>io.thorntail</groupId>
+                    <artifactId>microprofile</artifactId>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>org.wildfly.swarm</groupId>
+                            <artifactId>config-api-runtime</artifactId>
+                        </exclusion>
+                    </exclusions>
+                </dependency>
+                <dependency>
+                    <groupId>io.thorntail</groupId>
+                    <artifactId>microprofile-health</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>io.thorntail</groupId>
+                    <artifactId>config-api-runtime</artifactId>
+                    <version>1.4.0</version>
+                </dependency>
+            </dependencies>
         </profile>
 
         <profile>
