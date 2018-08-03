@@ -27,15 +27,19 @@ public class BatchScheduler {
 
     @Inject
     @ConfigurationValue("searchpe.scheduler.initialExpiration")
-    private Optional<String> schedulerInitialExpiration;
+    private Optional<String> initialExpiration;
+
+    @Inject
+    @ConfigurationValue("searchpe.scheduler.initialExpirationForceOnStartup")
+    private Optional<Boolean> initialExpirationForceOnStartup;
 
     @Inject
     @ConfigurationValue("searchpe.scheduler.timeZone")
-    private Optional<String> schedulerTimeZone;
+    private Optional<String> timeZone;
 
     @Inject
     @ConfigurationValue("searchpe.scheduler.intervalDuration")
-    private Optional<Long> schedulerIntervalDuration;
+    private Optional<Long> intervalDuration;
 
     @Inject
     @ConfigurationValue("searchpe.scheduler.sunat.zipFileName")
@@ -75,27 +79,32 @@ public class BatchScheduler {
 
     @Inject
     @ConfigurationValue("searchpe.scheduler.expirationTimeInMillis")
-    private Optional<Integer> schedulerExpirationTimeInMillis;
+    private Optional<Integer> expirationTimeInMillis;
 
     @PostConstruct
     public void initialize() {
         if (schedulerEnabled.isPresent() && schedulerEnabled.get()) {
-            long intervalDuration = schedulerIntervalDuration.orElse(3_600_000L); // One hour
+            long intervalDuration = this.intervalDuration.orElse(3_600_000L); // One hour
+
             Timer timer;
-            if (schedulerInitialExpiration.isPresent()) {
-                String[] time = schedulerInitialExpiration.get().split(":");
+            if (initialExpiration.isPresent()) {
+                String[] time = initialExpiration.get().split(":");
 
                 Calendar calendar = Calendar.getInstance();
                 calendar.set(Calendar.HOUR, Integer.parseInt(time[0]));
                 calendar.set(Calendar.MINUTE, Integer.parseInt(time[1]));
                 calendar.set(Calendar.SECOND, Integer.parseInt(time[2]));
 
-                schedulerTimeZone.ifPresent(timeZone -> calendar.setTimeZone(TimeZone.getTimeZone(timeZone)));
+                timeZone.ifPresent(timeZone -> calendar.setTimeZone(TimeZone.getTimeZone(timeZone)));
                 Date initialExpirationDate = calendar.getTime();
 
                 logger.infof("Creating timer from time");
                 logger.infof("Creating timer initialDayExpiration[%s], intervalDuration[%s]", initialExpirationDate, intervalDuration);
                 timer = timerService.createTimer(initialExpirationDate, intervalDuration, null);
+
+                if (initialExpirationForceOnStartup.orElse(false)) {
+                    startBatch();
+                }
             } else {
                 long initialDuration = 5 * 1000L; // 5 Seconds
                 logger.infof("Creating default timer");
@@ -112,11 +121,15 @@ public class BatchScheduler {
 
     @Timeout
     public void programmaticTimeout(Timer timer) {
+        startBatch();
+    }
+
+    private void startBatch() {
         logger.infof("Scheduler execution...");
         Properties properties = new Properties();
 
         properties.put("deleteIncompleteVersions", deleteIncompleteVersions.orElse(false));
-        properties.put("expirationTimeInMillis", schedulerExpirationTimeInMillis.orElse(0));
+        properties.put("expirationTimeInMillis", expirationTimeInMillis.orElse(0));
 
         properties.put("sunatZipURL", sunatZipURL);
         properties.put("sunatZipFileName", sunatZipFileName.orElse(UUID.randomUUID().toString() + ".zip"));

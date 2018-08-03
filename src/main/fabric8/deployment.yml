@@ -19,7 +19,7 @@ spec:
         - name: JAVA_APP_DIR
           value: /deployments
         - name: JAVA_OPTIONS
-          value: -Dswarm.project.stage.file=file:///deployments/config/searchpe-stages.yml -Dswarm.project.stage=production-${DATABASE_VENDOR}
+          value: -Dswarm.project.stage.file=file:///deployments/config/searchpe-stages.yml -Dswarm.project.stage=${STAGE}
         - name: GC_MAX_METASPACE_SIZE
           value: 250
         name: ${project.artifactId}

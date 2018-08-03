@@ -65,6 +65,7 @@ searchpe:
   scheduler:
     enabled: true
     initialExpiration: "00:00:00"
+    initialExpirationForceOnStartup: true
     intervalDuration: 86400000
     expirationTimeInMillis: 172800000
     timeZone: "America/Lima"
