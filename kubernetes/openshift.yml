@@ -49,6 +49,8 @@ items:
             value: -Dswarm.project.stage.file=file:///deployments/config/searchpe-stages.yml -Dswarm.project.stage=production-mysql-peru
           - name: GC_MAX_METASPACE_SIZE
             value: "250"
+          - name: CONTAINER_MAX_MEMORY
+            value: 536870912
           - name: KUBERNETES_NAMESPACE
             valueFrom:
               fieldRef:

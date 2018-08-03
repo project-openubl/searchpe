@@ -41,7 +41,7 @@ searchpe:
     intervalDuration: 86400000
     expirationTimeInMillis: 172800000
     deleteIncompleteVersions: true
-     sunat:
+    sunat:
       zipURL: "http://www2.sunat.gob.pe/padron_reducido_ruc.zip"
       zipFileName: "sunat.zip"
       unzipFileName: "sunat.txt"
@@ -70,7 +70,7 @@ searchpe:
     expirationTimeInMillis: 172800000
     timeZone: "America/Lima"
     deleteIncompleteVersions: true
-     sunat:
+    sunat:
       zipURL: "http://www2.sunat.gob.pe/padron_reducido_ruc.zip"
       zipFileName: "sunat.zip"
       unzipFileName: "sunat.txt"
