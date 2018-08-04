@@ -29,30 +29,45 @@ public class TxtProcessor implements ItemProcessor {
 
     private BeanInstantiator<Company> instantiator;
 
-    @PostConstruct
-    protected void postConstruct() {
+    private void initBeanInstantiator() {
         Function<String, String> mapper = getMapperFunction();
-        instantiator = BeanInstantiatorFactory.txtInstantiator(Company.class, header, regex, mapper);
+        instantiator = BeanInstantiatorFactory.txtInstantiator(Company.class, getHeader(), getRegex(), mapper);
     }
 
     @Override
     public Object processItem(Object item) throws Exception {
+        if (instantiator == null) {
+            initBeanInstantiator();
+        }
+
         String line = (String) item;
-        String[] columns = Arrays.stream(line.split(regex)).map(String::trim).toArray(String[]::new);
+        String[] columns = Arrays.stream(line.split(getRegex())).map(String::trim).toArray(String[]::new);
         return instantiator.create(columns);
     }
 
     private Function<String, String> getMapperFunction() {
-        String[] split = header.split(regex);
+        String[] split = getHeader().split(getRegex());
         final String[] headers = Arrays.stream(split).map(String::trim).toArray(String[]::new);
 
         return alias -> {
             for (int i = 0; i < headers.length; i++) {
                 if (headers[i].equals(alias)) {
-                    return headerColumns[i];
+                    return getHeaderColumns()[i];
                 }
             }
             return alias;
         };
+    }
+
+    public String getRegex() {
+        return regex;
+    }
+
+    public String getHeader() {
+        return header;
+    }
+
+    public String[] getHeaderColumns() {
+        return headerColumns;
     }
 }
