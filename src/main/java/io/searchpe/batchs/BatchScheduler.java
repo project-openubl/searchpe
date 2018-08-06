@@ -89,7 +89,7 @@ public class BatchScheduler {
     @PostConstruct
     public void initialize() {
         if (schedulerEnabled.isPresent() && schedulerEnabled.get()) {
-            long intervalDuration = this.intervalDuration.orElse(3_600_000L); // One hour
+            long defaultIntervalDuration = intervalDuration.orElse(3_600_000L); // One hour
 
             Timer timer;
             if (initialExpiration.isPresent()) {
@@ -97,8 +97,8 @@ public class BatchScheduler {
                 Date initialExpirationDate = DateUtils.getNearestExpirationDate(time);
 
                 logger.infof("Creating timer from time");
-                logger.infof("Creating timer initialDayExpiration[%s], intervalDuration[%s]", initialExpirationDate, intervalDuration);
-                timer = timerService.createTimer(initialExpirationDate, intervalDuration, null);
+                logger.infof("Creating timer initialDayExpiration[%s], intervalDuration[%s]", initialExpirationDate, defaultIntervalDuration);
+                timer = timerService.createTimer(initialExpirationDate, defaultIntervalDuration, null);
 
                 if (initialExpirationForceOnStartup.orElse(false)) {
                     startBatch();
@@ -106,8 +106,8 @@ public class BatchScheduler {
             } else {
                 long initialDuration = 5 * 1000L; // 5 Seconds
                 logger.infof("Creating default timer");
-                logger.infof("Creating timer initialDuration[%s], intervalDuration[%s]", initialDuration, intervalDuration);
-                timer = timerService.createTimer(initialDuration, intervalDuration, null);
+                logger.infof("Creating timer initialDuration[%s], intervalDuration[%s]", initialDuration, defaultIntervalDuration);
+                timer = timerService.createTimer(initialDuration, defaultIntervalDuration, null);
             }
 
             long timeRemaining = timer.getTimeRemaining();

@@ -8,6 +8,10 @@ import java.util.TimeZone;
 
 public class DateUtils {
 
+    private DateUtils() {
+        // Just utils
+    }
+
     public static Date getNearestExpirationDate(LocalTime time) {
         return getNearestExpirationDate(time, Optional.empty());
     }
