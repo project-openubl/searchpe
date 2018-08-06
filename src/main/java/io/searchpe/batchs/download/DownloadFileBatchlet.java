@@ -3,14 +3,14 @@ package io.searchpe.batchs.download;
 import io.searchpe.utils.FileUtils;
 import org.jboss.logging.Logger;
 
+import javax.batch.api.AbstractBatchlet;
 import javax.batch.api.BatchProperty;
-import javax.batch.api.Batchlet;
 import javax.batch.runtime.BatchStatus;
 import javax.inject.Inject;
 import javax.inject.Named;
 
 @Named
-public class DownloadFileBatchlet implements Batchlet {
+public class DownloadFileBatchlet extends AbstractBatchlet {
 
     private static final Logger logger = Logger.getLogger(DownloadFileBatchlet.class);
 
@@ -30,11 +30,6 @@ public class DownloadFileBatchlet implements Batchlet {
 
         logger.infof("File has been downloaded");
         return BatchStatus.COMPLETED.toString();
-    }
-
-    @Override
-    public void stop() throws Exception {
-        // Nothing to do
     }
 
     public String getUrl() {

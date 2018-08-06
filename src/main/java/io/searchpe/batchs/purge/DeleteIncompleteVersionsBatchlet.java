@@ -5,8 +5,8 @@ import io.searchpe.model.VersionAttributes;
 import io.searchpe.services.VersionService;
 import org.jboss.logging.Logger;
 
+import javax.batch.api.AbstractBatchlet;
 import javax.batch.api.BatchProperty;
-import javax.batch.api.Batchlet;
 import javax.batch.runtime.BatchStatus;
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 @Named
-public class DeleteIncompleteVersionsBatchlet implements Batchlet {
+public class DeleteIncompleteVersionsBatchlet extends AbstractBatchlet {
 
     private static final Logger logger = Logger.getLogger(DeleteIncompleteVersionsBatchlet.class);
 
@@ -47,11 +47,6 @@ public class DeleteIncompleteVersionsBatchlet implements Batchlet {
 
         logger.infof("Incomplete versions has been deleted");
         return BatchStatus.COMPLETED.toString();
-    }
-
-    @Override
-    public void stop() throws Exception {
-        // Nothing to do
     }
 
     public Boolean getDeleteIncompleteVersions() {

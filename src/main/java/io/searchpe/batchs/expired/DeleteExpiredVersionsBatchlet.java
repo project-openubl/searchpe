@@ -4,8 +4,8 @@ import io.searchpe.model.Version;
 import io.searchpe.services.VersionService;
 import org.jboss.logging.Logger;
 
+import javax.batch.api.AbstractBatchlet;
 import javax.batch.api.BatchProperty;
-import javax.batch.api.Batchlet;
 import javax.batch.runtime.BatchStatus;
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -14,7 +14,7 @@ import java.util.Date;
 import java.util.List;
 
 @Named
-public class DeleteExpiredVersionsBatchlet implements Batchlet {
+public class DeleteExpiredVersionsBatchlet extends AbstractBatchlet {
 
     private static final Logger logger = Logger.getLogger(DeleteExpiredVersionsBatchlet.class);
 
@@ -49,8 +49,4 @@ public class DeleteExpiredVersionsBatchlet implements Batchlet {
         return batchStatus.toString();
     }
 
-    @Override
-    public void stop() throws Exception {
-        // Nothing to do
-    }
 }
