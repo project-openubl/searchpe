@@ -99,7 +99,7 @@ public class TxtListener implements StepListener {
         }
         version.setMetrics(metrics);
 
-        
+
         em.merge(version);
         userTransaction.commit();
         closeEntityManager();
