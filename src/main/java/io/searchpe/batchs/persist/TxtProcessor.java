@@ -31,11 +31,7 @@ public class TxtProcessor implements ItemProcessor {
     @Override
     public Object processItem(Object item) throws Exception {
         if (instantiator == null) {
-            synchronized (this) {
-                if (instantiator == null) {
-                    instantiator = BeanInstantiatorFactory.txtInstantiator(Company.class, getHeader(), getRegex(), getMapperFunction());
-                }
-            }
+            instantiator = BeanInstantiatorFactory.txtInstantiator(Company.class, getHeader(), getRegex(), getMapperFunction());
         }
 
         String line = (String) item;
