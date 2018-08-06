@@ -72,9 +72,10 @@ public class TxtListener implements StepListener {
         Optional<Version> lastVersion = versionService.getLastVersion();
         lastVersion.ifPresent(c -> version.setNumber(c.getNumber() + 1));
 
-
         em.persist(version);
         userTransaction.commit();
+
+        logger.infof("Version number[%s], complete[%s] created", version.getNumber(), version.isComplete());
 
         // Save on context
         txtVersion.setVersion(version);
@@ -98,11 +99,12 @@ public class TxtListener implements StepListener {
         }
         version.setMetrics(metrics);
 
+        
         em.merge(version);
-
-
         userTransaction.commit();
         closeEntityManager();
+
+        logger.infof("Version number[%s] updated with complete[%s]", version.getNumber(), version.isComplete());
     }
 
     private void initEntityManager() {

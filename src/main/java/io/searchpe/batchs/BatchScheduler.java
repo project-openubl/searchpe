@@ -1,5 +1,7 @@
 package io.searchpe.batchs;
 
+import io.searchpe.model.Version;
+import io.searchpe.services.VersionService;
 import io.searchpe.utils.DateUtils;
 import org.jboss.logging.Logger;
 import org.wildfly.swarm.spi.runtime.annotations.ConfigurationValue;
@@ -27,16 +29,15 @@ public class BatchScheduler {
     private TimerService timerService;
 
     @Inject
+    private VersionService versionService;
+
+    @Inject
     @ConfigurationValue("searchpe.scheduler.enabled")
     private Optional<Boolean> schedulerEnabled;
 
     @Inject
     @ConfigurationValue("searchpe.scheduler.initialExpiration")
     private Optional<String> initialExpiration;
-
-    @Inject
-    @ConfigurationValue("searchpe.scheduler.initialExpirationForceOnStartup")
-    private Optional<Boolean> initialExpirationForceOnStartup;
 
     @Inject
     @ConfigurationValue("searchpe.scheduler.timeZone")
@@ -88,8 +89,13 @@ public class BatchScheduler {
 
     @PostConstruct
     public void initialize() {
+        Optional<Version> lastCompletedVersion = versionService.getLastCompletedVersion();
+        if (!lastCompletedVersion.isPresent()) {
+            startBatch();
+        }
+
         if (schedulerEnabled.isPresent() && schedulerEnabled.get()) {
-            long defaultIntervalDuration = intervalDuration.orElse(3_600_000L); // One hour
+            long defaultIntervalDuration = intervalDuration.orElse(86_400_000L); // 24 hours
 
             Timer timer;
             if (initialExpiration.isPresent()) {
@@ -99,15 +105,10 @@ public class BatchScheduler {
                 logger.infof("Creating timer from time");
                 logger.infof("Creating timer initialDayExpiration[%s], intervalDuration[%s]", initialExpirationDate, defaultIntervalDuration);
                 timer = timerService.createTimer(initialExpirationDate, defaultIntervalDuration, null);
-
-                if (initialExpirationForceOnStartup.orElse(false)) {
-                    startBatch();
-                }
             } else {
-                long initialDuration = 5 * 1000L; // 5 Seconds
                 logger.infof("Creating default timer");
-                logger.infof("Creating timer initialDuration[%s], intervalDuration[%s]", initialDuration, defaultIntervalDuration);
-                timer = timerService.createTimer(initialDuration, defaultIntervalDuration, null);
+                logger.infof("Creating timer initialDuration[%s], intervalDuration[%s]", defaultIntervalDuration, defaultIntervalDuration);
+                timer = timerService.createTimer(defaultIntervalDuration, defaultIntervalDuration, null);
             }
 
             long timeRemaining = timer.getTimeRemaining();
