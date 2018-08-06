@@ -1,4 +1,4 @@
-create sequence sequence start 1 increment 50;
+create sequence sequence start 1 increment 10;
 
     create table company (
        id int8 not null,
