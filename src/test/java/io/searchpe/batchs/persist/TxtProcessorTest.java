@@ -1,56 +1,96 @@
 package io.searchpe.batchs.persist;
 
+import io.searchpe.batchs.download.DownloadFileBatchlet;
+import io.searchpe.migration.FlywayHibernateIntegrator;
+import io.searchpe.model.Company;
+import io.searchpe.model.Version;
+import io.searchpe.producers.ContainerEntityManager;
+import io.searchpe.producers.EntityManagerProducer;
+import io.searchpe.repository.VersionRepository;
+import io.searchpe.repository.VersionRepositoryImpl;
+import io.searchpe.services.VersionService;
+import io.searchpe.services.VersionServiceImpl;
 import io.searchpe.utils.FileUtils;
+import org.jboss.arquillian.container.test.api.Deployment;
+import org.jboss.arquillian.junit.Arquillian;
+import org.jboss.shrinkwrap.api.Archive;
+import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.asset.EmptyAsset;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mockito;
-import org.mockito.Spy;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.wildfly.swarm.jaxrs.JAXRSArchive;
 
-import java.io.BufferedReader;
+import javax.batch.operations.JobOperator;
+import javax.batch.runtime.BatchRuntime;
+import javax.batch.runtime.BatchStatus;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStreamReader;
+import java.net.URL;
+import java.util.Properties;
+import java.util.UUID;
 
-@RunWith(MockitoJUnitRunner.class)
+@RunWith(Arquillian.class)
 public class TxtProcessorTest {
 
-    private static final String PADRON_REDUCIDO_RUC_URL = "http://www2.sunat.gob.pe/padron_reducido_ruc.zip";
-    private static final String FILE_NAME_WITHOUT_EXTENSION = "padron_reducido_ruc_test";
+    private static final String TXT_FILE_NAME = "padron_reducido_ruc.txt";
 
-    @Spy
-    private TxtProcessor txtProcessor = new TxtProcessor();
+    private int sleepTime = 3000;
+    private JobOperator jobOperator;
+
+    @Deployment
+    public static Archive createDeployment() throws Exception {
+        URL url = Thread.currentThread().getContextClassLoader().getResource("project-test-defaults.yml");
+        Assert.assertNotNull(url);
+        File projectDefaults = new File(url.toURI());
+
+        JAXRSArchive deployment = ShrinkWrap.create(JAXRSArchive.class);
+
+        deployment.setContextRoot("/");
+        deployment.addClasses(FileUtils.class);
+        deployment.addPackages(true, TxtReader.class.getPackage());
+        deployment.addClasses(VersionService.class, VersionServiceImpl.class);
+        deployment.addClasses(VersionRepository.class, VersionRepositoryImpl.class);
+        deployment.addClasses(Version.class, Company.class);
+
+        deployment.addClasses(EntityManagerProducer.class, ContainerEntityManager.class);
+        deployment.addClasses(FlywayHibernateIntegrator.class);
+        deployment.addAsResource("db/migration/h2");
+        deployment.addAsResource("META-INF/services/org.hibernate.integrator.spi.Integrator", "META-INF/services/org.hibernate.integrator.spi.Integrator");
+
+        deployment.addAsResource(projectDefaults, "/project-defaults.yml");
+        deployment.addAsResource("persistence-test.xml", "META-INF/persistence.xml");
+//        deployment.addAsManifestResource("META-INF/beans.xml");
+//        deployment.addAsWebInfResource("META-INF/beans.xml");
+//        deployment.addAsWebInfResource(new File("src/main/resources/META-INF/beans.xml"));
+
+        deployment.addAsResource("batch-jobs/persist.xml", "META-INF/batch-jobs/persist.xml");
+
+        deployment.addAsResource(TXT_FILE_NAME, TXT_FILE_NAME);
+
+        deployment.addAllDependencies();
+
+        return deployment;
+    }
+
+    @Before
+    public void before() {
+        jobOperator = BatchRuntime.getJobOperator();
+    }
 
     @Test
-    public void shoudlCreateRealData() throws Exception {
-        String zipFileName = FILE_NAME_WITHOUT_EXTENSION + ".zip";
-        String txtFileName = FILE_NAME_WITHOUT_EXTENSION + ".txt";
+    public void testPersistData() throws Exception {
+        Properties properties = new Properties();
+        properties.setProperty("sunatTxtCharset", "ISO-8859-1");
+        properties.setProperty("sunatTxtRowSkips", String.valueOf(1L));
+        properties.setProperty("sunatUnzipFileName", TXT_FILE_NAME);
+        properties.setProperty("sunatTxtColumnSplitRegex", "\\|");
+        properties.setProperty("sunatTxtHeadersTemplate", "RUC|NOMBRE O RAZÓN SOCIAL|ESTADO DEL CONTRIBUYENTE|CONDICIÓN DE DOMICILIO|UBIGEO|TIPO DE VÍA|NOMBRE DE VÍA|CÓDIGO DE ZONA|TIPO DE ZONA|NÚMERO|INTERIOR|LOTE|DEPARTAMENTO|MANZANA|KILÓMETRO");
+        properties.setProperty("sunatModelHeadersTemplate", "ruc,razonSocial,estadoContribuyente,condicionDomicilio,ubigeo,tipoVia,nombreVia,codigoZona,tipoZona,numero,interior,lote,departamento,manzana,kilometro");
 
-        if (!new File(txtFileName).exists()) {
-            if (!new File(zipFileName).exists()) {
-                FileUtils.downloadFile(PADRON_REDUCIDO_RUC_URL, zipFileName);
-            }
-            FileUtils.unzipFile(zipFileName, txtFileName);
-        }
+        long execId = jobOperator.start("persist", properties);
+        Thread.sleep(sleepTime);
 
-        FileInputStream inputStream = new FileInputStream(new File(txtFileName));
-        InputStreamReader inputStreamReader = new InputStreamReader(inputStream, "ISO-8859-1");
-        BufferedReader reader = new BufferedReader(inputStreamReader);
-
-        Mockito.when(txtProcessor.getRegex()).thenReturn("\\|");
-        Mockito.when(txtProcessor.getHeader()).thenReturn("RUC|NOMBRE O RAZÓN SOCIAL|ESTADO DEL CONTRIBUYENTE|CONDICIÓN DE DOMICILIO|UBIGEO|TIPO DE VÍA|NOMBRE DE VÍA|CÓDIGO DE ZONA|TIPO DE ZONA|NÚMERO|INTERIOR|LOTE|DEPARTAMENTO|MANZANA|KILÓMETRO");
-        Mockito.when(txtProcessor.getHeaderColumns()).thenReturn("ruc,razonSocial,estadoContribuyente,condicionDomicilio,ubigeo,tipoVia,nombreVia,codigoZona,tipoZona,numero,interior,lote,departamento,manzana,kilometro".split(","));
-
-        long a = 0;
-        String line;
-        Object object;
-        while ((line = reader.readLine()) != null) {
-            a++;
-            object = txtProcessor.processItem(line);
-            Assert.assertNotNull(object);
-        }
-
-        Assert.assertEquals(12_349_621L, a);
+        Assert.assertEquals("Didn't pass as expected", BatchStatus.COMPLETED, jobOperator.getJobExecution(execId).getBatchStatus());
     }
 }
