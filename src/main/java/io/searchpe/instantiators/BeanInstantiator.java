@@ -23,7 +23,7 @@ public class BeanInstantiator<T> {
         return instantiate(zClass, map);
     }
 
-    private <T> T instantiate(Class<T> zClass, Map<String, Object> columns) throws IllegalAccessException, InstantiationException, NoSuchFieldException {
+    private T instantiate(Class<T> zClass, Map<String, Object> columns) throws IllegalAccessException, InstantiationException, NoSuchFieldException {
         T object = zClass.newInstance();
         for (Map.Entry<String, Object> entry : columns.entrySet()) {
             Field field = zClass.getDeclaredField(entry.getKey());

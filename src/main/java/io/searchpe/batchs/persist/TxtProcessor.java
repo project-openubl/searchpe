@@ -29,15 +29,14 @@ public class TxtProcessor implements ItemProcessor {
 
     private BeanInstantiator<Company> instantiator;
 
-    private void initBeanInstantiator() {
-        Function<String, String> mapper = getMapperFunction();
-        instantiator = BeanInstantiatorFactory.txtInstantiator(Company.class, getHeader(), getRegex(), mapper);
-    }
-
     @Override
     public Object processItem(Object item) throws Exception {
         if (instantiator == null) {
-            initBeanInstantiator();
+            synchronized (this) {
+                if (instantiator == null) {
+                    instantiator = BeanInstantiatorFactory.txtInstantiator(Company.class, getHeader(), getRegex(), getMapperFunction());
+                }
+            }
         }
 
         String line = (String) item;

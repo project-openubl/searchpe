@@ -59,11 +59,6 @@ public class TxtListener implements StepListener {
 
     @Override
     public void beforeStep() throws Exception {
-        logger.infof("--------------------------------------");
-        logger.infof("--------------------------------------");
-        logger.infof("%s BeforeStep", TxtListener.class.getSimpleName());
-        logger.infof("Trying to create Version");
-
         initEntityManager();
 
         userTransaction.begin();
@@ -81,18 +76,10 @@ public class TxtListener implements StepListener {
         txtVersion.setVersion(version);
 
         userTransaction.commit();
-
-        logger.infof("Version created");
-        logger.infof("%s BeforeStep finished", TxtListener.class.getSimpleName());
     }
 
     @Override
     public void afterStep() throws Exception {
-        logger.infof("--------------------------------------");
-        logger.infof("--------------------------------------");
-        logger.infof("%s AfterStep", TxtListener.class.getSimpleName());
-        logger.infof("Trying to close version and create metrics");
-
         userTransaction.begin();
 
         BatchStatus batchStatus = stepContext.getBatchStatus();
@@ -114,9 +101,6 @@ public class TxtListener implements StepListener {
         userTransaction.commit();
 
         closeEntityManager();
-
-        logger.infof("Version closed and metrics added. Status complete[%s]", version.isComplete());
-        logger.infof("%s AfterStep finished", TxtListener.class.getSimpleName());
     }
 
     private void initEntityManager() {
