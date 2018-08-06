@@ -30,7 +30,7 @@ items:
     - ReadWriteOnce
     resources:
       requests:
-        storage: 1Gi
+        storage: 10Gi
 - apiVersion: v1
   kind: DeploymentConfig
   metadata:

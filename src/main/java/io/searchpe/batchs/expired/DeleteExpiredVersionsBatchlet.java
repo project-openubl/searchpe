@@ -10,7 +10,6 @@ import javax.batch.api.BatchProperty;
 import javax.batch.runtime.BatchStatus;
 import javax.inject.Inject;
 import javax.inject.Named;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
