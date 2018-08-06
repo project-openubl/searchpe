@@ -1,6 +1,5 @@
 package io.searchpe.batchs.persist;
 
-import io.searchpe.batchs.download.DownloadFileBatchlet;
 import io.searchpe.migration.FlywayHibernateIntegrator;
 import io.searchpe.model.Company;
 import io.searchpe.model.Version;
@@ -15,7 +14,6 @@ import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.arquillian.junit.Arquillian;
 import org.jboss.shrinkwrap.api.Archive;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
-import org.jboss.shrinkwrap.api.asset.EmptyAsset;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -29,7 +27,6 @@ import javax.batch.runtime.BatchStatus;
 import java.io.File;
 import java.net.URL;
 import java.util.Properties;
-import java.util.UUID;
 
 @Ignore
 @RunWith(Arquillian.class)

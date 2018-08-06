@@ -4,7 +4,6 @@ import io.searchpe.instantiators.BeanInstantiator;
 import io.searchpe.instantiators.BeanInstantiatorFactory;
 import io.searchpe.model.Company;
 
-import javax.annotation.PostConstruct;
 import javax.batch.api.BatchProperty;
 import javax.batch.api.chunk.ItemProcessor;
 import javax.inject.Inject;

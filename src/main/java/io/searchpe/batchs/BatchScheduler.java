@@ -8,11 +8,13 @@ import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import javax.batch.runtime.BatchRuntime;
 import javax.ejb.*;
-import javax.ejb.Timer;
 import javax.inject.Inject;
 import java.nio.charset.Charset;
 import java.time.LocalTime;
-import java.util.*;
+import java.util.Date;
+import java.util.Optional;
+import java.util.Properties;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Startup

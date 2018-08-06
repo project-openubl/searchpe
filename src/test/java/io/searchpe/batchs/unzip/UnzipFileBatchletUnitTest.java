@@ -1,7 +1,5 @@
 package io.searchpe.batchs.unzip;
 
-import io.searchpe.batchs.download.DownloadFileBatchlet;
-import io.searchpe.utils.FileUtils;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -13,8 +11,6 @@ import javax.batch.runtime.BatchStatus;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-
-import static org.junit.Assert.*;
 
 @RunWith(MockitoJUnitRunner.class)
 public class UnzipFileBatchletUnitTest {
