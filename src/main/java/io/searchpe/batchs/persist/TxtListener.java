@@ -60,8 +60,8 @@ public class TxtListener implements StepListener {
     @Override
     public void beforeStep() throws Exception {
         initEntityManager();
-
         userTransaction.begin();
+
 
         Version version = new Version();
         version.setId(UUID.randomUUID().toString());
@@ -72,18 +72,20 @@ public class TxtListener implements StepListener {
         Optional<Version> lastVersion = versionService.getLastVersion();
         lastVersion.ifPresent(c -> version.setNumber(c.getNumber() + 1));
 
-        em.persist(version);
-        txtVersion.setVersion(version);
 
+        em.persist(version);
         userTransaction.commit();
+
+        // Save on context
+        txtVersion.setVersion(version);
     }
 
     @Override
     public void afterStep() throws Exception {
         userTransaction.begin();
 
-        BatchStatus batchStatus = stepContext.getBatchStatus();
 
+        BatchStatus batchStatus = stepContext.getBatchStatus();
         Version version = txtVersion.getVersion();
         if (batchStatus.equals(BatchStatus.COMPLETED)) {
             version.setComplete(true);
@@ -98,8 +100,8 @@ public class TxtListener implements StepListener {
 
         em.merge(version);
 
-        userTransaction.commit();
 
+        userTransaction.commit();
         closeEntityManager();
     }
 

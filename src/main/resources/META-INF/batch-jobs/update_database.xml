@@ -5,17 +5,24 @@
      version="1.0">
 
     <flow id="start" next="end">
-        <step id="cleanTempFilesBefore" next="deleteIncompleteVersions1">
+        <step id="cleanTempFilesBefore" next="deleteIncompleteVersionsBefore">
             <batchlet ref="cleanFilesBatchlet">
                 <properties>
                     <property name="files" value="#{jobParameters['sunatZipFileName']},#{jobParameters['sunatUnzipFileName']}"/>
                 </properties>
             </batchlet>
         </step>
-        <step id="deleteIncompleteVersions1" next="downloadFile">
+        <step id="deleteIncompleteVersionsBefore" next="deleteExpiredVersionsBefore">
             <batchlet ref="deleteIncompleteVersionsBatchlet">
                 <properties>
                     <property name="deleteIncompleteVersions" value="#{jobParameters['deleteIncompleteVersions']}"/>
+                </properties>
+            </batchlet>
+        </step>
+        <step id="deleteExpiredVersionsBefore" next="downloadFile">
+            <batchlet ref="deleteExpiredVersionsBatchlet">
+                <properties>
+                    <property name="expirationTimeInMillis" value="#{jobParameters['expirationTimeInMillis']}"/>
                 </properties>
             </batchlet>
         </step>
@@ -37,11 +44,7 @@
         </step>
         <step id="import" next="cleanTempFilesAfter">
             <listeners>
-                <listener ref="txtListener">
-                    <properties>
-                        <property name="entityManagerLookupName" value="java:app/SearchpeEM"/>
-                    </properties>
-                </listener>
+                <listener ref="txtListener"/>
             </listeners>
             <chunk>
                 <reader ref="txtReader">
@@ -61,21 +64,21 @@
                 <writer ref="txtWriter"/>
             </chunk>
         </step>
-        <step id="cleanTempFilesAfter" next="deleteIncompleteVersions2">
+        <step id="cleanTempFilesAfter" next="deleteIncompleteVersionsAfter">
             <batchlet ref="cleanFilesBatchlet">
                 <properties>
                     <property name="files" value="#{jobParameters['sunatZipFileName']},#{jobParameters['sunatUnzipFileName']}"/>
                 </properties>
             </batchlet>
         </step>
-        <step id="deleteIncompleteVersions2" next="deleteExpiredVersions">
+        <step id="deleteIncompleteVersionsAfter" next="deleteExpiredVersionsAfter">
             <batchlet ref="deleteIncompleteVersionsBatchlet">
                 <properties>
                     <property name="deleteIncompleteVersions" value="#{jobParameters['deleteIncompleteVersions']}"/>
                 </properties>
             </batchlet>
         </step>
-        <step id="deleteExpiredVersions">
+        <step id="deleteExpiredVersionsAfter">
             <batchlet ref="deleteExpiredVersionsBatchlet">
                 <properties>
                     <property name="expirationTimeInMillis" value="#{jobParameters['expirationTimeInMillis']}"/>

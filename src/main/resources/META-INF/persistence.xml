@@ -13,15 +13,14 @@
             <property name="hibernate.format_sql" value="false"/>
             <property name="hibernate.use_sql_comments" value="false"/>
 
-            <property name="hibernate.jdbc.batch_size" value="50"/>
+            <property name="hibernate.jdbc.batch_size" value="10"/>
             <property name="hibernate.order_inserts" value="true"/>
             <property name="hibernate.order_updates" value="true"/>
 
             <property name="hibernate.generate_statistics" value="false"/>
 
-            <property name="jboss.entity.manager.jndi.name" value="java:app/SearchpeEM"/>
-
-            <property name="hibernate.search.model_mapping" value="io.searchpe.model.search.CompanyMappingFactory"/>
+            <!--<property name="jboss.entity.manager.jndi.name" value="java:app/SearchpeEM"/>-->
+            <!--<property name="hibernate.search.model_mapping" value="io.searchpe.model.search.CompanyMappingFactory"/>-->
         </properties>
     </persistence-unit>
 </persistence>

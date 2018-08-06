@@ -32,8 +32,6 @@ public class DeleteIncompleteVersionsBatchlet extends AbstractBatchlet {
 
     @Override
     public String process() throws Exception {
-        logger.infof("Deleting incomplete versions...");
-
         if (isDeleteIncompleteVersions()) {
             Map<String, Object> parameters = new HashMap<>();
             parameters.put(VersionAttributes.COMPLETE, false);
@@ -44,8 +42,6 @@ public class DeleteIncompleteVersionsBatchlet extends AbstractBatchlet {
                 getVersionService().deleteVersion(version);
             }
         }
-
-        logger.infof("Incomplete versions has been deleted");
         return BatchStatus.COMPLETED.toString();
     }
 
@@ -56,4 +52,5 @@ public class DeleteIncompleteVersionsBatchlet extends AbstractBatchlet {
     public VersionService getVersionService() {
         return versionService;
     }
+
 }

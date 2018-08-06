@@ -2,6 +2,7 @@ package io.searchpe.batchs.expired;
 
 import io.searchpe.model.Version;
 import io.searchpe.services.VersionService;
+import io.searchpe.utils.DateUtils;
 import org.jboss.logging.Logger;
 
 import javax.batch.api.AbstractBatchlet;
@@ -27,26 +28,16 @@ public class DeleteExpiredVersionsBatchlet extends AbstractBatchlet {
 
     @Override
     public String process() throws Exception {
-        logger.infof("--------------------------------------");
-        logger.infof("--------------------------------------");
-        logger.infof("Deleting expired versions using expiration[%s]", expirationTimeInMillis);
-
         if (expirationTimeInMillis != null && expirationTimeInMillis > 0) {
-            Calendar calendar = Calendar.getInstance();
-            calendar.add(Calendar.MILLISECOND, 0 - expirationTimeInMillis);
-            Date date = calendar.getTime();
+            Date expirationDate = DateUtils.addMilliseconds(new Date(), Math.negateExact(expirationTimeInMillis));;
 
-            List<Version> expiredVersions = versionService.getVersionsBefore(date);
+            List<Version> expiredVersions = versionService.getVersionsBefore(expirationDate);
             for (Version version : expiredVersions) {
                 logger.infof("Deleting version id[%s], number[%s], date[%s]", version.getId(), version.getNumber(), version.getDate());
                 versionService.deleteVersion(version);
             }
         }
-
-        BatchStatus batchStatus = BatchStatus.COMPLETED;
-        logger.infof("Batch %s finished BatchStatus[%s]", DeleteExpiredVersionsBatchlet.class.getSimpleName(), batchStatus);
-
-        return batchStatus.toString();
+        return BatchStatus.COMPLETED.toString();
     }
 
 }

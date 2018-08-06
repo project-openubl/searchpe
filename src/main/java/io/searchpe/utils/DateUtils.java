@@ -12,11 +12,11 @@ public class DateUtils {
         // Just utils
     }
 
-    public static Date getNearestExpirationDate(LocalTime time) {
-        return getNearestExpirationDate(time, Optional.empty());
+    public static Date getNearestFutureExpirationDate(LocalTime time) {
+        return getNearestFutureExpirationDate(time, Optional.empty());
     }
 
-    public static Date getNearestExpirationDate(LocalTime time, Optional<TimeZone> timeZone) {
+    public static Date getNearestFutureExpirationDate(LocalTime time, Optional<TimeZone> timeZone) {
         Calendar calendar = Calendar.getInstance();
 
         timeZone.ifPresent(calendar::setTimeZone);
@@ -30,6 +30,11 @@ public class DateUtils {
         }
 
         return calendar.getTime();
+    }
+
+    public static Date addMilliseconds(Date date, long milliseconds) {
+        long differenceInMillis = date.getTime() + milliseconds;
+        return new Date(differenceInMillis);
     }
 
 }

@@ -94,7 +94,7 @@ public class BatchScheduler {
             Timer timer;
             if (initialExpiration.isPresent()) {
                 LocalTime time = LocalTime.parse(initialExpiration.get());
-                Date initialExpirationDate = DateUtils.getNearestExpirationDate(time);
+                Date initialExpirationDate = DateUtils.getNearestFutureExpirationDate(time);
 
                 logger.infof("Creating timer from time");
                 logger.infof("Creating timer initialDayExpiration[%s], intervalDuration[%s]", initialExpirationDate, defaultIntervalDuration);
