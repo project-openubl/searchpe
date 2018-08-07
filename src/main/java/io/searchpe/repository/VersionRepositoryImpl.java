@@ -49,8 +49,9 @@ public class VersionRepositoryImpl implements VersionRepository {
     }
 
     @Override
-    public List<Version> getVersionsBefore(Date date) {
-        TypedQuery<Version> query = em.createNamedQuery("getVersionsBefore", Version.class);
+    public List<Version> getCompleteVersionsBefore(Date date) {
+        TypedQuery<Version> query = em.createNamedQuery("getCompleteVersionsBefore", Version.class);
+        query.setParameter("complete", true);
         query.setParameter("date", date);
         return query.getResultList();
     }

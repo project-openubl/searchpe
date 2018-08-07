@@ -13,7 +13,7 @@ import java.util.Map;
 @NamedQueries(value = {
         @NamedQuery(name = "getVersions", query = "select v from Version v order by v.number desc"),
         @NamedQuery(name = "getVersionsByCompleteStatus", query = "select v from Version v where v.complete=:complete order by v.number desc"),
-        @NamedQuery(name = "getVersionsBefore", query = "select v from Version v where v.date < :date")
+        @NamedQuery(name = "getCompleteVersionsBefore", query = "select v from Version v where v.complete =:complete and v.date < :date order by v.date asc")
 })
 public class Version {
 

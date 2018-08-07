@@ -13,7 +13,7 @@ public interface VersionService {
 
     Optional<Version> getLastCompletedVersion();
 
-    List<Version> getVersionsBefore(Date date);
+    List<Version> getCompleteVersionsBefore(Date date);
 
     List<Version> getVersionsByParameters(Map<String, Object> parameters);
 

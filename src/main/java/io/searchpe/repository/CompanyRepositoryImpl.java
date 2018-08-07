@@ -66,7 +66,7 @@ public class CompanyRepositoryImpl implements CompanyRepository {
     public List<Company> getCompanyByFilterText(Version version, String filterText, int first, int max) {
         TypedQuery<Company> query = em.createNamedQuery("getCompaniesByVersionIdAndFilterText", Company.class);
         query.setParameter("versionId", version.getId());
-        query.setParameter("filterText", "%" + filterText.toLowerCase());
+        query.setParameter("filterText", "%" + filterText.toLowerCase() + "%");
         if(first != -1) {
             query.setFirstResult(first);
         }

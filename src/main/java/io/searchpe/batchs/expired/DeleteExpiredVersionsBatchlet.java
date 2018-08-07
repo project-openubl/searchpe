@@ -28,12 +28,17 @@ public class DeleteExpiredVersionsBatchlet extends AbstractBatchlet {
     @Override
     public String process() throws Exception {
         if (expirationTimeInMillis != null && expirationTimeInMillis > 0) {
-            Date expirationDate = DateUtils.addMilliseconds(new Date(), Math.negateExact(expirationTimeInMillis));;
+            Date expirationDate = DateUtils.addMilliseconds(new Date(), Math.negateExact(expirationTimeInMillis));
 
-            List<Version> expiredVersions = versionService.getVersionsBefore(expirationDate);
-            for (Version version : expiredVersions) {
-                logger.infof("Deleting version id[%s], number[%s], date[%s]", version.getId(), version.getNumber(), version.getDate());
-                versionService.deleteVersion(version);
+            List<Version> expiredVersions = versionService.getCompleteVersionsBefore(expirationDate);
+            for (int i = 0; i < expiredVersions.size(); i++) {
+                Version version = expiredVersions.get(i);
+                if (i == 0) {
+                    logger.infof("Deletion skip on version id[%s], number[%s], date[%s] in order to maintain at least one version", version.getId(), version.getNumber(), version.getDate());
+                } else {
+                    logger.infof("Deleting version id[%s], number[%s], date[%s]", version.getId(), version.getNumber(), version.getDate());
+                    versionService.deleteVersion(version);
+                }
             }
         }
         return BatchStatus.COMPLETED.toString();

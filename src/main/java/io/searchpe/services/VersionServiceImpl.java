@@ -27,8 +27,8 @@ public class VersionServiceImpl implements VersionService {
     }
 
     @Override
-    public List<Version> getVersionsBefore(Date date) {
-        return versionRepository.getVersionsBefore(date);
+    public List<Version> getCompleteVersionsBefore(Date date) {
+        return versionRepository.getCompleteVersionsBefore(date);
     }
 
     @Override
