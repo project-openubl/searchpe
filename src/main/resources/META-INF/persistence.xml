@@ -18,7 +18,7 @@
             <property name="hibernate.order_updates" value="true"/>
             <property name="hibernate.jdbc.batch_versioned_data" value="true"/>
 
-            <property name="hibernate.generate_statistics" value="true"/>
+            <property name="hibernate.generate_statistics" value="false"/>
 
             <!--<property name="jboss.entity.manager.jndi.name" value="java:app/SearchpeEM"/>-->
             <!--<property name="hibernate.search.model_mapping" value="io.searchpe.model.search.CompanyMappingFactory"/>-->
