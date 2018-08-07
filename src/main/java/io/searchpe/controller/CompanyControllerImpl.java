@@ -23,7 +23,7 @@ public class CompanyControllerImpl implements CompanyController {
     private CompanyService companyService;
 
     @Override
-    public List<Company> getCompanies(String ruc, String razonSocial, String filterText) {
+    public List<Company> getCompanies(String ruc, String razonSocial, String filterText, int first, int max) {
         Version lastVersion = versionService.getLastCompletedVersion().orElseThrow(NotFoundException::new);
 
         if (ruc != null) {
@@ -34,7 +34,7 @@ public class CompanyControllerImpl implements CompanyController {
         } else if (razonSocial != null) {
             return companyService.getCompanyByRazonSocial(lastVersion, razonSocial);
         } else if (filterText != null) {
-            return companyService.getCompanyByFilterText(lastVersion, filterText);
+            return companyService.getCompanyByFilterText(lastVersion, filterText, first, max);
         }
 
         throw new BadRequestException();

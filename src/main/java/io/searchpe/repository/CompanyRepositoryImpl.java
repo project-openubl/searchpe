@@ -59,10 +59,20 @@ public class CompanyRepositoryImpl implements CompanyRepository {
 
     @Override
     public List<Company> getCompanyByFilterText(Version version, String filterText) {
+        return getCompanyByFilterText(version, filterText, -1, -1);
+    }
+
+    @Override
+    public List<Company> getCompanyByFilterText(Version version, String filterText, int first, int max) {
         TypedQuery<Company> query = em.createNamedQuery("getCompaniesByVersionIdAndFilterText", Company.class);
         query.setParameter("versionId", version.getId());
-        query.setParameter("filterText", "%" + filterText);
-
+        query.setParameter("filterText", "%" + filterText.toLowerCase());
+        if(first != -1) {
+            query.setFirstResult(first);
+        }
+        if (max != -1) {
+            query.setMaxResults(max);
+        }
         return query.getResultList();
     }
 

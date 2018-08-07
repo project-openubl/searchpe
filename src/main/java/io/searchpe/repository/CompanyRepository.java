@@ -18,4 +18,6 @@ public interface CompanyRepository {
 
     List<Company> getCompanyByFilterText(Version version, String filterText);
 
+    List<Company> getCompanyByFilterText(Version version, String filterText, int first, int max);
+
 }

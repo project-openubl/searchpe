@@ -35,4 +35,9 @@ public class CompanyServiceImpl implements CompanyService {
         return companyRepository.getCompanyByFilterText(version, filterText);
     }
 
+    @Override
+    public List<Company> getCompanyByFilterText(Version version, String filterText, int first, int max) {
+        return companyRepository.getCompanyByFilterText(version, filterText, first, max);
+    }
+
 }

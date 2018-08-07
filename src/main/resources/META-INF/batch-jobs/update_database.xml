@@ -46,7 +46,7 @@
             <listeners>
                 <listener ref="txtListener"/>
             </listeners>
-            <chunk>
+            <chunk item-count="100">
                 <reader ref="txtReader">
                     <properties>
                         <property name="charsetName" value="#{jobParameters['sunatTxtCharset']}"/>

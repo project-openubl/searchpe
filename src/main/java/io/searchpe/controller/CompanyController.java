@@ -14,7 +14,9 @@ public interface CompanyController {
     List<Company> getCompanies(
             @QueryParam("ruc") String ruc,
             @QueryParam("razonSocial") String razonSocial,
-            @QueryParam("filterText") String filterText
+            @QueryParam("filterText") String filterText,
+            @QueryParam("first") @DefaultValue("0") int first,
+            @QueryParam("max") @DefaultValue("10") int max
     );
 
     @GET
