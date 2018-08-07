@@ -11,7 +11,7 @@
 
     <groupId>io.searchpe</groupId>
     <artifactId>searchpe</artifactId>
-    <version>1.0.CR7-SNAPSHOT</version>
+    <version>1.0.CR7</version>
     <packaging>war</packaging>
 
     <name>Searchpe - SUNAT Web Services</name>
