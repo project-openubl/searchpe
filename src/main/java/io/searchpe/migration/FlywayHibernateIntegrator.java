@@ -4,10 +4,7 @@ import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationInfo;
 import org.flywaydb.core.api.callback.Callback;
 import org.hibernate.boot.Metadata;
-import org.hibernate.dialect.Dialect;
-import org.hibernate.dialect.H2Dialect;
-import org.hibernate.dialect.MySQLDialect;
-import org.hibernate.dialect.PostgreSQL9Dialect;
+import org.hibernate.dialect.*;
 import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.integrator.spi.Integrator;
@@ -51,6 +48,8 @@ public class FlywayHibernateIntegrator implements Integrator {
             flyway.setLocations("classpath:db/migration/postgresql");
         } else if (dialect instanceof MySQLDialect) {
             flyway.setLocations("classpath:db/migration/mysql");
+        } else if (dialect instanceof Oracle10gDialect) {
+            flyway.setLocations("classpath:db/migration/oracle");
         } else {
             throw new IllegalStateException("Not supported Dialect");
         }

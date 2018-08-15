@@ -106,3 +106,36 @@ searchpe:
       txtColumnSplitRegex: "\\|"
       txtHeadersTemplate: "RUC|NOMBRE O RAZÓN SOCIAL|ESTADO DEL CONTRIBUYENTE|CONDICIÓN DE DOMICILIO|UBIGEO|TIPO DE VÍA|NOMBRE DE VÍA|CÓDIGO DE ZONA|TIPO DE ZONA|NÚMERO|INTERIOR|LOTE|DEPARTAMENTO|MANZANA|KILÓMETRO"
       modelHeadersTemplate: "ruc,razonSocial,estadoContribuyente,condicionDomicilio,ubigeo,tipoVia,nombreVia,codigoZona,tipoZona,numero,interior,lote,departamento,manzana,kilometro"
+---
+project:
+  stage: production-oracle-peru
+swarm:
+  datasources:
+    data-sources:
+      SearchpeDS:
+        driver-name: oracle
+        user-name: searchpe
+        password: searchpe
+        connection-url: jdbc:postgresql://searchpe-db:1521/searchpe
+    jdbc-drivers:
+      oracle:
+        driver-class-name: oracle.jdbc.driver.OracleDriver
+        xa-datasource-class-name: oracle.jdbc.xa.client.OracleXADataSource
+        driver-module-name: com.oracle
+searchpe:
+  scheduler:
+    enabled: true
+    initialExpiration: "00:00:00"
+    intervalDuration: 86400000
+    expirationTimeInMillis: 172800000
+    timeZone: "America/Lima"
+    deleteIncompleteVersions: true
+    sunat:
+      zipURL: "http://www2.sunat.gob.pe/padron_reducido_ruc.zip"
+      zipFileName: "sunat.zip"
+      unzipFileName: "sunat.txt"
+      txtCharset: "ISO-8859-1"
+      txtRowSkips: 1
+      txtColumnSplitRegex: "\\|"
+      txtHeadersTemplate: "RUC|NOMBRE O RAZÓN SOCIAL|ESTADO DEL CONTRIBUYENTE|CONDICIÓN DE DOMICILIO|UBIGEO|TIPO DE VÍA|NOMBRE DE VÍA|CÓDIGO DE ZONA|TIPO DE ZONA|NÚMERO|INTERIOR|LOTE|DEPARTAMENTO|MANZANA|KILÓMETRO"
+      modelHeadersTemplate: "ruc,razonSocial,estadoContribuyente,condicionDomicilio,ubigeo,tipoVia,nombreVia,codigoZona,tipoZona,numero,interior,lote,departamento,manzana,kilometro"
