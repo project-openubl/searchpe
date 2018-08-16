@@ -16,6 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Named
 public class TxtReader implements ItemReader {
@@ -40,9 +41,12 @@ public class TxtReader implements ItemReader {
     @Override
     public void open(Serializable checkpoint) throws Exception {
         Path unzipDirPath = BatchUtils.getWorkingPath(getWorkingDirectory(), BatchConstants.BATCH_UNZIP_FOLDER);
-        List<Path> txtFiles = Files.walk(unzipDirPath)
-                .filter(path -> path.toFile().getName().endsWith(".txt"))
-                .collect(Collectors.toList());
+        List<Path> txtFiles;
+        try (Stream<Path> stream = Files.walk(unzipDirPath)) {
+            txtFiles = stream
+                    .filter(path -> path.toFile().getName().endsWith(".txt"))
+                    .collect(Collectors.toList());
+        }
 
         if (txtFiles.isEmpty()) {
             throw new NothingToReadException("Could not find any *.txt file to open()");
