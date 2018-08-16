@@ -41,7 +41,7 @@ public class FileUtils {
         }
 
         Path destinationPath = Paths.get(destinationDirectory);
-        if (!Files.exists(destinationPath)) {
+        if (!destinationPath.toFile().exists()) {
             Files.createDirectories(destinationPath);
         }
 
@@ -53,7 +53,7 @@ public class FileUtils {
                 logger.debugf("Unzipping to %s", newFile.getAbsolutePath());
 
                 //create directories for sub directories in zip
-                boolean mkdirs = new File(newFile.getParent()).mkdirs();
+                new File(newFile.getParent()).mkdirs();
                 try (FileOutputStream fos = new FileOutputStream(newFile)) {
                     int len;
                     while ((len = zis.read(buffer)) > 0) {

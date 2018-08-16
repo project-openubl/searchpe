@@ -30,7 +30,7 @@ public class DownloadFileBatchlet extends AbstractBatchlet {
         if (getUrl() == null) {
             throw new URLNotDefinedException("URL not defined");
         }
-        URL url = new URL(getUrl());
+        URL fileURL = new URL(getUrl());
 
         if (getConnectionTimeout() == null) {
             setConnectionTimeout(10_000);
@@ -40,7 +40,10 @@ public class DownloadFileBatchlet extends AbstractBatchlet {
         }
 
         Path outputFilePath = Paths.get(getOutput() != null ? getOutput() : BatchConstants.DEFAULT_DOWNLOAD_FOLDER, UUID.randomUUID().toString());
-        downloadFile(url, outputFilePath.toFile(), getConnectionTimeout(), getReadTimeout());
+
+        logger.debugf("Downloading %s into %s", fileURL, outputFilePath.toAbsolutePath());
+
+        downloadFile(fileURL, outputFilePath.toFile(), getConnectionTimeout(), getReadTimeout());
         return BatchStatus.COMPLETED.toString();
     }
 
