@@ -57,11 +57,23 @@ public class TxtProcessor implements ItemProcessor {
         return regex;
     }
 
+    public void setRegex(String regex) {
+        this.regex = regex;
+    }
+
     public String getHeader() {
         return header;
     }
 
+    public void setHeader(String header) {
+        this.header = header;
+    }
+
     public String[] getHeaderColumns() {
         return headerColumns;
+    }
+
+    public void setHeaderColumns(String[] headerColumns) {
+        this.headerColumns = headerColumns;
     }
 }

@@ -8,7 +8,7 @@
         <batchlet ref="io.searchpe.batchs.download.DownloadFileBatchlet">
             <properties>
                 <property name="url" value="#{jobParameters['url']}"/>
-                <property name="output" value="#{jobParameters['output']}"/>
+                <property name="workingDirectory" value="#{jobParameters['workingDirectory']}"/>
             </properties>
         </batchlet>
     </step>

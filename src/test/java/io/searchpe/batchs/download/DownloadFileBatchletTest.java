@@ -21,7 +21,7 @@ public class DownloadFileBatchletTest {
     public TemporaryFolder testFolder = new TemporaryFolder();
 
     @Test(expected = URLNotDefinedException.class)
-    public void test_shouldThrowExceptionIfUrlIsNotDefined() throws Exception {
+    public void shouldThrowExceptionIfUrlIsNotDefined() throws Exception {
         final DownloadFileBatchlet downloadBatchlet = new DownloadFileBatchlet();
         String processResult = downloadBatchlet.process();
     }
@@ -31,8 +31,8 @@ public class DownloadFileBatchletTest {
         final File downloadFolder = testFolder.newFolder("myDownloads");
         final DownloadFileBatchlet downloadBatchlet = Mockito.spy(new DownloadFileBatchlet());
 
-        downloadBatchlet.setUrl("http://myfile.zip");
-        downloadBatchlet.setOutput(downloadFolder.getAbsolutePath());
+        downloadBatchlet.setUrl(new URL("http://myfile.zip"));
+        downloadBatchlet.setWorkingDirectory(downloadFolder.getAbsoluteFile());
 
         doNothing()
                 .when(downloadBatchlet)

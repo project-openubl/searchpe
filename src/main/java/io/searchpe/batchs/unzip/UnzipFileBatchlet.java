@@ -1,6 +1,7 @@
 package io.searchpe.batchs.unzip;
 
 import io.searchpe.batchs.BatchConstants;
+import io.searchpe.batchs.BatchUtils;
 import io.searchpe.utils.FileUtils;
 import org.jboss.logging.Logger;
 
@@ -11,60 +12,45 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 
 @Named
 public class UnzipFileBatchlet extends AbstractBatchlet {
 
     private static final Logger logger = Logger.getLogger(UnzipFileBatchlet.class);
 
-    private String fileName;
-    private String outputDir;
+    @Inject
+    @BatchProperty
+    private File workingDirectory;
 
     @Override
     public String process() throws Exception {
-        if (fileName == null) {
-            throw new ZipFileNotDefinedException("Could not found zip file");
-        }
+        Path zipDirPath = BatchUtils.getWorkingPath(getWorkingDirectory(), BatchConstants.BATCH_DOWNLOADS_FOLDER);
+        Path unzipDirPath = BatchUtils.getWorkingPath(getWorkingDirectory(), BatchConstants.BATCH_UNZIP_FOLDER);
 
-        String outputDirAbsolutePath = getOutputDir() != null ? getOutputDir() : BatchConstants.DEFAULT_UNZIP_FOLDER;
-
-        logger.debugf("Unzipping file %s into %s", getFileName(), outputDirAbsolutePath);
-        unzipFile(getFileName(), outputDirAbsolutePath);
+        logger.infof("Unzipping %s content into %s", zipDirPath.getFileName(), unzipDirPath.getFileName());
+        unzipFile(zipDirPath, unzipDirPath);
+        logger.infof("Unzip finished");
 
         return BatchStatus.COMPLETED.toString();
     }
 
-    protected void unzipFile(String fileAbsolutePath, String outputDirAbsolutePath) throws IOException, UnzipProcessException {
-        File output = new File(outputDirAbsolutePath);
-        if (output.exists()) {
-            if (!output.isDirectory()) {
-                throw new UnzipProcessException("Output is not a directory");
-            } else if (output.list() != null && output.list().length > 0) {
-                throw new UnzipProcessException("Output directory is not empty");
+    protected void unzipFile(Path zipDirPath, Path unzipPath) throws IOException {
+        File zipDir = zipDirPath.toFile();
+        File[] listOfFiles = zipDir.listFiles();
+        if (listOfFiles != null) {
+            for (File zipFile : listOfFiles) {
+                FileUtils.unzipFile(zipFile, unzipPath);
             }
         }
-
-        FileUtils.unzipFile(getFileName(), outputDirAbsolutePath);
     }
 
-    @Inject
-    @BatchProperty
-    public String getFileName() {
-        return fileName;
+    public File getWorkingDirectory() {
+        return workingDirectory;
     }
 
-    public void setFileName(String fileName) {
-        this.fileName = fileName;
-    }
-
-    @Inject
-    @BatchProperty
-    public String getOutputDir() {
-        return outputDir;
-    }
-
-    public void setOutputDir(String outputDir) {
-        this.outputDir = outputDir;
+    public void setWorkingDirectory(File workingDirectory) {
+        this.workingDirectory = workingDirectory;
     }
 
 }

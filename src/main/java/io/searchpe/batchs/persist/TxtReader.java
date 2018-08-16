@@ -1,14 +1,21 @@
 package io.searchpe.batchs.persist;
 
+import io.searchpe.batchs.BatchConstants;
+import io.searchpe.batchs.BatchUtils;
+import io.searchpe.batchs.persist.exceptions.MoreThanOneFileToChooseException;
+import io.searchpe.batchs.persist.exceptions.NothingToReadException;
 import org.jboss.logging.Logger;
 
 import javax.batch.api.BatchProperty;
 import javax.batch.api.chunk.ItemReader;
-import javax.batch.runtime.context.JobContext;
 import javax.inject.Inject;
 import javax.inject.Named;
 import java.io.*;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Named
 public class TxtReader implements ItemReader {
@@ -16,7 +23,8 @@ public class TxtReader implements ItemReader {
     private static final Logger logger = Logger.getLogger(TxtReader.class);
 
     @Inject
-    private JobContext jobContext;
+    @BatchProperty
+    private Long skip;
 
     @Inject
     @BatchProperty
@@ -24,26 +32,31 @@ public class TxtReader implements ItemReader {
 
     @Inject
     @BatchProperty
-    private Long skip;
+    private File workingDirectory;
 
-    @Inject
-    @BatchProperty
-    private String fileLocation;
-
-    private long readPosition;
     private BufferedReader reader;
     private InputStream inputStream;
 
-    private String getCharset() {
-        return charsetName != null ? charsetName : Charset.defaultCharset().name();
-    }
-
     @Override
     public void open(Serializable checkpoint) throws Exception {
-        File txtFile = new File(fileLocation);
-        inputStream = new FileInputStream(txtFile);
+        Path unzipDirPath = BatchUtils.getWorkingPath(getWorkingDirectory(), BatchConstants.BATCH_UNZIP_FOLDER);
+        List<Path> txtFiles = Files.walk(unzipDirPath)
+                .filter(path -> path.toFile().getName().endsWith(".txt"))
+                .collect(Collectors.toList());
 
-        InputStreamReader inputStreamReader = new InputStreamReader(inputStream, getCharset());
+        if (txtFiles.isEmpty()) {
+            throw new NothingToReadException("Could not find any *.txt file to open()");
+        }
+        if (txtFiles.size() > 1) {
+            throw new MoreThanOneFileToChooseException("Found more than one *.txt file to open()");
+        }
+
+        Path txtPath = txtFiles.get(0);
+        inputStream = new FileInputStream(txtPath.toFile());
+
+        String charset = getCharsetName() != null ? getCharsetName() : Charset.defaultCharset().name();
+        InputStreamReader inputStreamReader = new InputStreamReader(inputStream, charset);
+
         reader = new BufferedReader(inputStreamReader);
     }
 
@@ -59,23 +72,44 @@ public class TxtReader implements ItemReader {
 
     @Override
     public Object readItem() throws Exception {
-        Long start = skip != null ? skip : 0L;
-        if (readPosition < start) {
-            while (readPosition < start) {
-                readPosition++;
+        if (getSkip() != null) {
+            long count = 0L;
+            while (count < getSkip()) {
                 String line = reader.readLine();
-                logger.debugf("Line %s ommited [%s]", readPosition, line);
+                logger.debugf("Line %s omitted [%s]", count, line);
+                count++;
             }
         }
-
-        readPosition++;
         return reader.readLine();
     }
 
     @Override
     public Serializable checkpointInfo() throws Exception {
-        // No checkpoint
+        // restart not supported
         return null;
     }
 
+    public Long getSkip() {
+        return skip;
+    }
+
+    public void setSkip(Long skip) {
+        this.skip = skip;
+    }
+
+    public String getCharsetName() {
+        return charsetName;
+    }
+
+    public void setCharsetName(String charsetName) {
+        this.charsetName = charsetName;
+    }
+
+    public File getWorkingDirectory() {
+        return workingDirectory;
+    }
+
+    public void setWorkingDirectory(File workingDirectory) {
+        this.workingDirectory = workingDirectory;
+    }
 }

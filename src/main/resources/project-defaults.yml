@@ -13,9 +13,8 @@ searchpe:
     intervalDuration: 3600000
     expirationTimeInMillis: 10800000
     deleteIncompleteVersions: true
+    workingDirectory: ""
     sunat:
-      zipFileName: "sunat.zip"
-      unzipFileName: "sunat.txt"
       zipURL: "https://raw.githubusercontent.com/searchpe/searchpe/master/padron_reducido_ruc.zip"
       txtCharset: "ISO-8859-1"
       txtRowSkips: 1

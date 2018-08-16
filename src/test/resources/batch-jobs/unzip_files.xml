@@ -8,7 +8,7 @@
         <batchlet ref="io.searchpe.batchs.unzip.UnzipFileBatchlet">
             <properties>
                 <property name="fileName" value="#{jobParameters['fileName']}"/>
-                <property name="output" value="#{jobParameters['output']}"/>
+                <property name="workingDirectory" value="#{jobParameters['workingDirectory']}"/>
             </properties>
         </batchlet>
     </step>

@@ -6,6 +6,7 @@ import org.jberet.support.io.JpaItemWriter;
 
 import javax.inject.Inject;
 import javax.inject.Named;
+import javax.persistence.EntityManager;
 import java.util.List;
 
 @Named
@@ -17,20 +18,31 @@ public class TxtWriter extends JpaItemWriter {
     @Override
     public void writeItems(final List<Object> items) throws Exception {
         if (entityTransaction) {
-            em.getTransaction().begin();
+            getEntityManager().getTransaction().begin();
         }
 
-        Version version = txtVersion.getVersion();
+        Version version = getTxtVersion().getVersion();
 
         for (final Object e : items) {
             Company company = (Company) e;
             company.setVersion(version);
-            em.persist(company);
+            getEntityManager().persist(company);
         }
 
         if (entityTransaction) {
-            em.getTransaction().commit();
+            getEntityManager().getTransaction().commit();
         }
     }
 
+    public EntityManager getEntityManager() {
+        return em;
+    }
+
+    public TxtVersion getTxtVersion() {
+        return txtVersion;
+    }
+
+    public void setTxtVersion(TxtVersion txtVersion) {
+        this.txtVersion = txtVersion;
+    }
 }

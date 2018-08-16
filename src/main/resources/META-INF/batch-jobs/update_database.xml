@@ -5,13 +5,6 @@
      version="1.0">
 
     <flow id="start" next="end">
-        <step id="cleanTempFilesBefore" next="deleteIncompleteVersionsBefore">
-            <batchlet ref="cleanFilesBatchlet">
-                <properties>
-                    <property name="files" value="#{jobParameters['sunatZipFileName']},#{jobParameters['sunatUnzipFileName']}"/>
-                </properties>
-            </batchlet>
-        </step>
         <step id="deleteIncompleteVersionsBefore" next="deleteExpiredVersionsBefore">
             <batchlet ref="deleteIncompleteVersionsBatchlet">
                 <properties>
@@ -19,10 +12,17 @@
                 </properties>
             </batchlet>
         </step>
-        <step id="deleteExpiredVersionsBefore" next="downloadFile">
+        <step id="deleteExpiredVersionsBefore" next="cleanTempFilesBefore">
             <batchlet ref="deleteExpiredVersionsBatchlet">
                 <properties>
                     <property name="expirationTimeInMillis" value="#{jobParameters['expirationTimeInMillis']}"/>
+                </properties>
+            </batchlet>
+        </step>
+        <step id="cleanTempFilesBefore" next="downloadFile">
+            <batchlet ref="cleanFilesBatchlet">
+                <properties>
+                    <property name="files" value="#{jobParameters['workingDirectory']}}"/>
                 </properties>
             </batchlet>
         </step>
@@ -30,15 +30,14 @@
             <batchlet ref="downloadFileBatchlet">
                 <properties>
                     <property name="url" value="#{jobParameters['sunatZipURL']}"/>
-                    <property name="output" value="#{jobParameters['sunatZipFileName']}"/>
+                    <property name="workingDirectory" value="#{jobParameters['workingDirectory']}"/>
                 </properties>
             </batchlet>
         </step>
         <step id="unzipFile" next="import">
             <batchlet ref="unzipFileBatchlet">
                 <properties>
-                    <property name="fileLocation" value="#{jobParameters['sunatZipFileName']}"/>
-                    <property name="sunatUnzipFileName" value="#{jobParameters['sunatUnzipFileName']}"/>
+                    <property name="workingDirectory" value="#{jobParameters['workingDirectory']}"/>
                 </properties>
             </batchlet>
         </step>

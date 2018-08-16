@@ -16,7 +16,6 @@ import java.time.LocalTime;
 import java.util.Date;
 import java.util.Optional;
 import java.util.Properties;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Startup
@@ -48,12 +47,8 @@ public class BatchScheduler {
     private Optional<Long> intervalDuration;
 
     @Inject
-    @ConfigurationValue("searchpe.scheduler.sunat.zipFileName")
-    private Optional<String> sunatZipFileName;
-
-    @Inject
-    @ConfigurationValue("searchpe.scheduler.sunat.unzipFileName")
-    private Optional<String> sunatUnzipFileName;
+    @ConfigurationValue("searchpe.scheduler.workingDirectory")
+    private Optional<String> workingDirectory;
 
     @Inject
     @ConfigurationValue("searchpe.scheduler.sunat.zipURL")
@@ -133,8 +128,7 @@ public class BatchScheduler {
         properties.put("expirationTimeInMillis", expirationTimeInMillis.orElse(0));
 
         properties.put("sunatZipURL", sunatZipURL);
-        properties.put("sunatZipFileName", sunatZipFileName.orElse(UUID.randomUUID().toString() + ".zip"));
-        properties.put("sunatUnzipFileName", sunatUnzipFileName.orElse(UUID.randomUUID().toString() + ".txt"));
+        properties.put("workingDirectory", workingDirectory);
         properties.put("sunatTxtCharset", sunatTxtCharset.orElse(Charset.defaultCharset().name()));
         properties.put("sunatTxtRowSkips", sunatTxtRowSkips.orElse(1L));
         properties.put("sunatTxtColumnSplitRegex", sunatTxtColumnSplitRegex);

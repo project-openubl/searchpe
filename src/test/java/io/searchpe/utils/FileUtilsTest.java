@@ -5,6 +5,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -58,7 +59,7 @@ public class FileUtilsTest {
     public void test_shouldUnzipIntoFolder() throws Exception {
         Path unzipPath = FOLDER_TEST.resolve("unzipFolder");
 
-        FileUtils.unzipFile("padron_reducido_ruc.zip", unzipPath.toAbsolutePath().toString());
+        FileUtils.unzipFile(new File("padron_reducido_ruc.zip"), unzipPath);
         Assert.assertTrue(Files.exists(unzipPath));
         Assert.assertTrue(Files.isDirectory(unzipPath));
         Assert.assertTrue(Files.exists(unzipPath.resolve("padron_reducido_ruc.txt")));

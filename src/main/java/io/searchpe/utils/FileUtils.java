@@ -34,13 +34,11 @@ public class FileUtils {
         }
     }
 
-    public static void unzipFile(String zipFilePath, String destinationDirectory) throws IOException {
-        File zipFile = new File(zipFilePath);
+    public static void unzipFile(File zipFile, Path destinationPath) throws IOException {
         if (!zipFile.exists() || zipFile.isDirectory()) {
             throw new IOException("Zip file not found or is a directory");
         }
 
-        Path destinationPath = Paths.get(destinationDirectory);
         if (!destinationPath.toFile().exists()) {
             Files.createDirectories(destinationPath);
         }
