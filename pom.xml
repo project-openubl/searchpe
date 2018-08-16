@@ -203,10 +203,6 @@
                 <version>4.3.0</version>
                 <configuration>
                     <repoToken>${coveralls.token}</repoToken>
-                    <sourceDirectories>
-                        <sourceDirectory>src/main/resources</sourceDirectory>
-                        <sourceDirectory>src/main/resources-filtered</sourceDirectory>
-                    </sourceDirectories>
                 </configuration>
             </plugin>
 
@@ -246,6 +242,9 @@
                     <systemPropertyVariables>
                         <jacoco-agent.destfile>target/jacoco.exec</jacoco-agent.destfile>
                     </systemPropertyVariables>
+                    <excludes>
+                        <exclude>**/*.jar</exclude>
+                    </excludes>
                 </configuration>
             </plugin>
         </plugins>
