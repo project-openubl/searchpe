@@ -16,8 +16,6 @@ public class CleanFilesBatchlet extends AbstractBatchlet {
 
     private static final Logger logger = Logger.getLogger(CleanFilesBatchlet.class);
 
-    @Inject
-    @BatchProperty
     private String[] files;
 
     @Override
@@ -30,8 +28,14 @@ public class CleanFilesBatchlet extends AbstractBatchlet {
         return BatchStatus.COMPLETED.toString();
     }
 
+    @Inject
+    @BatchProperty
     public String[] getFiles() {
         return files;
+    }
+
+    public void setFiles(String[] files) {
+        this.files = files;
     }
 
 }

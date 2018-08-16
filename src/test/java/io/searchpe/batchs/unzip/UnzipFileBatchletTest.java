@@ -1,74 +1,55 @@
 package io.searchpe.batchs.unzip;
 
-import io.searchpe.utils.FileUtils;
-import org.jboss.arquillian.container.test.api.Deployment;
-import org.jboss.arquillian.junit.Arquillian;
-import org.jboss.shrinkwrap.api.Archive;
-import org.jboss.shrinkwrap.api.ShrinkWrap;
-import org.jboss.shrinkwrap.api.asset.EmptyAsset;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Ignore;
+import org.apache.commons.io.FileUtils;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
-import org.wildfly.swarm.jaxrs.JAXRSArchive;
+import org.mockito.junit.MockitoJUnitRunner;
 
-import javax.batch.operations.JobOperator;
-import javax.batch.runtime.BatchRuntime;
-import javax.batch.runtime.BatchStatus;
 import java.io.File;
-import java.net.URL;
-import java.nio.file.Paths;
-import java.util.Properties;
 
-@Ignore
-@RunWith(Arquillian.class)
+import static org.junit.Assert.assertTrue;
+
+@RunWith(MockitoJUnitRunner.class)
 public class UnzipFileBatchletTest {
 
-    private int sleepTime = 3000;
-    private JobOperator jobOperator;
+    @Rule
+    public TemporaryFolder testFolder = new TemporaryFolder();
 
-    @Before
-    public void before() {
-        jobOperator = BatchRuntime.getJobOperator();
-    }
-
-    @Deployment
-    public static Archive createDeployment() throws Exception {
-        URL url = Thread.currentThread().getContextClassLoader().getResource("project-test-defaults.yml");
-        Assert.assertNotNull(url);
-        File projectDefaults = new File(url.toURI());
-
-        JAXRSArchive deployment = ShrinkWrap.create(JAXRSArchive.class);
-
-        deployment.setContextRoot("/");
-        deployment.addClasses(UnzipFileBatchlet.class, FileUtils.class);
-
-        deployment.addAsResource(projectDefaults, "/project-defaults.yml");
-        deployment.addAsResource("persistence-test.xml", "META-INF/persistence.xml");
-        deployment.addAsManifestResource(EmptyAsset.INSTANCE, "WEB-INF/beans.xml");
-        deployment.addAsResource("batch-jobs/unzip_files.xml", "META-INF/batch-jobs/unzip_files.xml");
-        deployment.addAsResource("padron_reducido_ruc.zip", "padron_reducido_ruc.zip");
-        deployment.addAllDependencies();
-
-        return deployment;
+    @Test(expected = ZipFileNotDefinedException.class)
+    public void test_shouldThrowExceptionIfNoFileNameDefined() throws Exception {
+        UnzipFileBatchlet batchlet = new UnzipFileBatchlet();
+        batchlet.process();
     }
 
     @Test
-    public void testUnzipFile() throws Exception {
-        URL url = getClass().getClassLoader().getResource("/padron_reducido_ruc.zip");
-        Assert.assertNotNull(url);
-        String path = url.getPath();
+    public void test_shouldThrowExceptionIfOutputDirIsNotDirectoryOrHasPreviousContent() throws Exception {
+        UnzipFileBatchlet batchlet = new UnzipFileBatchlet();
+        batchlet.setFileName("myFile.zip");
+        batchlet.setOutputDir(testFolder.newFile("myOutputFile.txt").getAbsolutePath());
 
-        Properties properties = new Properties();
-        properties.setProperty("fileName", path);
-        properties.setProperty("output", "padron_reducido_ruc.txt");
+        boolean exceptionCatch = false;
+        try {
+            batchlet.process();
+        } catch (UnzipProcessException e) {
+            exceptionCatch = true;
+        }
+        assertTrue(exceptionCatch);
 
-        long execId = jobOperator.start("unzip_files", properties);
-        Thread.sleep(sleepTime);
 
-        Assert.assertEquals("Didn't pass as expected", BatchStatus.COMPLETED, jobOperator.getJobExecution(execId).getBatchStatus());
-        Assert.assertTrue(Paths.get("padron_reducido_ruc.txt").toFile().exists());
+        File previousFile = testFolder.newFile("previousFile.zip");
+        FileUtils.writeByteArrayToFile(previousFile, new byte[]{1, 2, 3});
+        assertTrue(previousFile.exists());
+        batchlet.setOutputDir(testFolder.getRoot().getAbsolutePath());
+
+        exceptionCatch = false;
+        try {
+            batchlet.process();
+        } catch (UnzipProcessException e) {
+            exceptionCatch = true;
+        }
+        assertTrue(exceptionCatch);
     }
 
 }

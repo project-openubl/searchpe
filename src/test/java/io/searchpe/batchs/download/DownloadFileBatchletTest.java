@@ -1,69 +1,47 @@
 package io.searchpe.batchs.download;
 
-import io.searchpe.utils.FileUtils;
-import org.jboss.arquillian.container.test.api.Deployment;
-import org.jboss.arquillian.junit.Arquillian;
-import org.jboss.shrinkwrap.api.Archive;
-import org.jboss.shrinkwrap.api.ShrinkWrap;
-import org.jboss.shrinkwrap.api.asset.EmptyAsset;
-import org.junit.Assert;
-import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
-import org.wildfly.swarm.jaxrs.JAXRSArchive;
+import org.mockito.Mockito;
+import org.mockito.junit.MockitoJUnitRunner;
 
-import javax.batch.operations.JobOperator;
-import javax.batch.runtime.BatchRuntime;
 import javax.batch.runtime.BatchStatus;
 import java.io.File;
 import java.net.URL;
-import java.nio.file.Paths;
-import java.util.Properties;
 
-@RunWith(Arquillian.class)
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.*;
+
+@RunWith(MockitoJUnitRunner.class)
 public class DownloadFileBatchletTest {
 
-    private int sleepTime = 3000;
-    private JobOperator jobOperator;
+    @Rule
+    public TemporaryFolder testFolder = new TemporaryFolder();
 
-    @Before
-    public void before() {
-        jobOperator = BatchRuntime.getJobOperator();
-    }
-
-    @Deployment
-    public static Archive createDeployment() throws Exception {
-        URL url = Thread.currentThread().getContextClassLoader().getResource("project-test-defaults.yml");
-        Assert.assertNotNull(url);
-        File projectDefaults = new File(url.toURI());
-
-        JAXRSArchive deployment = ShrinkWrap.create(JAXRSArchive.class);
-
-        deployment.setContextRoot("/");
-        deployment.addClasses(DownloadFileBatchlet.class, FileUtils.class);
-
-        deployment.addAsResource(projectDefaults, "/project-defaults.yml");
-        deployment.addAsResource("persistence-test.xml", "META-INF/persistence.xml");
-        deployment.addAsManifestResource(EmptyAsset.INSTANCE, "WEB-INF/beans.xml");
-        deployment.addAsResource("batch-jobs/download_files.xml", "META-INF/batch-jobs/download_files.xml");
-        deployment.addAllDependencies();
-
-        return deployment;
+    @Test(expected = URLNotDefinedException.class)
+    public void test_shouldThrowExceptionIfUrlIsNotDefined() throws Exception {
+        final DownloadFileBatchlet downloadBatchlet = new DownloadFileBatchlet();
+        String processResult = downloadBatchlet.process();
     }
 
     @Test
-    public void testDownloadFile() throws Exception {
-        Assert.assertFalse(Paths.get("padron_reducido_ruc.zip").toFile().exists());
+    public void shouldDownloadFile() throws Exception {
+        final File downloadFolder = testFolder.newFolder("myDownloads");
+        final DownloadFileBatchlet downloadBatchlet = Mockito.spy(new DownloadFileBatchlet());
 
-        Properties properties = new Properties();
-        properties.setProperty("url", "https://raw.githubusercontent.com/searchpe/searchpe/master/padron_reducido_ruc.zip");
-        properties.setProperty("output", "padron_reducido_ruc.zip");
+        downloadBatchlet.setUrl("http://myfile.zip");
+        downloadBatchlet.setOutput(downloadFolder.getAbsolutePath());
 
-        long execId = jobOperator.start("download_files", properties);
-        Thread.sleep(sleepTime);
+        doNothing()
+                .when(downloadBatchlet)
+                .downloadFile(Mockito.any(URL.class), Mockito.any(File.class), Mockito.any(Integer.class), Mockito.any(Integer.class));
 
-        Assert.assertEquals("Didn't pass as expected", BatchStatus.COMPLETED, jobOperator.getJobExecution(execId).getBatchStatus());
-        Assert.assertTrue(Paths.get("padron_reducido_ruc.zip").toFile().exists());
+        assertEquals(BatchStatus.COMPLETED.toString(), downloadBatchlet.process());
+
+        verify(downloadBatchlet, times(1))
+                .downloadFile(Mockito.any(URL.class), Mockito.any(File.class), Mockito.any(Integer.class), Mockito.any(Integer.class));
     }
 
 }
