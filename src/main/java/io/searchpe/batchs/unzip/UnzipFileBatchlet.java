@@ -34,21 +34,17 @@ public class UnzipFileBatchlet extends AbstractBatchlet {
         return BatchStatus.COMPLETED.toString();
     }
 
-    protected void unzipFile(String fileAbsolutePath, String outputDirAbsolutePath) throws UnzipProcessException {
-        try {
-            File output = new File(outputDirAbsolutePath);
-            if (output.exists()) {
-                if (!output.isDirectory()) {
-                    throw new UnzipProcessException("Output is not a directory");
-                } else if (output.list() != null && output.list().length > 0) {
-                    throw new UnzipProcessException("Output directory is not empty");
-                }
+    protected void unzipFile(String fileAbsolutePath, String outputDirAbsolutePath) throws IOException, UnzipProcessException {
+        File output = new File(outputDirAbsolutePath);
+        if (output.exists()) {
+            if (!output.isDirectory()) {
+                throw new UnzipProcessException("Output is not a directory");
+            } else if (output.list() != null && output.list().length > 0) {
+                throw new UnzipProcessException("Output directory is not empty");
             }
-
-            FileUtils.unzipFile(getFileName(), outputDirAbsolutePath);
-        } catch (IOException e) {
-            throw new UnzipProcessException("Could not unzip file because file", e);
         }
+
+        FileUtils.unzipFile(getFileName(), outputDirAbsolutePath);
     }
 
     @Inject

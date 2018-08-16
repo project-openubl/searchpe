@@ -167,8 +167,10 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <classpathDependencyExcludes>
-                        <classpathDependencyExclude>org.arquillian.cube:arquillian-cube-openshift</classpathDependencyExclude>
-                        <classpathDependencyExclude>org.arquillian.cube:arquillian-cube-kubernetes</classpathDependencyExclude>
+                        <classpathDependencyExclude>org.arquillian.cube:arquillian-cube-openshift
+                        </classpathDependencyExclude>
+                        <classpathDependencyExclude>org.arquillian.cube:arquillian-cube-kubernetes
+                        </classpathDependencyExclude>
                     </classpathDependencyExcludes>
                     <skipTests>${skipTests}</skipTests>
                 </configuration>
@@ -201,6 +203,10 @@
                 <version>4.3.0</version>
                 <configuration>
                     <repoToken>${coveralls.token}</repoToken>
+                    <sourceDirectories>
+                        <sourceDirectory>src/main/resources</sourceDirectory>
+                        <sourceDirectory>src/main/resources-filtered</sourceDirectory>
+                    </sourceDirectories>
                 </configuration>
             </plugin>
 
@@ -364,14 +370,18 @@
                                             <inline>
                                                 <files>
                                                     <file>
-                                                        <source>${project.build.directory}/${project.artifactId}-${project.version}-thorntail.jar</source>
+                                                        <source>
+                                                            ${project.build.directory}/${project.artifactId}-${project.version}-thorntail.jar
+                                                        </source>
                                                         <outputDirectory>/opt</outputDirectory>
                                                     </file>
                                                 </files>
                                             </inline>
                                         </assembly>
                                         <entryPoint>
-                                            <shell>java -jar /opt/${project.artifactId}-${project.version}-thorntail.jar</shell>
+                                            <shell>java -jar
+                                                /opt/${project.artifactId}-${project.version}-thorntail.jar
+                                            </shell>
                                         </entryPoint>
                                         <tags>
                                             <tag>latest</tag>
@@ -444,7 +454,8 @@
                         <version>0.9.11</version>
                         <extensions>true</extensions> <!-- required to run automatically -->
                         <configuration>
-                            <outputPath>${project.build.directory}/generated-sources/postgresql/database.sql</outputPath>
+                            <outputPath>${project.build.directory}/generated-sources/postgresql/database.sql
+                            </outputPath>
                             <packages>
                                 <package>io.searchpe</package>
                             </packages>
