@@ -1,58 +1,67 @@
 package io.searchpe.utils;
 
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
-import java.io.FileOutputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class FileUtilsTest {
 
-    @Test
-    public void deleteFilesIfExists() throws Exception {
-        OutputStream stream = new FileOutputStream("file1.txt");
-        try {
-            stream.write(new byte[]{1, 2, 3});
-        } finally {
-            stream.close();
-        }
+    public static final Path FOLDER_TEST = Paths.get("fileUtilsTestFolder");
+    public static final Path DEFAULT_FILE_PATH = FOLDER_TEST.resolve( "file.txt");
 
-        //
-        String[] files = new String[]{"file1.txt", "file2.txt"};
+    private void createFileWithRandomContent(Path path) throws Exception {
+        org.apache.commons.io.FileUtils.writeByteArrayToFile(path.toFile(), new byte[]{1, 2, 3});
+    }
 
-        Assert.assertTrue(Files.exists(Paths.get("file1.txt")));
-        FileUtils.deleteFilesIfExists(files);
-        Assert.assertFalse(Files.exists(Paths.get("file1.txt")));
+    @Before
+    public void before() throws IOException {
+        org.apache.commons.io.FileUtils.deleteDirectory(FOLDER_TEST.toFile());
+    }
+
+    @After
+    public void after() throws IOException {
+        org.apache.commons.io.FileUtils.deleteDirectory(FOLDER_TEST.toFile());
     }
 
     @Test
-    public void downloadFile() throws Exception {
-        Path path = Paths.get("myFile.zip");
-        if (Files.exists(path)){
-            Files.delete(path);
-        }
+    public void test_shouldDeleteFilesIfExists() throws Exception {
+        createFileWithRandomContent(DEFAULT_FILE_PATH);
+        Assert.assertTrue(Files.exists(DEFAULT_FILE_PATH));
 
-        final String url = "https://raw.githubusercontent.com/searchpe/searchpe/master/padron_reducido_ruc.zip";
-        FileUtils.downloadFile(url, path.getFileName().toString());
-        Assert.assertTrue(Files.exists(path));
-
-        Files.delete(path);
+        FileUtils.deleteFilesIfExists(new String[]{DEFAULT_FILE_PATH.toAbsolutePath().toString()});
+        Assert.assertFalse(Files.exists(DEFAULT_FILE_PATH));
     }
 
     @Test
-    public void unzipFile() throws Exception {
-        Path path = Paths.get("myUnzipFile.txt");
-        if (Files.exists(path)){
-            Files.delete(path);
-        }
+    public void test_shouldDoNotThrownExceptionIfFileDoesNotExists() throws Exception {
+        Assert.assertFalse(Files.exists(Paths.get(DEFAULT_FILE_PATH.toAbsolutePath().toString())));
+        FileUtils.deleteFilesIfExists(new String[]{DEFAULT_FILE_PATH.toAbsolutePath().toString()});
+    }
 
-        FileUtils.unzipFile("padron_reducido_ruc.zip", "myUnzipFile.txt");
-        Assert.assertTrue(Files.exists(path));
+    @Test
+    public void test_shouldDeleteDirectoryRecursively() throws Exception {
+        Files.createDirectories(FOLDER_TEST.resolve("subFolder1").resolve("subFolder2"));
+        createFileWithRandomContent(FOLDER_TEST.resolve(DEFAULT_FILE_PATH));
+        Assert.assertTrue(Files.exists(FOLDER_TEST.resolve(DEFAULT_FILE_PATH)));
 
-        Files.delete(path);
+        FileUtils.deleteFilesIfExists(new String[]{FOLDER_TEST.toAbsolutePath().toString()});
+        Assert.assertFalse(Files.exists(FOLDER_TEST));
+    }
+
+    @Test
+    public void test_shouldUnzipIntoFolder() throws Exception {
+        Path unzipPath = FOLDER_TEST.resolve("unzipFolder");
+
+        FileUtils.unzipFile("padron_reducido_ruc.zip", unzipPath.toAbsolutePath().toString());
+        Assert.assertTrue(Files.exists(unzipPath));
+        Assert.assertTrue(Files.isDirectory(unzipPath));
+        Assert.assertTrue(Files.exists(unzipPath.resolve("padron_reducido_ruc.txt")));
     }
 
 }

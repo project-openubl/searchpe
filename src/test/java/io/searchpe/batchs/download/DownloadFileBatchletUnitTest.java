@@ -1,40 +1,54 @@
 package io.searchpe.batchs.download;
 
 import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 import org.mockito.Spy;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import javax.batch.runtime.BatchStatus;
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
+
 @RunWith(MockitoJUnitRunner.class)
 public class DownloadFileBatchletUnitTest {
 
+    public static final String URL = "https://raw.githubusercontent.com/searchpe/searchpe/master/padron_reducido_ruc.zip";
+
+    @Rule
+    public TemporaryFolder testFolder = new TemporaryFolder();
+
     @Spy
-    private DownloadFileBatchlet batchlet = new DownloadFileBatchlet();
+    private DownloadFileBatchlet downloadBatchlet = new DownloadFileBatchlet();
+
+    @Test(expected = URLNotDefinedException.class)
+    public void test_shouldThrowExceptionIfUrlIsNotDefined() throws Exception {
+        String processResult = downloadBatchlet.process();
+    }
 
     @Test
     public void shouldDownloadFile() throws Exception {
-        String destiny = "myFile.zip";
-        Path path = Paths.get(destiny);
+        File downloadsFolder = testFolder.newFolder("myDownloads");
 
-        Assert.assertFalse(Files.exists(path));
+        when(downloadBatchlet.getUrl()).thenReturn(URL);
+        when(downloadBatchlet.getOutputFolder()).thenReturn(downloadsFolder.getAbsolutePath());
 
-        Mockito.when(batchlet.getUrl()).thenReturn("https://raw.githubusercontent.com/searchpe/searchpe/master/padron_reducido_ruc.zip");
-        Mockito.when(batchlet.getOutput()).thenReturn(destiny);
-        String processResult = batchlet.process();
-        Mockito.verify(batchlet, Mockito.atLeastOnce()).getUrl();
-        Mockito.verify(batchlet, Mockito.atLeastOnce()).getOutput();
+        String processResult = downloadBatchlet.process();
 
-        Assert.assertEquals(BatchStatus.COMPLETED.toString(), processResult);
-        Assert.assertTrue(Files.exists(path));
+        String url = verify(downloadBatchlet, atLeastOnce()).getUrl();
+        String outputFolder = verify(downloadBatchlet, atLeastOnce()).getOutputFolder();
 
-        Files.delete(path);
+        assertEquals(BatchStatus.COMPLETED.toString(), processResult);
+        assertEquals(1, downloadsFolder.list().length);
     }
 
 }

@@ -22,24 +22,39 @@ public class FileUtils {
     }
 
     public static void deleteFilesIfExists(String[] files) throws IOException {
-        for (String file : files) {
-            Path path = Paths.get(file);
+        for (String f : files) {
+            Path path = Paths.get(f);
+            File file = path.toFile();
             if (path.toFile().exists()) {
-                Files.delete(path);
+                if (file.isDirectory()) {
+                    org.apache.commons.io.FileUtils.deleteDirectory(file);
+                } else {
+                    Files.delete(path);
+                }
             }
         }
     }
 
-    public static void downloadFile(String url, String destination) throws IOException {
-        org.apache.commons.io.FileUtils.copyURLToFile(new URL(url), new File(destination), 10000, 10000);
-    }
+    public static void unzipFile(String zipFilePath, String destinationDirectory) throws IOException {
+        File zipFile = new File(zipFilePath);
+        if (!zipFile.exists() || zipFile.isDirectory()) {
+            throw new IOException("Zip file not found or is a directory");
+        }
 
-    public static void unzipFile(String zipFile, String unzipLocation) throws IOException {
+        Path destinationPath = Paths.get(destinationDirectory);
+        if (!Files.exists(destinationPath)) {
+            Files.createDirectories(destinationPath);
+        }
+
         byte[] buffer = new byte[1024];
         try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFile))) {
             ZipEntry zipEntry = zis.getNextEntry();
             while (zipEntry != null) {
-                File newFile = new File(unzipLocation);
+                File newFile = destinationPath.resolve(zipEntry.getName()).toFile();
+                logger.debugf("Unzipping to %s", newFile.getAbsolutePath());
+
+                //create directories for sub directories in zip
+                boolean mkdirs = new File(newFile.getParent()).mkdirs();
                 try (FileOutputStream fos = new FileOutputStream(newFile)) {
                     int len;
                     while ((len = zis.read(buffer)) > 0) {
