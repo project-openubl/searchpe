@@ -13,26 +13,19 @@ import javax.inject.Named;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Named
 public class DeleteIncompleteVersionsBatchlet extends AbstractBatchlet {
 
     private static final Logger logger = Logger.getLogger(DeleteIncompleteVersionsBatchlet.class);
 
-    @Inject
-    @BatchProperty
     private Boolean deleteIncompleteVersions;
-
-    @Inject
     private VersionService versionService;
-
-    private boolean isDeleteIncompleteVersions() {
-        return getDeleteIncompleteVersions() != null && getDeleteIncompleteVersions();
-    }
 
     @Override
     public String process() throws Exception {
-        if (isDeleteIncompleteVersions()) {
+        if (Optional.ofNullable(getDeleteIncompleteVersions()).orElse(false)) {
             Map<String, Object> parameters = new HashMap<>();
             parameters.put(VersionAttributes.COMPLETE, false);
             List<Version> versions = getVersionService().getVersionsByParameters(parameters);
@@ -45,12 +38,22 @@ public class DeleteIncompleteVersionsBatchlet extends AbstractBatchlet {
         return BatchStatus.COMPLETED.toString();
     }
 
+    @Inject
+    @BatchProperty
     public Boolean getDeleteIncompleteVersions() {
         return deleteIncompleteVersions;
     }
 
+    public void setDeleteIncompleteVersions(Boolean deleteIncompleteVersions) {
+        this.deleteIncompleteVersions = deleteIncompleteVersions;
+    }
+
+    @Inject
     public VersionService getVersionService() {
         return versionService;
     }
 
+    public void setVersionService(VersionService versionService) {
+        this.versionService = versionService;
+    }
 }

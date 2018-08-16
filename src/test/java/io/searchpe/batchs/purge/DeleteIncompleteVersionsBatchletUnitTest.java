@@ -24,7 +24,7 @@ public class DeleteIncompleteVersionsBatchletUnitTest {
     private DeleteIncompleteVersionsBatchlet batchlet = new DeleteIncompleteVersionsBatchlet();
 
     @Test
-    public void shouldNeverDeleteAnyVersion() throws Exception {
+    public void shouldNotDeleteVersions() throws Exception {
         Mockito.when(batchlet.getDeleteIncompleteVersions()).thenReturn(false);
         String processResult = batchlet.process();
         Mockito.verify(batchlet, Mockito.atLeastOnce()).getDeleteIncompleteVersions();
@@ -36,7 +36,7 @@ public class DeleteIncompleteVersionsBatchletUnitTest {
     }
 
     @Test
-    public void deleteIncompleteAnyVersion() throws Exception {
+    public void deleteIncompleteVersion() throws Exception {
         List<Version> versions = new ArrayList<>();
 
         Version version1 = new Version();
