@@ -227,7 +227,7 @@ public abstract class TxtItemReaderWriterBase extends ItemReaderWriterBase {
      *
      * @return CsvPreference
      */
-    protected CsvPreference getCsvPreference() {
+    protected TxtPreference getTxtPreference() {
         CsvPreference csvPreference;
         if (preference == null || STANDARD_PREFERENCE.equals(preference)) {
             csvPreference = CsvPreference.STANDARD_PREFERENCE;

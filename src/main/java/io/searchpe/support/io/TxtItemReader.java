@@ -1,5 +1,6 @@
 package io.searchpe.support.io;
 
+import io.searchpe.model.Company;
 import org.jberet.support._private.SupportLogger;
 import org.jberet.support._private.SupportMessages;
 import org.jberet.support.io.*;
@@ -18,7 +19,7 @@ import static org.jberet.support.io.CsvProperties.BEAN_TYPE_KEY;
 
 @Named
 @Dependent
-public class TxtItemReader extends CsvItemReaderWriterBase implements ItemReader {
+public class TxtItemReader extends TxtItemReaderWriterBase implements ItemReader {
 
     /**
      * Specifies the start position (a positive integer starting from 1) to read the data. If reading from the beginning
@@ -44,7 +45,7 @@ public class TxtItemReader extends CsvItemReaderWriterBase implements ItemReader
     @BatchProperty
     protected boolean headerless;
 
-    protected ICsvReader delegateReader;
+    protected ITxtReader delegateReader;
 
     @Override
     public void open(final Serializable checkpoint) throws Exception {
@@ -68,14 +69,13 @@ public class TxtItemReader extends CsvItemReaderWriterBase implements ItemReader
             throw SupportMessages.MESSAGES.invalidReaderWriterProperty(null, null, BEAN_TYPE_KEY);
         }
         final InputStream inputStream = getInputStream(resource, true);
-        final InputStreamReader r = charset == null ? new InputStreamReader(inputStream) :
-                new InputStreamReader(inputStream, charset);
+        final InputStreamReader r = charset == null ? new InputStreamReader(inputStream) : new InputStreamReader(inputStream, charset);
         if (java.util.List.class.isAssignableFrom(beanType)) {
-            delegateReader = new FastForwardCsvListReader(r, getCsvPreference(), startRowNumber);
+            delegateReader = new FastForwardTxtListReader(r, getTxtPreference(), startRowNumber);
         } else if (java.util.Map.class.isAssignableFrom(beanType)) {
-            delegateReader = new FastForwardCsvMapReader(r, getCsvPreference(), startRowNumber);
+            delegateReader = new FastForwardTxtMapReader(r, getTxtPreference(), startRowNumber);
         } else {
-            delegateReader = new FastForwardCsvBeanReader(r, getCsvPreference(), startRowNumber);
+            delegateReader = new FastForwardTxtBeanReader(r, getTxtPreference(), startRowNumber);
         }
         SupportLogger.LOGGER.openingResource(resource, this.getClass());
 
@@ -108,16 +108,16 @@ public class TxtItemReader extends CsvItemReaderWriterBase implements ItemReader
             return null;
         }
         final Object result;
-        if (delegateReader instanceof org.supercsv.io.ICsvBeanReader) {
+        if (delegateReader instanceof ITxtBeanReader) {
             if (cellProcessorInstances.length == 0) {
-                result = ((ICsvBeanReader) delegateReader).read(beanType, getNameMapping());
+                result = ((ITxtBeanReader) delegateReader).read(beanType, getNameMapping());
             } else {
-                result = ((ICsvBeanReader) delegateReader).read(beanType, getNameMapping(), cellProcessorInstances);
+                result = ((ITxtBeanReader) delegateReader).read(beanType, getNameMapping(), cellProcessorInstances);
             }
             if (!skipBeanValidation) {
                 ItemReaderWriterBase.validate(result);
             }
-        } else if (delegateReader instanceof ICsvListReader) {
+        } else if (delegateReader instanceof ITxtListReader) {
             if (cellProcessorInstances.length == 0) {
                 result = ((ICsvListReader) delegateReader).read();
             } else {
