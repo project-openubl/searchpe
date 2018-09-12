@@ -1,12 +1,13 @@
 package io.searchpe.support.io;
 
-import io.searchpe.model.Company;
 import org.jberet.support._private.SupportLogger;
 import org.jberet.support._private.SupportMessages;
 import org.jberet.support.io.*;
+import org.jboss.logging.Logger;
 
 import javax.batch.api.BatchProperty;
 import javax.batch.api.chunk.ItemReader;
+import javax.batch.operations.BatchRuntimeException;
 import javax.enterprise.context.Dependent;
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -21,18 +22,12 @@ import static org.jberet.support.io.CsvProperties.BEAN_TYPE_KEY;
 @Dependent
 public class TxtItemReader extends TxtItemReaderWriterBase implements ItemReader {
 
-    /**
-     * Specifies the start position (a positive integer starting from 1) to read the data. If reading from the beginning
-     * of the input TXT, there is no need to specify this property.
-     */
+    private static final Logger logger = Logger.getLogger(TxtItemReader.class);
+
     @Inject
     @BatchProperty
     protected int start;
 
-    /**
-     * Specify the end position in the data set (inclusive). Optional property, and defaults to {@code Integer.MAX_VALUE}.
-     * If reading till the end of the input TXT, there is no need to specify this property.
-     */
     @Inject
     @BatchProperty
     protected int end;
@@ -58,7 +53,7 @@ public class TxtItemReader extends TxtItemReaderWriterBase implements ItemReader
         }
         int startRowNumber = checkpoint == null ? this.start : (Integer) checkpoint;
         if (startRowNumber < this.start || startRowNumber > this.end || startRowNumber < 0) {
-            throw SupportMessages.MESSAGES.invalidStartPosition(startRowNumber, this.start, this.end);
+            throw new BatchRuntimeException(String.format("Invalid position %s to start reading, the configured range is between %s and %s", startRowNumber, this.start, this.end));
         }
         if (headerless) {
             startRowNumber--;
@@ -66,7 +61,7 @@ public class TxtItemReader extends TxtItemReaderWriterBase implements ItemReader
         }
 
         if (beanType == null) {
-            throw SupportMessages.MESSAGES.invalidReaderWriterProperty(null, null, BEAN_TYPE_KEY);
+            throw new BatchRuntimeException(String.format("Invalid reader or writer property value %s for key %s", null, BEAN_TYPE_KEY));
         }
         final InputStream inputStream = getInputStream(resource, true);
         final InputStreamReader r = charset == null ? new InputStreamReader(inputStream) : new InputStreamReader(inputStream, charset);
@@ -77,7 +72,7 @@ public class TxtItemReader extends TxtItemReaderWriterBase implements ItemReader
         } else {
             delegateReader = new FastForwardTxtBeanReader(r, getTxtPreference(), startRowNumber);
         }
-        SupportLogger.LOGGER.openingResource(resource, this.getClass());
+        logger.info(String.format("Opening resource %s in %s", resource, this.getClass()));
 
         if (!headerless) {
             final String[] header;
@@ -119,22 +114,23 @@ public class TxtItemReader extends TxtItemReaderWriterBase implements ItemReader
             }
         } else if (delegateReader instanceof ITxtListReader) {
             if (cellProcessorInstances.length == 0) {
-                result = ((ICsvListReader) delegateReader).read();
+                result = ((ITxtListReader) delegateReader).read();
             } else {
-                result = ((ICsvListReader) delegateReader).read(cellProcessorInstances);
+                result = ((ITxtListReader) delegateReader).read(cellProcessorInstances);
             }
         } else {
             if (cellProcessorInstances.length == 0) {
-                result = ((ICsvMapReader) delegateReader).read(getNameMapping());
+                result = ((ITxtMapReader) delegateReader).read(getNameMapping());
             } else {
-                result = ((ICsvMapReader) delegateReader).read(getNameMapping(), cellProcessorInstances);
+                result = ((ITxtMapReader) delegateReader).read(getNameMapping(), cellProcessorInstances);
             }
         }
         return result;
     }
 
     @Override
-    public Integer checkpointInfo() throws Exception {
+    public Integer checkpointInfo() {
         return delegateReader.getRowNumber();
     }
+
 }

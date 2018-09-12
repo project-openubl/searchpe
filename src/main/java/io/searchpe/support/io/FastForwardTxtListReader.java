@@ -9,18 +9,4 @@ public class FastForwardTxtListReader extends AbstractTxtReader implements ITxtL
 
     }
 
-    @Override
-    public String[] getHeader(boolean firstLineCheck) throws IOException {
-        return new String[0];
-    }
-
-    @Override
-    public int getRowNumber() {
-        return 0;
-    }
-
-    @Override
-    public void close() throws IOException {
-
-    }
 }
