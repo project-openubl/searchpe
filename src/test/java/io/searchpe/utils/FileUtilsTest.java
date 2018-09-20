@@ -14,7 +14,7 @@ import java.nio.file.Paths;
 public class FileUtilsTest {
 
     public static final Path FOLDER_TEST = Paths.get("fileUtilsTestFolder");
-    public static final Path DEFAULT_FILE_PATH = FOLDER_TEST.resolve( "file.txt");
+    public static final Path DEFAULT_FILE_PATH = FOLDER_TEST.resolve("file.txt");
 
     private void createFileWithRandomContent(Path path) throws Exception {
         org.apache.commons.io.FileUtils.writeByteArrayToFile(path.toFile(), new byte[]{1, 2, 3});
@@ -30,6 +30,10 @@ public class FileUtilsTest {
         org.apache.commons.io.FileUtils.deleteDirectory(FOLDER_TEST.toFile());
     }
 
+    /**
+     * Should delete files if exists
+     * {@link io.searchpe.utils.FileUtils#deleteFilesIfExists(String[])}
+     */
     @Test
     public void test_shouldDeleteFilesIfExists() throws Exception {
         createFileWithRandomContent(DEFAULT_FILE_PATH);
@@ -39,12 +43,20 @@ public class FileUtilsTest {
         Assert.assertFalse(Files.exists(DEFAULT_FILE_PATH));
     }
 
+    /**
+     * Should not thrown an exception if file does not exists
+     * {@link io.searchpe.utils.FileUtils#deleteFilesIfExists(String[])}
+     */
     @Test
     public void test_shouldDoNotThrownExceptionIfFileDoesNotExists() throws Exception {
         Assert.assertFalse(Files.exists(Paths.get(DEFAULT_FILE_PATH.toAbsolutePath().toString())));
         FileUtils.deleteFilesIfExists(new String[]{DEFAULT_FILE_PATH.toAbsolutePath().toString()});
     }
 
+    /**
+     * Should delete directory recursively
+     * {@link io.searchpe.utils.FileUtils#deleteFilesIfExists(String[])}
+     */
     @Test
     public void test_shouldDeleteDirectoryRecursively() throws Exception {
         Files.createDirectories(FOLDER_TEST.resolve("subFolder1").resolve("subFolder2"));
@@ -55,8 +67,13 @@ public class FileUtilsTest {
         Assert.assertFalse(Files.exists(FOLDER_TEST));
     }
 
+
+    /**
+     * Should unzip file
+     * {@link io.searchpe.utils.FileUtils#unzipFile(File, Path)}
+     */
     @Test
-    public void test_shouldUnzipIntoFolder() throws Exception {
+    public void test_unzipFile() throws Exception {
         Path unzipPath = FOLDER_TEST.resolve("unzipFolder");
 
         FileUtils.unzipFile(new File("padron_reducido_ruc.zip"), unzipPath);

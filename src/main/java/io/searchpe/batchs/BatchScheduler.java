@@ -84,35 +84,35 @@ public class BatchScheduler {
 
     @PostConstruct
     public void initialize() {
-        Optional<Version> lastCompletedVersion = versionService.getLastCompletedVersion();
-        if (!lastCompletedVersion.isPresent()) {
-            startBatch();
-        }
-
-        if (schedulerEnabled.isPresent() && schedulerEnabled.get()) {
-            long defaultIntervalDuration = intervalDuration.orElse(86_400_000L); // 24 hours
-
-            Timer timer;
-            if (initialExpiration.isPresent()) {
-                LocalTime time = LocalTime.parse(initialExpiration.get());
-                Date initialExpirationDate = DateUtils.getNearestFutureExpirationDate(time);
-
-                logger.infof("Creating timer from time");
-                logger.infof("Creating timer initialDayExpiration[%s], intervalDuration[%s]", initialExpirationDate, defaultIntervalDuration);
-                timer = timerService.createTimer(initialExpirationDate, defaultIntervalDuration, null);
-            } else {
-                logger.infof("Creating default timer");
-                logger.infof("Creating timer initialDuration[%s], intervalDuration[%s]", defaultIntervalDuration, defaultIntervalDuration);
-                timer = timerService.createTimer(defaultIntervalDuration, defaultIntervalDuration, null);
-            }
-
-            long timeRemaining = timer.getTimeRemaining();
-            Date nextTimeout = timer.getNextTimeout();
-            logger.infof("Timer Next Timeout at %s", nextTimeout);
-            logger.infof("Time remaining %s milliseconds [%s hours %s minutes %s seconds]", timeRemaining, TimeUnit.MILLISECONDS.toHours(timeRemaining), TimeUnit.MILLISECONDS.toMinutes(timeRemaining), TimeUnit.MILLISECONDS.toSeconds(timeRemaining));
-        } else {
-            logger.infof("Scheduler disabled, this node will not execute schedulers");
-        }
+//        Optional<Version> lastCompletedVersion = versionService.getLastCompletedVersion();
+//        if (!lastCompletedVersion.isPresent()) {
+//            startBatch();
+//        }
+//
+//        if (schedulerEnabled.isPresent() && schedulerEnabled.get()) {
+//            long defaultIntervalDuration = intervalDuration.orElse(86_400_000L); // 24 hours
+//
+//            Timer timer;
+//            if (initialExpiration.isPresent()) {
+//                LocalTime time = LocalTime.parse(initialExpiration.get());
+//                Date initialExpirationDate = DateUtils.getNextDate(time);
+//
+//                logger.infof("Creating timer from time");
+//                logger.infof("Creating timer initialDayExpiration[%s], intervalDuration[%s]", initialExpirationDate, defaultIntervalDuration);
+//                timer = timerService.createTimer(initialExpirationDate, defaultIntervalDuration, null);
+//            } else {
+//                logger.infof("Creating default timer");
+//                logger.infof("Creating timer initialDuration[%s], intervalDuration[%s]", defaultIntervalDuration, defaultIntervalDuration);
+//                timer = timerService.createTimer(defaultIntervalDuration, defaultIntervalDuration, null);
+//            }
+//
+//            long timeRemaining = timer.getTimeRemaining();
+//            Date nextTimeout = timer.getNextTimeout();
+//            logger.infof("Timer Next Timeout at %s", nextTimeout);
+//            logger.infof("Time remaining %s milliseconds [%s hours %s minutes %s seconds]", timeRemaining, TimeUnit.MILLISECONDS.toHours(timeRemaining), TimeUnit.MILLISECONDS.toMinutes(timeRemaining), TimeUnit.MILLISECONDS.toSeconds(timeRemaining));
+//        } else {
+//            logger.infof("Scheduler disabled, this node will not execute schedulers");
+//        }
     }
 
     @Timeout

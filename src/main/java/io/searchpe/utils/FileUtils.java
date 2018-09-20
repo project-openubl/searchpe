@@ -20,6 +20,13 @@ public class FileUtils {
         // Just utils
     }
 
+    /**
+     * Delete files or directories.
+     * In case of directories, this will delete sub folders recursively.
+     * In case file does not exists, this will not thrown an exception
+     *
+     * @param files list of files to delete
+     */
     public static void deleteFilesIfExists(String[] files) throws IOException {
         for (String f : files) {
             Path path = Paths.get(f);
@@ -34,6 +41,12 @@ public class FileUtils {
         }
     }
 
+    /**
+     * Unzip file
+     *
+     * @param zipFile         file to unzip
+     * @param destinationPath folder where zipFile will be unzipped
+     */
     public static void unzipFile(File zipFile, Path destinationPath) throws IOException {
         if (!zipFile.exists() || zipFile.isDirectory()) {
             throw new IOException("Zip file not found or is a directory");
