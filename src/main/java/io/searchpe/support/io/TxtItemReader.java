@@ -4,6 +4,10 @@ import org.jberet.support._private.SupportLogger;
 import org.jberet.support._private.SupportMessages;
 import org.jberet.support.io.*;
 import org.jboss.logging.Logger;
+import org.supercsv.io.ICsvBeanReader;
+import org.supercsv.io.ICsvListReader;
+import org.supercsv.io.ICsvMapReader;
+import org.supercsv.io.ICsvReader;
 
 import javax.batch.api.BatchProperty;
 import javax.batch.api.chunk.ItemReader;
@@ -24,10 +28,18 @@ public class TxtItemReader extends TxtItemReaderWriterBase implements ItemReader
 
     private static final Logger logger = Logger.getLogger(TxtItemReader.class);
 
+    /**
+     * Specifies the start position (a positive integer starting from 1) to read the data. If reading from the beginning
+     * of the input CSV, there is no need to specify this property.
+     */
     @Inject
     @BatchProperty
     protected int start;
 
+    /**
+     * Specify the end position in the data set (inclusive). Optional property, and defaults to {@code Integer.MAX_VALUE}.
+     * If reading till the end of the input CSV, there is no need to specify this property.
+     */
     @Inject
     @BatchProperty
     protected int end;
@@ -40,7 +52,7 @@ public class TxtItemReader extends TxtItemReaderWriterBase implements ItemReader
     @BatchProperty
     protected boolean headerless;
 
-    protected ITxtReader delegateReader;
+    protected ICsvReader delegateReader;
 
     @Override
     public void open(final Serializable checkpoint) throws Exception {
@@ -66,11 +78,11 @@ public class TxtItemReader extends TxtItemReaderWriterBase implements ItemReader
         final InputStream inputStream = getInputStream(resource, true);
         final InputStreamReader r = charset == null ? new InputStreamReader(inputStream) : new InputStreamReader(inputStream, charset);
         if (java.util.List.class.isAssignableFrom(beanType)) {
-            delegateReader = new FastForwardTxtListReader(r, getTxtPreference(), startRowNumber);
+            delegateReader = new FastForwardTxtListReader(r, getCsvPreference(), startRowNumber);
         } else if (java.util.Map.class.isAssignableFrom(beanType)) {
-            delegateReader = new FastForwardTxtMapReader(r, getTxtPreference(), startRowNumber);
+            delegateReader = new FastForwardTxtMapReader(r, getCsvPreference(), startRowNumber);
         } else {
-            delegateReader = new FastForwardTxtBeanReader(r, getTxtPreference(), startRowNumber);
+            delegateReader = new FastForwardTxtBeanReader(r, getCsvPreference(), startRowNumber);
         }
         logger.info(String.format("Opening resource %s in %s", resource, this.getClass()));
 
@@ -103,26 +115,26 @@ public class TxtItemReader extends TxtItemReaderWriterBase implements ItemReader
             return null;
         }
         final Object result;
-        if (delegateReader instanceof ITxtBeanReader) {
+        if (delegateReader instanceof ICsvBeanReader) {
             if (cellProcessorInstances.length == 0) {
-                result = ((ITxtBeanReader) delegateReader).read(beanType, getNameMapping());
+                result = ((ICsvBeanReader) delegateReader).read(beanType, getNameMapping());
             } else {
-                result = ((ITxtBeanReader) delegateReader).read(beanType, getNameMapping(), cellProcessorInstances);
+                result = ((ICsvBeanReader) delegateReader).read(beanType, getNameMapping(), cellProcessorInstances);
             }
             if (!skipBeanValidation) {
                 ItemReaderWriterBase.validate(result);
             }
-        } else if (delegateReader instanceof ITxtListReader) {
+        } else if (delegateReader instanceof ICsvListReader) {
             if (cellProcessorInstances.length == 0) {
-                result = ((ITxtListReader) delegateReader).read();
+                result = ((ICsvListReader) delegateReader).read();
             } else {
-                result = ((ITxtListReader) delegateReader).read(cellProcessorInstances);
+                result = ((ICsvListReader) delegateReader).read(cellProcessorInstances);
             }
         } else {
             if (cellProcessorInstances.length == 0) {
-                result = ((ITxtMapReader) delegateReader).read(getNameMapping());
+                result = ((ICsvMapReader) delegateReader).read(getNameMapping());
             } else {
-                result = ((ITxtMapReader) delegateReader).read(getNameMapping(), cellProcessorInstances);
+                result = ((ICsvMapReader) delegateReader).read(getNameMapping(), cellProcessorInstances);
             }
         }
         return result;

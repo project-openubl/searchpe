@@ -1,17 +1,39 @@
 package io.searchpe.support.io;
 
-import io.searchpe.support.io.comment.CommentMatcher;
-import io.searchpe.support.io.comment.CommentMatches;
-import io.searchpe.support.io.comment.CommentStartsWith;
 import org.jberet.support._private.SupportMessages;
 import org.jberet.support.io.*;
+import org.supercsv.cellprocessor.ift.CellProcessor;
+import org.supercsv.comment.CommentMatcher;
+import org.supercsv.comment.CommentMatches;
+import org.supercsv.encoder.CsvEncoder;
+import org.supercsv.encoder.SelectiveCsvEncoder;
+import org.supercsv.prefs.CsvPreference;
+import org.supercsv.quote.AlwaysQuoteMode;
+import org.supercsv.quote.ColumnQuoteMode;
+import org.supercsv.quote.QuoteMode;
 
 import javax.batch.api.BatchProperty;
 import javax.batch.operations.BatchRuntimeException;
 import javax.inject.Inject;
 import java.lang.reflect.Constructor;
 
-import static io.searchpe.support.io.TxtProperties.*;
+import static io.searchpe.support.io.TxtProperties.TXT_PREFERENCE;
+import static org.jberet.support.io.CsvProperties.ALWAYS;
+import static org.jberet.support.io.CsvProperties.COLUMN;
+import static org.jberet.support.io.CsvProperties.COMMENT_MATCHER_KEY;
+import static org.jberet.support.io.CsvProperties.DEFAULT;
+import static org.jberet.support.io.CsvProperties.ENCODER_KEY;
+import static org.jberet.support.io.CsvProperties.EXCEL_NORTH_EUROPE_PREFERENCE;
+import static org.jberet.support.io.CsvProperties.EXCEL_PREFERENCE;
+import static org.jberet.support.io.CsvProperties.MATCHES;
+import static org.jberet.support.io.CsvProperties.MATCHES_FUZZY;
+import static org.jberet.support.io.CsvProperties.PREFERENCE_KEY;
+import static org.jberet.support.io.CsvProperties.SELECT;
+import static org.jberet.support.io.CsvProperties.STANDARD_PREFERENCE;
+import static org.jberet.support.io.CsvProperties.STARTS_WITH;
+import static org.jberet.support.io.CsvProperties.STARTS_WITH_FUZZY;
+import static org.jberet.support.io.CsvProperties.STARTS_WITH_FUZZY2;
+import static org.jberet.support.io.CsvProperties.TAB_PREFERENCE;
 
 /*
  * @see <a href="http://supercsv.sourceforge.net/preferences.html">CSV Preferences</a>
@@ -19,78 +41,216 @@ import static io.searchpe.support.io.TxtProperties.*;
 public abstract class TxtItemReaderWriterBase extends ItemReaderWriterBase {
 
     static final Class[] stringParameterTypes = {String.class};
-    static final ColumnProcessor[] noCellProcessors = new ColumnProcessor[0];
+    static final CellProcessor[] noCellProcessors = new CellProcessor[0];
 
+    /**
+     * Specify the bean fields or map keys corresponding to CSV columns. If the CSV columns exactly
+     * match bean fields or map keys, then no need to specify this property.
+     *
+     * @see #getNameMapping()
+     */
     @Inject
     @BatchProperty
     protected String[] nameMapping;
 
+    /**
+     * Specifies a fully-qualified class or interface name that maps to a row of the source CSV file.
+     * For example,
+     * <p>
+     * <ul>
+     * <li>{@code java.util.List}
+     * <li>{@code java.util.Map}
+     * <li>{@code org.jberet.support.io.Person}
+     * <li>{@code my.own.BeanType}
+     * </ul>
+     */
     @Inject
     @BatchProperty
     protected Class beanType;
 
+    /**
+     * Specifies one of the 4 predefined CSV preferences:
+     * <p>
+     * <ul>
+     * <li>{@code STANDARD_PREFERENCE}
+     * <li>{@code EXCEL_PREFERENCE}
+     * <li>{@code EXCEL_NORTH_EUROPE_PREFERENCE}
+     * <li>{@code TAB_PREFERENCE}
+     * </ul>
+     *
+     * @see #getCsvPreference()
+     */
     @Inject
     @BatchProperty
     protected String preference;
 
+    /**
+     * The quote character (used when a cell contains special characters, such as the delimiter char, a quote char,
+     * or spans multiple lines). See <a href="http://supercsv.sourceforge.net/preferences.html">CSV Preferences</a>.
+     * The default quoteChar is double quote ("). If " is present in the CSV data cells, specify quoteChar to some
+     * other characters, e.g., |.
+     */
     @Inject
     @BatchProperty
     protected String quoteChar;
 
+    /**
+     * The delimiter character (separates each cell in a row).
+     *
+     * @see <a href="http://supercsv.sourceforge.net/preferences.html">CSV Preferences</a>
+     */
     @Inject
     @BatchProperty
     protected String delimiterChar;
 
+    /**
+     * The end of line symbols to use when writing (Windows, Mac and Linux style line breaks are all supported when
+     * reading, so this preference won't be used at all for reading).
+     *
+     * @see <a href="http://supercsv.sourceforge.net/preferences.html">CSV Preferences</a>
+     */
     @Inject
     @BatchProperty
     protected String endOfLineSymbols;
 
+    /**
+     * Whether spaces surrounding a cell need quotes in order to be preserved (see below). The default value is
+     * false (quotes aren't required).
+     *
+     * @see <a href="http://supercsv.sourceforge.net/preferences.html">CSV Preferences</a>
+     */
     @Inject
     @BatchProperty
     protected String surroundingSpacesNeedQuotes;
 
+    /**
+     * Specifies a {@code CommentMatcher} for reading CSV resource. The {@code CommentMatcher}
+     * determines whether a line should be considered a comment. For example,
+     * <p>
+     * <ul>
+     *     <li>"startsWith #"
+     *     <li>"matches 'regexp'"
+     *     <li>"my.own.CommentMatcherImpl"
+     * </ul>
+     *
+     * @see <a href="http://supercsv.sourceforge.net/preferences.html">CSV Preferences</a>
+     * @see #getCommentMatcher(String)
+     */
     @Inject
     @BatchProperty
     protected String commentMatcher;
 
+    /**
+     * Specifies a custom encoder when writing CSV. For example,
+     * <p>
+     * <ul>
+     *     <li>default
+     *     <li>select 1, 2, 3
+     *     <li>select true, true, false
+     *     <li>column 1, 2, 3
+     *     <li>column true, true, false
+     *     <li>my.own.MyCsvEncoder
+     * </ul>
+     *
+     * @see <a href="http://supercsv.sourceforge.net/preferences.html">CSV Preferences</a>
+     * @see #getEncoder(String)
+     */
     @Inject
     @BatchProperty
     protected String encoder;
 
+    /**
+     * Allows you to enable surrounding quotes for writing (if a column wouldn't normally be quoted because
+     * it doesn't contain special characters). For example,
+     * <p>
+     * <ul>
+     *     <li>default
+     *     <li>always
+     *     <li>select 1, 2, 3
+     *     <li>select true, true, false
+     *     <li>column 1, 2, 3
+     *     <li>column true, true, false
+     *     <li>my.own.MyQuoteMode
+     * </ul>
+     *
+     * @see <a href="http://supercsv.sourceforge.net/preferences.html">CSV Preferences</a>
+     * @see #getQuoteMode(String)
+     */
     @Inject
     @BatchProperty
     protected String quoteMode;
 
+    /**
+     * Specifies a list of cell processors, one for each column. See
+     * <a href="http://supercsv.sourceforge.net/cell_processors.html">Super CSV docs</a> for supported cell processor
+     * types. The rules and syntax are as follows:
+     * <p>
+     * <ul>
+     * <li>The size of the resultant list must equal to the number of CSV columns.
+     * <li>Cell processors appear in the same order as CSV columns.
+     * <li>If no cell processor is needed for a column, enter null.
+     * <li>Each column may have null, 1, 2, or multiple cell processors, separated by comma (,)
+     * <li>Cell processors for different columns must be separated with semi-colon (;).
+     * <li>Cell processors may contain parameters enclosed in parenthesis, and multiple parameters are separated with comma (,).
+     * <li>string literals in cell processor parameters must be enclosed within single quotes, e.g., 'xxx'
+     * </ul>
+     * <p>
+     * For example, to specify cell processors for 5-column CSV:
+     * <pre>
+     * value = "
+     *      null;
+     *      Optional, StrMinMax(1, 20);
+     *      ParseLong;
+     *      NotNull;
+     *      Optional, ParseDate('dd/MM/yyyy')
+     * "
+     * </pre>
+     *
+     * @see <a href="http://supercsv.sourceforge.net/cell_processors.html">Super CSV docs</a>
+     * @see #getCellProcessors()
+     */
     @Inject
     @BatchProperty
     protected String cellProcessors;
 
+    /**
+     * The name of the character set to be used for reading and writing data, e.g., UTF-8. This property is optional,
+     * and if not set, the platform default charset is used.
+     */
     @Inject
     @BatchProperty
     protected String charset;
 
-    protected ColumnProcessor[] cellProcessorInstances;
+    protected CellProcessor[] cellProcessorInstances;
 
-    protected TxtPreference getTxtPreference() {
-        TxtPreference txtPreference;
-        if (preference == null || STANDARD_PREFERENCE.equals(preference)) {
-            txtPreference = TxtPreference.STANDARD_PREFERENCE;
+    /**
+     * Creates or obtains {@code org.supercsv.prefs.CsvPreference} according to the configuration in JSL document.
+     *
+     * @return CsvPreference
+     */
+    protected CsvPreference getCsvPreference() {
+        CsvPreference csvPreference;
+        if (preference == null || TXT_PREFERENCE.equals(preference)) {
+            csvPreference = TxtPreference.TXT_PREFERENCE;
+        } else if (STANDARD_PREFERENCE.equals(preference)) {
+            csvPreference = CsvPreference.STANDARD_PREFERENCE;
         } else if (EXCEL_PREFERENCE.equals(preference)) {
-            txtPreference = TxtPreference.EXCEL_PREFERENCE;
+            csvPreference = CsvPreference.EXCEL_PREFERENCE;
         } else if (EXCEL_NORTH_EUROPE_PREFERENCE.equals(preference)) {
-            txtPreference = TxtPreference.EXCEL_NORTH_EUROPE_PREFERENCE;
+            csvPreference = CsvPreference.EXCEL_NORTH_EUROPE_PREFERENCE;
         } else if (TAB_PREFERENCE.equals(preference)) {
-            txtPreference = TxtPreference.TAB_PREFERENCE;
+            csvPreference = CsvPreference.TAB_PREFERENCE;
         } else {
             throw new BatchRuntimeException(String.format("Invalid reader or writer property value %s for key %s", preference, PREFERENCE_KEY));
         }
 
         //do not trim quoteChar or delimiterChar. They can be tab (\t) and after trim, it will be just empty
-        if (quoteChar != null || delimiterChar != null || endOfLineSymbols != null || surroundingSpacesNeedQuotes != null || commentMatcher != null || encoder != null || quoteMode != null) {
-            final TxtPreference.Builder builder = new TxtPreference.Builder(
-                    quoteChar == null ? (char) txtPreference.getQuoteChar() : quoteChar.charAt(0),
-                    delimiterChar == null ? txtPreference.getDelimiterChar() : (int) delimiterChar.charAt(0),
-                    endOfLineSymbols == null ? txtPreference.getEndOfLineSymbols() : endOfLineSymbols.trim()
+        if (quoteChar != null || delimiterChar != null || endOfLineSymbols != null ||
+                surroundingSpacesNeedQuotes != null || commentMatcher != null || encoder != null || quoteMode != null) {
+            final CsvPreference.Builder builder = new CsvPreference.Builder(
+                    quoteChar == null ? (char) csvPreference.getQuoteChar() : quoteChar.charAt(0),
+                    delimiterChar == null ? csvPreference.getDelimiterChar() : (int) delimiterChar.charAt(0),
+                    endOfLineSymbols == null ? csvPreference.getEndOfLineSymbols() : endOfLineSymbols.trim()
             );
             if (surroundingSpacesNeedQuotes != null) {
                 builder.surroundingSpacesNeedQuotes(Boolean.parseBoolean(surroundingSpacesNeedQuotes.trim()));
@@ -105,15 +265,14 @@ public abstract class TxtItemReaderWriterBase extends ItemReaderWriterBase {
                 }
             }
             if (quoteMode != null) {
-                final QuoteMode quoteMode1 = getQuoteMode(quoteMode);
+                final org.supercsv.quote.QuoteMode quoteMode1 = getQuoteMode(quoteMode);
                 if (quoteMode1 != null) {
                     builder.useQuoteMode(quoteMode1);
                 }
             }
-            txtPreference = builder.build();
+            csvPreference = builder.build();
         }
-
-        return txtPreference;
+        return csvPreference;
     }
 
     /**
@@ -122,7 +281,7 @@ public abstract class TxtItemReaderWriterBase extends ItemReaderWriterBase {
      *
      * @return an array of cell processors
      */
-    protected ColumnProcessor[] getCellProcessors() {
+    protected CellProcessor[] getCellProcessors() {
         if (this.cellProcessors == null) {
             return TxtItemReaderWriterBase.noCellProcessors;
         }
@@ -227,7 +386,7 @@ public abstract class TxtItemReaderWriterBase extends ItemReaderWriterBase {
     }
 
     /**
-     * Gets the configured {@code io.searchpe.support.io.comment.CommentMatcher}.
+     * Gets the configured {@code org.supercsv.comment.CommentMatcher}.
      *
      * @param val property value of commentMatcher property in this batch artifact. For example,
      *            <p>
@@ -266,8 +425,9 @@ public abstract class TxtItemReaderWriterBase extends ItemReaderWriterBase {
         }
 
         final CommentMatcher commentMatcher;
-        if (matcherName.equalsIgnoreCase(STARTS_WITH) || matcherName.equalsIgnoreCase(STARTS_WITH_FUZZY) || matcherName.equalsIgnoreCase(STARTS_WITH_FUZZY2)) {
-            commentMatcher = new CommentStartsWith(matcherParam);
+        if (matcherName.equalsIgnoreCase(STARTS_WITH) || matcherName.equalsIgnoreCase(STARTS_WITH_FUZZY)
+                || matcherName.equalsIgnoreCase(STARTS_WITH_FUZZY2)) {
+            commentMatcher = new org.supercsv.comment.CommentStartsWith(matcherParam);
         } else if (matcherName.equalsIgnoreCase(MATCHES) || matcherName.equalsIgnoreCase(MATCHES_FUZZY)) {
             commentMatcher = new CommentMatches(matcherParam);
         } else {
@@ -291,6 +451,7 @@ public abstract class TxtItemReaderWriterBase extends ItemReaderWriterBase {
         }
     }
 
+
     static int[] convertToIntParams(final String[] strings, final int start, final int count) {
         final int[] ints = new int[count];
         for (int i = start, j = 0; j < count && i < strings.length; i++, j++) {
@@ -306,4 +467,5 @@ public abstract class TxtItemReaderWriterBase extends ItemReaderWriterBase {
         }
         return booleans;
     }
+
 }
