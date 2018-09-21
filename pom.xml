@@ -20,7 +20,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-        <version.wildfly.swarm>2.0.0.Final</version.wildfly.swarm>
+        <version.wildfly.swarm>2.2.0.Final</version.wildfly.swarm>
 
         <!--Jdbc drivers-->
         <version.h2>1.4.187</version.h2>
