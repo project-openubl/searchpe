@@ -5,40 +5,62 @@
      version="1.0">
 
     <flow id="start" next="end">
-        <step id="import">
+        <step id="import" next="closeVersionStep">
             <chunk item-count="100">
                 <reader ref="csvItemReader">
                     <properties>
                         <property name="resource" value="#{jobParameters['resource']}"/>
                         <property name="preference" value="STANDARD_PREFERENCE"/>
-                        <property name="delimiterChar" value=","/>
-                        <property name="quoteChar" value="|"/>
+                        <property name="delimiterChar" value="|"/>
+                        <!--<property name="quoteChar" value="'"/>-->
                         <property name="beanType" value="io.searchpe.model.Company"/>
-                        <property name="nameMapping" value="RUC"/>
+                        <!--<property name="nameMapping" value="RUC,NOMBRE O RAZÓN SOCIAL,ESTADO DEL CONTRIBUYENTE,CONDICIÓN DE DOMICILIO,UBIGEO,TIPO DE VÍA,NOMBRE DE VÍA,CÓDIGO DE ZONA,TIPO DE ZONA,NÚMERO,INTERIOR,LOTE,DEPARTAMENTO,MANZANA,KILÓMETRO"/>-->
+                        <property name="nameMapping" value="ruc,razonSocial,estadoContribuyente,condicionDomicilio,ubigeo,tipoVia,nombreVia,codigoZona,tipoZona,numero,interior,lote,departamento,manzana,kilometro"/>
                         <property name="cellProcessors" value="
-                        NotNull, UniqueHashCode, LMinMax(1, 99999);
-                        Token('male', 'M'), Token('female', 'F');
                         null;
-                        StrNotNullOrEmpty"/>
+                        null;
+                        null;
+                        null;
+                        null;
+                        null;
+                        null;
+                        null;
+                        null;
+                        null;
+                        null;
+                        null;
+                        null;
+                        null;
+                        null;
+                        null;"/>
+                        <property name="skipBeanValidation" value="true"/>
                     </properties>
                 </reader>
-                <writer ref="csvItemWriter">
+                <!--<processor ref="txtProcessor">-->
+                    <!--<properties>-->
+                        <!--<property name="versionId" value="#{jobParameters['versionId']}"/>-->
+                    <!--</properties>-->
+                <!--</processor>-->
+                <writer ref="txtWriter">
                     <properties>
-                        <property name="resource" value="#{jobParameters['writeResource']}"/>
-                        <!--
-                        <property name="writeMode" value="#{jobParameters['writeMode']}?:append;"/>
-                        <property name="writeMode" value="#{jobParameters['writeMode']}?:failIfExists;"/>
-                        -->
-                        <property name="writeMode" value="overwrite"/>
-                        <property name="preference" value="STANDARD_PREFERENCE"/>
-                        <property name="delimiterChar" value=","/>
-                        <property name="quoteChar" value="^"/>
-                        <property name="beanType" value="java.util.Map"/>
-                        <property name="header" value="number, gender, title, givenName"/>
-                        <property name="writeComments" value="# Comments written by csv writer."/>
+                        <property name="versionId" value="#{jobParameters['versionId']}"/>
                     </properties>
                 </writer>
             </chunk>
+        </step>
+        <step id="closeVersionStep" next="purgeVersions">
+            <batchlet ref="closeVersion">
+                <properties>
+                    <property name="versionId" value="#{jobParameters['versionId']}"/>
+                </properties>
+            </batchlet>
+        </step>
+        <step id="purgeVersions">
+            <batchlet ref="purgeVersionsBatchlet">
+                <properties>
+                    <property name="deleteIncompleteVersions" value="#{jobParameters['deleteIncompleteVersions']}"/>
+                </properties>
+            </batchlet>
         </step>
     </flow>
     <step id="end">

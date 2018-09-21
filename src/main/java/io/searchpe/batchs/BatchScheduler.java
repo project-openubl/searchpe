@@ -12,17 +12,17 @@ import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import javax.batch.runtime.BatchRuntime;
 import javax.ejb.*;
+import javax.ejb.Timer;
 import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.Date;
-import java.util.Optional;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 @Startup
@@ -116,6 +116,19 @@ public class BatchScheduler {
         startBatch();
     }
 
+    public Version beforeStep() {
+        Version version = new Version();
+        version.setId(UUID.randomUUID().toString());
+        version.setDate(Calendar.getInstance().getTime());
+        version.setComplete(false);
+        version.setNumber(1);
+
+        Optional<Version> lastVersion = versionService.getLastVersion();
+        lastVersion.ifPresent(c -> version.setNumber(c.getNumber() + 1));
+
+        return versionService.createVersion(version);
+    }
+
     private void startBatch() {
         if (sunatZipURL == null) {
             throw new IllegalStateException("SUNAT URL not defined");
@@ -133,7 +146,7 @@ public class BatchScheduler {
         Path workingDirectoryPath = fileWorkingDirectory.toPath();
 
         // Cleaning
-        logger.infof("Cleaning %s", fileWorkingDirectory);
+        logger.infof("Cleaning %s", fileWorkingDirectory.getAbsolutePath());
         try {
             org.apache.commons.io.FileUtils.cleanDirectory(fileWorkingDirectory);
         } catch (IOException e) {
@@ -175,12 +188,20 @@ public class BatchScheduler {
             throw new IllegalStateException("Could not find any *.txt file to read");
         }
 
+        // Create version
+        Version version = beforeStep();
 
         // Start batch
         Properties properties = new Properties();
         properties.put("deleteIncompleteVersions", deleteIncompleteVersions.orElse(true));
         properties.put("maxNumberOfVersions", maxNumberOfVersions.orElse(0));
-        properties.put("resource", txtFile.getAbsolutePath());
+        try {
+            URL url = txtFile.toURL();
+            properties.put("resource", url.toString());
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        }
+        properties.put("versionId", version.getId());
 
         BatchRuntime.getJobOperator().start("update_database", properties);
     }

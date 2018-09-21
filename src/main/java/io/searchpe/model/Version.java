@@ -34,12 +34,6 @@ public class Version {
     @Column(name = "complete")
     private boolean complete;
 
-    @ElementCollection
-    @MapKeyColumn(name="name")
-    @Column(name="value")
-    @CollectionTable(name="version_metrics", joinColumns={ @JoinColumn(name="version_id") })
-    private Map<String, Long> metrics = new HashMap<>();
-
     public String getId() {
         return id;
     }
@@ -72,11 +66,4 @@ public class Version {
         this.complete = complete;
     }
 
-    public Map<String, Long> getMetrics() {
-        return metrics;
-    }
-
-    public void setMetrics(Map<String, Long> metrics) {
-        this.metrics = metrics;
-    }
 }

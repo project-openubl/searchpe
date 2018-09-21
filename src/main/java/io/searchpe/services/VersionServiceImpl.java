@@ -17,6 +17,16 @@ public class VersionServiceImpl implements VersionService {
     private VersionRepository versionRepository;
 
     @Override
+    public Version createVersion(Version version) {
+        return versionRepository.createVersion(version);
+    }
+
+    @Override
+    public Optional<Version> getVersion(String id) {
+        return versionRepository.getVersion(id);
+    }
+
+    @Override
     public Optional<Version> getLastVersion() {
         return versionRepository.getLastVersion();
     }
@@ -37,7 +47,13 @@ public class VersionServiceImpl implements VersionService {
     }
 
     @Override
+    public Version updateVersion(Version version) {
+        return versionRepository.updateVersion(version);
+    }
+
+    @Override
     public boolean deleteVersion(Version version) {
         return versionRepository.deleteVersion(version);
     }
+
 }

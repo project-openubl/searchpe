@@ -26,6 +26,18 @@ public class VersionRepositoryImpl implements VersionRepository {
     }
 
     @Override
+    public Version createVersion(Version version) {
+        em.persist(version);
+        em.flush();
+        return version;
+    }
+
+    @Override
+    public Optional<Version> getVersion(String id) {
+        return Optional.ofNullable(em.find(Version.class, id));
+    }
+
+    @Override
     public Optional<Version> getLastVersion() {
         TypedQuery<Version> query = em.createNamedQuery("getVersions", Version.class);
         query.setMaxResults(1);
@@ -86,5 +98,11 @@ public class VersionRepositoryImpl implements VersionRepository {
 
         TypedQuery<Version> typedQuery = em.createQuery(criteriaQuery);
         return typedQuery.getResultList();
+    }
+
+    @Override
+    public Version updateVersion(Version version) {
+        em.merge(version);
+        return version;
     }
 }

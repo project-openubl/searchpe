@@ -16,44 +16,30 @@ import java.util.Map;
 import java.util.Optional;
 
 @Named
-public class DeleteIncompleteVersionsBatchlet extends AbstractBatchlet {
+public class PurgeVersionsBatchlet extends AbstractBatchlet {
 
-    private static final Logger logger = Logger.getLogger(DeleteIncompleteVersionsBatchlet.class);
+    private static final Logger logger = Logger.getLogger(PurgeVersionsBatchlet.class);
 
+    @Inject
+    @BatchProperty
     private Boolean deleteIncompleteVersions;
+
+    @Inject
     private VersionService versionService;
 
     @Override
     public String process() throws Exception {
-        if (Optional.ofNullable(getDeleteIncompleteVersions()).orElse(false)) {
+        if (Optional.ofNullable(deleteIncompleteVersions).orElse(false)) {
             Map<String, Object> parameters = new HashMap<>();
             parameters.put(VersionAttributes.COMPLETE, false);
-            List<Version> versions = getVersionService().getVersionsByParameters(parameters);
+            List<Version> versions = versionService.getVersionsByParameters(parameters);
 
             for (Version version : versions) {
                 logger.infof("Deleting version id[%s], number[%s], date[%s]", version.getId(), version.getNumber(), version.getDate());
-                getVersionService().deleteVersion(version);
+                versionService.deleteVersion(version);
             }
         }
         return BatchStatus.COMPLETED.toString();
     }
 
-    @Inject
-    @BatchProperty
-    public Boolean getDeleteIncompleteVersions() {
-        return deleteIncompleteVersions;
-    }
-
-    public void setDeleteIncompleteVersions(Boolean deleteIncompleteVersions) {
-        this.deleteIncompleteVersions = deleteIncompleteVersions;
-    }
-
-    @Inject
-    public VersionService getVersionService() {
-        return versionService;
-    }
-
-    public void setVersionService(VersionService versionService) {
-        this.versionService = versionService;
-    }
 }

@@ -2,8 +2,11 @@ package io.searchpe.batchs.persist;
 
 import io.searchpe.model.Company;
 import io.searchpe.model.Version;
+import io.searchpe.services.VersionService;
 import org.jberet.support.io.JpaItemWriter;
 
+import javax.batch.api.BatchProperty;
+import javax.batch.api.chunk.ItemProcessor;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.persistence.EntityManager;
@@ -13,36 +16,29 @@ import java.util.List;
 public class TxtWriter extends JpaItemWriter {
 
     @Inject
-    private TxtVersion txtVersion;
+    @BatchProperty
+    protected String versionId;
+
+    @Inject
+    private VersionService versionService;
 
     @Override
-    public void writeItems(final List<Object> items) throws Exception {
+    public void writeItems(List<Object> items) throws Exception {
         if (entityTransaction) {
-            getEntityManager().getTransaction().begin();
+            em.getTransaction().begin();
         }
 
-        Version version = getTxtVersion().getVersion();
+        Version version = versionService.getVersion(versionId)
+                .orElseThrow(() -> new IllegalStateException("Version id[" + versionId + "] does not exists"));
 
         for (final Object e : items) {
             Company company = (Company) e;
             company.setVersion(version);
-            getEntityManager().persist(company);
+            em.persist(e);
         }
 
         if (entityTransaction) {
-            getEntityManager().getTransaction().commit();
+            em.getTransaction().commit();
         }
-    }
-
-    public EntityManager getEntityManager() {
-        return em;
-    }
-
-    public TxtVersion getTxtVersion() {
-        return txtVersion;
-    }
-
-    public void setTxtVersion(TxtVersion txtVersion) {
-        this.txtVersion = txtVersion;
     }
 }
