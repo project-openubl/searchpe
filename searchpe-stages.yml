@@ -12,18 +12,12 @@ swarm:
 searchpe:
   scheduler:
     enabled: true
+    time: "00:00:00"
+    timeZone: "America/Lima"
     intervalDuration: 86400000
-    expirationTimeInMillis: 172800000
-    deleteIncompleteVersions: true
-    sunat:
-      zipURL: "http://www2.sunat.gob.pe/padron_reducido_ruc.zip"
-      zipFileName: "sunat.zip"
-      unzipFileName: "sunat.txt"
-      txtCharset: "ISO-8859-1"
-      txtRowSkips: 1
-      txtColumnSplitRegex: "\\|"
-      txtHeadersTemplate: "RUC|NOMBRE O RAZÓN SOCIAL|ESTADO DEL CONTRIBUYENTE|CONDICIÓN DE DOMICILIO|UBIGEO|TIPO DE VÍA|NOMBRE DE VÍA|CÓDIGO DE ZONA|TIPO DE ZONA|NÚMERO|INTERIOR|LOTE|DEPARTAMENTO|MANZANA|KILÓMETRO"
-      modelHeadersTemplate: "ruc,razonSocial,estadoContribuyente,condicionDomicilio,ubigeo,tipoVia,nombreVia,codigoZona,tipoZona,numero,interior,lote,departamento,manzana,kilometro"
+    workingDirectory: "searchpe_working_directory"
+    maxVersions: 1
+    sunatZipURL: "http://www2.sunat.gob.pe/padron_reducido_ruc.zip"
 ---
 project:
   stage: production-mysql
@@ -38,77 +32,15 @@ swarm:
 searchpe:
   scheduler:
     enabled: true
-    intervalDuration: 86400000
-    expirationTimeInMillis: 172800000
-    deleteIncompleteVersions: true
-    sunat:
-      zipURL: "http://www2.sunat.gob.pe/padron_reducido_ruc.zip"
-      zipFileName: "sunat.zip"
-      unzipFileName: "sunat.txt"
-      txtCharset: "ISO-8859-1"
-      txtRowSkips: 1
-      txtColumnSplitRegex: "\\|"
-      txtHeadersTemplate: "RUC|NOMBRE O RAZÓN SOCIAL|ESTADO DEL CONTRIBUYENTE|CONDICIÓN DE DOMICILIO|UBIGEO|TIPO DE VÍA|NOMBRE DE VÍA|CÓDIGO DE ZONA|TIPO DE ZONA|NÚMERO|INTERIOR|LOTE|DEPARTAMENTO|MANZANA|KILÓMETRO"
-      modelHeadersTemplate: "ruc,razonSocial,estadoContribuyente,condicionDomicilio,ubigeo,tipoVia,nombreVia,codigoZona,tipoZona,numero,interior,lote,departamento,manzana,kilometro"
----
-project:
-  stage: production-mysql-peru
-swarm:
-  datasources:
-    data-sources:
-      SearchpeDS:
-        driver-name: mysql
-        user-name: searchpe
-        password: searchpe
-        connection-url: jdbc:mysql://searchpe-db:3306/searchpe?useSSL=false
-searchpe:
-  scheduler:
-    enabled: true
-    initialExpiration: "00:00:00"
-    intervalDuration: 86400000
-    expirationTimeInMillis: 172800000
+    time: "00:00:00"
     timeZone: "America/Lima"
-    deleteIncompleteVersions: true
-    sunat:
-      zipURL: "http://www2.sunat.gob.pe/padron_reducido_ruc.zip"
-      zipFileName: "sunat.zip"
-      unzipFileName: "sunat.txt"
-      txtCharset: "ISO-8859-1"
-      txtRowSkips: 1
-      txtColumnSplitRegex: "\\|"
-      txtHeadersTemplate: "RUC|NOMBRE O RAZÓN SOCIAL|ESTADO DEL CONTRIBUYENTE|CONDICIÓN DE DOMICILIO|UBIGEO|TIPO DE VÍA|NOMBRE DE VÍA|CÓDIGO DE ZONA|TIPO DE ZONA|NÚMERO|INTERIOR|LOTE|DEPARTAMENTO|MANZANA|KILÓMETRO"
-      modelHeadersTemplate: "ruc,razonSocial,estadoContribuyente,condicionDomicilio,ubigeo,tipoVia,nombreVia,codigoZona,tipoZona,numero,interior,lote,departamento,manzana,kilometro"
----
-project:
-  stage: production-postgresql-peru
-swarm:
-  datasources:
-    data-sources:
-      SearchpeDS:
-        driver-name: postgresql
-        user-name: searchpe
-        password: searchpe
-        connection-url: jdbc:postgresql://searchpe-db:5432/searchpe
-searchpe:
-  scheduler:
-    enabled: true
-    initialExpiration: "00:00:00"
     intervalDuration: 86400000
-    expirationTimeInMillis: 172800000
-    timeZone: "America/Lima"
-    deleteIncompleteVersions: true
-    sunat:
-      zipURL: "http://www2.sunat.gob.pe/padron_reducido_ruc.zip"
-      zipFileName: "sunat.zip"
-      unzipFileName: "sunat.txt"
-      txtCharset: "ISO-8859-1"
-      txtRowSkips: 1
-      txtColumnSplitRegex: "\\|"
-      txtHeadersTemplate: "RUC|NOMBRE O RAZÓN SOCIAL|ESTADO DEL CONTRIBUYENTE|CONDICIÓN DE DOMICILIO|UBIGEO|TIPO DE VÍA|NOMBRE DE VÍA|CÓDIGO DE ZONA|TIPO DE ZONA|NÚMERO|INTERIOR|LOTE|DEPARTAMENTO|MANZANA|KILÓMETRO"
-      modelHeadersTemplate: "ruc,razonSocial,estadoContribuyente,condicionDomicilio,ubigeo,tipoVia,nombreVia,codigoZona,tipoZona,numero,interior,lote,departamento,manzana,kilometro"
+    workingDirectory: "searchpe_working_directory"
+    maxVersions: 1
+    sunatZipURL: "http://www2.sunat.gob.pe/padron_reducido_ruc.zip"
 ---
 project:
-  stage: production-oracle-peru
+  stage: production-oracle
 swarm:
   datasources:
     data-sources:
@@ -125,17 +57,9 @@ swarm:
 searchpe:
   scheduler:
     enabled: true
-    initialExpiration: "00:00:00"
-    intervalDuration: 86400000
-    expirationTimeInMillis: 172800000
+    time: "00:00:00"
     timeZone: "America/Lima"
-    deleteIncompleteVersions: true
-    sunat:
-      zipURL: "http://www2.sunat.gob.pe/padron_reducido_ruc.zip"
-      zipFileName: "sunat.zip"
-      unzipFileName: "sunat.txt"
-      txtCharset: "ISO-8859-1"
-      txtRowSkips: 1
-      txtColumnSplitRegex: "\\|"
-      txtHeadersTemplate: "RUC|NOMBRE O RAZÓN SOCIAL|ESTADO DEL CONTRIBUYENTE|CONDICIÓN DE DOMICILIO|UBIGEO|TIPO DE VÍA|NOMBRE DE VÍA|CÓDIGO DE ZONA|TIPO DE ZONA|NÚMERO|INTERIOR|LOTE|DEPARTAMENTO|MANZANA|KILÓMETRO"
-      modelHeadersTemplate: "ruc,razonSocial,estadoContribuyente,condicionDomicilio,ubigeo,tipoVia,nombreVia,codigoZona,tipoZona,numero,interior,lote,departamento,manzana,kilometro"
+    intervalDuration: 86400000
+    workingDirectory: "searchpe_working_directory"
+    maxVersions: 1
+    sunatZipURL: "http://www2.sunat.gob.pe/padron_reducido_ruc.zip"
