@@ -29,22 +29,10 @@ create sequence sequence start with 1 increment by 50;
         primary key (id)
     );
 
-    create table version_metrics (
-       version_id varchar2(40 char) not null,
-        value number(19,0),
-        name varchar2(100 char) not null,
-        primary key (version_id, name)
-    );
-
     alter table company
        add constraint UKbp4h8nqno63ltev28my13t061 unique (version, ruc);
 
     alter table company
        add constraint FKe8jbnj2wkjv3di24a5da5mj0e
        foreign key (version)
-       references version;
-
-    alter table version_metrics
-       add constraint FKna6siv7x5ipel6gywm739s7qt
-       foreign key (version_id)
        references version;

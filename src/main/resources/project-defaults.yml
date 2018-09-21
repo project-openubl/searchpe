@@ -10,14 +10,9 @@ swarm:
 searchpe:
   scheduler:
     enabled: true
-    intervalDuration: 3600000
-    expirationTimeInMillis: 10800000
-    deleteIncompleteVersions: true
-    workingDirectory: ""
-    sunat:
-      zipURL: "https://raw.githubusercontent.com/searchpe/searchpe/master/padron_reducido_ruc.zip"
-      txtCharset: "ISO-8859-1"
-      txtRowSkips: 1
-      txtColumnSplitRegex: "\\|"
-      txtHeadersTemplate: "RUC|NOMBRE O RAZÓN SOCIAL|ESTADO DEL CONTRIBUYENTE|CONDICIÓN DE DOMICILIO|UBIGEO|TIPO DE VÍA|NOMBRE DE VÍA|CÓDIGO DE ZONA|TIPO DE ZONA|NÚMERO|INTERIOR|LOTE|DEPARTAMENTO|MANZANA|KILÓMETRO"
-      modelHeadersTemplate: "ruc,razonSocial,estadoContribuyente,condicionDomicilio,ubigeo,tipoVia,nombreVia,codigoZona,tipoZona,numero,interior,lote,departamento,manzana,kilometro"
+    time: "12:33:00"
+    timeZone: "America/Lima"
+    intervalDuration: 60000
+    workingDirectory: "Working directory"
+    maxVersions: 2
+    sunatZipURL: "https://raw.githubusercontent.com/searchpe/searchpe/master/padron_reducido_ruc.zip"

@@ -5,88 +5,59 @@
      version="1.0">
 
     <flow id="start" next="end">
-        <step id="deleteIncompleteVersionsBefore" next="deleteExpiredVersionsBefore">
-            <batchlet ref="deleteIncompleteVersionsBatchlet">
-                <properties>
-                    <property name="deleteIncompleteVersions" value="#{jobParameters['deleteIncompleteVersions']}"/>
-                </properties>
-            </batchlet>
-        </step>
-        <step id="deleteExpiredVersionsBefore" next="cleanTempFilesBefore">
-            <batchlet ref="deleteExpiredVersionsBatchlet">
-                <properties>
-                    <property name="expirationTimeInMillis" value="#{jobParameters['expirationTimeInMillis']}"/>
-                </properties>
-            </batchlet>
-        </step>
-        <step id="cleanTempFilesBefore" next="downloadFile">
-            <batchlet ref="cleanFilesBatchlet">
-                <properties>
-                    <property name="files" value="#{jobParameters['workingDirectory']}}"/>
-                </properties>
-            </batchlet>
-        </step>
-        <step id="downloadFile" next="unzipFile">
-            <batchlet ref="downloadFileBatchlet">
-                <properties>
-                    <property name="url" value="#{jobParameters['sunatZipURL']}"/>
-                    <property name="workingDirectory" value="#{jobParameters['workingDirectory']}"/>
-                </properties>
-            </batchlet>
-        </step>
-        <step id="unzipFile" next="import">
-            <batchlet ref="unzipFileBatchlet">
-                <properties>
-                    <property name="workingDirectory" value="#{jobParameters['workingDirectory']}"/>
-                </properties>
-            </batchlet>
-        </step>
-        <step id="import" next="cleanTempFilesAfter">
-            <listeners>
-                <listener ref="txtListener"/>
-            </listeners>
+        <step id="importStep" next="closeVersionStep">
             <chunk item-count="100">
-                <reader ref="txtReader">
+                <reader ref="csvItemReader">
                     <properties>
-                        <property name="charsetName" value="#{jobParameters['sunatTxtCharset']}"/>
-                        <property name="skip" value="#{jobParameters['sunatTxtRowSkips']}"/>
-                        <property name="fileLocation" value="#{jobParameters['sunatUnzipFileName']}"/>
+                        <property name="resource" value="#{jobParameters['resource']}"/>
+                        <property name="preference" value="STANDARD_PREFERENCE"/>
+                        <property name="delimiterChar" value="|"/>
+                        <property name="beanType" value="io.searchpe.model.Company"/>
+                        <property name="nameMapping" value="ruc,razonSocial,estadoContribuyente,condicionDomicilio,ubigeo,tipoVia,nombreVia,codigoZona,tipoZona,numero,interior,lote,departamento,manzana,kilometro"/>
+                        <property name="cellProcessors" value="
+                        null;
+                        null;
+                        null;
+                        null;
+                        null;
+                        null;
+                        null;
+                        null;
+                        null;
+                        null;
+                        null;
+                        null;
+                        null;
+                        null;
+                        null;
+                        null;"/>
+                        <property name="skipBeanValidation" value="true"/>
                     </properties>
                 </reader>
-                <processor ref="txtProcessor">
+                <writer ref="jpaCompanyItemWriter">
                     <properties>
-                        <property name="regex" value="#{jobParameters['sunatTxtColumnSplitRegex']}"/>
-                        <property name="header" value="#{jobParameters['sunatTxtHeadersTemplate']}"/>
-                        <property name="headerColumns" value="#{jobParameters['sunatModelHeadersTemplate']}"/>
+                        <property name="versionId" value="#{jobParameters['versionId']}"/>
                     </properties>
-                </processor>
-                <writer ref="txtWriter"/>
+                </writer>
             </chunk>
         </step>
-        <step id="cleanTempFilesAfter" next="deleteIncompleteVersionsAfter">
-            <batchlet ref="cleanFilesBatchlet">
+        <step id="closeVersionStep" next="purgeVersionsStep">
+            <batchlet ref="closeVersionBatchlet">
                 <properties>
-                    <property name="files" value="#{jobParameters['sunatZipFileName']},#{jobParameters['sunatUnzipFileName']}"/>
+                    <property name="versionId" value="#{jobParameters['versionId']}"/>
                 </properties>
             </batchlet>
         </step>
-        <step id="deleteIncompleteVersionsAfter" next="deleteExpiredVersionsAfter">
-            <batchlet ref="deleteIncompleteVersionsBatchlet">
+        <step id="purgeVersionsStep" next="deleteExpiredVersionsStep">
+            <batchlet ref="purgeVersionsBatchlet"/>
+        </step>
+        <step id="deleteExpiredVersionsStep">
+            <batchlet ref="expiredVersionsBatchlet">
                 <properties>
-                    <property name="deleteIncompleteVersions" value="#{jobParameters['deleteIncompleteVersions']}"/>
+                    <property name="maxVersions" value="#{jobParameters['maxVersions']}"/>
                 </properties>
             </batchlet>
         </step>
-        <step id="deleteExpiredVersionsAfter">
-            <batchlet ref="deleteExpiredVersionsBatchlet">
-                <properties>
-                    <property name="expirationTimeInMillis" value="#{jobParameters['expirationTimeInMillis']}"/>
-                </properties>
-            </batchlet>
-        </step>
-    </flow>
-    <step id="end">
-        <batchlet ref="endBatchlet"/>
         <end on="COMPLETED"/>
-    </step>
+    </flow>
 </job>
