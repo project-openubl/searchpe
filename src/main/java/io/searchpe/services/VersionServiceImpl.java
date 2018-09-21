@@ -5,10 +5,7 @@ import io.searchpe.repository.VersionRepository;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @ApplicationScoped
 public class VersionServiceImpl implements VersionService {
@@ -42,6 +39,11 @@ public class VersionServiceImpl implements VersionService {
     }
 
     @Override
+    public List<Version> getCompleteVersionsDesc(int skip) {
+        return versionRepository.getCompleteVersionsDesc(skip);
+    }
+
+    @Override
     public List<Version> getVersionsByParameters(Map<String, Object> parameters) {
         return versionRepository.getVersionsByParameters(parameters);
     }
@@ -54,6 +56,20 @@ public class VersionServiceImpl implements VersionService {
     @Override
     public boolean deleteVersion(Version version) {
         return versionRepository.deleteVersion(version);
+    }
+
+    @Override
+    public Version createNextVersion() {
+        Version version = new Version();
+        version.setId(UUID.randomUUID().toString());
+        version.setDate(new Date());
+        version.setComplete(false);
+        version.setNumber(1);
+
+        Optional<Version> lastVersion = getLastVersion();
+        lastVersion.ifPresent(c -> version.setNumber(c.getNumber() + 1));
+
+        return createVersion(version);
     }
 
 }

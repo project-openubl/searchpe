@@ -34,22 +34,10 @@
         primary key (id)
     ) engine=MyISAM;
 
-    create table version_metrics (
-       version_id varchar(40) not null,
-        value bigint,
-        name varchar(100) not null,
-        primary key (version_id, name)
-    ) engine=MyISAM;
-
     alter table company
        add constraint UKbp4h8nqno63ltev28my13t061 unique (version, ruc);
 
     alter table company
        add constraint FKe8jbnj2wkjv3di24a5da5mj0e
        foreign key (version)
-       references version (id);
-
-    alter table version_metrics
-       add constraint FKna6siv7x5ipel6gywm739s7qt
-       foreign key (version_id)
        references version (id);

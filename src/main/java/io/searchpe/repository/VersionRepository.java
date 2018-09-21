@@ -19,6 +19,8 @@ public interface VersionRepository {
 
     List<Version> getCompleteVersionsBefore(Date date);
 
+    List<Version> getCompleteVersionsDesc(int skip);
+
     List<Version> getVersionsByParameters(Map<String, Object> parameters);
 
     Version updateVersion(Version version);

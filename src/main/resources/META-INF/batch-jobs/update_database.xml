@@ -5,16 +5,14 @@
      version="1.0">
 
     <flow id="start" next="end">
-        <step id="import" next="closeVersionStep">
+        <step id="importStep" next="closeVersionStep">
             <chunk item-count="100">
                 <reader ref="csvItemReader">
                     <properties>
                         <property name="resource" value="#{jobParameters['resource']}"/>
                         <property name="preference" value="STANDARD_PREFERENCE"/>
                         <property name="delimiterChar" value="|"/>
-                        <!--<property name="quoteChar" value="'"/>-->
                         <property name="beanType" value="io.searchpe.model.Company"/>
-                        <!--<property name="nameMapping" value="RUC,NOMBRE O RAZÓN SOCIAL,ESTADO DEL CONTRIBUYENTE,CONDICIÓN DE DOMICILIO,UBIGEO,TIPO DE VÍA,NOMBRE DE VÍA,CÓDIGO DE ZONA,TIPO DE ZONA,NÚMERO,INTERIOR,LOTE,DEPARTAMENTO,MANZANA,KILÓMETRO"/>-->
                         <property name="nameMapping" value="ruc,razonSocial,estadoContribuyente,condicionDomicilio,ubigeo,tipoVia,nombreVia,codigoZona,tipoZona,numero,interior,lote,departamento,manzana,kilometro"/>
                         <property name="cellProcessors" value="
                         null;
@@ -36,35 +34,30 @@
                         <property name="skipBeanValidation" value="true"/>
                     </properties>
                 </reader>
-                <!--<processor ref="txtProcessor">-->
-                    <!--<properties>-->
-                        <!--<property name="versionId" value="#{jobParameters['versionId']}"/>-->
-                    <!--</properties>-->
-                <!--</processor>-->
-                <writer ref="txtWriter">
+                <writer ref="jpaCompanyItemWriter">
                     <properties>
                         <property name="versionId" value="#{jobParameters['versionId']}"/>
                     </properties>
                 </writer>
             </chunk>
         </step>
-        <step id="closeVersionStep" next="purgeVersions">
-            <batchlet ref="closeVersion">
+        <step id="closeVersionStep" next="purgeVersionsStep">
+            <batchlet ref="closeVersionBatchlet">
                 <properties>
                     <property name="versionId" value="#{jobParameters['versionId']}"/>
                 </properties>
             </batchlet>
         </step>
-        <step id="purgeVersions">
-            <batchlet ref="purgeVersionsBatchlet">
+        <step id="purgeVersionsStep" next="deleteExpiredVersionsStep">
+            <batchlet ref="purgeVersionsBatchlet"/>
+        </step>
+        <step id="deleteExpiredVersionsStep">
+            <batchlet ref="expiredVersionsBatchlet">
                 <properties>
-                    <property name="deleteIncompleteVersions" value="#{jobParameters['deleteIncompleteVersions']}"/>
+                    <property name="maxVersions" value="#{jobParameters['maxVersions']}"/>
                 </properties>
             </batchlet>
         </step>
-    </flow>
-    <step id="end">
-        <batchlet ref="endBatchlet"/>
         <end on="COMPLETED"/>
-    </step>
+    </flow>
 </job>

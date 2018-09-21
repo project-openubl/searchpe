@@ -69,6 +69,16 @@ public class VersionRepositoryImpl implements VersionRepository {
     }
 
     @Override
+    public List<Version> getCompleteVersionsDesc(int skip) {
+        TypedQuery<Version> query = em.createNamedQuery("getCompleteVersionsDesc", Version.class);
+        query.setParameter("complete", true);
+        if (skip != -1) {
+            query.setFirstResult(skip);
+        }
+        return query.getResultList();
+    }
+
+    @Override
     public boolean deleteVersion(Version version) {
         em.createNamedQuery("deleteCompaniesByVersionId")
                 .setParameter("versionId", version.getId())

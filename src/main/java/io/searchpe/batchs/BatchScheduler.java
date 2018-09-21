@@ -12,30 +12,30 @@ import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import javax.batch.runtime.BatchRuntime;
 import javax.ejb.*;
-import javax.ejb.Timer;
 import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.Date;
+import java.util.Optional;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 @Startup
 @Singleton
 public class BatchScheduler {
 
-    public static final String DEFAULT_WORKING_DIRECTORY = "searchpe_working_directory";
-    public static final String DEFAULT_EXECUTION_TIME = "00:00:00";
-    public static final String SUNAT_ZIP_FILE_NAME = "padron_reducido_ruc.zip";
-    public static final int READ_TIMEOUT = 10_000;
-    public static final int CONNECTION_TIMEOUT = 10_000;
-
     private static final Logger logger = Logger.getLogger(BatchScheduler.class);
+
+    private static final String DEFAULT_WORKING_DIRECTORY = "searchpe_working_directory";
+    private static final String DEFAULT_EXECUTION_TIME = "00:00:00";
+    private static final String SUNAT_ZIP_FILE_NAME = "padron_reducido_ruc.zip";
+    private static final int READ_TIMEOUT = 10_000;
+    private static final int CONNECTION_TIMEOUT = 10_000;
 
     @Resource
     private TimerService timerService;
@@ -45,15 +45,15 @@ public class BatchScheduler {
 
     @Inject
     @ConfigurationValue("searchpe.scheduler.enabled")
-    private Optional<Boolean> schedulerEnabled;
+    private Optional<Boolean> enabled;
 
     @Inject
     @ConfigurationValue("searchpe.scheduler.time")
-    private Optional<String> schedulerTime;
+    private Optional<String> time;
 
     @Inject
     @ConfigurationValue("searchpe.scheduler.timeZone")
-    private Optional<String> schedulerTimeZone;
+    private Optional<String> timeZone;
 
     @Inject
     @ConfigurationValue("searchpe.scheduler.intervalDuration")
@@ -64,32 +64,28 @@ public class BatchScheduler {
     private String workingDirectory;
 
     @Inject
-    @ConfigurationValue("searchpe.scheduler.sunat.zipURL")
+    @ConfigurationValue("searchpe.scheduler.sunatZipURL")
     private String sunatZipURL;
 
     @Inject
-    @ConfigurationValue("searchpe.scheduler.deleteIncompleteVersions")
-    private Optional<Boolean> deleteIncompleteVersions;
-
-    @Inject
-    @ConfigurationValue("searchpe.scheduler.maxNumberOfVersions")
-    private Optional<Integer> maxNumberOfVersions;
+    @ConfigurationValue("searchpe.scheduler.maxVersions")
+    private Optional<Integer> maxVersions;
 
     @PostConstruct
     public void initialize() {
         Optional<Version> lastCompletedVersion = versionService.getLastCompletedVersion();
         if (!lastCompletedVersion.isPresent()) {
-            startBatch();
+            initBatchExecution();
         }
 
-        if (schedulerEnabled.isPresent() && schedulerEnabled.get()) {
+        if (enabled.isPresent() && enabled.get()) {
             ZoneId zoneId = ZoneId.systemDefault();
-            if (schedulerTimeZone.isPresent()) {
-                zoneId = ZoneId.of(schedulerTimeZone.get());
+            if (timeZone.isPresent()) {
+                zoneId = ZoneId.of(timeZone.get());
             }
 
             ZonedDateTime currentDateTime = ZonedDateTime.now(zoneId);
-            LocalTime executionTime = LocalTime.parse(schedulerTime.orElse(DEFAULT_EXECUTION_TIME));
+            LocalTime executionTime = LocalTime.parse(time.orElse(DEFAULT_EXECUTION_TIME));
             ZonedDateTime nextExecutionDateTime = DateUtils.getNextDate(currentDateTime, executionTime);
 
             Timer timer = timerService.createTimer(
@@ -105,7 +101,6 @@ public class BatchScheduler {
                     TimeUnit.MILLISECONDS.toMinutes(timeRemaining),
                     TimeUnit.MILLISECONDS.toSeconds(timeRemaining)
             );
-
         } else {
             logger.infof("Scheduler disabled, this node will not execute schedulers");
         }
@@ -113,27 +108,19 @@ public class BatchScheduler {
 
     @Timeout
     public void programmaticTimeout(Timer timer) {
-        startBatch();
+        initBatchExecution();
     }
 
-    public Version beforeStep() {
-        Version version = new Version();
-        version.setId(UUID.randomUUID().toString());
-        version.setDate(Calendar.getInstance().getTime());
-        version.setComplete(false);
-        version.setNumber(1);
-
-        Optional<Version> lastVersion = versionService.getLastVersion();
-        lastVersion.ifPresent(c -> version.setNumber(c.getNumber() + 1));
-
-        return versionService.createVersion(version);
-    }
-
-    private void startBatch() {
-        if (sunatZipURL == null) {
-            throw new IllegalStateException("SUNAT URL not defined");
+    private void initBatchExecution() {
+        try {
+            Properties batchProperties = startBatch();
+            BatchRuntime.getJobOperator().start("update_database", batchProperties);
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
         }
+    }
 
+    private Properties startBatch() throws IOException {
         File fileWorkingDirectory;
         if (workingDirectory != null) {
             fileWorkingDirectory = new File(workingDirectory);
@@ -147,63 +134,41 @@ public class BatchScheduler {
 
         // Cleaning
         logger.infof("Cleaning %s", fileWorkingDirectory.getAbsolutePath());
-        try {
-            org.apache.commons.io.FileUtils.cleanDirectory(fileWorkingDirectory);
-        } catch (IOException e) {
-            throw new IllegalStateException(e);
-        }
+        org.apache.commons.io.FileUtils.cleanDirectory(fileWorkingDirectory);
 
         // Downloading
-        File downloadedFile;
-        try {
-            downloadedFile = workingDirectoryPath.resolve(SUNAT_ZIP_FILE_NAME).toFile();
-            logger.infof("Downloading %s into %s", sunatZipURL, downloadedFile);
-            org.apache.commons.io.FileUtils.copyURLToFile(new URL(sunatZipURL), downloadedFile, CONNECTION_TIMEOUT, READ_TIMEOUT);
-        } catch (IOException e) {
-            throw new IllegalStateException(e);
-        }
+        File downloadedFile = workingDirectoryPath.resolve(SUNAT_ZIP_FILE_NAME).toFile();
+        logger.infof("Downloading %s into %s", sunatZipURL, downloadedFile);
+        org.apache.commons.io.FileUtils.copyURLToFile(new URL(sunatZipURL), downloadedFile, CONNECTION_TIMEOUT, READ_TIMEOUT);
 
         // Unzip
-        File txtFile = null;
-        try {
-            Path unzipFolderPath = workingDirectoryPath.resolve("unzipFolder");
-            logger.infof("Unzipping %s content into %s", unzipFolderPath.getFileName(), unzipFolderPath.getFileName());
-            FileUtils.unzipFile(downloadedFile, unzipFolderPath);
+        Path unzipFolderPath = workingDirectoryPath.resolve("unzipFolder");
+        FileUtils.unzipFile(downloadedFile, unzipFolderPath);
 
-            File[] files = unzipFolderPath.toFile().listFiles();
-            if (files != null) {
-                for (File file : files) {
-                    String extension = FilenameUtils.getExtension(file.getName());
-                    if (extension.equalsIgnoreCase("txt")) {
-                        txtFile = file;
-                        break;
-                    }
+        File txtFile = null;
+        File[] files = unzipFolderPath.toFile().listFiles();
+        if (files != null) {
+            for (File file : files) {
+                String extension = FilenameUtils.getExtension(file.getName());
+                if (extension.equalsIgnoreCase("txt")) {
+                    txtFile = file;
+                    break;
                 }
             }
-        } catch (IOException e) {
-            throw new IllegalStateException(e);
         }
-
         if (txtFile == null) {
             throw new IllegalStateException("Could not find any *.txt file to read");
         }
 
         // Create version
-        Version version = beforeStep();
+        Version version = versionService.createNextVersion();
 
-        // Start batch
+        // Config properties
         Properties properties = new Properties();
-        properties.put("deleteIncompleteVersions", deleteIncompleteVersions.orElse(true));
-        properties.put("maxNumberOfVersions", maxNumberOfVersions.orElse(0));
-        try {
-            URL url = txtFile.toURL();
-            properties.put("resource", url.toString());
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        }
+        properties.put("resource", txtFile.toURL().toString());
         properties.put("versionId", version.getId());
-
-        BatchRuntime.getJobOperator().start("update_database", properties);
+        properties.put("maxVersions", String.valueOf(maxVersions.orElse(0)));
+        return properties;
     }
 
 }

@@ -6,14 +6,12 @@ import io.searchpe.services.VersionService;
 import org.jberet.support.io.JpaItemWriter;
 
 import javax.batch.api.BatchProperty;
-import javax.batch.api.chunk.ItemProcessor;
 import javax.inject.Inject;
 import javax.inject.Named;
-import javax.persistence.EntityManager;
 import java.util.List;
 
 @Named
-public class TxtWriter extends JpaItemWriter {
+public class JpaCompanyItemWriter extends JpaItemWriter {
 
     @Inject
     @BatchProperty
@@ -41,4 +39,5 @@ public class TxtWriter extends JpaItemWriter {
             em.getTransaction().commit();
         }
     }
+
 }

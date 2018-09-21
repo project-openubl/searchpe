@@ -10,11 +10,9 @@ swarm:
 searchpe:
   scheduler:
     enabled: true
-    time: "00:00:00"
+    time: "12:33:00"
     timeZone: "America/Lima"
-    intervalDuration: 3600000
-    deleteIncompleteVersions: true
+    intervalDuration: 60000
     workingDirectory: "Working directory"
-    maxNumberOfVersions: 2
-    sunat:
-      zipURL: "https://raw.githubusercontent.com/searchpe/searchpe/master/padron_reducido_ruc.zip"
+    maxVersions: 2
+    sunatZipURL: "https://raw.githubusercontent.com/searchpe/searchpe/master/padron_reducido_ruc.zip"
