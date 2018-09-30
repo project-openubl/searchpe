@@ -5,6 +5,7 @@ import org.hibernate.annotations.GenericGenerator;
 
 import javax.persistence.*;
 import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 
 @Entity
 @Table(name = "company", uniqueConstraints = {
@@ -28,62 +29,77 @@ public class Company {
     })
     private Long id;
 
+    @Size(min = 11, max = 11)
     @NotNull
     @Column(name = "ruc")
     private String ruc;
 
+    @Size(max = 255)
     @NotNull
     @Column(name = "razon_social")
     private String razonSocial;
 
+    @Size(max = 30)
     @NotNull
     @Column(name = "estado_contribuyente")
     private String estadoContribuyente;
 
+    @Size(max = 30)
     @NotNull
     @Column(name = "condicion_domicilio")
     private String condicionDomicilio;
 
+    @Size(min = 6, max = 6)
     @NotNull
     @Column(name = "ubigeo")
     private String ubigeo;
 
+    @Size(max = 30)
     @NotNull
     @Column(name = "tipo_via")
     private String tipoVia;
 
+    @Size(max = 100)
     @NotNull
     @Column(name = "nombre_via")
     private String nombreVia;
 
+    @Size(max = 30)
     @NotNull
     @Column(name = "codigo_zona")
     private String codigoZona;
 
+    @Size(max = 30)
     @NotNull
     @Column(name = "tipo_zona")
     private String tipoZona;
 
+    @Size(max = 30)
     @NotNull
     @Column(name = "numero")
     private String numero;
 
+    @Size(max = 30)
     @NotNull
     @Column(name = "interior")
     private String interior;
 
+    @Size(max = 30)
     @NotNull
     @Column(name = "lote")
     private String lote;
 
+    @Size(max = 30)
     @NotNull
     @Column(name = "departamento")
     private String departamento;
 
+    @Size(max = 30)
     @NotNull
     @Column(name = "manzana")
     private String manzana;
 
+    @Size(max = 30)
     @NotNull
     @Column(name = "kilometro")
     private String kilometro;

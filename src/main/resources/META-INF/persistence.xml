@@ -13,7 +13,7 @@
             <property name="hibernate.format_sql" value="false"/>
             <property name="hibernate.use_sql_comments" value="false"/>
 
-            <property name="hibernate.jdbc.batch_size" value="30"/>
+            <property name="hibernate.jdbc.batch_size" value="40"/>
             <property name="hibernate.order_inserts" value="true"/>
             <property name="hibernate.order_updates" value="true"/>
             <property name="hibernate.jdbc.batch_versioned_data" value="true"/>

@@ -1,54 +1,66 @@
 ---
 project:
-  stage: production-postgresql
+  stage: postgresql
 swarm:
+  bind:
+    address: "0.0.0.0"
+  port:
+    offset: 0
   datasources:
     data-sources:
       SearchpeDS:
         driver-name: postgresql
         user-name: searchpe
         password: searchpe
-        connection-url: jdbc:postgresql://searchpe-db:5432/searchpe
+        connection-url: jdbc:postgresql://localhost:5432/searchpe
 searchpe:
   scheduler:
     enabled: true
     time: "00:00:00"
     timeZone: "America/Lima"
     intervalDuration: 86400000
-    workingDirectory: "searchpe_working_directory"
+    workingDirectory: "searchpe_tmp"
     maxVersions: 1
     sunatZipURL: "http://www2.sunat.gob.pe/padron_reducido_ruc.zip"
 ---
 project:
-  stage: production-mysql
+  stage: mysql
 swarm:
+  bind:
+    address: "0.0.0.0"
+  port:
+    offset: 0
   datasources:
     data-sources:
       SearchpeDS:
         driver-name: mysql
         user-name: searchpe
         password: searchpe
-        connection-url: jdbc:mysql://searchpe-db:3306/searchpe?useSSL=false
+        connection-url: jdbc:mysql://localhost:3306/searchpe?useSSL=false
 searchpe:
   scheduler:
     enabled: true
     time: "00:00:00"
     timeZone: "America/Lima"
     intervalDuration: 86400000
-    workingDirectory: "searchpe_working_directory"
+    workingDirectory: "searchpe_tmp"
     maxVersions: 1
     sunatZipURL: "http://www2.sunat.gob.pe/padron_reducido_ruc.zip"
 ---
 project:
-  stage: production-oracle
+  stage: oracle
 swarm:
+  bind:
+    address: "0.0.0.0"
+  port:
+    offset: 0
   datasources:
     data-sources:
       SearchpeDS:
         driver-name: oracle
         user-name: searchpe
         password: searchpe
-        connection-url: jdbc:postgresql://searchpe-db:1521/searchpe
+        connection-url: jdbc:oracle:thin:@//localhost:1521/orcl
     jdbc-drivers:
       oracle:
         driver-class-name: oracle.jdbc.driver.OracleDriver
@@ -60,6 +72,6 @@ searchpe:
     time: "00:00:00"
     timeZone: "America/Lima"
     intervalDuration: 86400000
-    workingDirectory: "searchpe_working_directory"
+    workingDirectory: "searchpe_tmp"
     maxVersions: 1
     sunatZipURL: "http://www2.sunat.gob.pe/padron_reducido_ruc.zip"
