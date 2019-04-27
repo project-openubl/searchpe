@@ -9,8 +9,6 @@ public interface CompanyProvider {
 
     Optional<CompanyModel> getCompanyByRuc(VersionModel version, String ruc);
 
-    List<CompanyModel> getCompanyByRazonSocial(VersionModel version, String razonSocial);
-
-    List<CompanyModel> getCompanyByFilterText(VersionModel version, String filterText, int first, int max);
+    List<CompanyModel> getCompanyByFilterText(String filterText, int first, int max);
 
 }

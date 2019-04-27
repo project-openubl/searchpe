@@ -15,6 +15,23 @@
 
     <dependencies>
         <dependency>
+            <groupId>io.searchpe</groupId>
+            <artifactId>searchpe-server-spi</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.searchpe</groupId>
+            <artifactId>searchpe-server-spi-private</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.searchpe</groupId>
+            <artifactId>searchpe-model-jpa</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-arc</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-resteasy</artifactId>
         </dependency>
@@ -45,7 +62,6 @@
             <plugin>
                 <groupId>io.quarkus</groupId>
                 <artifactId>quarkus-maven-plugin</artifactId>
-                <version>${quarkus.version}</version>
                 <executions>
                     <execution>
                         <goals>

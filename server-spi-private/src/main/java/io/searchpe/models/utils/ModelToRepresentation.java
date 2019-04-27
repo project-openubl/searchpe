@@ -1,7 +1,9 @@
 package io.searchpe.models.utils;
 
 import io.searchpe.models.CompanyModel;
+import io.searchpe.models.VersionModel;
 import io.searchpe.representations.idm.CompanyRepresentation;
+import io.searchpe.representations.idm.VersionRepresentation;
 
 public class ModelToRepresentation {
 
@@ -9,4 +11,9 @@ public class ModelToRepresentation {
         return null;
     }
 
+    public static VersionRepresentation toRepresentation(VersionModel model) {
+        VersionRepresentation rep = new VersionRepresentation();
+        rep.setId(model.getId());
+        return rep;
+    }
 }

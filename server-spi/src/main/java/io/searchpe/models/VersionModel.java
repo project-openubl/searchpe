@@ -7,11 +7,13 @@ public interface VersionModel {
     long getId();
 
     long getNumber();
-    void setNumber(long number);
 
-    Date getDate();
-    void setDate(Date date);
+    Date getCreatedAt();
 
-    boolean isComplete();
-    void setComplete(boolean complete);
+    Status getStatus();
+
+    void setStatus(Status status);
+
+    boolean isActive();
+
 }

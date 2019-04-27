@@ -4,6 +4,8 @@ import java.util.Optional;
 
 public interface VersionProvider {
 
-    Optional<VersionModel> getLastCompletedVersion();
+    VersionModel addVersion();
+
+    Optional<VersionModel> getActiveVersion();
 
 }
