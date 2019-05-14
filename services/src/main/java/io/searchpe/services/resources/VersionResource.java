@@ -5,11 +5,15 @@ import io.searchpe.models.VersionProvider;
 import io.searchpe.models.utils.ModelToRepresentation;
 import io.searchpe.representations.idm.VersionRepresentation;
 
-import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
-import javax.ws.rs.*;
+import javax.transaction.Transactional;
+import javax.ws.rs.GET;
+import javax.ws.rs.NotFoundException;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
 import java.util.Optional;
 
+@Transactional
 @Path("/versions")
 public class VersionResource {
 

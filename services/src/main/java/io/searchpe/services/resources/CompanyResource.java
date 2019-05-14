@@ -1,13 +1,5 @@
 package io.searchpe.services.resources;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-import javax.ws.rs.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
 //@Path("/companies")
 //@ApplicationScoped
 public class CompanyResource {

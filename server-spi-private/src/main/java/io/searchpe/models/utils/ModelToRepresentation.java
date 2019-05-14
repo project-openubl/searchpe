@@ -14,6 +14,9 @@ public class ModelToRepresentation {
     public static VersionRepresentation toRepresentation(VersionModel model) {
         VersionRepresentation rep = new VersionRepresentation();
         rep.setId(model.getId());
+        rep.setNumber(model.getNumber());
+        rep.setStatus(model.getStatus().toString());
+        rep.setCreatedAt(model.getCreatedAt());
         return rep;
     }
 }

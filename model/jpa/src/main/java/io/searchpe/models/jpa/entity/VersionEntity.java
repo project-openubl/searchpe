@@ -12,7 +12,7 @@ import java.util.Date;
 @Table(name = "version", uniqueConstraints = {
         @UniqueConstraint(columnNames = {"number"})
 })
-public class VersionEntity extends PanacheEntity {
+public class VersionEntity extends PanacheEntity{
 
     @NotNull
     @Column(name = "number")
@@ -32,5 +32,4 @@ public class VersionEntity extends PanacheEntity {
     @Type(type = "org.hibernate.type.TrueFalseType")
     @Column(name = "active")
     public boolean active;
-
 }

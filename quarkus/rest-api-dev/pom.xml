@@ -19,7 +19,19 @@
     <dependencies>
         <dependency>
             <groupId>io.searchpe</groupId>
+            <artifactId>searchpe-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.searchpe</groupId>
             <artifactId>searchpe-services</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.searchpe</groupId>
+            <artifactId>searchpe-server-spi</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.searchpe</groupId>
+            <artifactId>searchpe-server-spi-private</artifactId>
         </dependency>
         <dependency>
             <groupId>io.searchpe</groupId>
@@ -33,6 +45,14 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-resteasy</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-jdbc-postgresql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-jdbc-h2</artifactId>
         </dependency>
     </dependencies>
 
@@ -68,6 +88,19 @@
                     <execution>
                         <goals>
                             <goal>build</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.jboss.jandex</groupId>
+                <artifactId>jandex-maven-plugin</artifactId>
+                <version>${jandex.version}</version>
+                <executions>
+                    <execution>
+                        <id>make-index</id>
+                        <goals>
+                            <goal>jandex</goal>
                         </goals>
                     </execution>
                 </executions>

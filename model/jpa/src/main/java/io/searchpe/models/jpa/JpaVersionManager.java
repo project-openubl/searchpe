@@ -18,14 +18,14 @@ public class JpaVersionManager implements VersionManager {
 
     @Override
     public void activate(VersionModel version) {
-        em.createQuery("update VersionEntity v set v.active = false where v.active=true")
-                .executeUpdate();
-
-        VersionEntity versionEntity = VersionAdapter.toEntity(em, version);
-        versionEntity.active = true;
-
-        em.merge(versionEntity);
-        em.flush();
+//        em.createQuery("update VersionEntity v set v.active = false where v.active=true")
+//                .executeUpdate();
+//
+//        VersionEntity versionEntity = VersionAdapter.toEntity(em, version);
+//        versionEntity.active = true;
+//
+//        em.merge(versionEntity);
+//        em.flush();
     }
 
 }
