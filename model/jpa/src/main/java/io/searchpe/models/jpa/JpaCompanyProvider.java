@@ -40,9 +40,9 @@ public class JpaCompanyProvider implements CompanyProvider {
     }
 
     @Override
-    public List<CompanyModel> getCompanyByFilterText(String filterText, int first, int max) {
+    public List<CompanyModel> getCompanyByFilterText(VersionModel version, String filterText, int first, int max) {
         Page page = new Page(max - first);
-        List<CompanyEntity> companies = CompanyEntity.find("select c from CompanyEntity c where lower(c.razonSocial) like :filterText")
+        List<CompanyEntity> companies = CompanyEntity.find("select c from CompanyEntity c where c.version.id=:versionId lower(c.razonSocial) like :filterText")
                 .page(page)
                 .list();
         return companies.stream()

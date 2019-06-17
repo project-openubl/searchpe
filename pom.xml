@@ -10,7 +10,7 @@
 
     <properties>
         <surefire-plugin.version>2.22.0</surefire-plugin.version>
-        <quarkus.version>0.15.0</quarkus.version>
+        <quarkus.version>0.16.1</quarkus.version>
         <jandex.version>1.0.5</jandex.version>
         <maven.compiler.source>1.8</maven.compiler.source>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

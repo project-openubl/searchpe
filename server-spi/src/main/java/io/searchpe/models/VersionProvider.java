@@ -7,5 +7,4 @@ public interface VersionProvider {
     VersionModel addVersion();
 
     Optional<VersionModel> getActiveVersion();
-
 }
