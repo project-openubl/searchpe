@@ -10,11 +10,12 @@
 
     <properties>
         <surefire-plugin.version>2.22.0</surefire-plugin.version>
-        <quarkus.version>0.16.1</quarkus.version>
+        <quarkus.version>0.21.1</quarkus.version>
         <jandex.version>1.0.5</jandex.version>
+        <docker-plugin.version>0.28.0</docker-plugin.version>
         <maven.compiler.source>1.8</maven.compiler.source>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.target>1.8</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
     <dependencyManagement>
@@ -29,38 +30,20 @@
 
             <dependency>
                 <groupId>io.searchpe</groupId>
-                <artifactId>searchpe-core</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.searchpe</groupId>
-                <artifactId>searchpe-server-spi</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.searchpe</groupId>
-                <artifactId>searchpe-server-spi-private</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.searchpe</groupId>
-                <artifactId>searchpe-model-jpa</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.searchpe</groupId>
                 <artifactId>searchpe-services</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.searchpe</groupId>
+                <artifactId>searchpe-scheduler</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
 
     <modules>
-        <module>core</module>
-        <module>model</module>
         <module>services</module>
-        <module>server-spi</module>
-        <module>server-spi-private</module>
-        <module>quarkus</module>
+        <module>scheduler</module>
+        <module>distribution</module>
     </modules>
 </project>
