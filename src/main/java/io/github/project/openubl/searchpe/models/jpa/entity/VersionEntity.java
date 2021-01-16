@@ -17,6 +17,11 @@ public class VersionEntity extends PanacheEntity {
     public Date createdAt;
 
     @NotNull
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "updated_at")
+    public Date updatedAt;
+
+    @NotNull
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
     public Status status;
@@ -28,6 +33,7 @@ public class VersionEntity extends PanacheEntity {
 
     public static final class Builder {
         public Date createdAt;
+        public Date updatedAt;
         public Status status;
         public boolean active;
 
@@ -43,6 +49,11 @@ public class VersionEntity extends PanacheEntity {
             return this;
         }
 
+        public Builder withUpdatedAt(Date updatedAt) {
+            this.updatedAt = updatedAt;
+            return this;
+        }
+
         public Builder withStatus(Status status) {
             this.status = status;
             return this;
@@ -55,9 +66,10 @@ public class VersionEntity extends PanacheEntity {
 
         public VersionEntity build() {
             VersionEntity versionEntity = new VersionEntity();
-            versionEntity.status = this.status;
-            versionEntity.createdAt = this.createdAt;
             versionEntity.active = this.active;
+            versionEntity.createdAt = this.createdAt;
+            versionEntity.updatedAt = this.updatedAt;
+            versionEntity.status = this.status;
             return versionEntity;
         }
     }

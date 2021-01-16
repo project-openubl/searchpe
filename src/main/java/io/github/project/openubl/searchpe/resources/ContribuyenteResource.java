@@ -40,11 +40,10 @@ public class ContribuyenteResource {
             pageModel = ContribuyenteRepository.list(version, pageBean, sortBeans);
         }
 
-        PageRepresentation<ContribuyenteEntity> contribuyenteEntityPageRepresentation = EntityToRepresentation.toRepresentation(
+        return EntityToRepresentation.toRepresentation(
                 pageModel,
                 versionEntity -> versionEntity
         );
-        return contribuyenteEntityPageRepresentation;
     }
 
     @GET

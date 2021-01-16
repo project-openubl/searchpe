@@ -21,7 +21,7 @@ quarkus:
       sql: false
     sql-load-script: no-file
     jdbc:
-      statement-batch-size: 1000
+      statement-batch-size: 2000
 
 # Flyway
   flyway:
@@ -29,13 +29,12 @@ quarkus:
     table: flyway_quarkus_history
     migrate-at-start: true
     baseline-on-migrate: true
-    baseline-version: 1.0
-    baseline-description: Quartz
+    baseline-version: "1.0"
+    baseline-description: Flyway
 
 searchpe:
   sunat:
-#    padronReducido: http://www2.sunat.gob.pe/padron_reducido_ruc.zip
-    padronReducidoUrl: https://raw.githubusercontent.com/searchpe/searchpe/master/padron_reducido_ruc.zip
+    padronReducidoUrl: http://www2.sunat.gob.pe/padron_reducido_ruc.zip
   workspace:
     directory: searchpeWorkspace
     connectionTimeout: 100000
@@ -43,3 +42,12 @@ searchpe:
   scheduled:
     cron: "0 0 1 * * ?"
 
+"%dev":
+  searchpe:
+    sunat:
+      padronReducidoUrl: https://raw.githubusercontent.com/searchpe/searchpe/master/padron_reducido_ruc.zip
+
+"%test":
+  searchpe:
+    sunat:
+      padronReducidoUrl: https://raw.githubusercontent.com/searchpe/searchpe/master/padron_reducido_ruc.zip

@@ -41,11 +41,13 @@ public class ContribuyenteResourceTest {
                 .withActive(false)
                 .withStatus(Status.ERROR)
                 .withCreatedAt(new Date())
+                .withUpdatedAt(new Date())
                 .build();
         VersionEntity version2 = VersionEntity.Builder.aVersionEntity()
                 .withActive(true)
                 .withStatus(Status.COMPLETED)
                 .withCreatedAt(new Date())
+                .withUpdatedAt(new Date())
                 .build();
         versionRepository.persist(version1, version2);
 
@@ -95,6 +97,7 @@ public class ContribuyenteResourceTest {
                 .withActive(true)
                 .withStatus(Status.COMPLETED)
                 .withCreatedAt(new Date())
+                .withUpdatedAt(new Date())
                 .build();
         versionRepository.persist(version);
 
@@ -127,6 +130,7 @@ public class ContribuyenteResourceTest {
                 .withActive(true)
                 .withStatus(Status.COMPLETED)
                 .withCreatedAt(new Date())
+                .withUpdatedAt(new Date())
                 .build();
         versionRepository.persist(version);
 

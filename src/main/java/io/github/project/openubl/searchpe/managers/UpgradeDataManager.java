@@ -1,14 +1,17 @@
 package io.github.project.openubl.searchpe.managers;
 
+import io.github.project.openubl.searchpe.models.VersionEvent;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.utils.DataHelper;
+import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.event.Event;
 import javax.inject.Inject;
 import javax.persistence.EntityManager;
 import javax.transaction.*;
@@ -36,16 +39,28 @@ public class UpgradeDataManager {
     @Inject
     EntityManager entityManager;
 
-    public void upgrade() {
+    @Inject
+    Event<VersionEvent.DownloadingEvent> downloadingVersionEvent;
+
+    @Inject
+    Event<VersionEvent.UnzippingFileEvent> unzippingVersionEvent;
+
+    @Inject
+    Event<VersionEvent.ImportingDataEvent> importingVersionEvent;
+
+    public void upgrade(Long versionId) {
         File downloadedFile;
         File unzippedFolder;
         File txtFile;
 
         // Download file
         try {
+            downloadingVersionEvent.fire(() -> versionId);
             downloadedFile = fileManager.downloadFile();
 
+            unzippingVersionEvent.fire(() -> versionId);
             unzippedFolder = fileManager.unzip(downloadedFile);
+
             txtFile = fileManager.getFirstTxtFileFound(unzippedFolder.listFiles());
         } catch (IOException e) {
             LOGGER.error(e);
@@ -54,7 +69,8 @@ public class UpgradeDataManager {
 
         // Persist data
         try {
-            createContribuyentesFromFile(txtFile);
+            importingVersionEvent.fire(() -> versionId);
+            createContribuyentesFromFile(versionId, txtFile);
         } catch (IOException e) {
             LOGGER.error(e);
             return;
@@ -72,18 +88,15 @@ public class UpgradeDataManager {
         }
     }
 
-    public void createContribuyentesFromFile(File file) throws IOException {
+    public void createContribuyentesFromFile(Long versionId, File file) throws IOException {
         VersionEntity version;
 
         try {
             tx.begin();
 
-            version = VersionEntity.Builder.aVersionEntity()
-                    .withActive(false)
-                    .withCreatedAt(new Date())
-                    .withStatus(Status.SCHEDULED)
-                    .build();
-            version.persist();
+            version = VersionEntity.findById(versionId);
+//            version.status = Status.IMPORTING;
+//            version.persist();
 
             tx.commit();
         } catch (NotSupportedException | HeuristicRollbackException | HeuristicMixedException | RollbackException | SystemException e) {
@@ -116,7 +129,7 @@ public class UpgradeDataManager {
                 ContribuyenteEntity contribuyente = ContribuyenteEntity
                         .Builder.aContribuyenteEntity()
                         .withVersion(version)
-                        .withId(version.id + "-" + columns[0])
+                        .withId(versionId + "-" + columns[0])
                         .withRuc(columns[0])
                         .withRazonSocial(columns[1])
                         .withEstadoContribuyente(columns[2])
@@ -154,7 +167,9 @@ public class UpgradeDataManager {
         try {
             tx.begin();
 
-            version = VersionEntity.findById(version.id);
+            VersionEntity.update("active = false where active = ?1", true);
+
+            version = VersionEntity.findById(versionId);
             version.status = Status.COMPLETED;
             version.active = true;
 
