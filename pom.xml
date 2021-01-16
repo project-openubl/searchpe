@@ -26,7 +26,49 @@
 
         <awaitility.version>4.0.3</awaitility.version>
         <testcontainers.version>1.12.5</testcontainers.version>
+
+        <license.dir>${basedir}</license.dir>
     </properties>
+
+    <url>https://project-openubl.github.io/</url>
+
+    <licenses>
+        <license>
+            <name>Eclipse Public License - v 2.0</name>
+            <url>https://www.eclipse.org/legal/epl-2.0</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>carlosthe19916</id>
+            <name>Carlos Esteban Feria Vila</name>
+            <email>carlosthe19916@gmail.com</email>
+            <organization>carlosthe19916</organization>
+            <roles>
+                <role>project-owner</role>
+            </roles>
+            <timezone>-5</timezone>
+        </developer>
+    </developers>
+
+    <scm>
+        <url>https://github.com/project-openubl/searchpe</url>
+        <connection>scm:git:git://github.com/project-openubl/searchpe.git</connection>
+        <developerConnection>scm:git:git@github.com:project-openubl/searchpe.git</developerConnection>
+    </scm>
+
+    <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+        <repository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </repository>
+    </distributionManagement>
 
     <dependencyManagement>
         <dependencies>
@@ -106,6 +148,7 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
     <build>
         <plugins>
             <plugin>
@@ -136,6 +179,35 @@
                         <maven.home>${maven.home}</maven.home>
                     </systemPropertyVariables>
                 </configuration>
+            </plugin>
+
+            <!-- License information -->
+            <!--mvn license:format-->
+            <plugin>
+                <groupId>com.mycila</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <version>3.0</version>
+                <configuration>
+                    <header>tools/copyright.txt</header>
+                    <properties>
+                        <owner>Project OpenUBL</owner>
+                        <email>projectopenubl+subscribe@googlegroups.com</email>
+                    </properties>
+                    <excludes>
+                        <exclude>**/README</exclude>
+                        <exclude>**/src/test/resources/**</exclude>
+                        <exclude>**/src/main/resources/**</exclude>
+                        <exclude>.github/**</exclude>
+                        <exclude>.mvn/**</exclude>
+                    </excludes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
