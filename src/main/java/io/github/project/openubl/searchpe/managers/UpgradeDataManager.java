@@ -1,3 +1,19 @@
+/**
+ * Copyright 2019 Project OpenUBL, Inc. and/or its affiliates
+ * and other contributors as indicated by the @author tags.
+ *
+ * Licensed under the Eclipse Public License - v 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * https://www.eclipse.org/legal/epl-2.0/
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package io.github.project.openubl.searchpe.managers;
 
 import io.github.project.openubl.searchpe.models.VersionEvent;
@@ -5,7 +21,6 @@ import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.utils.DataHelper;
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
@@ -20,7 +35,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Calendar;
-import java.util.Date;
 
 @ApplicationScoped
 public class UpgradeDataManager {
