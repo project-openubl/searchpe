@@ -45,9 +45,9 @@ searchpe:
 "%dev":
   searchpe:
     sunat:
-      padronReducidoUrl: https://raw.githubusercontent.com/searchpe/searchpe/master/padron_reducido_ruc.zip
+      padronReducidoUrl: https://raw.githubusercontent.com/project-openubl/searchpe/master/padron_reducido_ruc.zip
 
 "%test":
   searchpe:
     sunat:
-      padronReducidoUrl: https://raw.githubusercontent.com/searchpe/searchpe/master/padron_reducido_ruc.zip
+      padronReducidoUrl: https://raw.githubusercontent.com/project-openubl/searchpe/master/padron_reducido_ruc.zip
