@@ -3,6 +3,7 @@ package io.github.project.openubl.searchpe.jobs;
 import io.github.project.openubl.searchpe.managers.UpgradeDataManager;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import io.quarkus.scheduler.Scheduled;
 import org.quartz.*;
 
@@ -53,6 +54,7 @@ public class UpgradeDataJob {
         upgradeDataManager.upgrade(versionId);
     }
 
+    @RegisterForReflection
     public static class MyJob implements Job {
         @Inject
         UpgradeDataJob job;
