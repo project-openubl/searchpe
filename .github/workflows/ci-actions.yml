@@ -43,4 +43,4 @@ jobs:
           java-version: "java11"
           native-image: "true"
       - name: Build with Maven
-        run: mvn verify -Pnative
+        run: mvn verify -Pnative -Dquarkus.profile=prod-gh

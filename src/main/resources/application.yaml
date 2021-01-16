@@ -51,3 +51,8 @@ searchpe:
   searchpe:
     sunat:
       padronReducidoUrl: https://raw.githubusercontent.com/project-openubl/searchpe/master/padron_reducido_ruc.zip
+
+"%prod-gh":
+  searchpe:
+    sunat:
+      padronReducidoUrl: https://raw.githubusercontent.com/project-openubl/searchpe/master/padron_reducido_ruc.zip
