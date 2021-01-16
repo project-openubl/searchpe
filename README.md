@@ -1,4 +1,7 @@
-# SearchPE
+![CI](https://github.com/project-openubl/searchpe/workflows/CI/badge.svg)
+[![Docker Repository on Quay](https://quay.io/repository/projectopenubl/searchpe/status "Docker Repository on Quay")](https://quay.io/repository/projectopenubl/searchpe)
+
+# searchpe
 
 This project uses Quarkus, the Supersonic Subatomic Java Framework.
 
