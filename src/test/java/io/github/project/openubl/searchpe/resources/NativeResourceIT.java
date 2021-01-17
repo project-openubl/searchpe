@@ -21,10 +21,7 @@ import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.resources.config.PostgreSQLServer;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.NativeImageTest;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
 
 import java.util.concurrent.TimeUnit;
 
@@ -35,12 +32,10 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 
 @NativeImageTest
 @QuarkusTestResource(PostgreSQLServer.class)
-@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class NativeResourceIT {
 
     @Test
-    @Order(1)
-    public void importData() {
+    public void verifyImportData() {
         // Given
 
         // When
@@ -58,7 +53,6 @@ public class NativeResourceIT {
         await()
                 .atMost(10, TimeUnit.MINUTES)
                 .until(() -> {
-
                     VersionEntity versionWatched = given()
                             .header("Content-Type", "application/json")
                             .when()
@@ -69,11 +63,7 @@ public class NativeResourceIT {
 
                     return versionWatched.status == Status.COMPLETED;
                 });
-    }
 
-    @Test
-    @Order(2)
-    public void verifyContribuyentes() {
         given()
                 .header("Content-Type", "application/json")
                 .when()
