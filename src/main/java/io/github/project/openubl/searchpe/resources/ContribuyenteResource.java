@@ -76,7 +76,7 @@ public class ContribuyenteResource {
                 pageModel,
                 versionEntity -> versionEntity
         );
-        return Response.ok(result).build();
+        return Response.status(Response.Status.OK).entity(result).build();
     }
 
     @GET
