@@ -18,12 +18,14 @@ package io.github.project.openubl.searchpe.models.jpa;
 
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
+import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import io.quarkus.panache.common.Parameters;
 import io.quarkus.panache.common.Sort;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.transaction.Transactional;
+import java.util.List;
 import java.util.Optional;
 
 @Transactional
@@ -32,11 +34,16 @@ public class VersionRepository implements PanacheRepository<VersionEntity> {
 
     public Optional<VersionEntity> findActive() {
         Sort sort = Sort.by("createdAt").descending();
-        return VersionEntity.find(
+        List<VersionEntity> versions = VersionEntity.find(
                 "status = :status",
                 sort,
                 Parameters.with("status", Status.COMPLETED)
-        ).range(0, 1).firstResultOptional();
+        ).range(0, 1).list();
+
+        if (versions.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(versions.get(0));
     }
 
 }
