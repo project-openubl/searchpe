@@ -28,12 +28,21 @@ import io.github.project.openubl.searchpe.utils.EntityToRepresentation;
 import io.github.project.openubl.searchpe.utils.ResourceUtils;
 
 import javax.enterprise.context.ApplicationScoped;
+import javax.inject.Inject;
+import javax.transaction.Transactional;
 import javax.ws.rs.*;
 import java.util.List;
 
-@Path("/contribuyentes")
+@Transactional
 @ApplicationScoped
+@Path("/contribuyentes")
 public class ContribuyenteResource {
+
+    @Inject
+    VersionRepository versionRepository;
+
+    @Inject
+    ContribuyenteRepository contribuyenteRepository;
 
     @GET
     @Path("/")
@@ -44,16 +53,16 @@ public class ContribuyenteResource {
             @QueryParam("limit") @DefaultValue("10") Integer limit,
             @QueryParam("sort_by") @DefaultValue("name") List<String> sortBy
     ) {
-        VersionEntity version = VersionRepository.findActive().orElseThrow(BadRequestException::new);
+        VersionEntity version = versionRepository.findActive().orElseThrow(BadRequestException::new);
 
         PageBean pageBean = ResourceUtils.getPageBean(offset, limit);
         List<SortBean> sortBeans = ResourceUtils.getSortBeans(sortBy, ContribuyenteRepository.SORT_BY_FIELDS);
 
         PageModel<ContribuyenteEntity> pageModel;
         if (filterText != null && !filterText.trim().isEmpty()) {
-            pageModel = ContribuyenteRepository.list(version, filterText, pageBean, sortBeans);
+            pageModel = contribuyenteRepository.list(version, filterText, pageBean, sortBeans);
         } else {
-            pageModel = ContribuyenteRepository.list(version, pageBean, sortBeans);
+            pageModel = contribuyenteRepository.list(version, pageBean, sortBeans);
         }
 
         return EntityToRepresentation.toRepresentation(
@@ -66,7 +75,7 @@ public class ContribuyenteResource {
     @Path("/{ruc}")
     @Produces("application/json")
     public ContribuyenteEntity getContribuyente(@PathParam("ruc") String ruc) {
-        VersionEntity version = VersionRepository.findActive().orElseThrow(NotFoundException::new);
-        return ContribuyenteRepository.findByRuc(version, ruc).orElseThrow(NotFoundException::new);
+        VersionEntity version = versionRepository.findActive().orElseThrow(NotFoundException::new);
+        return contribuyenteRepository.findByRuc(version, ruc).orElseThrow(NotFoundException::new);
     }
 }

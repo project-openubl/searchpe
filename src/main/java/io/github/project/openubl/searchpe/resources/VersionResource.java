@@ -79,7 +79,7 @@ public class VersionResource {
     @Path("/active")
     @Produces("application/json")
     public VersionEntity getActiveVersion() {
-        return VersionRepository.findActive().orElseThrow(NotFoundException::new);
+        return versionRepository.findActive().orElseThrow(NotFoundException::new);
     }
 
     @GET

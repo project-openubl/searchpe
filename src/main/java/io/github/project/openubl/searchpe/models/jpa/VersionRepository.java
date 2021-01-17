@@ -30,7 +30,7 @@ import java.util.Optional;
 @ApplicationScoped
 public class VersionRepository implements PanacheRepository<VersionEntity> {
 
-    public static Optional<VersionEntity> findActive() {
+    public Optional<VersionEntity> findActive() {
         Sort sort = Sort.by("createdAt").descending();
         return VersionEntity.find(
                 "status = :status",
