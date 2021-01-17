@@ -1,29 +1,35 @@
 ![CI](https://github.com/project-openubl/searchpe/workflows/CI/badge.svg)
 [![Docker Repository on Quay](https://quay.io/repository/projectopenubl/searchpe/status "Docker Repository on Quay")](https://quay.io/repository/projectopenubl/searchpe)
+[![License](https://img.shields.io/badge/License-EPL%202.0-green.svg)](https://opensource.org/licenses/EPL-2.0)
+
+[![Project Chat](https://img.shields.io/badge/zulip-join_chat-brightgreen.svg?style=for-the-badge&logo=zulip)](https://projectopenubl.zulipchat.com/)
 
 # searchpe
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+Microservicio que expone los datos provenientes del `padrón reducido` de la SUNAT.
 
-If you want to learn more about Quarkus, please visit its website: https://quarkus.io/
+## Ejecutar en modo desarrollo
 
-## Running the application in dev mode
+### Iniciar PostgreSQL
 
-### Init PostgreSQL
-
-PostgreSQL is used for the application:
+PostgreSQL puede ser iniciado con:
 
 ```shell script
 docker run -p 5432:5432 -e POSTGRES_USER=searchpe_username -e POSTGRES_PASSWORD=searchpe_password -e POSTGRES_DB=searchpe_db postgres:13.1
 ```
 
-### Init server
+### Iniciar servidor
 
-You can run your application in dev mode that enables live coding using:
+Puedes ejecutar la aplicación en modo desarrollo con:
 
 ```shell script
 ./mvnw quarkus:dev
 ```
+
+## Getting started
+
+- [Documentación](https://project-openubl.github.io)
+- [Discusiones](https://github.com/project-openubl/searchpe/discussions)
 
 ## License
 
