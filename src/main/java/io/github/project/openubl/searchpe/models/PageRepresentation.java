@@ -42,7 +42,6 @@ public class PageRepresentation<T> {
         this.data = data;
     }
 
-    @RegisterForReflection
     public static class Meta {
         private Integer offset;
         private Integer limit;
