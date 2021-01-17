@@ -35,6 +35,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Calendar;
+import java.util.Date;
 
 @ApplicationScoped
 public class UpgradeDataManager {
@@ -107,11 +108,7 @@ public class UpgradeDataManager {
 
         try {
             tx.begin();
-
             version = VersionEntity.findById(versionId);
-//            version.status = Status.IMPORTING;
-//            version.persist();
-
             tx.commit();
         } catch (NotSupportedException | HeuristicRollbackException | HeuristicMixedException | RollbackException | SystemException e) {
             try {
@@ -181,11 +178,9 @@ public class UpgradeDataManager {
         try {
             tx.begin();
 
-            VersionEntity.update("active = false where active = ?1", true);
-
             version = VersionEntity.findById(versionId);
             version.status = Status.COMPLETED;
-            version.active = true;
+            version.updatedAt = new Date();
 
             VersionEntity.persist(version);
 

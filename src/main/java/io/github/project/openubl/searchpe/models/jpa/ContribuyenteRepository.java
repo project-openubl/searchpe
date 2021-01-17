@@ -37,14 +37,14 @@ public class ContribuyenteRepository implements PanacheRepositoryBase<Contribuye
 
     public static final String[] SORT_BY_FIELDS = {"ruc", "razonSocial"};
 
-    public static Optional<ContribuyenteEntity> findByRuc(VersionEntity version, String ruc) {
+    public Optional<ContribuyenteEntity> findByRuc(VersionEntity version, String ruc) {
         return ContribuyenteEntity.find(
                 "version.id =:versionId and ruc =:ruc",
                 Parameters.with("versionId", version.id).and("ruc", ruc)
         ).firstResultOptional();
     }
 
-    public static PageModel<ContribuyenteEntity> list(VersionEntity version, PageBean pageBean, List<SortBean> sortBy) {
+    public PageModel<ContribuyenteEntity> list(VersionEntity version, PageBean pageBean, List<SortBean> sortBy) {
         Sort sort = Sort.by();
         sortBy.forEach(f -> sort.and(f.getFieldName(), f.isAsc() ? Sort.Direction.Ascending : Sort.Direction.Descending));
 
@@ -61,7 +61,7 @@ public class ContribuyenteRepository implements PanacheRepositoryBase<Contribuye
         return new PageModel<>(pageBean, count, list);
     }
 
-    public static PageModel<ContribuyenteEntity> list(VersionEntity version, String filterText, PageBean pageBean, List<SortBean> sortBy) {
+    public PageModel<ContribuyenteEntity> list(VersionEntity version, String filterText, PageBean pageBean, List<SortBean> sortBy) {
         Sort sort = Sort.by();
         sortBy.forEach(f -> sort.and(f.getFieldName(), f.isAsc() ? Sort.Direction.Ascending : Sort.Direction.Descending));
 

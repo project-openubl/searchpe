@@ -23,4 +23,5 @@ public enum Status {
     IMPORTING,
     ERROR,
     COMPLETED,
+    DELETING
 }

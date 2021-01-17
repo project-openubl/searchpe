@@ -16,7 +16,9 @@
  */
 package io.github.project.openubl.searchpe.resources;
 
+import io.github.project.openubl.searchpe.jobs.DeleteVersionJob;
 import io.github.project.openubl.searchpe.jobs.UpgradeDataJob;
+import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.quarkus.panache.common.Sort;
@@ -37,6 +39,12 @@ public class VersionResource {
     @Inject
     UpgradeDataJob upgradeDataJob;
 
+    @Inject
+    DeleteVersionJob deleteVersionJob;
+
+    @Inject
+    VersionRepository versionRepository;
+
     @GET
     @Path("/")
     @Produces("application/json")
@@ -52,7 +60,6 @@ public class VersionResource {
         Date currentTime = new Date();
 
         VersionEntity version = VersionEntity.Builder.aVersionEntity()
-                .withActive(false)
                 .withCreatedAt(currentTime)
                 .withUpdatedAt(currentTime)
                 .withStatus(Status.SCHEDULED)
@@ -69,6 +76,13 @@ public class VersionResource {
     }
 
     @GET
+    @Path("/active")
+    @Produces("application/json")
+    public VersionEntity getActiveVersion() {
+        return versionRepository.findActive().orElseThrow(NotFoundException::new);
+    }
+
+    @GET
     @Path("/{id}")
     @Produces("application/json")
     public VersionEntity getVersion(@PathParam("id") Long id) {
@@ -78,5 +92,24 @@ public class VersionResource {
         }
 
         return version;
+    }
+
+    @DELETE
+    @Path("/{id}")
+    @Produces("application/json")
+    public void deleteVersion(@PathParam("id") Long id) {
+        VersionEntity version = VersionEntity.findById(id);
+        if (version == null) {
+            throw new NotFoundException("Version[id=" + id + "] does not exists");
+        }
+
+        version.status = Status.DELETING;
+        version.persist();
+
+        try {
+            deleteVersionJob.trigger(version);
+        } catch (SchedulerException e) {
+            throw new InternalServerErrorException(e);
+        }
     }
 }
