@@ -54,13 +54,11 @@ public class ContribuyenteResourceTest {
     public void getContribuyentes() {
         // Given
         VersionEntity version1 = VersionEntity.Builder.aVersionEntity()
-                .withActive(false)
                 .withStatus(Status.ERROR)
                 .withCreatedAt(new Date())
                 .withUpdatedAt(new Date())
                 .build();
         VersionEntity version2 = VersionEntity.Builder.aVersionEntity()
-                .withActive(true)
                 .withStatus(Status.COMPLETED)
                 .withCreatedAt(new Date())
                 .withUpdatedAt(new Date())
@@ -110,7 +108,6 @@ public class ContribuyenteResourceTest {
     public void getContribuyente() {
         // Given
         VersionEntity version = VersionEntity.Builder.aVersionEntity()
-                .withActive(true)
                 .withStatus(Status.COMPLETED)
                 .withCreatedAt(new Date())
                 .withUpdatedAt(new Date())
@@ -143,7 +140,6 @@ public class ContribuyenteResourceTest {
     public void getContribuyente_notFound() {
         // Given
         VersionEntity version = VersionEntity.Builder.aVersionEntity()
-                .withActive(true)
                 .withStatus(Status.COMPLETED)
                 .withCreatedAt(new Date())
                 .withUpdatedAt(new Date())

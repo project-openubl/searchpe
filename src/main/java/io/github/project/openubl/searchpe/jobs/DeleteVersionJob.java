@@ -16,8 +16,7 @@
  */
 package io.github.project.openubl.searchpe.jobs;
 
-import io.github.project.openubl.searchpe.managers.UpgradeDataManager;
-import io.github.project.openubl.searchpe.models.jpa.entity.Status;
+import io.github.project.openubl.searchpe.managers.VersionManager;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import io.quarkus.scheduler.Scheduled;
@@ -25,59 +24,49 @@ import org.quartz.*;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
-import java.util.Date;
 import java.util.UUID;
 
 @ApplicationScoped
-public class UpgradeDataJob {
+public class DeleteVersionJob {
 
     @Inject
     Scheduler quartz;
 
     @Inject
-    UpgradeDataManager upgradeDataManager;
+    VersionManager versionManager;
 
     public void trigger(VersionEntity version) throws SchedulerException {
         String versionId = String.valueOf(version.id);
 
         String jobId = UUID.randomUUID().toString();
         JobDetail job = JobBuilder.newJob(MyJob.class)
-                .withIdentity(jobId, "ImportData")
+                .withIdentity(jobId, "DeleteData")
                 .build();
         Trigger trigger = TriggerBuilder.newTrigger()
-                .withIdentity(jobId, "ImportData")
+                .withIdentity(jobId, "DeleteData")
                 .usingJobData("versionId", versionId)
                 .startNow()
                 .build();
         quartz.scheduleJob(job, trigger);
     }
 
-    @Scheduled(cron = "{searchpe.scheduled.cron}")
+    @Scheduled(cron = "0 0 0 * * ?")
     void schedule() {
-        Date currentTime = new Date();
-        VersionEntity version = VersionEntity.Builder.aVersionEntity()
-                .withCreatedAt(currentTime)
-                .withUpdatedAt(currentTime)
-                .withStatus(Status.SCHEDULED)
-                .build();
-        version.persist();
-
-        upgradeDataManager.upgrade(version.id);
     }
 
-    void upgradeData(Long versionId) {
-        upgradeDataManager.upgrade(versionId);
+    void deleteVersion(Long versionId) {
+        versionManager.deleteVersion(versionId);
     }
 
     @RegisterForReflection
     public static class MyJob implements Job {
         @Inject
-        UpgradeDataJob job;
+        DeleteVersionJob job;
 
         @Override
         public void execute(JobExecutionContext context) throws JobExecutionException {
             String versionId = (String) context.getTrigger().getJobDataMap().get("versionId");
-            job.upgradeData(Long.valueOf(versionId));
+            job.deleteVersion(Long.valueOf(versionId));
         }
     }
 }

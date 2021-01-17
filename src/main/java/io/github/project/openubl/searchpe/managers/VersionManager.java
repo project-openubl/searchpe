@@ -14,14 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.project.openubl.searchpe.models.jpa.entity;
+package io.github.project.openubl.searchpe.managers;
 
-public enum Status {
-    SCHEDULED,
-    DOWNLOADING,
-    UNZIPPING,
-    IMPORTING,
-    ERROR,
-    COMPLETED,
-    DELETING
+import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
+import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
+
+import javax.enterprise.context.ApplicationScoped;
+import javax.transaction.Transactional;
+
+@Transactional
+@ApplicationScoped
+public class VersionManager {
+
+    public void deleteVersion(Long versionId) {
+        ContribuyenteEntity.delete("version.id", versionId);
+        VersionEntity.delete("id", versionId);
+    }
+
 }

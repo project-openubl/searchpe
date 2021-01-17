@@ -59,13 +59,11 @@ public class VersionResourceTest {
     public void getVersions() {
         // Given
         VersionEntity version1 = VersionEntity.Builder.aVersionEntity()
-                .withActive(false)
                 .withStatus(Status.ERROR)
                 .withCreatedAt(new Date())
                 .withUpdatedAt(new Date())
                 .build();
         VersionEntity version2 = VersionEntity.Builder.aVersionEntity()
-                .withActive(true)
                 .withStatus(Status.COMPLETED)
                 .withCreatedAt(new Date())
                 .withUpdatedAt(new Date())
@@ -83,9 +81,7 @@ public class VersionResourceTest {
                 .body(
                         "size()", is(2),
                         "[0].status", is(Status.COMPLETED.toString()),
-                        "[0].active", is(true),
-                        "[1].status", is(Status.ERROR.toString()),
-                        "[1].active", is(false)
+                        "[1].status", is(Status.ERROR.toString())
                 );
 
     }
@@ -94,7 +90,6 @@ public class VersionResourceTest {
     public void getVersion() {
         // Given
         VersionEntity version = VersionEntity.Builder.aVersionEntity()
-                .withActive(false)
                 .withStatus(Status.ERROR)
                 .withCreatedAt(new Date())
                 .withUpdatedAt(new Date())
@@ -110,7 +105,6 @@ public class VersionResourceTest {
                 .then()
                 .statusCode(200)
                 .body(
-                        "active", is(false),
                         "status", is(Status.ERROR.toString())
                 );
 
