@@ -1,4 +1,6 @@
 quarkus:
+  resteasy:
+    path: /api
   quartz:
     clustered: true
     store-type: JDBC_CMT
