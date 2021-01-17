@@ -31,7 +31,9 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
 import javax.ws.rs.*;
+import javax.ws.rs.core.Response;
 import java.util.List;
+import java.util.Optional;
 
 @Transactional
 @ApplicationScoped
@@ -47,13 +49,18 @@ public class ContribuyenteResource {
     @GET
     @Path("/")
     @Produces("application/json")
-    public PageRepresentation<ContribuyenteEntity> getContribuyentes(
+    public Response getContribuyentes(
             @QueryParam("filterText") String filterText,
             @QueryParam("offset") @DefaultValue("0") Integer offset,
             @QueryParam("limit") @DefaultValue("10") Integer limit,
             @QueryParam("sort_by") @DefaultValue("name") List<String> sortBy
     ) {
-        VersionEntity version = versionRepository.findActive().orElseThrow(BadRequestException::new);
+        Optional<VersionEntity> versionOptional = versionRepository.findActive();
+        if (versionOptional.isEmpty()) {
+            return Response.noContent().build();
+        }
+
+        VersionEntity version = versionOptional.get();
 
         PageBean pageBean = ResourceUtils.getPageBean(offset, limit);
         List<SortBean> sortBeans = ResourceUtils.getSortBeans(sortBy, ContribuyenteRepository.SORT_BY_FIELDS);
@@ -65,10 +72,11 @@ public class ContribuyenteResource {
             pageModel = contribuyenteRepository.list(version, pageBean, sortBeans);
         }
 
-        return EntityToRepresentation.toRepresentation(
+        PageRepresentation<ContribuyenteEntity> result = EntityToRepresentation.toRepresentation(
                 pageModel,
                 versionEntity -> versionEntity
         );
+        return Response.ok(result).build();
     }
 
     @GET
