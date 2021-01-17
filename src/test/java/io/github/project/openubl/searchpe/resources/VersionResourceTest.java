@@ -77,15 +77,15 @@ public class VersionResourceTest {
         given()
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/versions")
+                .get("/api/versions")
                 .then()
                 .statusCode(200)
                 .body(
                         "size()", is(2),
-                        "[0].active", is(false),
-                        "[0].status", is(Status.ERROR.toString()),
-                        "[1].active", is(true),
-                        "[1].status", is(Status.COMPLETED.toString())
+                        "[0].status", is(Status.COMPLETED.toString()),
+                        "[0].active", is(true),
+                        "[1].status", is(Status.ERROR.toString()),
+                        "[1].active", is(false)
                 );
 
     }
@@ -106,7 +106,7 @@ public class VersionResourceTest {
         given()
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/versions/" + version.id)
+                .get("/api/versions/" + version.id)
                 .then()
                 .statusCode(200)
                 .body(
@@ -124,7 +124,7 @@ public class VersionResourceTest {
         given()
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/versions/1")
+                .get("/api/versions/1")
                 .then()
                 .statusCode(404);
 
@@ -138,7 +138,7 @@ public class VersionResourceTest {
         ExtractableResponse<Response> newVersionResponse = given()
                 .header("Content-Type", "application/json")
                 .when()
-                .post("/versions")
+                .post("/api/versions")
                 .then()
                 .statusCode(200)
                 .body(notNullValue())

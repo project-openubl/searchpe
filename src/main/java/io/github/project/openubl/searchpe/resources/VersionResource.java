@@ -19,6 +19,7 @@ package io.github.project.openubl.searchpe.resources;
 import io.github.project.openubl.searchpe.jobs.UpgradeDataJob;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
+import io.quarkus.panache.common.Sort;
 import org.quartz.SchedulerException;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -40,7 +41,8 @@ public class VersionResource {
     @Path("/")
     @Produces("application/json")
     public List<VersionEntity> getVersions() {
-        return VersionEntity.listAll();
+        Sort sort = Sort.by("id").descending();
+        return VersionEntity.findAll(sort).list();
     }
 
     @POST

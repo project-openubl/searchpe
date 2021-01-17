@@ -19,6 +19,7 @@ package io.github.project.openubl.searchpe.models.jpa.entity;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import org.hibernate.annotations.Type;
 
+import javax.json.bind.annotation.JsonbDateFormat;
 import javax.persistence.*;
 import javax.validation.constraints.NotNull;
 import java.util.Date;
@@ -27,11 +28,13 @@ import java.util.Date;
 @Table(name = "version")
 public class VersionEntity extends PanacheEntity {
 
+    @JsonbDateFormat(value = "yyyy-MM-dd'T'HH:mm:ss'Z'")
     @NotNull
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_at")
     public Date createdAt;
 
+    @JsonbDateFormat(value = "yyyy-MM-dd'T'HH:mm:ss'Z'")
     @NotNull
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "updated_at")
