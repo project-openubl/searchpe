@@ -36,7 +36,7 @@ public class VersionRepository implements PanacheRepository<VersionEntity> {
                 "status = :status",
                 sort,
                 Parameters.with("status", Status.COMPLETED)
-        ).firstResultOptional();
+        ).range(0, 1).firstResultOptional();
     }
 
 }
