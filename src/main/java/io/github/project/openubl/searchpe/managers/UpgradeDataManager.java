@@ -140,9 +140,9 @@ public class UpgradeDataManager {
                 ContribuyenteEntity contribuyente = ContribuyenteEntity
                         .Builder.aContribuyenteEntity()
                         .withVersion(version)
-                        .withId(versionId + "-" + columns[0])
+                        .withId(columns[0] + "-" + versionId)
                         .withRuc(columns[0])
-                        .withRazonSocial(columns[1])
+                        .withRazonSocial(columns[1].toUpperCase())
                         .withEstadoContribuyente(columns[2])
                         .withCondicionDomicilio(columns[3])
                         .withUbigeo(columns[4])

@@ -1,11 +1,10 @@
 quarkus:
-  resteasy:
-    path: /api
-  quartz:
-    clustered: true
-    store-type: JDBC_CMT
-
-  # Datasource configuration.
+#  datasource:
+#    db-kind: h2
+#    jdbc:
+#      url: jdbc:h2:./searchpe/h2/data/searchpe
+#    password: sa
+#    username: sa
   datasource:
     db-kind: postgresql
     jdbc:
@@ -15,30 +14,28 @@ quarkus:
     password: searchpe_password
     username: searchpe_username
 
-# Hibernate configuration
   hibernate-orm:
     database:
-      generation: none
+      generation: validate
+    sql-load-script: no-file
     log:
       sql: false
-    sql-load-script: no-file
     jdbc:
       statement-batch-size: 2000
 
-# Flyway
+  quartz:
+    clustered: true
+    store-type: JDBC_CMT
+
   flyway:
-    connect-retries: 10
-    table: flyway_quarkus_history
     migrate-at-start: true
-    baseline-on-migrate: true
-    baseline-version: "1.0"
-    baseline-description: Flyway
+    connect-retries: 10
 
 searchpe:
   sunat:
     padronReducidoUrl: http://www2.sunat.gob.pe/padron_reducido_ruc.zip
   workspace:
-    directory: searchpeWorkspace
+    directory: searchpe/workspace
     connectionTimeout: 100000
     readTimeout: 100000
   scheduled:

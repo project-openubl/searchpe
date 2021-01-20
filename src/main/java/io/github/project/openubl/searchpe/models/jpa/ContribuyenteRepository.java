@@ -67,9 +67,9 @@ public class ContribuyenteRepository implements PanacheRepositoryBase<Contribuye
 
         PanacheQuery<ContribuyenteEntity> query = VersionEntity
                 .find(
-                        "From ContribuyenteEntity as c where c.version.id =:versionId and (c.ruc like :filterText or lower(c.razonSocial) like :filterText) ",
+                        "From ContribuyenteEntity as c where c.version.id =:versionId and (c.ruc like :filterText or c.razonSocial like :filterText)",
                         sort,
-                        Parameters.with("versionId", version.id).and("filterText", "%" + filterText.toLowerCase() + "%")
+                        Parameters.with("versionId", version.id).and("filterText", "%" + filterText.toUpperCase())
                 )
                 .range(pageBean.getOffset(), pageBean.getOffset() + pageBean.getLimit() - 1);
 

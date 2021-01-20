@@ -65,6 +65,7 @@ public class VersionResource {
                 .withStatus(Status.SCHEDULED)
                 .build();
         version.persist();
+        version.flush();
 
         try {
             upgradeDataJob.trigger(version);

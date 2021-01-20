@@ -34,7 +34,7 @@ public class FileManager {
 
     private static final Logger LOGGER = Logger.getLogger(FileManager.class);
 
-    @ConfigProperty(name = "searchpe.workspace.directory", defaultValue = "searchpeWorkspace")
+    @ConfigProperty(name = "searchpe.workspace.directory", defaultValue = "workspace")
     String workingDirectory;
 
     @ConfigProperty(name = "searchpe.sunat.padronReducidoUrl")

@@ -9,7 +9,7 @@ CREATE TABLE VERSION
 
 CREATE TABLE CONTRIBUYENTE
 (
-    id                   VARCHAR(250) NOT NULL,
+    id                   VARCHAR(17) NOT NULL,
     ruc                  VARCHAR(11)  NOT NULL,
     razon_social         VARCHAR(255) NOT NULL,
     estado_contribuyente VARCHAR(30),
@@ -26,8 +26,9 @@ CREATE TABLE CONTRIBUYENTE
     manzana              VARCHAR(30),
     kilometro            VARCHAR(30),
     version_id           int8  NOT NULL,
-    PRIMARY KEY (id),
-    FOREIGN KEY (version_id) REFERENCES VERSION (id)
+    PRIMARY KEY (id)
 );
+
+ALTER TABLE CONTRIBUYENTE ADD CONSTRAINT fk_contribuyente_version FOREIGN KEY (version_id) REFERENCES VERSION;
 
 COMMIT;

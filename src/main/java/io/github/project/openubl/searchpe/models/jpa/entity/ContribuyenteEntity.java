@@ -18,14 +18,13 @@ package io.github.project.openubl.searchpe.models.jpa.entity;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 
+import javax.json.bind.annotation.JsonbTransient;
 import javax.persistence.*;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 
 @Entity
-@Table(name = "contribuyente", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"version_id", "ruc"})
-})
+@Table(name = "contribuyente")
 public class ContribuyenteEntity extends PanacheEntityBase {
 
     @Id
@@ -93,6 +92,7 @@ public class ContribuyenteEntity extends PanacheEntityBase {
     @Column(name = "kilometro")
     public String kilometro;
 
+    @JsonbTransient
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "version_id", foreignKey = @ForeignKey)

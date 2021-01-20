@@ -19,6 +19,7 @@ package io.github.project.openubl.searchpe.resources.config;
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 import org.testcontainers.containers.FixedHostPortGenericContainer;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
 
 import java.util.Collections;
 import java.util.Map;
@@ -33,7 +34,8 @@ public class PostgreSQLServer implements QuarkusTestResourceLifecycleManager {
                 .withFixedExposedPort(5432, 5432)
                 .withEnv("POSTGRES_USER", "searchpe_username")
                 .withEnv("POSTGRES_PASSWORD", "searchpe_password")
-                .withEnv("POSTGRES_DB", "searchpe_db");
+                .withEnv("POSTGRES_DB", "searchpe_db")
+                .waitingFor(Wait.forListeningPort());
         postgreSQL.start();
         return Collections.emptyMap();
     }
