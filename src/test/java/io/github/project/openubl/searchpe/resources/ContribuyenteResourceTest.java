@@ -29,7 +29,6 @@ import org.junit.jupiter.api.Test;
 
 import javax.inject.Inject;
 import java.util.Date;
-import java.util.UUID;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.is;
@@ -66,19 +65,19 @@ public class ContribuyenteResourceTest {
         versionRepository.persist(version1, version2);
 
         ContribuyenteEntity contribuyente1 = ContribuyenteEntity.Builder.aContribuyenteEntity()
-                .withId(UUID.randomUUID().toString())
+                .withId("11111111111" + "-" + version2.id)
                 .withRuc("11111111111")
                 .withRazonSocial("razonSocial1")
                 .withVersion(version2)
                 .build();
         ContribuyenteEntity contribuyente2 = ContribuyenteEntity.Builder.aContribuyenteEntity()
-                .withId(UUID.randomUUID().toString())
+                .withId("22222222222" + "-" + version2.id)
                 .withRuc("22222222222")
                 .withRazonSocial("razonSocial2")
                 .withVersion(version2)
                 .build();
         ContribuyenteEntity contribuyente3 = ContribuyenteEntity.Builder.aContribuyenteEntity()
-                .withId(UUID.randomUUID().toString())
+                .withId("33333333333" + "-" + version2.id)
                 .withRuc("33333333333")
                 .withRazonSocial("razonSocial3")
                 .withVersion(version2)
@@ -115,7 +114,7 @@ public class ContribuyenteResourceTest {
         versionRepository.persist(version);
 
         ContribuyenteEntity contribuyente = ContribuyenteEntity.Builder.aContribuyenteEntity()
-                .withId(UUID.randomUUID().toString())
+                .withId("11111111111" + "-" + version.id)
                 .withRuc("11111111111")
                 .withRazonSocial("razonSocial1")
                 .withVersion(version)
