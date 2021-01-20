@@ -89,7 +89,7 @@ public class ContribuyenteResourceTest {
         given()
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/api/contribuyentes")
+                .get("/contribuyentes")
                 .then()
                 .statusCode(200)
                 .body(
@@ -126,7 +126,7 @@ public class ContribuyenteResourceTest {
         given()
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/api/contribuyentes/" + contribuyente.ruc)
+                .get("/contribuyentes/" + contribuyente.ruc)
                 .then()
                 .statusCode(200)
                 .body(
@@ -150,7 +150,7 @@ public class ContribuyenteResourceTest {
         given()
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/api/contribuyentes/someRuc")
+                .get("/contribuyentes/someRuc")
                 .then()
                 .statusCode(404);
     }

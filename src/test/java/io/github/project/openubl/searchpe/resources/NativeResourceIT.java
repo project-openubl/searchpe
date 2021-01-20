@@ -47,7 +47,7 @@ public class NativeResourceIT {
         VersionEntity versionCreated = given()
                 .header("Content-Type", "application/json")
                 .when()
-                .post("/api/versions")
+                .post("/versions")
                 .then()
                 .statusCode(200)
                 .body(notNullValue())
@@ -61,7 +61,7 @@ public class NativeResourceIT {
                     VersionEntity versionWatched = given()
                             .header("Content-Type", "application/json")
                             .when()
-                            .get("/api/versions/" + versionCreated.id)
+                            .get("/versions/" + versionCreated.id)
                             .then()
                             .extract()
                             .as(VersionEntity.class);
@@ -76,7 +76,7 @@ public class NativeResourceIT {
         given()
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/api/contribuyentes")
+                .get("/contribuyentes")
                 .then()
                 .statusCode(200)
                 .body(
