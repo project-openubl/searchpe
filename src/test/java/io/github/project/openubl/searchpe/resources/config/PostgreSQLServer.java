@@ -35,7 +35,7 @@ public class PostgreSQLServer implements QuarkusTestResourceLifecycleManager {
                 .withEnv("POSTGRES_USER", "searchpe_username")
                 .withEnv("POSTGRES_PASSWORD", "searchpe_password")
                 .withEnv("POSTGRES_DB", "searchpe_db")
-                .waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*\\\\s", 5));
+                .waitingFor(Wait.forListeningPort());
         postgreSQL.start();
         return Collections.emptyMap();
     }
