@@ -25,6 +25,7 @@ import org.quartz.*;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
+import javax.transaction.*;
 import java.util.Date;
 import java.util.UUID;
 
@@ -36,6 +37,9 @@ public class UpgradeDataJob {
 
     @Inject
     UpgradeDataManager upgradeDataManager;
+
+    @Inject
+    UserTransaction tx;
 
     public void trigger(VersionEntity version) throws SchedulerException {
         String versionId = String.valueOf(version.id);
@@ -54,13 +58,30 @@ public class UpgradeDataJob {
 
     @Scheduled(cron = "{searchpe.scheduled.cron}")
     void schedule() {
-        Date currentTime = new Date();
-        VersionEntity version = VersionEntity.Builder.aVersionEntity()
-                .withCreatedAt(currentTime)
-                .withUpdatedAt(currentTime)
-                .withStatus(Status.SCHEDULED)
-                .build();
-        version.persist();
+        VersionEntity version;
+
+        try {
+            tx.begin();
+
+            Date currentTime = new Date();
+
+            version = VersionEntity.Builder.aVersionEntity()
+                    .withCreatedAt(currentTime)
+                    .withUpdatedAt(currentTime)
+                    .withStatus(Status.SCHEDULED)
+                    .build();
+            version.persist();
+            version.flush();
+
+            tx.commit();
+        }  catch (NotSupportedException | HeuristicRollbackException | HeuristicMixedException | RollbackException | SystemException e) {
+            try {
+                tx.rollback();
+            } catch (SystemException se) {
+                throw new IllegalStateException(se);
+            }
+            return;
+        }
 
         upgradeDataManager.upgrade(version.id);
     }

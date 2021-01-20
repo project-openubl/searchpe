@@ -35,8 +35,8 @@
 
         <quarkus.platform.group-id>io.quarkus</quarkus.platform.group-id>
         <quarkus.platform.artifact-id>quarkus-universe-bom</quarkus.platform.artifact-id>
-        <quarkus-plugin.version>1.10.5.Final</quarkus-plugin.version>
-        <quarkus.platform.version>1.10.5.Final</quarkus.platform.version>
+        <quarkus-plugin.version>1.11.0.Final</quarkus-plugin.version>
+        <quarkus.platform.version>1.11.0.Final</quarkus.platform.version>
 
         <surefire-plugin.version>2.22.1</surefire-plugin.version>
         <compiler-plugin.version>3.8.1</compiler-plugin.version>
@@ -103,24 +103,18 @@
     <dependencies>
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-resteasy</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
             <artifactId>quarkus-arc</artifactId>
         </dependency>
+
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-config-yaml</artifactId>
+            <artifactId>quarkus-resteasy</artifactId>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-resteasy-jsonb</artifactId>
         </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-quartz</artifactId>
-        </dependency>
+
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-hibernate-validator</artifactId>
@@ -129,6 +123,7 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-hibernate-orm-panache</artifactId>
         </dependency>
+
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-agroal</artifactId>
@@ -136,6 +131,20 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-jdbc-postgresql</artifactId>
+        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>io.quarkus</groupId>-->
+<!--            <artifactId>quarkus-jdbc-h2</artifactId>-->
+<!--        </dependency>-->
+
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-config-yaml</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-quartz</artifactId>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
