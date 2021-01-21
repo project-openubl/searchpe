@@ -27,7 +27,7 @@ import javax.transaction.Transactional;
 public class VersionManager {
 
     public void deleteVersion(Long versionId) {
-        ContribuyenteEntity.delete("version.id", versionId);
+        ContribuyenteEntity.delete("id.versionId", versionId);
         VersionEntity.delete("id", versionId);
     }
 

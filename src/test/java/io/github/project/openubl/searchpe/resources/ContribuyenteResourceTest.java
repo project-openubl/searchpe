@@ -29,6 +29,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import javax.inject.Inject;
+import java.util.Calendar;
 import java.util.Date;
 
 import static io.restassured.RestAssured.given;
@@ -101,15 +102,25 @@ public class ContribuyenteResourceTest {
     @Test
     public void getContribuyente() {
         // Given
-        VersionEntity version = VersionEntity.Builder.aVersionEntity()
+        Calendar calendar = Calendar.getInstance();
+
+        VersionEntity version1 = VersionEntity.Builder.aVersionEntity()
                 .withStatus(Status.COMPLETED)
-                .withCreatedAt(new Date())
-                .withUpdatedAt(new Date())
+                .withCreatedAt(calendar.getTime())
+                .withUpdatedAt(calendar.getTime())
                 .build();
-        versionRepository.persist(version);
+
+        calendar.add(Calendar.SECOND, 10);
+
+        VersionEntity version2 = VersionEntity.Builder.aVersionEntity()
+                .withStatus(Status.COMPLETED)
+                .withCreatedAt(calendar.getTime())
+                .withUpdatedAt(calendar.getTime())
+                .build();
+        versionRepository.persist(version1, version2);
 
         ContribuyenteEntity contribuyente = ContribuyenteEntity.Builder.aContribuyenteEntity()
-                .withId(new ContribuyenteId(version.id, "11111111111"))
+                .withId(new ContribuyenteId(version2.id, "11111111111"))
                 .withRazonSocial("razonSocial1")
                 .build();
         contribuyenteRepository.persist(contribuyente);
