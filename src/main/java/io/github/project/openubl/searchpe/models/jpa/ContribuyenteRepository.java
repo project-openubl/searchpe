@@ -20,6 +20,7 @@ import io.github.project.openubl.searchpe.models.PageBean;
 import io.github.project.openubl.searchpe.models.PageModel;
 import io.github.project.openubl.searchpe.models.SortBean;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
+import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteId;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
@@ -29,20 +30,12 @@ import io.quarkus.panache.common.Sort;
 import javax.enterprise.context.ApplicationScoped;
 import javax.transaction.Transactional;
 import java.util.List;
-import java.util.Optional;
 
 @Transactional
 @ApplicationScoped
-public class ContribuyenteRepository implements PanacheRepositoryBase<ContribuyenteEntity, String> {
+public class ContribuyenteRepository implements PanacheRepositoryBase<ContribuyenteEntity, ContribuyenteId> {
 
     public static final String[] SORT_BY_FIELDS = {"ruc", "razonSocial"};
-
-    public Optional<ContribuyenteEntity> findByRuc(VersionEntity version, String ruc) {
-        return ContribuyenteEntity.find(
-                "version.id =:versionId and ruc =:ruc",
-                Parameters.with("versionId", version.id).and("ruc", ruc)
-        ).firstResultOptional();
-    }
 
     public PageModel<ContribuyenteEntity> list(VersionEntity version, PageBean pageBean, List<SortBean> sortBy) {
         Sort sort = Sort.by();
@@ -50,7 +43,7 @@ public class ContribuyenteRepository implements PanacheRepositoryBase<Contribuye
 
         PanacheQuery<ContribuyenteEntity> query = VersionEntity
                 .find(
-                        "From ContribuyenteEntity as c where c.version.id =:versionId",
+                        "From ContribuyenteEntity as c where c.id.versionId =:versionId",
                         sort,
                         Parameters.with("versionId", version.id)
                 )
@@ -67,7 +60,7 @@ public class ContribuyenteRepository implements PanacheRepositoryBase<Contribuye
 
         PanacheQuery<ContribuyenteEntity> query = VersionEntity
                 .find(
-                        "From ContribuyenteEntity as c where c.version.id =:versionId and (c.ruc like :filterText or c.razonSocial like :filterText)",
+                        "From ContribuyenteEntity as c where c.id.versionId =:versionId and c.razonSocial like :filterText",
                         sort,
                         Parameters.with("versionId", version.id).and("filterText", "%" + filterText.toUpperCase())
                 )

@@ -19,6 +19,7 @@ package io.github.project.openubl.searchpe.resources;
 import io.github.project.openubl.searchpe.models.jpa.ContribuyenteRepository;
 import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
+import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteId;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.resources.config.PostgreSQLServer;
@@ -65,22 +66,16 @@ public class ContribuyenteResourceTest {
         versionRepository.persist(version1, version2);
 
         ContribuyenteEntity contribuyente1 = ContribuyenteEntity.Builder.aContribuyenteEntity()
-                .withId("11111111111" + "-" + version2.id)
-                .withRuc("11111111111")
+                .withId(new ContribuyenteId(version2.id, "11111111111"))
                 .withRazonSocial("razonSocial1")
-                .withVersion(version2)
                 .build();
         ContribuyenteEntity contribuyente2 = ContribuyenteEntity.Builder.aContribuyenteEntity()
-                .withId("22222222222" + "-" + version2.id)
-                .withRuc("22222222222")
+                .withId(new ContribuyenteId(version2.id, "22222222222"))
                 .withRazonSocial("razonSocial2")
-                .withVersion(version2)
                 .build();
         ContribuyenteEntity contribuyente3 = ContribuyenteEntity.Builder.aContribuyenteEntity()
-                .withId("33333333333" + "-" + version2.id)
-                .withRuc("33333333333")
+                .withId(new ContribuyenteId(version2.id, "33333333333"))
                 .withRazonSocial("razonSocial3")
-                .withVersion(version2)
                 .build();
         contribuyenteRepository.persist(contribuyente1, contribuyente2, contribuyente3);
 
@@ -96,9 +91,9 @@ public class ContribuyenteResourceTest {
                         "meta.limit", is(10),
                         "meta.count", is(3),
                         "data.size()", is(3),
-                        "data[0].ruc", is(contribuyente1.ruc),
-                        "data[1].ruc", is(contribuyente2.ruc),
-                        "data[2].ruc", is(contribuyente3.ruc)
+                        "data[0].ruc", is(contribuyente1.id.ruc),
+                        "data[1].ruc", is(contribuyente2.id.ruc),
+                        "data[2].ruc", is(contribuyente3.id.ruc)
                 );
 
     }
@@ -114,10 +109,8 @@ public class ContribuyenteResourceTest {
         versionRepository.persist(version);
 
         ContribuyenteEntity contribuyente = ContribuyenteEntity.Builder.aContribuyenteEntity()
-                .withId("11111111111" + "-" + version.id)
-                .withRuc("11111111111")
+                .withId(new ContribuyenteId(version.id, "11111111111"))
                 .withRazonSocial("razonSocial1")
-                .withVersion(version)
                 .build();
         contribuyenteRepository.persist(contribuyente);
 
@@ -125,11 +118,11 @@ public class ContribuyenteResourceTest {
         given()
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/contribuyentes/" + contribuyente.ruc)
+                .get("/contribuyentes/" + contribuyente.id.ruc)
                 .then()
                 .statusCode(200)
                 .body(
-                        "ruc", is(contribuyente.ruc),
+                        "ruc", is(contribuyente.id.ruc),
                         "razonSocial", is(contribuyente.razonSocial)
                 );
 

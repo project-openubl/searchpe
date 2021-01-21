@@ -2,7 +2,7 @@ quarkus:
 #  datasource:
 #    db-kind: h2
 #    jdbc:
-#      url: jdbc:h2:./searchpe/h2/data/searchpe
+#      url: jdbc:h2:./searchpe/h2/data/searchpe;COMPRESS=TRUE
 #    password: sa
 #    username: sa
   datasource:
@@ -29,7 +29,6 @@ quarkus:
 
   flyway:
     migrate-at-start: true
-    connect-retries: 10
 
 searchpe:
   sunat:

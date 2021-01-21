@@ -23,6 +23,7 @@ import io.github.project.openubl.searchpe.models.SortBean;
 import io.github.project.openubl.searchpe.models.jpa.ContribuyenteRepository;
 import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
+import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteId;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.utils.EntityToRepresentation;
 import io.github.project.openubl.searchpe.utils.ResourceUtils;
@@ -84,6 +85,6 @@ public class ContribuyenteResource {
     @Produces("application/json")
     public ContribuyenteEntity getContribuyente(@PathParam("ruc") String ruc) {
         VersionEntity version = versionRepository.findActive().orElseThrow(NotFoundException::new);
-        return contribuyenteRepository.findByRuc(version, ruc).orElseThrow(NotFoundException::new);
+        return contribuyenteRepository.findByIdOptional(new ContribuyenteId(version.id, ruc)).orElseThrow(NotFoundException::new);
     }
 }

@@ -18,6 +18,7 @@ package io.github.project.openubl.searchpe.managers;
 
 import io.github.project.openubl.searchpe.models.VersionEvent;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
+import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteId;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.utils.DataHelper;
@@ -139,9 +140,7 @@ public class UpgradeDataManager {
                 String[] columns = DataHelper.readLine(line, 15);
                 ContribuyenteEntity contribuyente = ContribuyenteEntity
                         .Builder.aContribuyenteEntity()
-                        .withVersion(version)
-                        .withId(columns[0] + "-" + versionId)
-                        .withRuc(columns[0])
+                        .withId(new ContribuyenteId(versionId, columns[0]))
                         .withRazonSocial(columns[1].toUpperCase())
                         .withEstadoContribuyente(columns[2])
                         .withCondicionDomicilio(columns[3])

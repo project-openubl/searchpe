@@ -19,88 +19,68 @@ package io.github.project.openubl.searchpe.models.jpa.entity;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 
 import javax.json.bind.annotation.JsonbTransient;
-import javax.persistence.*;
+import javax.persistence.Column;
+import javax.persistence.EmbeddedId;
+import javax.persistence.Entity;
+import javax.persistence.Table;
 import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
 
 @Entity
 @Table(name = "contribuyente")
 public class ContribuyenteEntity extends PanacheEntityBase {
 
-    @Id
-    public String id;
+    @JsonbTransient
+    @EmbeddedId
+    public ContribuyenteId id;
 
-    @Size(min = 11, max = 11)
-    @NotNull
-    @Column(name = "ruc")
+    @Column(name = "ruc", insertable = false, updatable = false)
     public String ruc;
 
-    @Size(max = 255)
     @NotNull
     @Column(name = "razon_social")
     public String razonSocial;
 
-    @Size(max = 30)
     @Column(name = "estado_contribuyente")
     public String estadoContribuyente;
 
-    @Size(max = 30)
     @Column(name = "condicion_domicilio")
     public String condicionDomicilio;
 
-    @Size(min = 6, max = 6)
     @Column(name = "ubigeo")
     public String ubigeo;
 
-    @Size(max = 30)
     @Column(name = "tipo_via")
     public String tipoVia;
 
-    @Size(max = 100)
     @Column(name = "nombre_via")
     public String nombreVia;
 
-    @Size(max = 30)
     @Column(name = "codigo_zona")
     public String codigoZona;
 
-    @Size(max = 30)
     @Column(name = "tipo_zona")
     public String tipoZona;
 
-    @Size(max = 30)
     @Column(name = "numero")
     public String numero;
 
-    @Size(max = 30)
     @Column(name = "interior")
     public String interior;
 
-    @Size(max = 30)
     @Column(name = "lote")
     public String lote;
 
-    @Size(max = 30)
     @Column(name = "departamento")
     public String departamento;
 
-    @Size(max = 30)
     @Column(name = "manzana")
     public String manzana;
 
-    @Size(max = 30)
     @Column(name = "kilometro")
     public String kilometro;
 
-    @JsonbTransient
-    @NotNull
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "version_id", foreignKey = @ForeignKey)
-    public VersionEntity version;
-
     public static final class Builder {
-        public String id;
-        public String ruc;
+        public ContribuyenteId id;
         public String razonSocial;
         public String estadoContribuyente;
         public String condicionDomicilio;
@@ -115,7 +95,6 @@ public class ContribuyenteEntity extends PanacheEntityBase {
         public String departamento;
         public String manzana;
         public String kilometro;
-        public VersionEntity version;
 
         private Builder() {
         }
@@ -124,13 +103,8 @@ public class ContribuyenteEntity extends PanacheEntityBase {
             return new Builder();
         }
 
-        public Builder withId(String id) {
+        public Builder withId(ContribuyenteId id) {
             this.id = id;
-            return this;
-        }
-
-        public Builder withRuc(String ruc) {
-            this.ruc = ruc;
             return this;
         }
 
@@ -204,30 +178,23 @@ public class ContribuyenteEntity extends PanacheEntityBase {
             return this;
         }
 
-        public Builder withVersion(VersionEntity version) {
-            this.version = version;
-            return this;
-        }
-
         public ContribuyenteEntity build() {
             ContribuyenteEntity contribuyenteEntity = new ContribuyenteEntity();
-            contribuyenteEntity.ruc = this.ruc;
-            contribuyenteEntity.estadoContribuyente = this.estadoContribuyente;
-            contribuyenteEntity.tipoVia = this.tipoVia;
             contribuyenteEntity.manzana = this.manzana;
-            contribuyenteEntity.tipoZona = this.tipoZona;
             contribuyenteEntity.id = this.id;
-            contribuyenteEntity.condicionDomicilio = this.condicionDomicilio;
-            contribuyenteEntity.ubigeo = this.ubigeo;
             contribuyenteEntity.lote = this.lote;
-            contribuyenteEntity.version = this.version;
-            contribuyenteEntity.interior = this.interior;
-            contribuyenteEntity.kilometro = this.kilometro;
             contribuyenteEntity.razonSocial = this.razonSocial;
-            contribuyenteEntity.departamento = this.departamento;
-            contribuyenteEntity.nombreVia = this.nombreVia;
+            contribuyenteEntity.condicionDomicilio = this.condicionDomicilio;
+            contribuyenteEntity.tipoZona = this.tipoZona;
+            contribuyenteEntity.interior = this.interior;
+            contribuyenteEntity.estadoContribuyente = this.estadoContribuyente;
+            contribuyenteEntity.ubigeo = this.ubigeo;
+            contribuyenteEntity.kilometro = this.kilometro;
             contribuyenteEntity.codigoZona = this.codigoZona;
+            contribuyenteEntity.departamento = this.departamento;
             contribuyenteEntity.numero = this.numero;
+            contribuyenteEntity.tipoVia = this.tipoVia;
+            contribuyenteEntity.nombreVia = this.nombreVia;
             return contribuyenteEntity;
         }
     }
