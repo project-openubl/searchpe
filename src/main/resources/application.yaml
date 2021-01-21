@@ -1,18 +1,18 @@
 quarkus:
-#  datasource:
-#    db-kind: h2
-#    jdbc:
-#      url: jdbc:h2:./searchpe/h2/data/searchpe;COMPRESS=TRUE
-#    password: sa
-#    username: sa
   datasource:
-    db-kind: postgresql
+    db-kind: h2
     jdbc:
-      url: jdbc:postgresql://localhost:5432/searchpe_db
-      additional-jdbc-properties:
-        reWriteBatchedInserts: "true"
-    password: searchpe_password
-    username: searchpe_username
+      url: jdbc:h2:./searchpe/h2/data/searchpe;AUTO_SERVER=true;DB_CLOSE_DELAY=-1;
+    password: sa
+    username: sa
+#  datasource:
+#    db-kind: postgresql
+#    jdbc:
+#      url: jdbc:postgresql://localhost:5432/searchpe_db
+#      additional-jdbc-properties:
+#        reWriteBatchedInserts: "true"
+#    password: searchpe_password
+#    username: searchpe_username
 
   hibernate-orm:
     database:

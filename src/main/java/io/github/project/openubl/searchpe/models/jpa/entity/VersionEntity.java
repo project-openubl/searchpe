@@ -22,6 +22,7 @@ import javax.json.bind.annotation.JsonbDateFormat;
 import javax.persistence.*;
 import javax.validation.constraints.NotNull;
 import java.util.Date;
+import java.util.Objects;
 
 @Entity
 @Table(name = "version")
@@ -43,6 +44,19 @@ public class VersionEntity extends PanacheEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
     public Status status;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        VersionEntity that = (VersionEntity) o;
+        return id.equals(that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
 
     public static final class Builder {
         public Date createdAt;

@@ -28,8 +28,7 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
 import javax.ws.rs.*;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 @Transactional
 @ApplicationScoped
@@ -48,7 +47,20 @@ public class VersionResource {
     @GET
     @Path("/")
     @Produces("application/json")
-    public List<VersionEntity> getVersions() {
+    public List<VersionEntity> getVersions(@QueryParam("active") Boolean active) {
+        if (active != null) {
+            List<VersionEntity> activeList = versionRepository.findActive().map(Arrays::asList).orElse(Collections.emptyList());
+            if (active) {
+                return activeList;
+            } else {
+                Sort sort = Sort.by("id").descending();
+                List<VersionEntity> allList = VersionEntity.findAll(sort).list();
+
+                allList.removeAll(activeList);
+                return allList;
+            }
+        }
+
         Sort sort = Sort.by("id").descending();
         return VersionEntity.findAll(sort).list();
     }
@@ -74,13 +86,6 @@ public class VersionResource {
         }
 
         return version;
-    }
-
-    @GET
-    @Path("/active")
-    @Produces("application/json")
-    public VersionEntity getActiveVersion() {
-        return versionRepository.findActive().orElseThrow(NotFoundException::new);
     }
 
     @GET
