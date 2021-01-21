@@ -35,7 +35,7 @@ import java.util.List;
 @ApplicationScoped
 public class ContribuyenteRepository implements PanacheRepositoryBase<ContribuyenteEntity, ContribuyenteId> {
 
-    public static final String[] SORT_BY_FIELDS = {"ruc", "razonSocial"};
+    public static final String[] SORT_BY_FIELDS = {"razonSocial"};
 
     public PageModel<ContribuyenteEntity> list(VersionEntity version, PageBean pageBean, List<SortBean> sortBy) {
         Sort sort = Sort.by();
