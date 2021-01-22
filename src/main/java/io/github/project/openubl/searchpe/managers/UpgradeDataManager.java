@@ -141,7 +141,7 @@ public class UpgradeDataManager {
                 ContribuyenteEntity contribuyente = ContribuyenteEntity
                         .Builder.aContribuyenteEntity()
                         .withId(new ContribuyenteId(versionId, columns[0]))
-                        .withRazonSocial(columns[1].toUpperCase())
+                        .withRazonSocial(columns[1].toLowerCase())
                         .withEstadoContribuyente(columns[2])
                         .withCondicionDomicilio(columns[3])
                         .withUbigeo(columns[4])

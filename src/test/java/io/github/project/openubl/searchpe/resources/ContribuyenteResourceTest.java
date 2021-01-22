@@ -22,6 +22,7 @@ import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteId;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
+import io.github.project.openubl.searchpe.resources.config.ElasticsearchServer;
 import io.github.project.openubl.searchpe.resources.config.PostgreSQLServer;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -36,6 +37,7 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.is;
 
 @QuarkusTest
+@QuarkusTestResource(ElasticsearchServer.class)
 @QuarkusTestResource(PostgreSQLServer.class)
 public class ContribuyenteResourceTest {
 
@@ -91,10 +93,7 @@ public class ContribuyenteResourceTest {
                         "meta.offset", is(0),
                         "meta.limit", is(10),
                         "meta.count", is(3),
-                        "data.size()", is(3),
-                        "data[0].ruc", is(contribuyente1.id.ruc),
-                        "data[1].ruc", is(contribuyente2.id.ruc),
-                        "data[2].ruc", is(contribuyente3.id.ruc)
+                        "data.size()", is(3)
                 );
 
     }

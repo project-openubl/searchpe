@@ -10,12 +10,12 @@ quarkus:
 
   hibernate-orm:
     database:
-      generation: validate
+      generation: none
     sql-load-script: no-file
     log:
       sql: false
     jdbc:
-      statement-batch-size: 2000
+      statement-batch-size: 5000
 
   quartz:
     clustered: true
@@ -23,7 +23,22 @@ quarkus:
 
   flyway:
     migrate-at-start: true
-    connect-retries: 5
+    connect-retries: 3
+
+  hibernate-search-orm:
+    elasticsearch:
+      username: es_username
+      password: es_password
+      hosts: localhost:9200
+      protocol: HTTP
+      version: 7
+      analysis:
+        configurer: bean:searchpeAnalysisConfigurer
+    schema-management:
+      strategy: CREATE_OR_VALIDATE
+    automatic-indexing:
+      synchronization:
+        strategy: write-sync
 
 searchpe:
   sunat:
@@ -36,11 +51,21 @@ searchpe:
     cron: "0 0 1 * * ?"
 
 "%dev":
+  quarkus:
+    hibernate-search-orm:
+      automatic-indexing:
+        synchronization:
+          strategy: sync
   searchpe:
     sunat:
       padronReducidoUrl: https://raw.githubusercontent.com/project-openubl/searchpe/master/padron_reducido_ruc.zip
 
 "%test":
+  quarkus:
+    hibernate-search-orm:
+      automatic-indexing:
+        synchronization:
+          strategy: sync
   searchpe:
     sunat:
       padronReducidoUrl: https://raw.githubusercontent.com/project-openubl/searchpe/master/padron_reducido_ruc.zip
