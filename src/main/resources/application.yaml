@@ -43,6 +43,8 @@ quarkus:
 searchpe:
   sunat:
     padronReducidoUrl: http://www2.sunat.gob.pe/padron_reducido_ruc.zip
+    filter:
+      - ACTIVO
   workspace:
     directory: searchpe/workspace
     connectionTimeout: 100000

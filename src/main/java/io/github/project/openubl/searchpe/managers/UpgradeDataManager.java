@@ -37,11 +37,16 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
+import java.util.Optional;
 
 @ApplicationScoped
 public class UpgradeDataManager {
 
     private static final Logger LOGGER = Logger.getLogger(UpgradeDataManager.class);
+
+    @ConfigProperty(name = "searchpe.sunat.filter")
+    Optional<List<String>> sunatFilter;
 
     @ConfigProperty(name = "quarkus.hibernate-orm.jdbc.statement-batch-size", defaultValue = "1000")
     Integer jdbcBatchSize;
@@ -128,6 +133,11 @@ public class UpgradeDataManager {
                 }
 
                 String[] columns = DataHelper.readLine(line, 15);
+
+                if (sunatFilter.isPresent() && !sunatFilter.get().contains(columns[2])) {
+                    continue;
+                }
+
                 ContribuyenteEntity contribuyente = ContribuyenteEntity
                         .Builder.aContribuyenteEntity()
                         .withId(new ContribuyenteId(versionId, columns[0]))
