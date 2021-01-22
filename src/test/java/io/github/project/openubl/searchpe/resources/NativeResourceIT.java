@@ -84,7 +84,7 @@ public class NativeResourceIT {
                 .body(
                         "meta.offset", is(0),
                         "meta.limit", is(10),
-                        "meta.count", is(1000),
+                        "meta.count", is(422),
                         "data.size()", is(10)
                 );
     }

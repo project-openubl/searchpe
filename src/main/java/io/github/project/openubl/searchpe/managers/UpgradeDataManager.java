@@ -17,10 +17,8 @@
 package io.github.project.openubl.searchpe.managers;
 
 import io.github.project.openubl.searchpe.models.VersionEvent;
-import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
-import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteId;
+import io.github.project.openubl.searchpe.models.jpa.entity.*;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
-import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.utils.DataHelper;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -37,11 +35,16 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
+import java.util.Optional;
 
 @ApplicationScoped
 public class UpgradeDataManager {
 
     private static final Logger LOGGER = Logger.getLogger(UpgradeDataManager.class);
+
+    @ConfigProperty(name = "searchpe.sunat.filter")
+    Optional<List<EstadoContribuyente>> sunatFilter;
 
     @ConfigProperty(name = "quarkus.hibernate-orm.jdbc.statement-batch-size", defaultValue = "1000")
     Integer jdbcBatchSize;
@@ -128,6 +131,14 @@ public class UpgradeDataManager {
                 }
 
                 String[] columns = DataHelper.readLine(line, 15);
+
+                if (sunatFilter.isPresent()) {
+                    Optional<EstadoContribuyente> optional = EstadoContribuyente.fromString(columns[2]);
+                    if (optional.isEmpty() || !sunatFilter.get().contains(optional.get())) {
+                        continue;
+                    }
+                }
+
                 ContribuyenteEntity contribuyente = ContribuyenteEntity
                         .Builder.aContribuyenteEntity()
                         .withId(new ContribuyenteId(versionId, columns[0]))
