@@ -62,7 +62,7 @@ public class ContribuyenteRepository implements PanacheRepositoryBase<Contribuye
                 .find(
                         "From ContribuyenteEntity as c where c.id.versionId =:versionId and c.razonSocial like :filterText",
                         sort,
-                        Parameters.with("versionId", version.id).and("filterText", "%" + filterText.toLowerCase())
+                        Parameters.with("versionId", version.id).and("filterText", "%" + filterText.toUpperCase())
                 )
                 .range(pageBean.getOffset(), pageBean.getOffset() + pageBean.getLimit() - 1);
 

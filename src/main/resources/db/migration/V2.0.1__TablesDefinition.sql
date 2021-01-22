@@ -4,6 +4,7 @@ CREATE TABLE VERSION
     created_at TIMESTAMP   NOT NULL,
     updated_at TIMESTAMP   NOT NULL,
     status     VARCHAR(50) NOT NULL,
+    records    INTEGER     NOT NULL,
     PRIMARY KEY (id)
 );
 

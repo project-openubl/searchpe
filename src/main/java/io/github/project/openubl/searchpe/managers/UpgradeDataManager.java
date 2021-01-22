@@ -64,6 +64,9 @@ public class UpgradeDataManager {
     @Inject
     Event<VersionEvent.ImportingDataEvent> importingVersionEvent;
 
+    @Inject
+    Event<VersionEvent.RecordsDataEvent> recordsEvent;
+
     public void upgrade(Long versionId) {
         File downloadedFile;
         File unzippedFolder;
@@ -105,23 +108,10 @@ public class UpgradeDataManager {
     }
 
     public void createContribuyentesFromFile(Long versionId, File file) throws IOException {
-        VersionEntity version;
-
-        try {
-            tx.begin();
-            version = VersionEntity.findById(versionId);
-            tx.commit();
-        } catch (NotSupportedException | HeuristicRollbackException | HeuristicMixedException | RollbackException | SystemException e) {
-            try {
-                tx.rollback();
-            } catch (SystemException se) {
-                LOGGER.error(se);
-            }
-            return;
-        }
-
         LOGGER.infof("Start importing contribuyentes");
         long startTime = Calendar.getInstance().getTimeInMillis();
+
+        int cont = 0;
 
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
             String line;
@@ -130,7 +120,7 @@ public class UpgradeDataManager {
             int batchSize = jdbcBatchSize;
 
             tx.begin();
-            int cont = 0;
+
             while ((line = br.readLine()) != null) {
                 if (skip) {
                     skip = false;
@@ -141,7 +131,7 @@ public class UpgradeDataManager {
                 ContribuyenteEntity contribuyente = ContribuyenteEntity
                         .Builder.aContribuyenteEntity()
                         .withId(new ContribuyenteId(versionId, columns[0]))
-                        .withRazonSocial(columns[1].toLowerCase())
+                        .withRazonSocial(columns[1])
                         .withEstadoContribuyente(columns[2])
                         .withCondicionDomicilio(columns[3])
                         .withUbigeo(columns[4])
@@ -163,6 +153,9 @@ public class UpgradeDataManager {
                     entityManager.flush();
                     entityManager.clear();
                     tx.commit();
+
+                    recordsEvent.fire(new VersionEvent.DefaultRecordsDataEvent(versionId, cont));
+
                     tx.begin();
                 }
             }
@@ -177,9 +170,10 @@ public class UpgradeDataManager {
         try {
             tx.begin();
 
-            version = VersionEntity.findById(versionId);
+            VersionEntity version = VersionEntity.findById(versionId);
             version.status = Status.COMPLETED;
             version.updatedAt = new Date();
+            version.records = cont;
 
             VersionEntity.persist(version);
 
@@ -194,7 +188,7 @@ public class UpgradeDataManager {
         }
 
         long endTime = Calendar.getInstance().getTimeInMillis();
-        LOGGER.infof("Import contribuyentes finished successfully in" + (endTime - startTime) + " milliseconds.");
+        LOGGER.infof("Import contribuyentes finished successfully in " + (endTime - startTime) + " milliseconds.");
     }
 
 }

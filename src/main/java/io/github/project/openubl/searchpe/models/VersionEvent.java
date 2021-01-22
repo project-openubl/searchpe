@@ -16,6 +16,8 @@
  */
 package io.github.project.openubl.searchpe.models;
 
+import io.quarkus.runtime.annotations.RegisterForReflection;
+
 public interface VersionEvent {
     interface DownloadingEvent {
         Long getVersion();
@@ -27,5 +29,30 @@ public interface VersionEvent {
 
     interface ImportingDataEvent {
         Long getVersion();
+    }
+
+    interface RecordsDataEvent {
+        Long getVersion();
+        int getRecords();
+    }
+
+    @RegisterForReflection
+    class DefaultRecordsDataEvent implements RecordsDataEvent {
+        private Long version;
+        private int records;
+
+        public DefaultRecordsDataEvent(Long version, int records){
+            this.version = version;
+            this.records = records;
+        }
+        @Override
+        public Long getVersion() {
+            return version;
+        }
+
+        @Override
+        public int getRecords() {
+            return records;
+        }
     }
 }
