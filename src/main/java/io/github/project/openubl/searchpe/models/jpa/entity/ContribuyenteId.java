@@ -16,6 +16,8 @@
  */
 package io.github.project.openubl.searchpe.models.jpa.entity;
 
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.GenericField;
+
 import javax.persistence.Column;
 import javax.persistence.Embeddable;
 import javax.validation.constraints.NotNull;
@@ -26,6 +28,7 @@ import java.util.Objects;
 @Embeddable
 public class ContribuyenteId implements Serializable {
 
+    @GenericField(name = "versionId")
     @Column(name = "version_id")
     @NotNull
     public Long versionId;

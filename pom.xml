@@ -43,7 +43,10 @@
         <maven.compiler.parameters>true</maven.compiler.parameters>
 
         <awaitility.version>4.0.3</awaitility.version>
-        <testcontainers.version>1.12.5</testcontainers.version>
+        <testcontainers.version>1.15.1</testcontainers.version>
+
+        <postgresql.version>13.1</postgresql.version>
+        <elasticsearch.version>7.10.2</elasticsearch.version>
 
         <license.dir>${basedir}</license.dir>
     </properties>
@@ -150,6 +153,10 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-flyway</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-hibernate-search-orm-elasticsearch</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>io.quarkus</groupId>
@@ -204,6 +211,8 @@
                     <systemPropertyVariables>
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                         <maven.home>${maven.home}</maven.home>
+                        <postgresql.version>${postgresql.version}</postgresql.version>
+                        <elasticsearch.version>${elasticsearch.version}</elasticsearch.version>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
@@ -224,6 +233,7 @@
                         <exclude>**/README</exclude>
                         <exclude>**/src/test/resources/**</exclude>
                         <exclude>**/src/main/resources/**</exclude>
+                        <exclude>**/src/main/docker/**</exclude>
                         <exclude>.github/**</exclude>
                         <exclude>.mvn/**</exclude>
                     </excludes>

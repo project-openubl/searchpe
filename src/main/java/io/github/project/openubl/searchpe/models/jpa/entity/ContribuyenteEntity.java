@@ -17,6 +17,9 @@
 package io.github.project.openubl.searchpe.models.jpa.entity;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
+import org.hibernate.search.engine.backend.types.Sortable;
+import org.hibernate.search.mapper.pojo.bridge.mapping.annotation.IdentifierBridgeRef;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.*;
 
 import javax.json.bind.annotation.JsonbTransient;
 import javax.persistence.Column;
@@ -25,10 +28,13 @@ import javax.persistence.Entity;
 import javax.persistence.Table;
 import javax.validation.constraints.NotNull;
 
+@Indexed
 @Entity
 @Table(name = "contribuyente")
 public class ContribuyenteEntity extends PanacheEntityBase {
 
+    @IndexedEmbedded(name = "embeddedId")
+    @DocumentId(identifierBridge = @IdentifierBridgeRef(type = ContribuyenteIdBridge.class))
     @JsonbTransient
     @EmbeddedId
     public ContribuyenteId id;
@@ -36,6 +42,8 @@ public class ContribuyenteEntity extends PanacheEntityBase {
     @Column(name = "ruc", insertable = false, updatable = false)
     public String ruc;
 
+    @FullTextField(analyzer = "razonSocialAnalyser")
+    @KeywordField(name = "razonSocial_sort", sortable = Sortable.YES, normalizer = "razonSocialSortNormalizer")
     @NotNull
     @Column(name = "razon_social")
     public String razonSocial;

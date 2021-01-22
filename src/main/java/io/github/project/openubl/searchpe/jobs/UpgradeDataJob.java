@@ -69,6 +69,7 @@ public class UpgradeDataJob {
                     .withCreatedAt(currentTime)
                     .withUpdatedAt(currentTime)
                     .withStatus(Status.SCHEDULED)
+                    .withRecords(0)
                     .build();
             version.persist();
             version.flush();

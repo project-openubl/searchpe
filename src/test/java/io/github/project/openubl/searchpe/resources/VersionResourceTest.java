@@ -22,6 +22,7 @@ import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteId;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
+import io.github.project.openubl.searchpe.resources.config.ElasticsearchServer;
 import io.github.project.openubl.searchpe.resources.config.PostgreSQLServer;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -43,6 +44,7 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.*;
 
 @QuarkusTest
+@QuarkusTestResource(ElasticsearchServer.class)
 @QuarkusTestResource(PostgreSQLServer.class)
 public class VersionResourceTest {
 

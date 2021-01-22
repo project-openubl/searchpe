@@ -65,4 +65,23 @@ public class VersionEventManager {
     public void onImportingData(@Observes VersionEvent.ImportingDataEvent event) {
         updateStatus(event.getVersion(), Status.IMPORTING);
     }
+
+    public void onImportingData(@Observes VersionEvent.RecordsDataEvent event) {
+        try {
+            tx.begin();
+
+            VersionEntity version = VersionEntity.findById(event.getVersion());
+            version.records = event.getRecords();
+            version.updatedAt = new Date();
+            version.persist();
+
+            tx.commit();
+        } catch (NotSupportedException | HeuristicRollbackException | HeuristicMixedException | RollbackException | SystemException e) {
+            try {
+                tx.rollback();
+            } catch (SystemException se) {
+                LOGGER.error(se);
+            }
+        }
+    }
 }

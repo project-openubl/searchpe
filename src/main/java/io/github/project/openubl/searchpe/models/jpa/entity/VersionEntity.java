@@ -45,6 +45,10 @@ public class VersionEntity extends PanacheEntity {
     @Column(name = "status")
     public Status status;
 
+    @NotNull
+    @Column(name = "records")
+    public int records;
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -62,6 +66,7 @@ public class VersionEntity extends PanacheEntity {
         public Date createdAt;
         public Date updatedAt;
         public Status status;
+        public int records;
 
         private Builder() {
         }
@@ -85,11 +90,17 @@ public class VersionEntity extends PanacheEntity {
             return this;
         }
 
+        public Builder withRecords(int records) {
+            this.records = records;
+            return this;
+        }
+
         public VersionEntity build() {
             VersionEntity versionEntity = new VersionEntity();
             versionEntity.createdAt = this.createdAt;
-            versionEntity.updatedAt = this.updatedAt;
+            versionEntity.records = this.records;
             versionEntity.status = this.status;
+            versionEntity.updatedAt = this.updatedAt;
             return versionEntity;
         }
     }

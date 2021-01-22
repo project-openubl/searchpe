@@ -17,7 +17,6 @@
 package io.github.project.openubl.searchpe.resources;
 
 import io.github.project.openubl.searchpe.models.PageBean;
-import io.github.project.openubl.searchpe.models.PageModel;
 import io.github.project.openubl.searchpe.models.PageRepresentation;
 import io.github.project.openubl.searchpe.models.SortBean;
 import io.github.project.openubl.searchpe.models.jpa.ContribuyenteRepository;
@@ -25,8 +24,15 @@ import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteId;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
-import io.github.project.openubl.searchpe.utils.EntityToRepresentation;
 import io.github.project.openubl.searchpe.utils.ResourceUtils;
+import org.hibernate.search.engine.search.query.SearchResult;
+import org.hibernate.search.engine.search.query.dsl.SearchQueryOptionsStep;
+import org.hibernate.search.engine.search.sort.SearchSort;
+import org.hibernate.search.engine.search.sort.dsl.CompositeSortComponentsStep;
+import org.hibernate.search.engine.search.sort.dsl.SortOrder;
+import org.hibernate.search.mapper.orm.scope.SearchScope;
+import org.hibernate.search.mapper.orm.search.loading.dsl.SearchLoadingOptionsStep;
+import org.hibernate.search.mapper.orm.session.SearchSession;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
@@ -47,6 +53,9 @@ public class ContribuyenteResource {
     @Inject
     ContribuyenteRepository contribuyenteRepository;
 
+    @Inject
+    SearchSession searchSession;
+
     @GET
     @Path("/")
     @Produces("application/json")
@@ -60,23 +69,52 @@ public class ContribuyenteResource {
         if (versionOptional.isEmpty()) {
             return Response.noContent().build();
         }
-
         VersionEntity version = versionOptional.get();
 
         PageBean pageBean = ResourceUtils.getPageBean(offset, limit);
         List<SortBean> sortBeans = ResourceUtils.getSortBeans(sortBy, ContribuyenteRepository.SORT_BY_FIELDS);
 
-        PageModel<ContribuyenteEntity> pageModel;
-        if (filterText != null && !filterText.trim().isEmpty()) {
-            pageModel = contribuyenteRepository.list(version, filterText, pageBean, sortBeans);
-        } else {
-            pageModel = contribuyenteRepository.list(version, pageBean, sortBeans);
+        SearchSort searchSort = null;
+        if (!sortBeans.isEmpty()) {
+            SearchScope<ContribuyenteEntity> searchScope = searchSession.scope(ContribuyenteEntity.class);
+
+            CompositeSortComponentsStep<?> compositeSortComponents = searchScope.sort().composite();
+            sortBeans.stream()
+                    .map(f -> searchScope.sort()
+                            .field(f.getFieldName() + "_sort")
+                            .order(f.isAsc() ? SortOrder.ASC : SortOrder.DESC)
+                            .toSort())
+                    .forEach(compositeSortComponents::add);
+
+            searchSort = compositeSortComponents.toSort();
         }
 
-        PageRepresentation<ContribuyenteEntity> result = EntityToRepresentation.toRepresentation(
-                pageModel,
-                versionEntity -> versionEntity
-        );
+        SearchQueryOptionsStep<?, ContribuyenteEntity, SearchLoadingOptionsStep, ?, ?> searchQuery;
+        if (filterText != null && !filterText.trim().isEmpty()) {
+            searchQuery = searchSession.search(ContribuyenteEntity.class)
+                    .where(f -> f.bool()
+                            .must(f.match().field("embeddedId.versionId").matching(version.id))
+                            .must(f.match().fields("razonSocial").matching(filterText))
+                    );
+        } else {
+            searchQuery = searchSession.search(ContribuyenteEntity.class)
+                    .where(f -> f.match().field("embeddedId.versionId").matching(version.id));
+        }
+
+        if (searchSort != null) {
+            searchQuery = searchQuery.sort(searchSort);
+        }
+        SearchResult<ContribuyenteEntity> searchResult = searchQuery.fetch(offset, limit);
+
+        PageRepresentation.Meta meta = new PageRepresentation.Meta();
+        meta.setOffset(pageBean.getOffset());
+        meta.setLimit(pageBean.getLimit());
+        meta.setCount(searchResult.total().hitCount());
+
+        PageRepresentation<ContribuyenteEntity> result = new PageRepresentation<>();
+        result.setMeta(meta);
+        result.setData(searchResult.hits());
+
         return Response.ok(result).build();
     }
 

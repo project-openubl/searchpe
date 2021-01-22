@@ -1,17 +1,18 @@
 CREATE TABLE VERSION
 (
-    id         int8         NOT NULL,
-    created_at TIMESTAMP    NOT NULL,
-    updated_at TIMESTAMP    NOT NULL,
+    id         SMALLINT    NOT NULL,
+    created_at TIMESTAMP   NOT NULL,
+    updated_at TIMESTAMP   NOT NULL,
     status     VARCHAR(50) NOT NULL,
+    records    INTEGER     NOT NULL,
     PRIMARY KEY (id)
 );
 
 CREATE TABLE CONTRIBUYENTE
 (
-    version_id           int8  NOT NULL,
+    version_id           SMALLINT     NOT NULL,
     ruc                  VARCHAR(11)  NOT NULL,
-    razon_social         VARCHAR(255) NOT NULL,
+    razon_social         VARCHAR(150) NOT NULL,
     estado_contribuyente VARCHAR(30),
     condicion_domicilio  VARCHAR(30),
     ubigeo               VARCHAR(6),
@@ -28,6 +29,7 @@ CREATE TABLE CONTRIBUYENTE
     PRIMARY KEY (version_id, ruc)
 );
 
-ALTER TABLE CONTRIBUYENTE ADD CONSTRAINT fk_contribuyente_version FOREIGN KEY (version_id) REFERENCES VERSION;
+ALTER TABLE CONTRIBUYENTE
+    ADD CONSTRAINT fk_contribuyente_version FOREIGN KEY (version_id) REFERENCES VERSION;
 
 COMMIT;

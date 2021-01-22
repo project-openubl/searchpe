@@ -18,6 +18,7 @@ package io.github.project.openubl.searchpe.resources;
 
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
+import io.github.project.openubl.searchpe.resources.config.ElasticsearchServer;
 import io.github.project.openubl.searchpe.resources.config.PostgreSQLServer;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.NativeImageTest;
@@ -33,9 +34,10 @@ import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 
-@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @NativeImageTest
+@QuarkusTestResource(ElasticsearchServer.class)
 @QuarkusTestResource(PostgreSQLServer.class)
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class NativeResourceIT {
 
     @Order(1)
