@@ -16,9 +16,12 @@
  */
 package io.github.project.openubl.searchpe.models.jpa.entity;
 
+import io.quarkus.runtime.annotations.RegisterForReflection;
+
 import java.util.Arrays;
 import java.util.Optional;
 
+@RegisterForReflection
 public enum EstadoContribuyente {
     ACTIVO,
     SUSPENSION_TEMPORAL,
