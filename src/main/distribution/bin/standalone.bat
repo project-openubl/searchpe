@@ -1,0 +1,124 @@
+@echo off
+rem -------------------------------------------------------------------------
+rem JBoss Bootstrap Script for Windows
+rem -------------------------------------------------------------------------
+
+@if not "%ECHO%" == ""  echo %ECHO%
+setlocal
+
+if "%OS%" == "Windows_NT" (
+  set "DIRNAME=%~dp0%"
+) else (
+  set DIRNAME=.\
+)
+
+:MAIN
+rem $Id$
+)
+
+pushd "%DIRNAME%.."
+set "RESOLVED_SEARCHPE_HOME=%CD%"
+popd
+
+if "x%SEARCHPE_HOME%" == "x" (
+  set "SEARCHPE_HOME=%RESOLVED_SEARCHPE_HOME%"
+)
+
+pushd "%SEARCHPE_HOME%"
+set "SANITIZED_SEARCHPE_HOME=%CD%"
+popd
+
+if /i "%RESOLVED_SEARCHPE_HOME%" NEQ "%SANITIZED_SEARCHPE_HOME%" (
+   echo.
+   echo   WARNING:  SEARCHPE_HOME may be pointing to a different installation - unpredictable results may occur.
+   echo.
+   echo       SEARCHPE_HOME: "%SEARCHPE_HOME%"
+   echo.
+)
+
+if "x%JAVA_HOME%" == "x" (
+  set  JAVA=java
+  echo JAVA_HOME is not set. Unexpected results may occur.
+  echo Set JAVA_HOME to the directory of your local JDK to avoid this message.
+) else (
+  if not exist "%JAVA_HOME%" (
+    echo JAVA_HOME "%JAVA_HOME%" path doesn't exist
+    goto END
+   ) else (
+     if not exist "%JAVA_HOME%\bin\java.exe" (
+       echo "%JAVA_HOME%\bin\java.exe" does not exist
+       goto END_NO_PAUSE
+     )
+      echo Setting JAVA property to "%JAVA_HOME%\bin\java"
+    set "JAVA=%JAVA_HOME%\bin\java"
+  )
+)
+
+"%JAVA%" --add-modules=java.se -version >nul 2>&1 && (set MODULAR_JDK=true) || (set MODULAR_JDK=false)
+
+if not "%PRESERVE_JAVA_OPTS%" == "true" (
+  rem Add -client to the JVM options, if supported (32 bit VM), and not overriden
+  echo "%JAVA_OPTS%" | findstr /I \-server > nul
+  if errorlevel == 1 (
+    "%JAVA%" -client -version 2>&1 | findstr /I /C:"Client VM" > nul
+    if not errorlevel == 1 (
+      set "JAVA_OPTS=-client %JAVA_OPTS%"
+    )
+  )
+)
+
+rem Find searchpe.jar, or we can't continue
+if exist "%SEARCHPE_HOME%\searchpe.jar" (
+    set "RUNJAR=%SEARCHPE_HOME%\searchpe.jar"
+) else (
+  echo Could not locate "%SEARCHPE_HOME%\searchpe.jar".
+  echo Please check that you are in the bin directory when running this script.
+  goto END
+)
+
+rem Setup JBoss specific properties
+
+rem Setup directories, note directories with spaces do not work
+setlocal EnableDelayedExpansion
+set "CONSOLIDATED_OPTS=%JAVA_OPTS% %SERVER_OPTS%"
+set baseDirFound=false
+set configDirFound=false
+set logDirFound=false
+for %%a in (!CONSOLIDATED_OPTS!) do (
+   if !baseDirFound! == true (
+      set "SEARCHPE_BASE_DIR=%%~a"
+      set baseDirFound=false
+   )
+)
+setlocal DisableDelayedExpansion
+
+rem Set the standalone base dir
+if "x%SEARCHPE_BASE_DIR%" == "x" (
+  set  "SEARCHPE_BASE_DIR=%SEARCHPE_HOME%\standalone"
+)
+
+echo ===============================================================================
+echo.
+echo   JBoss Bootstrap Environment
+echo.
+echo   SEARCHPE_HOME: "%SEARCHPE_HOME%"
+echo.
+echo   JAVA: "%JAVA%"
+echo.
+echo ===============================================================================
+echo.
+
+cd "%SEARCHPE_HOME%"
+
+:RESTART
+  "%JAVA%" %JAVA_OPTS% ^
+      -jar "%SEARCHPE_HOME%\searchpe.jar"
+
+if %errorlevel% equ 10 (
+	goto RESTART
+)
+
+:END
+if "x%NOPAUSE%" == "x" pause
+
+:END_NO_PAUSE
