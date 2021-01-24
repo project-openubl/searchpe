@@ -15,7 +15,7 @@ jobs:
         with:
           java-version: 11
       - name: Build with maven
-        run: ./mvnw -DskipTests package
+        run: ./mvnw -DskipTests package -Pdistribution
       - name: Upload archive
         uses: actions/upload-artifact@v2
         with:
@@ -79,7 +79,7 @@ jobs:
         with:
           tag_name: ${{ github.ref }}
           release_name: Release ${{ github.ref }}
-          draft: true
+          draft: false
           prerelease: false
 
       - name: Get the version
