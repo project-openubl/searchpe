@@ -1,6 +1,15 @@
 name: CI
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - '**'
+    tags-ignore:
+      - '**'
+  pull_request:
+    paths-ignore:
+      - '.gitignore'
+      - '.dockerignore'
 
 jobs:
 
