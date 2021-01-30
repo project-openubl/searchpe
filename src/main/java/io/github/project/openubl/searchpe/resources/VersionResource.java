@@ -22,6 +22,7 @@ import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.quarkus.panache.common.Sort;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.quartz.SchedulerException;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -47,6 +48,7 @@ public class VersionResource {
     @Inject
     VersionRepository versionRepository;
 
+    @Operation(summary = "Get versions", description = "Get all versions available")
     @GET
     @Path("/")
     @Produces("application/json")
@@ -68,6 +70,7 @@ public class VersionResource {
         return VersionEntity.findAll(sort).list();
     }
 
+    @Operation(summary = "Create version", description = "Creates a new version and fires the importing process")
     @POST
     @Path("/")
     @Produces("application/json")
@@ -93,6 +96,7 @@ public class VersionResource {
         return version;
     }
 
+    @Operation(summary = "Get version", description = "Get version by id")
     @GET
     @Path("/{id}")
     @Produces("application/json")
@@ -105,6 +109,7 @@ public class VersionResource {
         return version;
     }
 
+    @Operation(summary = "Delete version", description = "Delete version by id")
     @DELETE
     @Path("/{id}")
     @Produces("application/json")
