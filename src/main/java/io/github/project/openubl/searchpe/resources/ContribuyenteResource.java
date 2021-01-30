@@ -25,6 +25,7 @@ import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteId;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.utils.ResourceUtils;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.hibernate.search.engine.search.query.SearchResult;
 import org.hibernate.search.engine.search.query.dsl.SearchQueryOptionsStep;
 import org.hibernate.search.engine.search.sort.SearchSort;
@@ -39,6 +40,7 @@ import javax.inject.Inject;
 import javax.transaction.Transactional;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Response;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -56,10 +58,11 @@ public class ContribuyenteResource {
     @Inject
     SearchSession searchSession;
 
+    @Operation(summary = "Search contribuyentes", description = "Get contribuyentes in a page")
     @GET
     @Path("/")
     @Produces("application/json")
-    public Response getContribuyentes(
+    public PageRepresentation<ContribuyenteEntity> getContribuyentes(
             @QueryParam("filterText") String filterText,
             @QueryParam("offset") @DefaultValue("0") Integer offset,
             @QueryParam("limit") @DefaultValue("10") Integer limit,
@@ -67,7 +70,17 @@ public class ContribuyenteResource {
     ) {
         Optional<VersionEntity> versionOptional = versionRepository.findActive();
         if (versionOptional.isEmpty()) {
-            return Response.noContent().build();
+            PageRepresentation<ContribuyenteEntity> result = new PageRepresentation<>();
+
+            PageRepresentation.Meta meta = new PageRepresentation.Meta();
+            meta.setOffset(offset);
+            meta.setLimit(limit);
+            meta.setCount(0L);
+
+            result.setMeta(meta);
+            result.setData(Collections.emptyList());
+
+            return result;
         }
         VersionEntity version = versionOptional.get();
 
@@ -115,9 +128,10 @@ public class ContribuyenteResource {
         result.setMeta(meta);
         result.setData(searchResult.hits());
 
-        return Response.ok(result).build();
+        return result;
     }
 
+    @Operation(summary = "Get contribuyente by RUC", description = "Get contribuyentes by RUC")
     @GET
     @Path("/{ruc}")
     @Produces("application/json")
