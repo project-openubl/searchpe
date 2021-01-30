@@ -17,7 +17,7 @@
 
 @echo off
 rem -------------------------------------------------------------------------
-rem JBoss Bootstrap Script for Windows
+rem Searchpe Bootstrap Script for Windows
 rem -------------------------------------------------------------------------
 
 @if not "%ECHO%" == ""  echo %ECHO%
@@ -116,7 +116,7 @@ if "x%SEARCHPE_BASE_DIR%" == "x" (
 
 echo ===============================================================================
 echo.
-echo   JBoss Bootstrap Environment
+echo   Searchpe Bootstrap Environment
 echo.
 echo   SEARCHPE_HOME: "%SEARCHPE_HOME%"
 echo.
