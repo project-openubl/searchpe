@@ -32,22 +32,13 @@ jobs:
           java-version: 11
       - name: Build with Maven
         run: ./mvnw package -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel:20.3.0.0.Final-java11
-      - name: Push to GitHub Packages
+      - name: Push to Quay.io
         uses: elgohr/Publish-Docker-Github-Action@3.02
         with:
-          registry: docker.pkg.github.com
-          name: project-openubl/searchpe/searchpe
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          dockerfile: src/main/docker/Dockerfile.native
-          snapshot: false
-          tag_names: true
-      - name: Push to Docker Hub
-        uses: elgohr/Publish-Docker-Github-Action@3.02
-        with:
+          registry: quay.io
           name: projectopenubl/searchpe
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          username: ${{ secrets.QUAYIO_USERNAME }}
+          password: ${{ secrets.QUAYIO_PASSWORD }}
           dockerfile: src/main/docker/Dockerfile.native
           snapshot: false
           tag_names: true
@@ -60,7 +51,7 @@ jobs:
           password: ${{ secrets.QUAYIO_PASSWORD }}
           dockerfile: src/main/docker/Dockerfile.native
           snapshot: false
-          tag_names: true
+          tags: "latest"
 
   release-gh:
     name: Create Release
