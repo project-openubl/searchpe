@@ -40,7 +40,7 @@ public class DataHelper {
             }
         }
 
-        return split;
+        return result;
     }
 
     public static Optional<ContribuyenteEntity> buildContribuyenteEntity(Long versionId, String[] columns) {
