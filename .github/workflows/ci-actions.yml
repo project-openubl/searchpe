@@ -10,6 +10,8 @@ on:
     paths-ignore:
       - '.gitignore'
       - '.dockerignore'
+  schedule:
+    - cron: "0 0 * * *"
 
 jobs:
 
