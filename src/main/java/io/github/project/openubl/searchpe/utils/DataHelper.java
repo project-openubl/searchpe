@@ -16,6 +16,11 @@
  */
 package io.github.project.openubl.searchpe.utils;
 
+import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
+import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteId;
+
+import java.util.Optional;
+
 public class DataHelper {
 
     public static String[] readLine(String line, int size) {
@@ -35,7 +40,33 @@ public class DataHelper {
             }
         }
 
-        return split;
+        return result;
     }
 
+    public static Optional<ContribuyenteEntity> buildContribuyenteEntity(Long versionId, String[] columns) {
+        if (columns[0] == null || columns[1] == null) {
+            return Optional.empty();
+        }
+
+        ContribuyenteEntity contribuyente = ContribuyenteEntity
+                .Builder.aContribuyenteEntity()
+                .withId(new ContribuyenteId(versionId, columns[0]))
+                .withRazonSocial(columns[1])
+                .withEstadoContribuyente(columns[2])
+                .withCondicionDomicilio(columns[3])
+                .withUbigeo(columns[4])
+                .withTipoVia(columns[5])
+                .withNombreVia(columns[6])
+                .withCodigoZona(columns[7])
+                .withTipoZona(columns[8])
+                .withNumero(columns[9])
+                .withInterior(columns[10])
+                .withLote(columns[11])
+                .withDepartamento(columns[12])
+                .withManzana(columns[13])
+                .withKilometro(columns[14])
+                .build();
+
+        return Optional.of(contribuyente);
+    }
 }

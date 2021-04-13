@@ -132,31 +132,18 @@ public class UpgradeDataManager {
 
                 String[] columns = DataHelper.readLine(line, 15);
 
+                Optional<ContribuyenteEntity> contribuyenteEntityOptional = DataHelper.buildContribuyenteEntity(versionId, columns);
+                if (contribuyenteEntityOptional.isEmpty()) {
+                    continue;
+                }
+                ContribuyenteEntity contribuyente = contribuyenteEntityOptional.get();
+
                 if (sunatFilter.isPresent()) {
-                    Optional<EstadoContribuyente> optional = EstadoContribuyente.fromString(columns[2]);
+                    Optional<EstadoContribuyente> optional = EstadoContribuyente.fromString(contribuyente.estadoContribuyente);
                     if (optional.isEmpty() || !sunatFilter.get().contains(optional.get())) {
                         continue;
                     }
                 }
-
-                ContribuyenteEntity contribuyente = ContribuyenteEntity
-                        .Builder.aContribuyenteEntity()
-                        .withId(new ContribuyenteId(versionId, columns[0]))
-                        .withRazonSocial(columns[1])
-                        .withEstadoContribuyente(columns[2])
-                        .withCondicionDomicilio(columns[3])
-                        .withUbigeo(columns[4])
-                        .withTipoVia(columns[5])
-                        .withNombreVia(columns[6])
-                        .withCodigoZona(columns[7])
-                        .withTipoZona(columns[8])
-                        .withNumero(columns[9])
-                        .withInterior(columns[10])
-                        .withLote(columns[11])
-                        .withDepartamento(columns[12])
-                        .withManzana(columns[13])
-                        .withKilometro(columns[14])
-                        .build();
 
                 entityManager.persist(contribuyente);
                 cont++;
