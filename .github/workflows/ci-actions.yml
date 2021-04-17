@@ -70,7 +70,7 @@ jobs:
       - name: Build with Maven
         run: ./mvnw package -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel:20.3.0.0.Final-java11
       - name: Push to Quay.io
-        uses: elgohr/Publish-Docker-Github-Action@3.02
+        uses: elgohr/Publish-Docker-Github-Action@3.03
         with:
           registry: quay.io
           name: projectopenubl/searchpe
@@ -80,7 +80,7 @@ jobs:
           snapshot: false
           tags: "master"
       - name: Push to GitHub Packages
-        uses: elgohr/Publish-Docker-Github-Action@3.02
+        uses: elgohr/Publish-Docker-Github-Action@3.03
         with:
           registry: docker.pkg.github.com
           name: project-openubl/searchpe/searchpe
@@ -90,7 +90,7 @@ jobs:
           snapshot: false
           tags: "master"
       - name: Push to Docker Hub
-        uses: elgohr/Publish-Docker-Github-Action@3.02
+        uses: elgohr/Publish-Docker-Github-Action@3.03
         with:
           name: projectopenubl/searchpe
           username: ${{ secrets.DOCKER_USERNAME }}
