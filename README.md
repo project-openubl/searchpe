@@ -18,6 +18,12 @@ PostgreSQL puede ser iniciado con:
 docker run -p 5432:5432 -e POSTGRES_USER=searchpe_username -e POSTGRES_PASSWORD=searchpe_password -e POSTGRES_DB=searchpe_db postgres:13.1
 ```
 
+### Iniciar Elasticsearch
+
+```shell script
+docker run -p 9200:9200 -p 9300:9300 -e discovery.type=single-node docker.elastic.co/elasticsearch/elasticsearch:7.10.2
+```
+
 ### Iniciar servidor
 
 Puedes ejecutar la aplicación en modo desarrollo con:
