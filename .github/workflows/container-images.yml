@@ -34,8 +34,8 @@ jobs:
       - name: Push to GitHub Packages
         uses: elgohr/Publish-Docker-Github-Action@3.04
         with:
-          registry: docker.pkg.github.com
-          name: project-openubl/searchpe/searchpe
+          registry: ghcr.io
+          name: ${{ github.repository_owner }}/${{ github.event.repository.name }}/searchpe
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
           dockerfile: src/main/docker/Dockerfile.native
