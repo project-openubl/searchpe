@@ -230,7 +230,7 @@
                                 <exclude>**/src/test/resources/**</exclude>
                                 <exclude>**/src/main/resources/**</exclude>
                                 <exclude>**/src/main/docker/**</exclude>
-                                <exclude>**/searchpe-workspace/**</exclude>
+                                <exclude>workspace/**</exclude>
                                 <exclude>.github/**</exclude>
                                 <exclude>.mvn/**</exclude>
                             </excludes>
