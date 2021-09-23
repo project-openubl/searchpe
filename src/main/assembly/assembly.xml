@@ -27,18 +27,10 @@
     <baseDirectory>${project.build.finalName}</baseDirectory>
 
     <!-- Add distribution files -->
-    <files>
-        <file>
-            <source>${project.build.directory}/${build.finalName}.jar</source>
-            <outputDirectory>/</outputDirectory>
-            <destName>searchpe.jar</destName>
-        </file>
-    </files>
-
     <fileSets>
         <fileSet>
-            <directory>${project.build.directory}/lib</directory>
-            <outputDirectory>lib</outputDirectory>
+            <directory>${project.build.directory}/quarkus-app</directory>
+            <outputDirectory></outputDirectory>
         </fileSet>
         <fileSet>
             <directory>src/main/distribution</directory>
