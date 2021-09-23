@@ -26,7 +26,7 @@ jobs:
       - uses: actions/setup-java@v2
         with:
           java-version: ${{ matrix.java-version }}
-          distribution: adopt
+          distribution: temurin
       - name: Build with Maven
         run: mvn verify
       - name: Prepare failure archive (if maven failed)

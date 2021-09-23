@@ -23,10 +23,9 @@ import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteId;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.resources.config.ElasticsearchServer;
-import io.github.project.openubl.searchpe.resources.config.PostgreSQLServer;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import javax.inject.Inject;
@@ -38,7 +37,6 @@ import static org.hamcrest.CoreMatchers.is;
 
 @QuarkusTest
 @QuarkusTestResource(ElasticsearchServer.class)
-@QuarkusTestResource(PostgreSQLServer.class)
 public class ContribuyenteResourceTest {
 
     @Inject
@@ -47,8 +45,8 @@ public class ContribuyenteResourceTest {
     @Inject
     ContribuyenteRepository contribuyenteRepository;
 
-    @AfterEach
-    public void afterEach() {
+    @BeforeEach
+    public void beforeEach() {
         contribuyenteRepository.deleteAll();
         versionRepository.deleteAll();
     }

@@ -29,7 +29,7 @@
     <!-- Add distribution files -->
     <files>
         <file>
-            <source>${project.build.directory}/${build.finalName}-runner.jar</source>
+            <source>${project.build.directory}/${build.finalName}.jar</source>
             <outputDirectory>/</outputDirectory>
             <destName>searchpe.jar</destName>
         </file>

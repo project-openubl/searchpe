@@ -19,7 +19,6 @@ package io.github.project.openubl.searchpe.utils;
 import io.github.project.openubl.searchpe.managers.FileManager;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.resources.config.ElasticsearchServer;
-import io.github.project.openubl.searchpe.resources.config.PostgreSQLServer;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
@@ -41,7 +40,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @QuarkusTest
 @TestProfile(value = RealPadronReducidoProfile.class)
 @QuarkusTestResource(ElasticsearchServer.class)
-@QuarkusTestResource(PostgreSQLServer.class)
 public class DataHelperTest {
 
     @Inject

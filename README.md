@@ -10,14 +10,6 @@ Microservicio que expone los datos provenientes del `padrón reducido` de la SUN
 
 ## Ejecutar en modo desarrollo
 
-### Iniciar PostgreSQL
-
-PostgreSQL puede ser iniciado con:
-
-```shell script
-docker run -p 5432:5432 -e POSTGRES_USER=searchpe_username -e POSTGRES_PASSWORD=searchpe_password -e POSTGRES_DB=searchpe_db postgres:13.1
-```
-
 ### Iniciar Elasticsearch
 
 ```shell script

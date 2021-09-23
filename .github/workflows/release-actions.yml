@@ -14,7 +14,7 @@ jobs:
       - uses: actions/setup-java@v2
         with:
           java-version: 11
-          distribution: adopt
+          distribution: temurin
       - name: Build with maven
         run: ./mvnw -DskipTests package -Pdistribution
       - name: Upload archive
@@ -33,7 +33,7 @@ jobs:
           java-version: 11
           distribution: adopt
       - name: Build with Maven
-        run: ./mvnw package -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel:20.3-java11
+        run: ./mvnw package -Pnative -Dquarkus.native.container-build=true -DskipTests
 
       - name: Push to Quay.io
         uses: elgohr/Publish-Docker-Github-Action@3.04
