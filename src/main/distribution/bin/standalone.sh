@@ -122,12 +122,12 @@ while true; do
    if [ "x$LAUNCH_SEARCHPE_IN_BACKGROUND" = "x" ]; then
       # Execute the JVM in the foreground
       eval \"$JAVA\" \
-         -jar \""$SEARCHPE_HOME"/searchpe.jar\"
+         -jar \""$SEARCHPE_HOME"/quarkus-run.jar\"
       SEARCHPE_STATUS=$?
    else
       # Execute the JVM in the background
       eval \"$JAVA\" \
-         -jar \""$SEARCHPE_HOME"/searchpe.jar\"
+         -jar \""$SEARCHPE_HOME"/quarkus-run.jar\"
       SEARCHPE_PID=$!
       # Trap common signals and relay them to the searchpe process
       trap "kill -HUP  $SEARCHPE_PID" HUP

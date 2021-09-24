@@ -33,20 +33,16 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-        <quarkus.platform.group-id>io.quarkus</quarkus.platform.group-id>
-        <quarkus.platform.artifact-id>quarkus-universe-bom</quarkus.platform.artifact-id>
-        <quarkus-plugin.version>1.13.2.Final</quarkus-plugin.version>
-        <quarkus.platform.version>1.13.2.Final</quarkus.platform.version>
+        <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
+        <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
+        <quarkus.platform.version>2.2.3.Final</quarkus.platform.version>
 
-        <surefire-plugin.version>2.22.2</surefire-plugin.version>
+        <surefire-plugin.version>3.0.0-M5</surefire-plugin.version>
         <compiler-plugin.version>3.8.1</compiler-plugin.version>
         <maven.compiler.parameters>true</maven.compiler.parameters>
 
         <awaitility.version>4.1.0</awaitility.version>
         <testcontainers.version>1.15.3</testcontainers.version>
-
-        <postgresql.version>13.1</postgresql.version>
-        <elasticsearch.version>7.10.2</elasticsearch.version>
 
         <license.dir>${basedir}</license.dir>
     </properties>
@@ -135,15 +131,7 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-jdbc-postgresql</artifactId>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>io.quarkus</groupId>-->
-<!--            <artifactId>quarkus-jdbc-h2</artifactId>-->
-<!--        </dependency>-->
 
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-config-yaml</artifactId>
-        </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-smallrye-openapi</artifactId>
@@ -195,9 +183,9 @@
     <build>
         <plugins>
             <plugin>
-                <groupId>io.quarkus</groupId>
+                <groupId>${quarkus.platform.group-id}</groupId>
                 <artifactId>quarkus-maven-plugin</artifactId>
-                <version>${quarkus-plugin.version}</version>
+                <version>${quarkus.platform.version}</version>
                 <extensions>true</extensions>
                 <executions>
                     <execution>
@@ -212,6 +200,9 @@
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${compiler-plugin.version}</version>
+                <configuration>
+                    <parameters>${maven.compiler.parameters}</parameters>
+                </configuration>
             </plugin>
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -220,8 +211,6 @@
                     <systemPropertyVariables>
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                         <maven.home>${maven.home}</maven.home>
-                        <postgresql.version>${postgresql.version}</postgresql.version>
-                        <elasticsearch.version>${elasticsearch.version}</elasticsearch.version>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
@@ -241,7 +230,7 @@
                                 <exclude>**/src/test/resources/**</exclude>
                                 <exclude>**/src/main/resources/**</exclude>
                                 <exclude>**/src/main/docker/**</exclude>
-                                <exclude>**/searchpe/workspace/**</exclude>
+                                <exclude>workspace/**</exclude>
                                 <exclude>.github/**</exclude>
                                 <exclude>.mvn/**</exclude>
                             </excludes>

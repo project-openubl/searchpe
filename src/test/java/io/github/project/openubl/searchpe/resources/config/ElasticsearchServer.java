@@ -17,27 +17,24 @@
 package io.github.project.openubl.searchpe.resources.config;
 
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
-import org.testcontainers.containers.FixedHostPortGenericContainer;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
-import org.testcontainers.containers.wait.strategy.Wait;
+
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 
 import static java.net.HttpURLConnection.HTTP_OK;
 import static java.net.HttpURLConnection.HTTP_UNAUTHORIZED;
 
-import java.time.Duration;
-import java.util.Collections;
-import java.util.Map;
-
 public class ElasticsearchServer implements QuarkusTestResourceLifecycleManager {
 
-    private GenericContainer elasticsearch;
+    private GenericContainer<?> elasticsearch;
 
     @Override
     public Map<String, String> start() {
-        elasticsearch = new FixedHostPortGenericContainer<>("docker.elastic.co/elasticsearch/elasticsearch:" + System.getProperty("elasticsearch.version", "7.10.2"))
-                .withFixedExposedPort(9200, 9200)
-                .withFixedExposedPort(9300, 9300)
+        elasticsearch = new GenericContainer<>("docker.elastic.co/elasticsearch/elasticsearch:" + System.getProperty("elasticsearch.version", "7.10.2"))
+                .withExposedPorts(9200, 9300)
                 .withEnv("discovery.type", "single-node")
                 .waitingFor(
                         new HttpWaitStrategy()
@@ -47,7 +44,14 @@ public class ElasticsearchServer implements QuarkusTestResourceLifecycleManager 
                 );
 
         elasticsearch.start();
-        return Collections.emptyMap();
+
+        String host = elasticsearch.getHost();
+        Integer port = elasticsearch.getMappedPort(9200);
+
+        return new HashMap<>() {{
+            put("quarkus.hibernate-search-orm.elasticsearch.hosts", host + ":" + port);
+            put("quarkus.hibernate-search-orm.elasticsearch.version", "7");
+        }};
     }
 
     @Override

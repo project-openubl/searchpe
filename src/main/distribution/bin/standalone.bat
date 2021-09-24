@@ -84,11 +84,11 @@ if not "%PRESERVE_JAVA_OPTS%" == "true" (
   )
 )
 
-rem Find searchpe.jar, or we can't continue
-if exist "%SEARCHPE_HOME%\searchpe.jar" (
-    set "RUNJAR=%SEARCHPE_HOME%\searchpe.jar"
+rem Find quarkus-run.jar, or we can't continue
+if exist "%SEARCHPE_HOME%\quarkus-run.jar" (
+    set "RUNJAR=%SEARCHPE_HOME%\quarkus-run.jar"
 ) else (
-  echo Could not locate "%SEARCHPE_HOME%\searchpe.jar".
+  echo Could not locate "%SEARCHPE_HOME%\quarkus-run.jar".
   echo Please check that you are in the bin directory when running this script.
   goto END
 )
@@ -129,7 +129,7 @@ cd "%SEARCHPE_HOME%"
 
 :RESTART
   "%JAVA%" %JAVA_OPTS% ^
-      -jar "%SEARCHPE_HOME%\searchpe.jar"
+      -jar "%SEARCHPE_HOME%\quarkus-run.jar"
 
 if %errorlevel% equ 10 (
 	goto RESTART
