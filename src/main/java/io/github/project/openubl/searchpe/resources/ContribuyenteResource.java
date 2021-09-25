@@ -38,8 +38,8 @@ import org.hibernate.search.mapper.orm.session.SearchSession;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
+import javax.validation.constraints.Max;
 import javax.ws.rs.*;
-import javax.ws.rs.core.Response;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -64,8 +64,8 @@ public class ContribuyenteResource {
     @Produces("application/json")
     public PageRepresentation<ContribuyenteEntity> getContribuyentes(
             @QueryParam("filterText") String filterText,
-            @QueryParam("offset") @DefaultValue("0") Integer offset,
-            @QueryParam("limit") @DefaultValue("10") Integer limit,
+            @QueryParam("offset") @DefaultValue("0") @Max(9_000) Integer offset,
+            @QueryParam("limit") @DefaultValue("10") @Max(1_000) Integer limit,
             @QueryParam("sort_by") @DefaultValue("name") List<String> sortBy
     ) {
         Optional<VersionEntity> versionOptional = versionRepository.findActive();
