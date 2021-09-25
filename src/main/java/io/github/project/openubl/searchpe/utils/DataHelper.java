@@ -31,10 +31,12 @@ public class DataHelper {
             if (i < split.length) {
                 String value = split[i].trim();
                 if (value.equals("-") || value.isEmpty()) {
-                    split[i] = null;
+                    result[i] = null;
+                } else {
+                    result[i] = value
+                            .replaceAll("�", "Ñ")
+                            .replaceAll("\\?", "Ñ");
                 }
-
-                result[i] = split[i];
             } else {
                 result[i] = null;
             }
