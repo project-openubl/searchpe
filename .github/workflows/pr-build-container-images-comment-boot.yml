@@ -14,6 +14,12 @@ jobs:
         with:
           message: |
             🚀 Container image Preview: `ghcr.io/${{github.event.pull_request.head.repo.full_name}}/${{github.event.repository.name}}:${{github.event.pull_request.head.ref}}` ✨
-            - [Workflow runs](https://github.com/${{github.event.pull_request.head.repo.full_name}}/actions/workflows/pr-build-container-images.yml?query=branch%3A${{github.event.pull_request.head.ref}})
-            - [Packages](https://github.com/${{github.event.pull_request.head.repo.full_name}}/packages)
+
+            The creation of the container image might take aproximately 10 minutes. Once it is available you can pull it using:
+            ```shell
+            docker pull ghcr.io/${{github.event.pull_request.head.repo.full_name}}/${{github.event.repository.name}}:${{github.event.pull_request.head.ref}}
+            ```
+
+            - To watch the current status of the container image creation visit [Workflow runs](https://github.com/${{github.event.pull_request.head.repo.full_name}}/actions/workflows/pr-build-container-images.yml?query=branch%3A${{github.event.pull_request.head.ref}})
+            - To see the list of packages created by the boot visit [Packages](https://github.com/${{github.event.pull_request.head.repo.full_name}}/packages)
           repo-token: ${{ steps.token.outputs.GH_TOKEN }}
