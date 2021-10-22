@@ -42,7 +42,7 @@
         <maven.compiler.parameters>true</maven.compiler.parameters>
 
         <awaitility.version>4.1.0</awaitility.version>
-        <testcontainers.version>1.15.3</testcontainers.version>
+        <testcontainers.version>1.16.2</testcontainers.version>
 
         <license.dir>${basedir}</license.dir>
     </properties>
