@@ -26,6 +26,7 @@ import io.github.project.openubl.searchpe.resources.config.ElasticsearchServer;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import javax.inject.Inject;
@@ -35,6 +36,7 @@ import java.util.Date;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.is;
 
+@Disabled
 @QuarkusTest
 @QuarkusTestResource(ElasticsearchServer.class)
 public class ContribuyenteResourceTest {

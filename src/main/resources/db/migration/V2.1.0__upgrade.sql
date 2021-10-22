@@ -1,0 +1,1 @@
+alter table if exists VERSION add column version int8 not null default (1);

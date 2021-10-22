@@ -49,6 +49,9 @@ public class VersionEntity extends PanacheEntity {
     @Column(name = "records")
     public int records;
 
+    @Version
+    public int version;
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

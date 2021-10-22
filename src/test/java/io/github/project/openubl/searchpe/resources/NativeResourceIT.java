@@ -21,10 +21,7 @@ import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.resources.config.ElasticsearchServer;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.NativeImageTest;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.*;
 
 import java.util.concurrent.TimeUnit;
 
@@ -33,6 +30,7 @@ import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 
+@Disabled
 @NativeImageTest
 @QuarkusTestResource(ElasticsearchServer.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
