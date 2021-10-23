@@ -52,9 +52,18 @@ public class FlywayTestCallback implements QuarkusTestBeforeEachCallback, Quarku
         // Flyway
         final String packageName = context.getTestInstance().getClass().getName();
         final String testDefaultLocation = "db/" + packageName.replaceAll("\\.", Matcher.quoteReplacement(File.separator));
+
         final List<String> locations = new ArrayList<>();
         locations.add(testDefaultLocation);
         locations.add("db" + File.separator + "migration");
+
+        if (packageName.startsWith("Native") && packageName.endsWith("IT")) {
+            final String className = context.getTestInstance().getClass().getSimpleName();
+            final String nativeClassName = className.replaceFirst("Native", "").replace("IT", "Test");
+            final String testNativeDefaultLocation = "db/" + context.getTestInstance().getClass().getPackage().getName().replaceAll("\\.", Matcher.quoteReplacement(File.separator)) + "/" + nativeClassName;
+
+            locations.add(testNativeDefaultLocation);
+        }
 
         return Flyway.configure()
                 .dataSource(jdbUrl, username, password)
