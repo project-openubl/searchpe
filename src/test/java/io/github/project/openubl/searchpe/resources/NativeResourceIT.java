@@ -32,7 +32,6 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 
 @Disabled
 @NativeImageTest
-@QuarkusTestResource(ElasticsearchServer.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class NativeResourceIT {
 

@@ -16,6 +16,7 @@
  */
 package io.github.project.openubl.searchpe.resources;
 
+import io.github.project.openubl.searchpe.ProfileManager;
 import io.github.project.openubl.searchpe.models.jpa.ContribuyenteRepository;
 import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
@@ -25,6 +26,7 @@ import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.resources.config.ElasticsearchServer;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -38,7 +40,7 @@ import static org.hamcrest.CoreMatchers.is;
 
 @Disabled
 @QuarkusTest
-@QuarkusTestResource(ElasticsearchServer.class)
+@TestProfile(ProfileManager.class)
 public class ContribuyenteResourceTest {
 
     @Inject
@@ -51,51 +53,6 @@ public class ContribuyenteResourceTest {
     public void beforeEach() {
         contribuyenteRepository.deleteAll();
         versionRepository.deleteAll();
-    }
-
-    @Test
-    public void getContribuyentes() {
-        // Given
-        VersionEntity version1 = VersionEntity.Builder.aVersionEntity()
-                .withStatus(Status.ERROR)
-                .withCreatedAt(new Date())
-                .withUpdatedAt(new Date())
-                .build();
-        VersionEntity version2 = VersionEntity.Builder.aVersionEntity()
-                .withStatus(Status.COMPLETED)
-                .withCreatedAt(new Date())
-                .withUpdatedAt(new Date())
-                .build();
-        versionRepository.persist(version1, version2);
-
-        ContribuyenteEntity contribuyente1 = ContribuyenteEntity.Builder.aContribuyenteEntity()
-                .withId(new ContribuyenteId(version2.id, "11111111111"))
-                .withRazonSocial("razonSocial1")
-                .build();
-        ContribuyenteEntity contribuyente2 = ContribuyenteEntity.Builder.aContribuyenteEntity()
-                .withId(new ContribuyenteId(version2.id, "22222222222"))
-                .withRazonSocial("razonSocial2")
-                .build();
-        ContribuyenteEntity contribuyente3 = ContribuyenteEntity.Builder.aContribuyenteEntity()
-                .withId(new ContribuyenteId(version2.id, "33333333333"))
-                .withRazonSocial("razonSocial3")
-                .build();
-        contribuyenteRepository.persist(contribuyente1, contribuyente2, contribuyente3);
-
-        // When
-        given()
-                .header("Content-Type", "application/json")
-                .when()
-                .get("/contribuyentes")
-                .then()
-                .statusCode(200)
-                .body(
-                        "meta.offset", is(0),
-                        "meta.limit", is(10),
-                        "meta.count", is(3),
-                        "data.size()", is(3)
-                );
-
     }
 
     @Test
@@ -155,6 +112,51 @@ public class ContribuyenteResourceTest {
                 .get("/contribuyentes/someRuc")
                 .then()
                 .statusCode(404);
+    }
+
+    @Test
+    public void getContribuyentes() {
+        // Given
+        VersionEntity version1 = VersionEntity.Builder.aVersionEntity()
+                .withStatus(Status.ERROR)
+                .withCreatedAt(new Date())
+                .withUpdatedAt(new Date())
+                .build();
+        VersionEntity version2 = VersionEntity.Builder.aVersionEntity()
+                .withStatus(Status.COMPLETED)
+                .withCreatedAt(new Date())
+                .withUpdatedAt(new Date())
+                .build();
+        versionRepository.persist(version1, version2);
+
+        ContribuyenteEntity contribuyente1 = ContribuyenteEntity.Builder.aContribuyenteEntity()
+                .withId(new ContribuyenteId(version2.id, "11111111111"))
+                .withRazonSocial("razonSocial1")
+                .build();
+        ContribuyenteEntity contribuyente2 = ContribuyenteEntity.Builder.aContribuyenteEntity()
+                .withId(new ContribuyenteId(version2.id, "22222222222"))
+                .withRazonSocial("razonSocial2")
+                .build();
+        ContribuyenteEntity contribuyente3 = ContribuyenteEntity.Builder.aContribuyenteEntity()
+                .withId(new ContribuyenteId(version2.id, "33333333333"))
+                .withRazonSocial("razonSocial3")
+                .build();
+        contribuyenteRepository.persist(contribuyente1, contribuyente2, contribuyente3);
+
+        // When
+        given()
+                .header("Content-Type", "application/json")
+                .when()
+                .get("/contribuyentes")
+                .then()
+                .statusCode(200)
+                .body(
+                        "meta.offset", is(0),
+                        "meta.limit", is(10),
+                        "meta.count", is(3),
+                        "data.size()", is(3)
+                );
+
     }
 
 }
