@@ -17,6 +17,7 @@
 package io.github.project.openubl.searchpe;
 
 import io.github.project.openubl.searchpe.resources.config.ElasticsearchServer;
+import io.github.project.openubl.searchpe.resources.config.PostgresSQLServer;
 import io.github.project.openubl.searchpe.resources.config.SunatServer;
 import io.quarkus.test.junit.QuarkusTestProfile;
 
@@ -44,6 +45,7 @@ public class ProfileManager implements QuarkusTestProfile {
                 configProfile = "test";
 
                 // Test resources
+                testResources.add(new TestResourceEntry(PostgresSQLServer.class));
                 testResources.add(new TestResourceEntry(SunatServer.class));
                 break;
             case enterprise:
@@ -51,6 +53,7 @@ public class ProfileManager implements QuarkusTestProfile {
                 configProfile = DistributionFlavor.enterprise.toString();
 
                 // Test resources
+                testResources.add(new TestResourceEntry(PostgresSQLServer.class));
                 testResources.add(new TestResourceEntry(SunatServer.class));
                 testResources.add(new TestResourceEntry(ElasticsearchServer.class));
                 break;

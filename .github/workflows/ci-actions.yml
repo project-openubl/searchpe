@@ -58,6 +58,6 @@ jobs:
           distribution: temurin
           cache: maven
       - name: Build with Maven
-        run: mvn verify -Pnative -Dquarkus.native.container-build=true $MAVEN_ARGS
+        run: mvn verify -Dquarkus.native.container-build=true $MAVEN_ARGS
         env:
-          MAVEN_ARGS: "-P${{ matrix.flavor }}"
+          MAVEN_ARGS: "-P native,${{ matrix.flavor }}"

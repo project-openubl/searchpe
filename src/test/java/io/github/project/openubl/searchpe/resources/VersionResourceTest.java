@@ -16,12 +16,10 @@
  */
 package io.github.project.openubl.searchpe.resources;
 
+import io.github.project.openubl.searchpe.AbstractFlywayTest;
 import io.github.project.openubl.searchpe.ProfileManager;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
-import io.github.project.openubl.searchpe.resources.config.ElasticsearchServer;
-import io.github.project.openubl.searchpe.resources.config.SunatServer;
-import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
@@ -37,7 +35,12 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @QuarkusTest
 @TestProfile(ProfileManager.class)
-public class VersionResourceTest {
+public class VersionResourceTest extends AbstractFlywayTest {
+
+    @Override
+    public Class<?> getTestClass() {
+        return VersionResourceTest.class;
+    }
 
     @Test
     public void getVersions() {
