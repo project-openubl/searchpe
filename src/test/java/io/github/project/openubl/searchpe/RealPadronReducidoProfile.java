@@ -14,10 +14,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.project.openubl.searchpe.resources;
+package io.github.project.openubl.searchpe;
 
-import io.quarkus.test.junit.NativeImageTest;
+import io.quarkus.test.junit.QuarkusTestProfile;
 
-@NativeImageTest
-public class NativeSearchEnterpriseContribuyenteResourceIT extends SearchEnterpriseContribuyenteResourceTest {
+import java.util.HashMap;
+import java.util.Map;
+
+public class RealPadronReducidoProfile implements QuarkusTestProfile {
+
+    @Override
+    public Map<String, String> getConfigOverrides() {
+        Map<String, String> properties = new HashMap<>();
+        properties.put("searchpe.sunat.padronReducidoUrl", "http://www2.sunat.gob.pe/padron_reducido_ruc.zip");
+
+        return properties;
+    }
 }
