@@ -17,7 +17,8 @@
 package io.github.project.openubl.searchpe.resources;
 
 import io.github.project.openubl.searchpe.AbstractFlywayTest;
-import io.github.project.openubl.searchpe.ProfileManager;
+import io.github.project.openubl.searchpe.EnterpriseProfileManager;
+import io.github.project.openubl.searchpe.StandaloneProfileManager;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
@@ -26,39 +27,20 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.is;
 
 @QuarkusTest
-@TestProfile(ProfileManager.class)
-public class ContribuyenteResourceTest extends AbstractFlywayTest {
+@TestProfile(StandaloneProfileManager.class)
+public class SearchStandaloneContribuyenteResourceTest extends AbstractFlywayTest {
 
     @Override
     public Class<?> getTestClass() {
-        return ContribuyenteResourceTest.class;
+        return SearchStandaloneContribuyenteResourceTest.class;
     }
 
     @Test
-    public void getContribuyente() {
-        // Given
-        String ruc = "11111111111";
-
-        // When
+    public void getContribuyentes() {
         given()
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/contribuyentes/" + ruc)
-                .then()
-                .statusCode(200)
-                .body(
-                        "ruc", is(ruc),
-                        "razonSocial", is("mi empresa1")
-                );
-
-    }
-
-    @Test
-    public void getContribuyente_notFound() {
-        given()
-                .header("Content-Type", "application/json")
-                .when()
-                .get("/contribuyentes/someRuc")
+                .get("/contribuyentes")
                 .then()
                 .statusCode(404);
     }

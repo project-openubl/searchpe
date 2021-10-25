@@ -25,6 +25,7 @@ import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteId;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.utils.ResourceUtils;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.hibernate.search.engine.search.query.SearchResult;
 import org.hibernate.search.engine.search.query.dsl.SearchQueryOptionsStep;
@@ -49,6 +50,9 @@ import java.util.Optional;
 @Path("/contribuyentes")
 public class ContribuyenteResource {
 
+    @ConfigProperty(name = "quarkus.hibernate-search-orm.automatic-indexing.synchronization.strategy")
+    String searchOrmIndexSyncStrategy;
+
     @Inject
     VersionRepository versionRepository;
 
@@ -68,6 +72,10 @@ public class ContribuyenteResource {
             @QueryParam("limit") @DefaultValue("10") @Max(1_000) Integer limit,
             @QueryParam("sort_by") @DefaultValue("name") List<String> sortBy
     ) {
+        if (searchOrmIndexSyncStrategy.equals("bean:searchpeNoneIndexer")) {
+            throw new NotFoundException();
+        }
+
         Optional<VersionEntity> versionOptional = versionRepository.findActive();
         if (versionOptional.isEmpty()) {
             PageRepresentation<ContribuyenteEntity> result = new PageRepresentation<>();

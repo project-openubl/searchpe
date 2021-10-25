@@ -22,7 +22,9 @@ import io.github.project.openubl.searchpe.resources.config.SunatServer;
 import io.quarkus.test.junit.QuarkusTestProfile;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ProfileManager implements QuarkusTestProfile {
 
@@ -34,11 +36,20 @@ public class ProfileManager implements QuarkusTestProfile {
 
     String configProfile;
     List<TestResourceEntry> testResources = new ArrayList<>();
+    Map<String, String> configOverrides = new HashMap<>();
 
     public ProfileManager() {
         String testModeFlavor = System.getProperty(testModeKey, DistributionFlavor.standalone.toString());
         DistributionFlavor distributionFlavor = DistributionFlavor.valueOf(testModeFlavor);
 
+        init(distributionFlavor);
+    }
+
+    public ProfileManager(DistributionFlavor distributionFlavor) {
+        init(distributionFlavor);
+    }
+
+    private void init(DistributionFlavor distributionFlavor) {
         switch (distributionFlavor) {
             case standalone:
                 // Profile
@@ -47,6 +58,11 @@ public class ProfileManager implements QuarkusTestProfile {
                 // Test resources
                 testResources.add(new TestResourceEntry(PostgresSQLServer.class));
                 testResources.add(new TestResourceEntry(SunatServer.class));
+
+                // Config
+                configOverrides.put("quarkus.datasource.devservices.enabled", "false");
+                configOverrides.put("quarkus.hibernate-search-orm.automatic-indexing.synchronization.strategy", "bean:searchpeNoneIndexer");
+
                 break;
             case enterprise:
                 // Profile
@@ -56,6 +72,10 @@ public class ProfileManager implements QuarkusTestProfile {
                 testResources.add(new TestResourceEntry(PostgresSQLServer.class));
                 testResources.add(new TestResourceEntry(SunatServer.class));
                 testResources.add(new TestResourceEntry(ElasticsearchServer.class));
+
+                // Config
+                configOverrides.put("quarkus.hibernate-search-orm.automatic-indexing.synchronization.strategy", "sync");
+
                 break;
         }
     }
@@ -68,5 +88,10 @@ public class ProfileManager implements QuarkusTestProfile {
     @Override
     public List<TestResourceEntry> testResources() {
         return testResources;
+    }
+
+    @Override
+    public Map<String, String> getConfigOverrides() {
+        return configOverrides;
     }
 }
