@@ -62,6 +62,7 @@ public class ProfileManager implements QuarkusTestProfile {
                 // Config
                 configOverrides.put("quarkus.datasource.devservices.enabled", "false");
                 configOverrides.put("quarkus.hibernate-search-orm.automatic-indexing.synchronization.strategy", "bean:searchpeNoneIndexer");
+                configOverrides.put("quarkus.oidc.auth-server-url", "http://localhost:8180/auth"); // Required to have this prop for running tests
 
                 break;
             case enterprise:

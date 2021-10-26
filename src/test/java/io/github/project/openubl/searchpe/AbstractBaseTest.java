@@ -16,8 +16,10 @@
  */
 package io.github.project.openubl.searchpe;
 
+import io.restassured.specification.RequestSpecification;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,7 +29,21 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 
-public abstract class AbstractFlywayTest {
+import static io.restassured.RestAssured.given;
+
+public abstract class AbstractBaseTest {
+
+    @ConfigProperty(name = "quarkus.oidc.enabled")
+    Boolean oidcEnabled;
+
+    @ConfigProperty(name = "quarkus.oidc.auth-server-url")
+    String oidcAuthServerUrl;
+
+    @ConfigProperty(name = "quarkus.oidc.client-id")
+    String oidcAuthClientId;
+
+    @ConfigProperty(name = "quarkus.oidc.credentials.secret")
+    String oidcAuthSecret;
 
     public abstract Class<?> getTestClass();
 
@@ -71,6 +87,27 @@ public abstract class AbstractFlywayTest {
                 .connectRetries(120)
                 .locations(locations.toArray(String[]::new))
                 .load();
+    }
+
+    protected RequestSpecification givenAuth(String username) {
+        if (oidcEnabled) {
+            return given().auth().oauth2(getAccessToken(username));
+        } else {
+            return given().auth().basic(username, username);
+        }
+    }
+
+    private String getAccessToken(String userName) {
+        return given()
+                .relaxedHTTPSValidation()
+                .auth().preemptive().basic(oidcAuthClientId, oidcAuthSecret)
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("grant_type", "password")
+                .formParam("username", userName)
+                .formParam("password", userName)
+                .when()
+                .post(oidcAuthServerUrl + "/protocol/openid-connect/token")
+                .then().extract().path("access_token").toString();
     }
 
 }

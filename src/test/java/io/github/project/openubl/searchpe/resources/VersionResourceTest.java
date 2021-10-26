@@ -16,17 +16,17 @@
  */
 package io.github.project.openubl.searchpe.resources;
 
-import io.github.project.openubl.searchpe.AbstractFlywayTest;
+import io.github.project.openubl.searchpe.AbstractBaseTest;
 import io.github.project.openubl.searchpe.ProfileManager;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
+import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.TimeUnit;
 
-import static io.restassured.RestAssured.given;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -35,7 +35,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @QuarkusTest
 @TestProfile(ProfileManager.class)
-public class VersionResourceTest extends AbstractFlywayTest {
+@TestHTTPEndpoint(VersionResource.class)
+public class VersionResourceTest extends AbstractBaseTest {
 
     @Override
     public Class<?> getTestClass() {
@@ -44,10 +45,10 @@ public class VersionResourceTest extends AbstractFlywayTest {
 
     @Test
     public void getVersions() {
-        given()
+        givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/versions")
+                .get("/")
                 .then()
                 .statusCode(200)
                 .body(
@@ -60,10 +61,10 @@ public class VersionResourceTest extends AbstractFlywayTest {
 
     @Test
     public void getVersions_onlyActive() {
-        given()
+        givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/versions?active=true")
+                .get("?active=true")
                 .then()
                 .statusCode(200)
                 .body(
@@ -77,10 +78,10 @@ public class VersionResourceTest extends AbstractFlywayTest {
 
     @Test
     public void getVersions_onlyInactive() {
-        given()
+        givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/versions?active=false")
+                .get("?active=false")
                 .then()
                 .statusCode(200)
                 .body(
@@ -95,10 +96,10 @@ public class VersionResourceTest extends AbstractFlywayTest {
 
     @Test
     public void getVersion() {
-        given()
+        givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/versions/" + 1)
+                .get("/" + 1)
                 .then()
                 .statusCode(200)
                 .body(
@@ -110,10 +111,10 @@ public class VersionResourceTest extends AbstractFlywayTest {
 
     @Test
     public void getVersion_nonExists() {
-        given()
+        givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/versions/" + 999)
+                .get("/" + 999)
                 .then()
                 .statusCode(404);
     }
@@ -123,10 +124,10 @@ public class VersionResourceTest extends AbstractFlywayTest {
         int versionId = 3;
 
         // When
-        given()
+        givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .delete("/versions/" + versionId)
+                .delete("/" + versionId)
                 .then()
                 .statusCode(204);
 
@@ -134,19 +135,19 @@ public class VersionResourceTest extends AbstractFlywayTest {
         await()
                 .atMost(3, TimeUnit.MINUTES)
                 .untilAsserted(() -> {
-                    int statusCode = given()
+                    int statusCode = givenAuth("alice")
                             .header("Content-Type", "application/json")
                             .when()
-                            .get("/versions/" + versionId)
+                            .get("/" + versionId)
                             .then()
                             .extract().statusCode();
                     assertEquals(404, statusCode);
                 });
 
-        given()
+        givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/versions?active=true")
+                .get("?active=true")
                 .then()
                 .statusCode(200)
                 .body(
@@ -162,10 +163,10 @@ public class VersionResourceTest extends AbstractFlywayTest {
         // Given
 
         // When
-        VersionEntity version = given()
+        VersionEntity version = givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .post("/versions")
+                .post("/")
                 .then()
                 .statusCode(200)
                 .body(notNullValue())
@@ -177,19 +178,19 @@ public class VersionResourceTest extends AbstractFlywayTest {
         await()
                 .atMost(3, TimeUnit.MINUTES)
                 .until(() -> {
-                    VersionEntity watchedVersion = given()
+                    VersionEntity watchedVersion = givenAuth("alice")
                             .header("Content-Type", "application/json")
                             .when()
-                            .get("/versions/" + version.id)
+                            .get("/" + version.id)
                             .then()
                             .extract().body().as(VersionEntity.class);
                     return watchedVersion.status == Status.COMPLETED;
                 });
 
-        given()
+        givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/versions?active=true")
+                .get("?active=true")
                 .then()
                 .statusCode(200)
                 .body(
