@@ -19,7 +19,6 @@ package io.github.project.openubl.searchpe;
 import io.restassured.specification.RequestSpecification;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,18 +31,6 @@ import java.util.regex.Matcher;
 import static io.restassured.RestAssured.given;
 
 public abstract class AbstractBaseTest {
-
-    @ConfigProperty(name = "quarkus.oidc.enabled")
-    Boolean oidcEnabled;
-
-    @ConfigProperty(name = "quarkus.oidc.auth-server-url")
-    String oidcAuthServerUrl;
-
-    @ConfigProperty(name = "quarkus.oidc.client-id")
-    String oidcAuthClientId;
-
-    @ConfigProperty(name = "quarkus.oidc.credentials.secret")
-    String oidcAuthSecret;
 
     public abstract Class<?> getTestClass();
 
@@ -90,6 +77,8 @@ public abstract class AbstractBaseTest {
     }
 
     protected RequestSpecification givenAuth(String username) {
+        Config config = ConfigProvider.getConfig();
+        Boolean oidcEnabled = config.getValue("quarkus.oidc.enabled", Boolean.class);
         if (oidcEnabled) {
             return given().auth().oauth2(getAccessToken(username));
         } else {
@@ -98,6 +87,11 @@ public abstract class AbstractBaseTest {
     }
 
     private String getAccessToken(String userName) {
+        Config config = ConfigProvider.getConfig();
+        String oidcAuthServerUrl = config.getValue("quarkus.oidc.auth-server-url", String.class);
+        String oidcAuthClientId = config.getValue("quarkus.oidc.client-id", String.class);
+        String oidcAuthSecret = config.getValue("quarkus.oidc.credentials.secret", String.class);
+
         return given()
                 .relaxedHTTPSValidation()
                 .auth().preemptive().basic(oidcAuthClientId, oidcAuthSecret)
