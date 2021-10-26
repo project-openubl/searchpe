@@ -16,15 +16,13 @@
  */
 package io.github.project.openubl.searchpe.resources;
 
+import io.github.project.openubl.searchpe.AbstractFlywayTest;
+import io.github.project.openubl.searchpe.EnterpriseProfileManager;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
-import io.github.project.openubl.searchpe.resources.config.ElasticsearchServer;
-import io.quarkus.test.common.QuarkusTestResource;
-import io.quarkus.test.junit.NativeImageTest;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Order;
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
 
 import java.util.concurrent.TimeUnit;
 
@@ -32,47 +30,43 @@ import static io.restassured.RestAssured.given;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-@NativeImageTest
-@QuarkusTestResource(ElasticsearchServer.class)
-@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class NativeResourceIT {
+@QuarkusTest
+@TestProfile(EnterpriseProfileManager.class)
+public class SearchEnterpriseContribuyenteResourceTest extends AbstractFlywayTest {
 
-    @Order(1)
+    @Override
+    public Class<?> getTestClass() {
+        return SearchEnterpriseContribuyenteResourceTest.class;
+    }
+
     @Test
-    public void verifyImportData() {
+    public void getContribuyentes() {
         // Given
-
-        // When
-        VersionEntity versionCreated = given()
+        VersionEntity version = given()
                 .header("Content-Type", "application/json")
                 .when()
                 .post("/versions")
                 .then()
                 .statusCode(200)
                 .body(notNullValue())
-                .extract()
-                .as(VersionEntity.class);
+                .extract().body().as(VersionEntity.class);
 
-        // Then
-        await()
-                .atMost(10, TimeUnit.MINUTES)
+        assertNotNull(version);
+
+        await().atMost(3, TimeUnit.MINUTES)
                 .until(() -> {
-                    VersionEntity versionWatched = given()
+                    VersionEntity watchedVersion = given()
                             .header("Content-Type", "application/json")
                             .when()
-                            .get("/versions/" + versionCreated.id)
+                            .get("/versions/" + version.id)
                             .then()
-                            .extract()
-                            .as(VersionEntity.class);
-
-                    return versionWatched.status == Status.COMPLETED;
+                            .extract().body().as(VersionEntity.class);
+                    return watchedVersion.status == Status.COMPLETED;
                 });
-    }
 
-    @Order(2)
-    @Test
-    public void verifyContribuyentes() {
+        // Then
         given()
                 .header("Content-Type", "application/json")
                 .when()
@@ -88,4 +82,3 @@ public class NativeResourceIT {
     }
 
 }
-

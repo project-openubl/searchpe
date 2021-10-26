@@ -16,65 +16,34 @@
  */
 package io.github.project.openubl.searchpe.resources;
 
-import io.github.project.openubl.searchpe.models.jpa.ContribuyenteRepository;
-import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
-import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
-import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteId;
+import io.github.project.openubl.searchpe.AbstractFlywayTest;
+import io.github.project.openubl.searchpe.ProfileManager;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
-import io.github.project.openubl.searchpe.resources.config.ElasticsearchServer;
-import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
-import io.restassured.response.ExtractableResponse;
-import io.restassured.response.Response;
-import org.junit.jupiter.api.AfterEach;
+import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
 
-import javax.inject.Inject;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static io.restassured.RestAssured.given;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @QuarkusTest
-@QuarkusTestResource(ElasticsearchServer.class)
-public class VersionResourceTest {
+@TestProfile(ProfileManager.class)
+public class VersionResourceTest extends AbstractFlywayTest {
 
-    @Inject
-    VersionRepository versionRepository;
-
-    @Inject
-    ContribuyenteRepository contribuyenteRepository;
-
-    @AfterEach
-    public void afterEach() {
-        contribuyenteRepository.deleteAll();
-        versionRepository.deleteAll();
+    @Override
+    public Class<?> getTestClass() {
+        return VersionResourceTest.class;
     }
 
     @Test
     public void getVersions() {
-        // Given
-        VersionEntity version1 = VersionEntity.Builder.aVersionEntity()
-                .withStatus(Status.ERROR)
-                .withCreatedAt(new Date())
-                .withUpdatedAt(new Date())
-                .build();
-        VersionEntity version2 = VersionEntity.Builder.aVersionEntity()
-                .withStatus(Status.COMPLETED)
-                .withCreatedAt(new Date())
-                .withUpdatedAt(new Date())
-                .build();
-
-        versionRepository.persist(version1, version2);
-
-        // When
         given()
                 .header("Content-Type", "application/json")
                 .when()
@@ -82,32 +51,15 @@ public class VersionResourceTest {
                 .then()
                 .statusCode(200)
                 .body(
-                        "size()", is(2),
+                        "size()", is(3),
                         "[0].status", is(Status.COMPLETED.toString()),
-                        "[1].status", is(Status.ERROR.toString())
+                        "[1].status", is(Status.COMPLETED.toString()),
+                        "[2].status", is(Status.ERROR.toString())
                 );
     }
 
     @Test
     public void getVersions_onlyActive() {
-        // Given
-        Calendar calendar = Calendar.getInstance();
-        VersionEntity version1 = VersionEntity.Builder.aVersionEntity()
-                .withStatus(Status.COMPLETED)
-                .withCreatedAt(calendar.getTime())
-                .withUpdatedAt(calendar.getTime())
-                .build();
-
-        calendar.add(Calendar.SECOND, 10);
-        VersionEntity version2 = VersionEntity.Builder.aVersionEntity()
-                .withStatus(Status.COMPLETED)
-                .withCreatedAt(calendar.getTime())
-                .withUpdatedAt(calendar.getTime())
-                .build();
-
-        versionRepository.persist(version1, version2);
-
-        // When
         given()
                 .header("Content-Type", "application/json")
                 .when()
@@ -116,37 +68,15 @@ public class VersionResourceTest {
                 .statusCode(200)
                 .body(
                         "size()", is(1),
-                        "[0].id", is(version2.id.intValue())
+                        "[0].id", is(3),
+                        "[0].status", is("COMPLETED"),
+                        "[0].records", is(9_000_000)
                 );
 
     }
 
     @Test
     public void getVersions_onlyInactive() {
-        // Given
-        Calendar calendar = Calendar.getInstance();
-
-        VersionEntity version1 = VersionEntity.Builder.aVersionEntity()
-                .withStatus(Status.ERROR)
-                .withCreatedAt(calendar.getTime())
-                .withUpdatedAt(calendar.getTime())
-                .build();
-        VersionEntity version2 = VersionEntity.Builder.aVersionEntity()
-                .withStatus(Status.COMPLETED)
-                .withCreatedAt(calendar.getTime())
-                .withUpdatedAt(calendar.getTime())
-                .build();
-
-        calendar.add(Calendar.SECOND, 10);
-        VersionEntity version3 = VersionEntity.Builder.aVersionEntity()
-                .withStatus(Status.COMPLETED)
-                .withCreatedAt(calendar.getTime())
-                .withUpdatedAt(calendar.getTime())
-                .build();
-
-        versionRepository.persist(version1, version2, version3);
-
-        // When
         given()
                 .header("Content-Type", "application/json")
                 .when()
@@ -155,10 +85,76 @@ public class VersionResourceTest {
                 .statusCode(200)
                 .body(
                         "size()", is(2),
-                        "[0].id", is(version2.id.intValue()),
-                        "[1].id", is(version1.id.intValue())
+                        "[0].id", is(2),
+                        "[0].status", is("COMPLETED"),
+                        "[1].id", is(1),
+                        "[1].status", is("ERROR")
                 );
 
+    }
+
+    @Test
+    public void getVersion() {
+        given()
+                .header("Content-Type", "application/json")
+                .when()
+                .get("/versions/" + 1)
+                .then()
+                .statusCode(200)
+                .body(
+                        "id", is(1),
+                        "status", is(Status.ERROR.toString()),
+                        "records", is(1_000_000)
+                );
+    }
+
+    @Test
+    public void getVersion_nonExists() {
+        given()
+                .header("Content-Type", "application/json")
+                .when()
+                .get("/versions/" + 999)
+                .then()
+                .statusCode(404);
+    }
+
+    @Test
+    public void deleteVersion() {
+        int versionId = 3;
+
+        // When
+        given()
+                .header("Content-Type", "application/json")
+                .when()
+                .delete("/versions/" + versionId)
+                .then()
+                .statusCode(204);
+
+        // Then
+        await()
+                .atMost(3, TimeUnit.MINUTES)
+                .untilAsserted(() -> {
+                    int statusCode = given()
+                            .header("Content-Type", "application/json")
+                            .when()
+                            .get("/versions/" + versionId)
+                            .then()
+                            .extract().statusCode();
+                    assertEquals(404, statusCode);
+                });
+
+        given()
+                .header("Content-Type", "application/json")
+                .when()
+                .get("/versions?active=true")
+                .then()
+                .statusCode(200)
+                .body(
+                        "size()", is(1),
+                        "[0].id", is(2),
+                        "[0].status", is("COMPLETED"),
+                        "[0].records", is(5_000_000)
+                );
     }
 
     @Test
@@ -166,108 +162,41 @@ public class VersionResourceTest {
         // Given
 
         // When
-        ExtractableResponse<Response> newVersionResponse = given()
+        VersionEntity version = given()
                 .header("Content-Type", "application/json")
                 .when()
                 .post("/versions")
                 .then()
                 .statusCode(200)
                 .body(notNullValue())
-                .extract();
-        VersionEntity version = newVersionResponse.as(VersionEntity.class);
+                .extract().body().as(VersionEntity.class);
+
         assertNotNull(version);
 
         // Then
         await()
                 .atMost(3, TimeUnit.MINUTES)
                 .until(() -> {
-                    VersionEntity versionEntity = versionRepository.findById(version.id);
-                    List<ContribuyenteEntity> contribuyentes = contribuyenteRepository.listAll();
-                    return versionEntity.status == Status.COMPLETED && contribuyentes.size() > 1;
+                    VersionEntity watchedVersion = given()
+                            .header("Content-Type", "application/json")
+                            .when()
+                            .get("/versions/" + version.id)
+                            .then()
+                            .extract().body().as(VersionEntity.class);
+                    return watchedVersion.status == Status.COMPLETED;
                 });
 
-        VersionEntity activeVersion = versionRepository.findActive().orElse(null);
-        assertEquals(version, activeVersion);
-    }
-
-    @Test
-    public void getVersion() {
-        // Given
-        VersionEntity version = VersionEntity.Builder.aVersionEntity()
-                .withStatus(Status.ERROR)
-                .withCreatedAt(new Date())
-                .withUpdatedAt(new Date())
-                .build();
-
-        versionRepository.persist(version);
-
-        // When
         given()
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/versions/" + version.id)
+                .get("/versions?active=true")
                 .then()
                 .statusCode(200)
                 .body(
-                        "status", is(Status.ERROR.toString())
+                        "size()", is(1),
+                        "[0].id", is(version.id.intValue()),
+                        "[0].status", is("COMPLETED")
                 );
-
     }
 
-    @Test
-    public void getVersion_nonExists() {
-        // Given
-
-        // When
-        given()
-                .header("Content-Type", "application/json")
-                .when()
-                .get("/versions/1")
-                .then()
-                .statusCode(404);
-    }
-
-    @Test
-    public void deleteVersion() {
-        // Given
-        VersionEntity version1 = VersionEntity.Builder.aVersionEntity()
-                .withStatus(Status.COMPLETED)
-                .withCreatedAt(new Date())
-                .withUpdatedAt(new Date())
-                .build();
-        VersionEntity version2 = VersionEntity.Builder.aVersionEntity()
-                .withStatus(Status.COMPLETED)
-                .withCreatedAt(new Date())
-                .withUpdatedAt(new Date())
-                .build();
-        versionRepository.persist(version1, version2);
-
-        ContribuyenteEntity contribuyente1 = ContribuyenteEntity.Builder.aContribuyenteEntity()
-                .withId(new ContribuyenteId(version2.id, "11111111111"))
-                .withRazonSocial("company1")
-                .build();
-        ContribuyenteEntity contribuyente2 = ContribuyenteEntity.Builder.aContribuyenteEntity()
-                .withId(new ContribuyenteId(version2.id, "22222222222"))
-                .withRazonSocial("company2")
-                .build();
-        contribuyenteRepository.persist(contribuyente1, contribuyente2);
-
-        // When
-        given()
-                .header("Content-Type", "application/json")
-                .when()
-                .delete("/versions/" + version2.id)
-                .then()
-                .statusCode(204);
-
-        // Then
-        await()
-                .atMost(3, TimeUnit.MINUTES)
-                .until(() -> {
-                    VersionEntity versionEntity = versionRepository.findById(version2.id);
-                    return versionEntity == null;
-                });
-
-        assertTrue(versionRepository.findByIdOptional(version2.id).isEmpty());
-    }
 }

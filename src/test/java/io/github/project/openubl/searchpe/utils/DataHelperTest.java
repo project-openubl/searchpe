@@ -16,6 +16,7 @@
  */
 package io.github.project.openubl.searchpe.utils;
 
+import io.github.project.openubl.searchpe.ProfileManager;
 import io.github.project.openubl.searchpe.managers.FileManager;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.resources.config.ElasticsearchServer;
@@ -38,8 +39,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 @QuarkusTest
-@TestProfile(value = RealPadronReducidoProfile.class)
-@QuarkusTestResource(ElasticsearchServer.class)
+@TestProfile(ProfileManager.class)
 public class DataHelperTest {
 
     @Inject

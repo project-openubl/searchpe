@@ -37,6 +37,7 @@ import java.util.List;
 @Transactional
 @ApplicationScoped
 @Path("/versions")
+@Consumes("application/json")
 public class VersionResource {
 
     @Inject
@@ -84,8 +85,7 @@ public class VersionResource {
                 .withRecords(0)
                 .build();
 
-        version.persist();
-        version.flush();
+        version.persistAndFlush();
 
         try {
             upgradeDataJob.trigger(version);
