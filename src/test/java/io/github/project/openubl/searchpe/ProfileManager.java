@@ -83,6 +83,7 @@ public class ProfileManager implements QuarkusTestProfile {
 
                 // Config
                 configOverrides.put("quarkus.hibernate-search-orm.automatic-indexing.synchronization.strategy", "sync");
+                configOverrides.put("quarkus.oidc.enabled", "true"); // Without this ti doesn't take effect and tests fail
 
                 break;
         }
