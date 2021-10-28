@@ -156,6 +156,10 @@
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-security-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
             <artifactId>quarkus-oidc</artifactId>
         </dependency>
 
@@ -351,6 +355,9 @@
 
         <profile>
             <id>standalone</id>
+            <properties>
+                <quarkus.profile>standalone</quarkus.profile>
+            </properties>
             <build>
                 <plugins>
                     <plugin>

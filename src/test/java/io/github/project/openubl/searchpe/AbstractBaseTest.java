@@ -59,6 +59,7 @@ public abstract class AbstractBaseTest {
 
         final List<String> locations = new ArrayList<>();
         locations.add(testDefaultLocation);
+        locations.add("db" + File.separator + "basic-authentication");
         locations.add("db" + File.separator + "migration");
 
         if (packageName.startsWith("Native") && packageName.endsWith("IT")) {
