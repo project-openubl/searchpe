@@ -19,8 +19,6 @@ package io.github.project.openubl.searchpe.utils;
 import io.github.project.openubl.searchpe.ProfileManager;
 import io.github.project.openubl.searchpe.managers.FileManager;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
-import io.github.project.openubl.searchpe.resources.config.ElasticsearchServer;
-import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;

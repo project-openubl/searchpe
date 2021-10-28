@@ -14,24 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.project.openubl.searchpe.bootstrap;
+package io.github.project.openubl.searchpe.models;
 
-import io.github.project.openubl.searchpe.models.RoleType;
-import io.github.project.openubl.searchpe.models.jpa.entity.BasicUserEntity;
-import io.quarkus.runtime.StartupEvent;
-
-import javax.enterprise.event.Observes;
-import javax.inject.Singleton;
-import javax.transaction.Transactional;
-
-@Singleton
-public class SearchpeBootstrap {
-
-    @Transactional
-    void createAdminUserOnStart(@Observes StartupEvent ev) {
-        if (BasicUserEntity.count() == 0) {
-            BasicUserEntity.add("admin", "admin", RoleType.admin.toString());
-        }
-    }
-
+public enum RoleType {
+    admin,
+    user
 }

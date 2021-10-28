@@ -16,18 +16,19 @@
  */
 package io.github.project.openubl.searchpe.resources;
 
-import io.github.project.openubl.searchpe.AbstractFlywayTest;
+import io.github.project.openubl.searchpe.AbstractBaseTest;
 import io.github.project.openubl.searchpe.ProfileManager;
+import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
 
-import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.is;
 
 @QuarkusTest
 @TestProfile(ProfileManager.class)
-public class ContribuyenteResourceTest extends AbstractFlywayTest {
+@TestHTTPEndpoint(ContribuyenteResource.class)
+public class ContribuyenteResourceTest extends AbstractBaseTest {
 
     @Override
     public Class<?> getTestClass() {
@@ -40,10 +41,10 @@ public class ContribuyenteResourceTest extends AbstractFlywayTest {
         String ruc = "11111111111";
 
         // When
-        given()
+        givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/contribuyentes/" + ruc)
+                .get("/" + ruc)
                 .then()
                 .statusCode(200)
                 .body(
@@ -55,10 +56,10 @@ public class ContribuyenteResourceTest extends AbstractFlywayTest {
 
     @Test
     public void getContribuyente_notFound() {
-        given()
+        givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/contribuyentes/someRuc")
+                .get("/someRuc")
                 .then()
                 .statusCode(404);
     }

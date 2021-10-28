@@ -16,19 +16,15 @@
  */
 package io.github.project.openubl.searchpe.resources;
 
-import io.github.project.openubl.searchpe.AbstractFlywayTest;
-import io.github.project.openubl.searchpe.EnterpriseProfileManager;
+import io.github.project.openubl.searchpe.AbstractBaseTest;
 import io.github.project.openubl.searchpe.StandaloneProfileManager;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
 
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.CoreMatchers.is;
-
 @QuarkusTest
 @TestProfile(StandaloneProfileManager.class)
-public class SearchStandaloneContribuyenteResourceTest extends AbstractFlywayTest {
+public class SearchStandaloneContribuyenteResourceTest extends AbstractBaseTest {
 
     @Override
     public Class<?> getTestClass() {
@@ -37,7 +33,7 @@ public class SearchStandaloneContribuyenteResourceTest extends AbstractFlywayTes
 
     @Test
     public void getContribuyentes() {
-        given()
+        givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
                 .get("/contribuyentes")

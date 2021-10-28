@@ -16,7 +16,7 @@
  */
 package io.github.project.openubl.searchpe.resources;
 
-import io.github.project.openubl.searchpe.AbstractFlywayTest;
+import io.github.project.openubl.searchpe.AbstractBaseTest;
 import io.github.project.openubl.searchpe.EnterpriseProfileManager;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
@@ -26,7 +26,6 @@ import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.TimeUnit;
 
-import static io.restassured.RestAssured.given;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -34,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @QuarkusTest
 @TestProfile(EnterpriseProfileManager.class)
-public class SearchEnterpriseContribuyenteResourceTest extends AbstractFlywayTest {
+public class SearchEnterpriseContribuyenteResourceTest extends AbstractBaseTest {
 
     @Override
     public Class<?> getTestClass() {
@@ -44,7 +43,7 @@ public class SearchEnterpriseContribuyenteResourceTest extends AbstractFlywayTes
     @Test
     public void getContribuyentes() {
         // Given
-        VersionEntity version = given()
+        VersionEntity version = givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
                 .post("/versions")
@@ -57,7 +56,7 @@ public class SearchEnterpriseContribuyenteResourceTest extends AbstractFlywayTes
 
         await().atMost(3, TimeUnit.MINUTES)
                 .until(() -> {
-                    VersionEntity watchedVersion = given()
+                    VersionEntity watchedVersion = givenAuth("alice")
                             .header("Content-Type", "application/json")
                             .when()
                             .get("/versions/" + version.id)
@@ -67,7 +66,7 @@ public class SearchEnterpriseContribuyenteResourceTest extends AbstractFlywayTes
                 });
 
         // Then
-        given()
+        givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
                 .get("/contribuyentes")

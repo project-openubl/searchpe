@@ -16,6 +16,7 @@
  */
 package io.github.project.openubl.searchpe;
 
+import io.restassured.specification.RequestSpecification;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
 import org.flywaydb.core.Flyway;
@@ -27,7 +28,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 
-public abstract class AbstractFlywayTest {
+import static io.restassured.RestAssured.given;
+
+public abstract class AbstractBaseTest {
 
     public abstract Class<?> getTestClass();
 
@@ -56,6 +59,7 @@ public abstract class AbstractFlywayTest {
 
         final List<String> locations = new ArrayList<>();
         locations.add(testDefaultLocation);
+        locations.add("db" + File.separator + "basic-authentication");
         locations.add("db" + File.separator + "migration");
 
         if (packageName.startsWith("Native") && packageName.endsWith("IT")) {
@@ -71,6 +75,34 @@ public abstract class AbstractFlywayTest {
                 .connectRetries(120)
                 .locations(locations.toArray(String[]::new))
                 .load();
+    }
+
+    protected RequestSpecification givenAuth(String username) {
+        Config config = ConfigProvider.getConfig();
+        Boolean oidcEnabled = config.getValue("quarkus.oidc.enabled", Boolean.class);
+        if (oidcEnabled) {
+            return given().auth().oauth2(getAccessToken(username));
+        } else {
+            return given().auth().basic(username, username);
+        }
+    }
+
+    private String getAccessToken(String userName) {
+        Config config = ConfigProvider.getConfig();
+        String oidcAuthServerUrl = config.getValue("quarkus.oidc.auth-server-url", String.class);
+        String oidcAuthClientId = config.getValue("quarkus.oidc.client-id", String.class);
+        String oidcAuthSecret = config.getValue("quarkus.oidc.credentials.secret", String.class);
+
+        return given()
+                .relaxedHTTPSValidation()
+                .auth().preemptive().basic(oidcAuthClientId, oidcAuthSecret)
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("grant_type", "password")
+                .formParam("username", userName)
+                .formParam("password", userName)
+                .when()
+                .post(oidcAuthServerUrl + "/protocol/openid-connect/token")
+                .then().extract().path("access_token").toString();
     }
 
 }

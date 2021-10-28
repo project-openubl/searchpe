@@ -17,6 +17,7 @@
 package io.github.project.openubl.searchpe;
 
 import io.github.project.openubl.searchpe.resources.config.ElasticsearchServer;
+import io.github.project.openubl.searchpe.resources.config.KeycloakServer;
 import io.github.project.openubl.searchpe.resources.config.PostgresSQLServer;
 import io.github.project.openubl.searchpe.resources.config.SunatServer;
 import io.quarkus.test.junit.QuarkusTestProfile;
@@ -50,6 +51,9 @@ public class ProfileManager implements QuarkusTestProfile {
     }
 
     private void init(DistributionFlavor distributionFlavor) {
+        configOverrides.put("quarkus.datasource.devservices.enabled", "false");
+        configOverrides.put("quarkus.keycloak.devservices.enabled", "false");
+
         switch (distributionFlavor) {
             case standalone:
                 // Profile
@@ -60,8 +64,11 @@ public class ProfileManager implements QuarkusTestProfile {
                 testResources.add(new TestResourceEntry(SunatServer.class));
 
                 // Config
-                configOverrides.put("quarkus.datasource.devservices.enabled", "false");
                 configOverrides.put("quarkus.hibernate-search-orm.automatic-indexing.synchronization.strategy", "bean:searchpeNoneIndexer");
+
+                configOverrides.put("quarkus.oidc.auth-server-url", "http://localhost:8180/auth"); // Required to have this prop for running tests
+                configOverrides.put("quarkus.oidc.client-id", "searchpe"); // Required to have this prop for running tests
+                configOverrides.put("quarkus.oidc.credentials.secret", "secret"); // Required to have this prop for running tests
 
                 break;
             case enterprise:
@@ -72,9 +79,11 @@ public class ProfileManager implements QuarkusTestProfile {
                 testResources.add(new TestResourceEntry(PostgresSQLServer.class));
                 testResources.add(new TestResourceEntry(SunatServer.class));
                 testResources.add(new TestResourceEntry(ElasticsearchServer.class));
+                testResources.add(new TestResourceEntry(KeycloakServer.class));
 
                 // Config
                 configOverrides.put("quarkus.hibernate-search-orm.automatic-indexing.synchronization.strategy", "sync");
+                configOverrides.put("quarkus.oidc.enabled", "true"); // Without this ti doesn't take effect and tests fail
 
                 break;
         }

@@ -24,11 +24,36 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: db
-      POSTGRES_USER: username
-      POSTGRES_PASSWORD: password
+      POSTGRES_DB: searchpe_db
+      POSTGRES_USER: db_username
+      POSTGRES_PASSWORD: db_password
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U username -d db" ]
+      test: [ "CMD-SHELL", "pg_isready -U db_username -d searchpe_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      discovery.type: single-node
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:15.0.2
+    ports:
+      - 8180:8080
+    environment:
+      KEYCLOAK_USER: admin
+      KEYCLOAK_PASSWORD: admin
+      KEYCLOAK_IMPORT: /tmp/konveyor-realm.json
+      DB_VENDOR: h2
+    volumes:
+      - ./src/test/resources/openubl-realm.json:/tmp/konveyor-realm.json:z
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/auth" ]
       interval: 10s
       timeout: 5s
       retries: 5
