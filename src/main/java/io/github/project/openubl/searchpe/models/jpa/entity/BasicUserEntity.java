@@ -26,15 +26,18 @@ import io.quarkus.security.jpa.Username;
 import javax.persistence.Entity;
 import javax.persistence.Table;
 import javax.persistence.Version;
+import javax.validation.constraints.NotNull;
 
 @Entity
 @Table(name = "basic_user")
 @UserDefinition
 public class BasicUserEntity extends PanacheEntity {
 
+    @NotNull
     @Username
     public String username;
 
+    @NotNull
     @Password
     public String password;
 
@@ -56,6 +59,12 @@ public class BasicUserEntity extends PanacheEntity {
         user.username = username;
         user.password = BcryptUtil.bcryptHash(password);
         user.role = role;
+        user.persist();
+    }
+
+    public static void update(BasicUserEntity user, String username, String password) {
+        user.username = username;
+        user.password = BcryptUtil.bcryptHash(password);
         user.persist();
     }
 
