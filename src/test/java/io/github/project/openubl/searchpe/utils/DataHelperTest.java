@@ -31,6 +31,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -67,13 +68,15 @@ public class DataHelperTest {
                 assertNotNull(columns);
                 assertEquals(15, columns.length);
 
-                Optional<ContribuyenteEntity> contribuyenteOptional = DataHelper.buildContribuyenteEntity(1L, columns);
-                if (contribuyenteOptional.isPresent()) {
-                    ContribuyenteEntity contribuyente = contribuyenteOptional.get();
+                final String lineToPrint = line;
 
-                    Set<ConstraintViolation<ContribuyenteEntity>> violations = validator.validate(contribuyente);
-                    assertTrue(violations.isEmpty(), "Line:" + line + "\n columns:" + Arrays.toString(columns));
-                }
+                Optional<List<ContribuyenteEntity>> contribuyenteOptional = DataHelper.buildContribuyenteEntity(1L, columns);
+                contribuyenteOptional.ifPresent(contribuyenteEntities -> {
+                    for (ContribuyenteEntity contribuyente : contribuyenteEntities) {
+                        Set<ConstraintViolation<ContribuyenteEntity>> violations = validator.validate(contribuyente);
+                        assertTrue(violations.isEmpty(), "Line:" + lineToPrint + "\n columns:" + Arrays.toString(columns));
+                    }
+                });
             }
         }
     }

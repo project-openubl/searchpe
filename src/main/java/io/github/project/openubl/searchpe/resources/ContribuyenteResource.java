@@ -16,6 +16,7 @@
  */
 package io.github.project.openubl.searchpe.resources;
 
+import io.github.project.openubl.searchpe.models.ContribuyenteType;
 import io.github.project.openubl.searchpe.models.PageBean;
 import io.github.project.openubl.searchpe.models.PageRepresentation;
 import io.github.project.openubl.searchpe.models.SortBean;
@@ -27,6 +28,7 @@ import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.utils.ResourceUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.hibernate.search.engine.search.predicate.dsl.BooleanPredicateClausesStep;
 import org.hibernate.search.engine.search.query.SearchResult;
 import org.hibernate.search.engine.search.query.dsl.SearchQueryOptionsStep;
 import org.hibernate.search.engine.search.sort.SearchSort;
@@ -68,6 +70,7 @@ public class ContribuyenteResource {
     @Produces("application/json")
     public PageRepresentation<ContribuyenteEntity> getContribuyentes(
             @QueryParam("filterText") String filterText,
+            @QueryParam("tipoContribuyente") String tipoContribuyenteQuery,
             @QueryParam("offset") @DefaultValue("0") @Max(9_000) Integer offset,
             @QueryParam("limit") @DefaultValue("10") @Max(1_000) Integer limit,
             @QueryParam("sort_by") @DefaultValue("name") List<String> sortBy
@@ -110,17 +113,19 @@ public class ContribuyenteResource {
             searchSort = compositeSortComponents.toSort();
         }
 
-        SearchQueryOptionsStep<?, ContribuyenteEntity, SearchLoadingOptionsStep, ?, ?> searchQuery;
-        if (filterText != null && !filterText.trim().isEmpty()) {
-            searchQuery = searchSession.search(ContribuyenteEntity.class)
-                    .where(f -> f.bool()
-                            .must(f.match().field("embeddedId.versionId").matching(version.id))
-                            .must(f.match().fields("razonSocial").matching(filterText))
-                    );
-        } else {
-            searchQuery = searchSession.search(ContribuyenteEntity.class)
-                    .where(f -> f.match().field("embeddedId.versionId").matching(version.id));
-        }
+        SearchQueryOptionsStep<?, ContribuyenteEntity, SearchLoadingOptionsStep, ?, ?> searchQuery = searchSession.search(ContribuyenteEntity.class)
+                .where(f -> {
+                    BooleanPredicateClausesStep<?> result = f.bool();
+                    result = result.must(f.match().field("embeddedId.versionId").matching(version.id));
+                    if (filterText != null && !filterText.trim().isEmpty()) {
+                        result = result.must(f.match().fields("razonSocial").matching(filterText));
+                    }
+                    if (tipoContribuyenteQuery != null && !tipoContribuyenteQuery.trim().isEmpty()) {
+                        ContribuyenteType tipoContribuyente = ContribuyenteType.valueOf(tipoContribuyenteQuery.trim().toUpperCase());
+                        result = result.must(f.match().field("tipoContribuyente").matching(tipoContribuyente));
+                    }
+                    return result;
+                });
 
         if (searchSort != null) {
             searchQuery = searchQuery.sort(searchSort);

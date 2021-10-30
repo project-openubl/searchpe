@@ -16,6 +16,7 @@
  */
 package io.github.project.openubl.searchpe.managers;
 
+import io.github.project.openubl.searchpe.models.ContribuyenteType;
 import io.github.project.openubl.searchpe.models.VersionEvent;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.EstadoContribuyente;
@@ -40,6 +41,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class UpgradeDataManager {
@@ -117,7 +119,8 @@ public class UpgradeDataManager {
         LOGGER.infof("Start importing contribuyentes");
         long startTime = Calendar.getInstance().getTimeInMillis();
 
-        int cont = 0;
+        int totalCount = 0;
+        int batchCount = 0;
 
         try (BufferedReader br = new BufferedReader(new FileReader(file, StandardCharsets.ISO_8859_1))) {
             String line;
@@ -135,27 +138,41 @@ public class UpgradeDataManager {
 
                 String[] columns = DataHelper.readLine(line, 15);
 
-                Optional<ContribuyenteEntity> contribuyenteEntityOptional = DataHelper.buildContribuyenteEntity(versionId, columns);
-                if (contribuyenteEntityOptional.isEmpty()) {
+                Optional<List<ContribuyenteEntity>> contribuyentesOptional = DataHelper.buildContribuyenteEntity(versionId, columns);
+                if (contribuyentesOptional.isEmpty()) {
                     continue;
                 }
-                ContribuyenteEntity contribuyente = contribuyenteEntityOptional.get();
+                List<ContribuyenteEntity> contribuyentes = contribuyentesOptional.get();
 
                 if (sunatFilter.isPresent()) {
-                    Optional<EstadoContribuyente> optional = EstadoContribuyente.fromString(contribuyente.estadoContribuyente);
-                    if (optional.isEmpty() || !sunatFilter.get().contains(optional.get())) {
-                        continue;
-                    }
+                    contribuyentes = contribuyentes.stream()
+                            .filter(f -> {
+                                if (f.tipoContribuyente.equals(ContribuyenteType.JURIDICA)) {
+                                    Optional<EstadoContribuyente> estadoContribuyente = EstadoContribuyente.fromString(f.estadoContribuyente);
+                                    return estadoContribuyente.isPresent() && sunatFilter.get().contains(estadoContribuyente.get());
+                                } else {
+                                    return true;
+                                }
+                            })
+                            .collect(Collectors.toList());
                 }
 
-                entityManager.persist(contribuyente);
-                cont++;
-                if (cont % batchSize == 0) {
+                if (contribuyentes.isEmpty()) {
+                    continue;
+                }
+                contribuyentes.forEach(entity -> entityManager.persist(entity));
+
+                totalCount = totalCount + contribuyentes.size();
+                batchCount = batchCount + contribuyentes.size();
+
+                if (batchCount >= batchSize) {
+                    batchCount = 0;
+
                     entityManager.flush();
                     entityManager.clear();
                     tx.commit();
 
-                    recordsEvent.fire(new VersionEvent.DefaultRecordsDataEvent(versionId, cont));
+                    recordsEvent.fire(new VersionEvent.DefaultRecordsDataEvent(versionId, totalCount));
 
                     tx.begin();
                 }
@@ -174,7 +191,7 @@ public class UpgradeDataManager {
             VersionEntity version = VersionEntity.findById(versionId);
             version.status = Status.COMPLETED;
             version.updatedAt = new Date();
-            version.records = cont;
+            version.records = totalCount;
 
             VersionEntity.persist(version);
 

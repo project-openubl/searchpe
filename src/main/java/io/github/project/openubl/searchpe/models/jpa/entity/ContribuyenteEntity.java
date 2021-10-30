@@ -16,16 +16,14 @@
  */
 package io.github.project.openubl.searchpe.models.jpa.entity;
 
+import io.github.project.openubl.searchpe.models.ContribuyenteType;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import org.hibernate.search.engine.backend.types.Sortable;
 import org.hibernate.search.mapper.pojo.bridge.mapping.annotation.IdentifierBridgeRef;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.*;
 
 import javax.json.bind.annotation.JsonbTransient;
-import javax.persistence.Column;
-import javax.persistence.EmbeddedId;
-import javax.persistence.Entity;
-import javax.persistence.Table;
+import javax.persistence.*;
 import javax.validation.constraints.NotNull;
 
 @Indexed
@@ -38,6 +36,12 @@ public class ContribuyenteEntity extends PanacheEntityBase {
     @JsonbTransient
     @EmbeddedId
     public ContribuyenteId id;
+
+    @GenericField
+    @Enumerated(EnumType.STRING)
+    @NotNull
+    @Column(name = "tipo_contribuyente")
+    public ContribuyenteType tipoContribuyente;
 
     @Column(name = "ruc", insertable = false, updatable = false)
     public String ruc;
@@ -87,8 +91,31 @@ public class ContribuyenteEntity extends PanacheEntityBase {
     @Column(name = "kilometro")
     public String kilometro;
 
+    public static ContribuyenteEntity fullClone(ContribuyenteEntity entity) {
+        return ContribuyenteEntity
+                .Builder.aContribuyenteEntity()
+                .withId(new ContribuyenteId(entity.id.versionId, entity.id.ruc))
+                .withTipoContribuyente(entity.tipoContribuyente)
+                .withRazonSocial(entity.razonSocial)
+                .withEstadoContribuyente(entity.estadoContribuyente)
+                .withCondicionDomicilio(entity.condicionDomicilio)
+                .withUbigeo(entity.ubigeo)
+                .withTipoVia(entity.tipoVia)
+                .withNombreVia(entity.nombreVia)
+                .withCodigoZona(entity.codigoZona)
+                .withTipoZona(entity.tipoZona)
+                .withNumero(entity.numero)
+                .withInterior(entity.interior)
+                .withLote(entity.lote)
+                .withDepartamento(entity.departamento)
+                .withManzana(entity.manzana)
+                .withKilometro(entity.kilometro)
+                .build();
+    }
+
     public static final class Builder {
         public ContribuyenteId id;
+        public ContribuyenteType tipoContribuyente;
         public String razonSocial;
         public String estadoContribuyente;
         public String condicionDomicilio;
@@ -113,6 +140,11 @@ public class ContribuyenteEntity extends PanacheEntityBase {
 
         public Builder withId(ContribuyenteId id) {
             this.id = id;
+            return this;
+        }
+
+        public Builder withTipoContribuyente(ContribuyenteType tipoContribuyente) {
+            this.tipoContribuyente = tipoContribuyente;
             return this;
         }
 
@@ -189,6 +221,7 @@ public class ContribuyenteEntity extends PanacheEntityBase {
         public ContribuyenteEntity build() {
             ContribuyenteEntity contribuyenteEntity = new ContribuyenteEntity();
             contribuyenteEntity.manzana = this.manzana;
+            contribuyenteEntity.tipoContribuyente = this.tipoContribuyente;
             contribuyenteEntity.id = this.id;
             contribuyenteEntity.lote = this.lote;
             contribuyenteEntity.razonSocial = this.razonSocial;

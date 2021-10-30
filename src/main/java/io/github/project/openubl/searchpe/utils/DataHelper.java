@@ -16,9 +16,12 @@
  */
 package io.github.project.openubl.searchpe.utils;
 
+import io.github.project.openubl.searchpe.models.ContribuyenteType;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteId;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 public class DataHelper {
@@ -45,14 +48,17 @@ public class DataHelper {
         return result;
     }
 
-    public static Optional<ContribuyenteEntity> buildContribuyenteEntity(Long versionId, String[] columns) {
+    public static Optional<List<ContribuyenteEntity>> buildContribuyenteEntity(Long versionId, String[] columns) {
         if (columns[0] == null || columns[1] == null) {
             return Optional.empty();
         }
 
-        ContribuyenteEntity contribuyente = ContribuyenteEntity
+        List<ContribuyenteEntity> result = new ArrayList<>();
+
+        ContribuyenteEntity personaJuridica = ContribuyenteEntity
                 .Builder.aContribuyenteEntity()
                 .withId(new ContribuyenteId(versionId, columns[0]))
+                .withTipoContribuyente(ContribuyenteType.JURIDICA)
                 .withRazonSocial(columns[1])
                 .withEstadoContribuyente(columns[2])
                 .withCondicionDomicilio(columns[3])
@@ -68,7 +74,17 @@ public class DataHelper {
                 .withManzana(columns[13])
                 .withKilometro(columns[14])
                 .build();
+        result.add(personaJuridica);
 
-        return Optional.of(contribuyente);
+        if (personaJuridica.id.ruc.startsWith("10")) {
+            ContribuyenteEntity personaNatural = ContribuyenteEntity.fullClone(personaJuridica);
+
+            personaNatural.id.ruc = personaNatural.id.ruc.substring(2, personaNatural.id.ruc.length() - 1); // Remove first 2 characters and also last character
+            personaNatural.tipoContribuyente = ContribuyenteType.NATURAL;
+
+            result.add(personaNatural);
+        }
+
+        return Optional.of(result);
     }
 }

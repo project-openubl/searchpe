@@ -27,8 +27,8 @@ import org.junit.jupiter.api.Test;
 import java.util.concurrent.TimeUnit;
 
 import static org.awaitility.Awaitility.await;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.*;
+import static org.hamcrest.Matchers.matchesPattern;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @QuarkusTest
@@ -75,9 +75,150 @@ public class SearchEnterpriseContribuyenteResourceTest extends AbstractBaseTest 
                 .body(
                         "meta.offset", is(0),
                         "meta.limit", is(10),
-                        "meta.count", is(422),
+                        "meta.count", is(442),
                         "data.size()", is(10)
                 );
     }
 
+    @Test
+    public void getContribuyentesUsingTextFilter() {
+        // Given
+        VersionEntity version = givenAuth("alice")
+                .header("Content-Type", "application/json")
+                .when()
+                .post("/versions")
+                .then()
+                .statusCode(200)
+                .body(notNullValue())
+                .extract().body().as(VersionEntity.class);
+
+        assertNotNull(version);
+
+        await().atMost(3, TimeUnit.MINUTES)
+                .until(() -> {
+                    VersionEntity watchedVersion = givenAuth("alice")
+                            .header("Content-Type", "application/json")
+                            .when()
+                            .get("/versions/" + version.id)
+                            .then()
+                            .extract().body().as(VersionEntity.class);
+                    return watchedVersion.status == Status.COMPLETED;
+                });
+
+        // Then
+        givenAuth("alice")
+                .header("Content-Type", "application/json")
+                .when()
+                .get("/contribuyentes?filterText=carlos")
+                .then()
+                .statusCode(200)
+                .body(
+                        "meta.offset", is(0),
+                        "meta.limit", is(10),
+                        "meta.count", is(2),
+                        "data.size()", is(2),
+
+                        "data[0].ruc", is("45215942"),
+                        "data[0].razonSocial", is("GARCIA CHANCO CARLOS AUGUSTO"),
+                        "data[1].ruc", is("10452159428"),
+                        "data[1].razonSocial", is("GARCIA CHANCO CARLOS AUGUSTO")
+                );
+    }
+
+    @Test
+    public void getContribuyentesUsingTipoContribuyenteFilter() {
+        // Given
+        VersionEntity version = givenAuth("alice")
+                .header("Content-Type", "application/json")
+                .when()
+                .post("/versions")
+                .then()
+                .statusCode(200)
+                .body(notNullValue())
+                .extract().body().as(VersionEntity.class);
+
+        assertNotNull(version);
+
+        await().atMost(3, TimeUnit.MINUTES)
+                .until(() -> {
+                    VersionEntity watchedVersion = givenAuth("alice")
+                            .header("Content-Type", "application/json")
+                            .when()
+                            .get("/versions/" + version.id)
+                            .then()
+                            .extract().body().as(VersionEntity.class);
+                    return watchedVersion.status == Status.COMPLETED;
+                });
+
+        // Then
+        givenAuth("alice")
+                .header("Content-Type", "application/json")
+                .when()
+                .get("/contribuyentes?tipoContribuyente=natural")
+                .then()
+                .statusCode(200)
+                .body(
+                        "meta.offset", is(0),
+                        "meta.limit", is(10),
+                        "meta.count", is(20),
+                        "data.size()", is(10),
+                        "data.ruc", everyItem(matchesPattern("^[0-9]{8}$"))
+                );
+    }
+
+    @Test
+    public void getContribuyentesUsingFilterTextAndTipoContribuyenteFilter() {
+        // Given
+        VersionEntity version = givenAuth("alice")
+                .header("Content-Type", "application/json")
+                .when()
+                .post("/versions")
+                .then()
+                .statusCode(200)
+                .body(notNullValue())
+                .extract().body().as(VersionEntity.class);
+
+        assertNotNull(version);
+
+        await().atMost(3, TimeUnit.MINUTES)
+                .until(() -> {
+                    VersionEntity watchedVersion = givenAuth("alice")
+                            .header("Content-Type", "application/json")
+                            .when()
+                            .get("/versions/" + version.id)
+                            .then()
+                            .extract().body().as(VersionEntity.class);
+                    return watchedVersion.status == Status.COMPLETED;
+                });
+
+        // Then
+        givenAuth("alice")
+                .header("Content-Type", "application/json")
+                .when()
+                .get("/contribuyentes?filterText=carlos&tipoContribuyente=natural")
+                .then()
+                .statusCode(200)
+                .body(
+                        "meta.offset", is(0),
+                        "meta.limit", is(10),
+                        "meta.count", is(1),
+                        "data.size()", is(1),
+                        "data[0].ruc", is("45215942"),
+                        "data[0].razonSocial", is("GARCIA CHANCO CARLOS AUGUSTO")
+                );
+        givenAuth("alice")
+                .header("Content-Type", "application/json")
+                .when()
+                .get("/contribuyentes?filterText=carlos&tipoContribuyente=juridica")
+                .then()
+                .statusCode(200)
+                .body(
+                        "meta.offset", is(0),
+                        "meta.limit", is(10),
+                        "meta.count", is(1),
+                        "data.size()", is(1),
+                        "data[0].ruc", is("10452159428"),
+                        "data[0].razonSocial", is("GARCIA CHANCO CARLOS AUGUSTO")
+                );
+    }
 }

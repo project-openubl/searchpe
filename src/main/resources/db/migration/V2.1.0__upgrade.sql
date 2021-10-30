@@ -1,4 +1,5 @@
-alter table if exists VERSION add column version int8 not null default (1);
+alter table if exists VERSION add column version int8 not null;
+alter table if exists CONTRIBUYENTE add column tipo_contribuyente varchar (15) not null;
 
 CREATE TABLE BASIC_USER
 (
