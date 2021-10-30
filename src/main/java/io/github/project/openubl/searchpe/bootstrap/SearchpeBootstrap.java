@@ -20,6 +20,7 @@ import io.github.project.openubl.searchpe.models.RoleType;
 import io.github.project.openubl.searchpe.models.jpa.entity.BasicUserEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.quarkus.runtime.StartupEvent;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.hibernate.search.mapper.orm.session.SearchSession;
 
 import javax.enterprise.event.Observes;
@@ -29,6 +30,9 @@ import javax.transaction.Transactional;
 
 @Singleton
 public class SearchpeBootstrap {
+
+    @ConfigProperty(name = "quarkus.hibernate-search-orm.automatic-indexing.synchronization.strategy")
+    String searchOrmIndexSyncStrategy;
 
     @Inject
     SearchSession searchSession;
@@ -46,8 +50,10 @@ public class SearchpeBootstrap {
      */
     @Transactional
     void reindexSearchIndexes(@Observes StartupEvent ev) throws InterruptedException {
-        if (VersionEntity.count() == 0) {
-            searchSession.massIndexer().purgeAllOnStart(true).startAndWait();
+        if (!searchOrmIndexSyncStrategy.equals("bean:searchpeNoneIndexer")) {
+            if (VersionEntity.count() == 0) {
+                searchSession.massIndexer().startAndWait();
+            }
         }
     }
 

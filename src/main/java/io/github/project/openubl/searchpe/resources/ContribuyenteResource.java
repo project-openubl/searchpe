@@ -16,10 +16,10 @@
  */
 package io.github.project.openubl.searchpe.resources;
 
-import io.github.project.openubl.searchpe.models.ContribuyenteType;
 import io.github.project.openubl.searchpe.models.PageBean;
 import io.github.project.openubl.searchpe.models.PageRepresentation;
 import io.github.project.openubl.searchpe.models.SortBean;
+import io.github.project.openubl.searchpe.models.TipoPersona;
 import io.github.project.openubl.searchpe.models.jpa.ContribuyenteRepository;
 import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
@@ -118,11 +118,11 @@ public class ContribuyenteResource {
                     BooleanPredicateClausesStep<?> result = f.bool();
                     result = result.must(f.match().field("embeddedId.versionId").matching(version.id));
                     if (filterText != null && !filterText.trim().isEmpty()) {
-                        result = result.must(f.match().fields("razonSocial").matching(filterText));
+                        result = result.must(f.match().fields("nombre").matching(filterText));
                     }
                     if (tipoContribuyenteQuery != null && !tipoContribuyenteQuery.trim().isEmpty()) {
-                        ContribuyenteType tipoContribuyente = ContribuyenteType.valueOf(tipoContribuyenteQuery.trim().toUpperCase());
-                        result = result.must(f.match().field("tipoContribuyente").matching(tipoContribuyente));
+                        TipoPersona tipoContribuyente = TipoPersona.valueOf(tipoContribuyenteQuery.trim().toUpperCase());
+                        result = result.must(f.match().field("tipoPersona").matching(tipoContribuyente));
                     }
                     return result;
                 });
@@ -144,12 +144,12 @@ public class ContribuyenteResource {
         return result;
     }
 
-    @Operation(summary = "Get contribuyente by RUC", description = "Get contribuyentes by RUC")
+    @Operation(summary = "Get contribuyente by numeroDocumento", description = "Get contribuyentes by numeroDocumento")
     @GET
-    @Path("/{ruc}")
+    @Path("/{numeroDocumento}")
     @Produces("application/json")
-    public ContribuyenteEntity getContribuyente(@PathParam("ruc") String ruc) {
+    public ContribuyenteEntity getContribuyente(@PathParam("numeroDocumento") String numeroDocumento) {
         VersionEntity version = versionRepository.findActive().orElseThrow(NotFoundException::new);
-        return contribuyenteRepository.findByIdOptional(new ContribuyenteId(version.id, ruc)).orElseThrow(NotFoundException::new);
+        return contribuyenteRepository.findByIdOptional(new ContribuyenteId(version.id, numeroDocumento)).orElseThrow(NotFoundException::new);
     }
 }

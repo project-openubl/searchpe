@@ -16,7 +16,7 @@
  */
 package io.github.project.openubl.searchpe.utils;
 
-import io.github.project.openubl.searchpe.models.ContribuyenteType;
+import io.github.project.openubl.searchpe.models.TipoPersona;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteId;
 
@@ -58,9 +58,9 @@ public class DataHelper {
         ContribuyenteEntity personaJuridica = ContribuyenteEntity
                 .Builder.aContribuyenteEntity()
                 .withId(new ContribuyenteId(versionId, columns[0]))
-                .withTipoContribuyente(ContribuyenteType.JURIDICA)
-                .withRazonSocial(columns[1])
-                .withEstadoContribuyente(columns[2])
+                .withTipoPersona(TipoPersona.JURIDICA)
+                .withNombre(columns[1])
+                .withEstado(columns[2])
                 .withCondicionDomicilio(columns[3])
                 .withUbigeo(columns[4])
                 .withTipoVia(columns[5])
@@ -76,11 +76,11 @@ public class DataHelper {
                 .build();
         result.add(personaJuridica);
 
-        if (personaJuridica.id.ruc.startsWith("10")) {
+        if (personaJuridica.id.numeroDocumento.startsWith("10")) {
             ContribuyenteEntity personaNatural = ContribuyenteEntity.fullClone(personaJuridica);
 
-            personaNatural.id.ruc = personaNatural.id.ruc.substring(2, personaNatural.id.ruc.length() - 1); // Remove first 2 characters and also last character
-            personaNatural.tipoContribuyente = ContribuyenteType.NATURAL;
+            personaNatural.id.numeroDocumento = personaNatural.id.numeroDocumento.substring(2, personaNatural.id.numeroDocumento.length() - 1); // Remove first 2 characters and also last character
+            personaNatural.tipoPersona = TipoPersona.NATURAL;
 
             result.add(personaNatural);
         }

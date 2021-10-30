@@ -16,7 +16,7 @@
  */
 package io.github.project.openubl.searchpe.managers;
 
-import io.github.project.openubl.searchpe.models.ContribuyenteType;
+import io.github.project.openubl.searchpe.models.TipoPersona;
 import io.github.project.openubl.searchpe.models.VersionEvent;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.EstadoContribuyente;
@@ -147,8 +147,8 @@ public class UpgradeDataManager {
                 if (sunatFilter.isPresent()) {
                     contribuyentes = contribuyentes.stream()
                             .filter(f -> {
-                                if (f.tipoContribuyente.equals(ContribuyenteType.JURIDICA)) {
-                                    Optional<EstadoContribuyente> estadoContribuyente = EstadoContribuyente.fromString(f.estadoContribuyente);
+                                if (f.tipoPersona.equals(TipoPersona.JURIDICA)) {
+                                    Optional<EstadoContribuyente> estadoContribuyente = EstadoContribuyente.fromString(f.estado);
                                     return estadoContribuyente.isPresent() && sunatFilter.get().contains(estadoContribuyente.get());
                                 } else {
                                     return true;

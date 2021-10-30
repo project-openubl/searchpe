@@ -27,8 +27,7 @@ import org.junit.jupiter.api.Test;
 import java.util.concurrent.TimeUnit;
 
 import static org.awaitility.Awaitility.await;
-import static org.hamcrest.CoreMatchers.*;
-import static org.hamcrest.Matchers.matchesPattern;
+import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @QuarkusTest
@@ -117,11 +116,8 @@ public class SearchEnterpriseContribuyenteResourceTest extends AbstractBaseTest 
                         "meta.limit", is(10),
                         "meta.count", is(2),
                         "data.size()", is(2),
-
-                        "data[0].ruc", is("45215942"),
-                        "data[0].razonSocial", is("GARCIA CHANCO CARLOS AUGUSTO"),
-                        "data[1].ruc", is("10452159428"),
-                        "data[1].razonSocial", is("GARCIA CHANCO CARLOS AUGUSTO")
+                        "data.numeroDocumento", hasItems("45215942", "10452159428"),
+                        "data.nombre", hasItems("GARCIA CHANCO CARLOS AUGUSTO", "GARCIA CHANCO CARLOS AUGUSTO")
                 );
     }
 
@@ -162,7 +158,7 @@ public class SearchEnterpriseContribuyenteResourceTest extends AbstractBaseTest 
                         "meta.limit", is(10),
                         "meta.count", is(20),
                         "data.size()", is(10),
-                        "data.ruc", everyItem(matchesPattern("^[0-9]{8}$"))
+                        "data.numeroDocumento", everyItem(matchesPattern("^[0-9]{8}$"))
                 );
     }
 
@@ -203,8 +199,8 @@ public class SearchEnterpriseContribuyenteResourceTest extends AbstractBaseTest 
                         "meta.limit", is(10),
                         "meta.count", is(1),
                         "data.size()", is(1),
-                        "data[0].ruc", is("45215942"),
-                        "data[0].razonSocial", is("GARCIA CHANCO CARLOS AUGUSTO")
+                        "data[0].numeroDocumento", is("45215942"),
+                        "data[0].nombre", is("GARCIA CHANCO CARLOS AUGUSTO")
                 );
         givenAuth("alice")
                 .header("Content-Type", "application/json")
@@ -217,8 +213,8 @@ public class SearchEnterpriseContribuyenteResourceTest extends AbstractBaseTest 
                         "meta.limit", is(10),
                         "meta.count", is(1),
                         "data.size()", is(1),
-                        "data[0].ruc", is("10452159428"),
-                        "data[0].razonSocial", is("GARCIA CHANCO CARLOS AUGUSTO")
+                        "data[0].numeroDocumento", is("10452159428"),
+                        "data[0].nombre", is("GARCIA CHANCO CARLOS AUGUSTO")
                 );
     }
 }
