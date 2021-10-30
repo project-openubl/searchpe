@@ -49,6 +49,8 @@ public class CleanVersionsCronJob implements Job {
 
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
+        logger.error("Starting cleaning of unused VersionEntities Cron");
+
         try {
             tx.begin();
 
