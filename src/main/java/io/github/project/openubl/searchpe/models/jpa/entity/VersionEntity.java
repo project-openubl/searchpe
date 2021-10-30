@@ -52,6 +52,17 @@ public class VersionEntity extends PanacheEntity {
     @Version
     public int version;
 
+    public static VersionEntity generateNew() {
+        Date currentTime = new Date();
+
+        return VersionEntity.Builder.aVersionEntity()
+                .withCreatedAt(currentTime)
+                .withUpdatedAt(currentTime)
+                .withStatus(Status.SCHEDULED)
+                .withRecords(0)
+                .build();
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
