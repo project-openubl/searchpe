@@ -35,7 +35,7 @@ import java.util.List;
 @ApplicationScoped
 public class ContribuyenteRepository implements PanacheRepositoryBase<ContribuyenteEntity, ContribuyenteId> {
 
-    public static final String[] SORT_BY_FIELDS = {"razonSocial"};
+    public static final String[] SORT_BY_FIELDS = {"nombre"};
 
     public PageModel<ContribuyenteEntity> list(VersionEntity version, PageBean pageBean, List<SortBean> sortBy) {
         Sort sort = Sort.by();
@@ -60,7 +60,7 @@ public class ContribuyenteRepository implements PanacheRepositoryBase<Contribuye
 
         PanacheQuery<ContribuyenteEntity> query = VersionEntity
                 .find(
-                        "From ContribuyenteEntity as c where c.id.versionId =:versionId and c.razonSocial like :filterText",
+                        "From ContribuyenteEntity as c where c.id.versionId =:versionId and c.nombre like :filterText",
                         sort,
                         Parameters.with("versionId", version.id).and("filterText", "%" + filterText.toUpperCase())
                 )

@@ -28,11 +28,11 @@ public class SearchpeAnalysisConfigurer implements ElasticsearchAnalysisConfigur
 
     @Override
     public void configure(ElasticsearchAnalysisConfigurationContext context) {
-        context.analyzer("razonSocialAnalyser").custom()
+        context.analyzer("nombreAnalyser").custom()
                 .tokenizer("standard")
                 .tokenFilters("asciifolding", "lowercase");
 
-        context.normalizer("razonSocialSortNormalizer").custom()
+        context.normalizer("nombreSortNormalizer").custom()
                 .tokenFilters("asciifolding", "lowercase");
     }
 }

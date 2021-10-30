@@ -35,15 +35,15 @@ public class ContribuyenteId implements Serializable {
 
     @Size(min = 11, max = 11)
     @NotNull
-    @Column(name = "ruc")
-    public String ruc;
+    @Column(name = "numero_documento")
+    public String numeroDocumento;
 
     public ContribuyenteId() {
     }
 
-    public ContribuyenteId(Long versionId, String ruc) {
+    public ContribuyenteId(Long versionId, String numeroDocumento) {
         this.versionId = versionId;
-        this.ruc = ruc;
+        this.numeroDocumento = numeroDocumento;
     }
 
     @Override
@@ -51,12 +51,12 @@ public class ContribuyenteId implements Serializable {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ContribuyenteId that = (ContribuyenteId) o;
-        return versionId.equals(that.versionId) && ruc.equals(that.ruc);
+        return versionId.equals(that.versionId) && numeroDocumento.equals(that.numeroDocumento);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(versionId, ruc);
+        return Objects.hash(versionId, numeroDocumento);
     }
 
 }

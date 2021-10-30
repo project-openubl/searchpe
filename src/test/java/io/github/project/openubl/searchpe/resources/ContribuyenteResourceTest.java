@@ -38,18 +38,18 @@ public class ContribuyenteResourceTest extends AbstractBaseTest {
     @Test
     public void getContribuyente() {
         // Given
-        String ruc = "11111111111";
+        String numeroDocumento = "11111111111";
 
         // When
         givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/" + ruc)
+                .get("/" + numeroDocumento)
                 .then()
                 .statusCode(200)
                 .body(
-                        "ruc", is(ruc),
-                        "razonSocial", is("mi empresa1")
+                        "numeroDocumento", is(numeroDocumento),
+                        "nombre", is("mi empresa1")
                 );
 
     }
@@ -59,7 +59,7 @@ public class ContribuyenteResourceTest extends AbstractBaseTest {
         givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/someRuc")
+                .get("/someNumeroDocumento")
                 .then()
                 .statusCode(404);
     }

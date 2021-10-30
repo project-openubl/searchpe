@@ -24,7 +24,7 @@ public class ContribuyenteIdBridge implements IdentifierBridge<ContribuyenteId> 
 
     @Override
     public String toDocumentIdentifier(ContribuyenteId value, IdentifierBridgeToDocumentIdentifierContext context) {
-        return value.versionId + "/" + value.ruc;
+        return value.versionId + "/" + value.numeroDocumento;
     }
 
     @Override

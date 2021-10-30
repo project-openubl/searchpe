@@ -16,16 +16,14 @@
  */
 package io.github.project.openubl.searchpe.models.jpa.entity;
 
+import io.github.project.openubl.searchpe.models.TipoPersona;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import org.hibernate.search.engine.backend.types.Sortable;
 import org.hibernate.search.mapper.pojo.bridge.mapping.annotation.IdentifierBridgeRef;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.*;
 
 import javax.json.bind.annotation.JsonbTransient;
-import javax.persistence.Column;
-import javax.persistence.EmbeddedId;
-import javax.persistence.Entity;
-import javax.persistence.Table;
+import javax.persistence.*;
 import javax.validation.constraints.NotNull;
 
 @Indexed
@@ -39,17 +37,23 @@ public class ContribuyenteEntity extends PanacheEntityBase {
     @EmbeddedId
     public ContribuyenteId id;
 
-    @Column(name = "ruc", insertable = false, updatable = false)
-    public String ruc;
-
-    @FullTextField(analyzer = "razonSocialAnalyser")
-    @KeywordField(name = "razonSocial_sort", sortable = Sortable.YES, normalizer = "razonSocialSortNormalizer")
+    @GenericField
+    @Enumerated(EnumType.STRING)
     @NotNull
-    @Column(name = "razon_social")
-    public String razonSocial;
+    @Column(name = "tipo_persona")
+    public TipoPersona tipoPersona;
 
-    @Column(name = "estado_contribuyente")
-    public String estadoContribuyente;
+    @Column(name = "numero_documento", insertable = false, updatable = false)
+    public String numeroDocumento;
+
+    @FullTextField(analyzer = "nombreAnalyser")
+    @KeywordField(name = "nombre_sort", sortable = Sortable.YES, normalizer = "nombreSortNormalizer")
+    @NotNull
+    @Column(name = "nombre")
+    public String nombre;
+
+    @Column(name = "estado")
+    public String estado;
 
     @Column(name = "condicion_domicilio")
     public String condicionDomicilio;
@@ -87,10 +91,33 @@ public class ContribuyenteEntity extends PanacheEntityBase {
     @Column(name = "kilometro")
     public String kilometro;
 
+    public static ContribuyenteEntity fullClone(ContribuyenteEntity entity) {
+        return ContribuyenteEntity
+                .Builder.aContribuyenteEntity()
+                .withId(new ContribuyenteId(entity.id.versionId, entity.id.numeroDocumento))
+                .withTipoPersona(entity.tipoPersona)
+                .withNombre(entity.nombre)
+                .withEstado(entity.estado)
+                .withCondicionDomicilio(entity.condicionDomicilio)
+                .withUbigeo(entity.ubigeo)
+                .withTipoVia(entity.tipoVia)
+                .withNombreVia(entity.nombreVia)
+                .withCodigoZona(entity.codigoZona)
+                .withTipoZona(entity.tipoZona)
+                .withNumero(entity.numero)
+                .withInterior(entity.interior)
+                .withLote(entity.lote)
+                .withDepartamento(entity.departamento)
+                .withManzana(entity.manzana)
+                .withKilometro(entity.kilometro)
+                .build();
+    }
+
     public static final class Builder {
         public ContribuyenteId id;
-        public String razonSocial;
-        public String estadoContribuyente;
+        public TipoPersona tipoPersona;
+        public String nombre;
+        public String estado;
         public String condicionDomicilio;
         public String ubigeo;
         public String tipoVia;
@@ -116,13 +143,18 @@ public class ContribuyenteEntity extends PanacheEntityBase {
             return this;
         }
 
-        public Builder withRazonSocial(String razonSocial) {
-            this.razonSocial = razonSocial;
+        public Builder withTipoPersona(TipoPersona tipoPersona) {
+            this.tipoPersona = tipoPersona;
             return this;
         }
 
-        public Builder withEstadoContribuyente(String estadoContribuyente) {
-            this.estadoContribuyente = estadoContribuyente;
+        public Builder withNombre(String nombre) {
+            this.nombre = nombre;
+            return this;
+        }
+
+        public Builder withEstado(String estado) {
+            this.estado = estado;
             return this;
         }
 
@@ -189,13 +221,14 @@ public class ContribuyenteEntity extends PanacheEntityBase {
         public ContribuyenteEntity build() {
             ContribuyenteEntity contribuyenteEntity = new ContribuyenteEntity();
             contribuyenteEntity.manzana = this.manzana;
+            contribuyenteEntity.tipoPersona = this.tipoPersona;
             contribuyenteEntity.id = this.id;
             contribuyenteEntity.lote = this.lote;
-            contribuyenteEntity.razonSocial = this.razonSocial;
+            contribuyenteEntity.nombre = this.nombre;
             contribuyenteEntity.condicionDomicilio = this.condicionDomicilio;
             contribuyenteEntity.tipoZona = this.tipoZona;
             contribuyenteEntity.interior = this.interior;
-            contribuyenteEntity.estadoContribuyente = this.estadoContribuyente;
+            contribuyenteEntity.estado = this.estado;
             contribuyenteEntity.ubigeo = this.ubigeo;
             contribuyenteEntity.kilometro = this.kilometro;
             contribuyenteEntity.codigoZona = this.codigoZona;
