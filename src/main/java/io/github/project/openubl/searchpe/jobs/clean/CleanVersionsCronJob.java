@@ -20,7 +20,9 @@ import io.github.project.openubl.searchpe.managers.VersionManager;
 import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
+import io.github.project.openubl.searchpe.resources.VersionResource;
 import io.quarkus.runtime.annotations.RegisterForReflection;
+import org.jboss.logging.Logger;
 import org.quartz.*;
 
 import javax.inject.Inject;
@@ -33,6 +35,8 @@ import static org.quartz.CronScheduleBuilder.cronSchedule;
 
 @RegisterForReflection
 public class CleanVersionsCronJob implements Job {
+
+    private static final Logger logger = Logger.getLogger(CleanVersionsCronJob.class);
 
     @Inject
     UserTransaction tx;
@@ -53,6 +57,7 @@ public class CleanVersionsCronJob implements Job {
             versionRepository.listAll().stream()
                     .filter(f -> f.status.equals(Status.COMPLETED) || f.status.equals(Status.ERROR))
                     .filter(f -> activeVersion.map(versionEntity -> !Objects.equals(versionEntity, f)).orElse(true))
+                    .peek(f -> logger.info("Deleting VersionEntity:" + f.id))
                     .forEach(f -> versionManager.deleteVersion(f.id));
 
             tx.commit();
