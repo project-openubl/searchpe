@@ -16,22 +16,23 @@
  */
 package io.github.project.openubl.searchpe.resources;
 
-import io.github.project.openubl.searchpe.jobs.DeleteVersionJob;
-import io.github.project.openubl.searchpe.jobs.UpgradeDataJob;
+import io.github.project.openubl.searchpe.jobs.clean.DeleteVersionProgrammaticallyScheduler;
+import io.github.project.openubl.searchpe.jobs.ingest.IngestDataProgrammaticallyScheduler;
 import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.quarkus.panache.common.Sort;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.jboss.logging.Logger;
 import org.quartz.SchedulerException;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
-import javax.transaction.Transactional;
+import javax.transaction.NotSupportedException;
+import javax.transaction.*;
 import javax.ws.rs.*;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 
 @Transactional
@@ -40,11 +41,16 @@ import java.util.List;
 @Consumes("application/json")
 public class VersionResource {
 
-    @Inject
-    UpgradeDataJob upgradeDataJob;
+    private static final Logger logger = Logger.getLogger(VersionResource.class);
 
     @Inject
-    DeleteVersionJob deleteVersionJob;
+    UserTransaction tx;
+
+    @Inject
+    IngestDataProgrammaticallyScheduler ingestDataProgrammaticallyScheduler;
+
+    @Inject
+    DeleteVersionProgrammaticallyScheduler deleteVersionProgrammaticallyScheduler;
 
     @Inject
     VersionRepository versionRepository;
@@ -72,28 +78,39 @@ public class VersionResource {
     }
 
     @Operation(summary = "Create version", description = "Creates a new version and fires the importing process")
+    @Transactional(Transactional.TxType.NEVER)
     @POST
     @Path("/")
     @Produces("application/json")
     public VersionEntity createVersion() {
-        Date currentTime = new Date();
-
-        VersionEntity version = VersionEntity.Builder.aVersionEntity()
-                .withCreatedAt(currentTime)
-                .withUpdatedAt(currentTime)
-                .withStatus(Status.SCHEDULED)
-                .withRecords(0)
-                .build();
-
-        version.persistAndFlush();
-
         try {
-            upgradeDataJob.trigger(version);
-        } catch (SchedulerException e) {
+            tx.begin();
+            VersionEntity version = VersionEntity.generateNew();
+            version.persistAndFlush();
+            tx.commit();
+
+
+            try {
+                ingestDataProgrammaticallyScheduler.schedule(version.id);
+            } catch (SchedulerException e) {
+                logger.error("Could not schedule import of data into VersionEntity", e);
+
+                tx.begin();
+                VersionEntity scheduledVersion = VersionEntity.findById(version.id);
+                scheduledVersion.status = Status.ERROR;
+                scheduledVersion.persist();
+                tx.commit();
+            }
+
+            return version;
+        } catch (NotSupportedException | HeuristicRollbackException | HeuristicMixedException | RollbackException | SystemException e) {
+            try {
+                tx.rollback();
+            } catch (SystemException se) {
+                throw new IllegalStateException(se);
+            }
             throw new InternalServerErrorException(e);
         }
-
-        return version;
     }
 
     @Operation(summary = "Get version", description = "Get version by id")
@@ -110,21 +127,43 @@ public class VersionResource {
     }
 
     @Operation(summary = "Delete version", description = "Delete version by id")
+    @Transactional(Transactional.TxType.NEVER)
     @DELETE
     @Path("/{id}")
     @Produces("application/json")
     public void deleteVersion(@PathParam("id") Long id) {
-        VersionEntity version = VersionEntity.findById(id);
-        if (version == null) {
-            throw new NotFoundException("Version[id=" + id + "] does not exists");
-        }
-
-        version.status = Status.DELETING;
-        version.persist();
-
         try {
-            deleteVersionJob.trigger(version);
-        } catch (SchedulerException e) {
+            tx.begin();
+
+            VersionEntity version = VersionEntity.findById(id);
+            if (version == null) {
+                throw new NotFoundException("Version[id=" + id + "] does not exists");
+            }
+
+            Status prevStatus = version.status;
+            version.status = Status.DELETING;
+            version.persist();
+
+            tx.commit();
+
+
+            try {
+                deleteVersionProgrammaticallyScheduler.schedule(version.id);
+            } catch (SchedulerException e) {
+                logger.error("Could not schedule delete of VersionEntity:" + version.id, e);
+
+                tx.begin();
+                VersionEntity scheduledVersion = VersionEntity.findById(version.id);
+                scheduledVersion.status = prevStatus;
+                scheduledVersion.persist();
+                tx.commit();
+            }
+        } catch (NotSupportedException | HeuristicRollbackException | HeuristicMixedException | RollbackException | SystemException e) {
+            try {
+                tx.rollback();
+            } catch (SystemException se) {
+                throw new IllegalStateException(se);
+            }
             throw new InternalServerErrorException(e);
         }
     }

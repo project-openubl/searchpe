@@ -20,14 +20,8 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import javax.interceptor.AroundInvoke;
 import javax.interceptor.Interceptor;
-import javax.interceptor.InterceptorBinding;
 import javax.interceptor.InvocationContext;
 import javax.ws.rs.BadRequestException;
-import javax.ws.rs.NotFoundException;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
 
 @Interceptor
 @HTTPBasicAuthEnabled
