@@ -51,7 +51,7 @@ public class CleanVersionsCronJob implements Job {
             Optional<VersionEntity> activeVersion = versionRepository.findActive();
 
             versionRepository.listAll().stream()
-                    .filter(f -> !f.status.equals(Status.DELETING))
+                    .filter(f -> f.status.equals(Status.COMPLETED) || f.status.equals(Status.ERROR))
                     .filter(f -> activeVersion.map(versionEntity -> !Objects.equals(versionEntity, f)).orElse(true))
                     .forEach(f -> versionManager.deleteVersion(f.id));
 
