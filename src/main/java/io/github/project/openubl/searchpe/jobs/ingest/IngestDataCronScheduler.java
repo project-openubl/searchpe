@@ -17,8 +17,6 @@
 package io.github.project.openubl.searchpe.jobs.ingest;
 
 import io.github.project.openubl.searchpe.jobs.SearchpeJobs;
-import io.github.project.openubl.searchpe.models.jpa.entity.Status;
-import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.quarkus.runtime.StartupEvent;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import io.quarkus.scheduler.Scheduled;
@@ -30,8 +28,6 @@ import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.transaction.*;
-
-import java.util.Date;
 
 import static org.quartz.CronScheduleBuilder.cronSchedule;
 

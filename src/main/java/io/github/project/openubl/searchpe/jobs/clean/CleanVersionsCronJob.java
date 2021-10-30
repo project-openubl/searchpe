@@ -20,18 +20,16 @@ import io.github.project.openubl.searchpe.managers.VersionManager;
 import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
-import io.github.project.openubl.searchpe.resources.VersionResource;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.jboss.logging.Logger;
-import org.quartz.*;
+import org.quartz.Job;
+import org.quartz.JobExecutionContext;
+import org.quartz.JobExecutionException;
 
 import javax.inject.Inject;
 import javax.transaction.*;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Stream;
-
-import static org.quartz.CronScheduleBuilder.cronSchedule;
 
 @RegisterForReflection
 public class CleanVersionsCronJob implements Job {

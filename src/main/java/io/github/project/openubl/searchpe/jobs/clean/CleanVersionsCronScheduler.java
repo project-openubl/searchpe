@@ -19,6 +19,7 @@ package io.github.project.openubl.searchpe.jobs.clean;
 import io.github.project.openubl.searchpe.jobs.SearchpeJobs;
 import io.quarkus.runtime.StartupEvent;
 import io.quarkus.runtime.annotations.RegisterForReflection;
+import io.quarkus.scheduler.Scheduled;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 import org.quartz.*;
@@ -44,6 +45,10 @@ public class CleanVersionsCronScheduler {
 
     @ConfigProperty(name = "searchpe.scheduled.cron-clean")
     String cronRegex;
+
+    @Scheduled(cron = "0 15 10 15 * ?")
+    void schedule() {
+    }
 
     public void schedule(@Observes StartupEvent ev) {
         try {

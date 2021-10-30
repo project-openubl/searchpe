@@ -17,7 +17,6 @@
 package io.github.project.openubl.searchpe.resources;
 
 import io.github.project.openubl.searchpe.jobs.clean.DeleteVersionProgrammaticallyScheduler;
-import io.github.project.openubl.searchpe.jobs.ingest.IngestDataCronScheduler;
 import io.github.project.openubl.searchpe.jobs.ingest.IngestDataProgrammaticallyScheduler;
 import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;

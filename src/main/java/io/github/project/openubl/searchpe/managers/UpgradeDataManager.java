@@ -17,8 +17,10 @@
 package io.github.project.openubl.searchpe.managers;
 
 import io.github.project.openubl.searchpe.models.VersionEvent;
-import io.github.project.openubl.searchpe.models.jpa.entity.*;
+import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
+import io.github.project.openubl.searchpe.models.jpa.entity.EstadoContribuyente;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
+import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.utils.DataHelper;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;

@@ -17,16 +17,12 @@
 package io.github.project.openubl.searchpe.jobs.ingest;
 
 import io.github.project.openubl.searchpe.managers.UpgradeDataManager;
-import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 
 import javax.inject.Inject;
-import javax.transaction.*;
-import java.util.List;
 
 @RegisterForReflection
 public class IngestDataProgrammaticallyJob implements Job {

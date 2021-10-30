@@ -24,8 +24,6 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import java.util.UUID;
 
-import static org.quartz.CronScheduleBuilder.cronSchedule;
-
 @ApplicationScoped
 @RegisterForReflection
 public class IngestDataProgrammaticallyScheduler {
