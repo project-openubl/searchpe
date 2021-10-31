@@ -53,6 +53,7 @@ public class ProfileManager implements QuarkusTestProfile {
     private void init(DistributionFlavor distributionFlavor) {
         configOverrides.put("quarkus.datasource.devservices.enabled", "false");
         configOverrides.put("quarkus.keycloak.devservices.enabled", "false");
+        configOverrides.put("quarkus.http.auth.form.enabled", "false"); // The issue still happens in test mode https://github.com/quarkusio/quarkus/issues/7768
 
         switch (distributionFlavor) {
             case standalone:

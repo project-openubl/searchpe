@@ -21,6 +21,7 @@ import io.github.project.openubl.searchpe.models.jpa.entity.BasicUserEntity;
 import io.github.project.openubl.searchpe.resources.interceptors.HTTPBasicAuthEnabled;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 
+import javax.annotation.security.RolesAllowed;
 import javax.enterprise.context.ApplicationScoped;
 import javax.transaction.Transactional;
 import javax.validation.Valid;
@@ -47,6 +48,7 @@ public class BasicUserResource {
         return result;
     }
 
+    @RolesAllowed("admin")
     @HTTPBasicAuthEnabled
     @Operation(summary = "Create user", description = "Creates a new user")
     @POST
@@ -68,6 +70,7 @@ public class BasicUserResource {
         return Response.status(Response.Status.CREATED).build();
     }
 
+    @RolesAllowed("admin")
     @HTTPBasicAuthEnabled
     @Operation(summary = "Get users", description = "Get users")
     @GET
@@ -77,6 +80,7 @@ public class BasicUserResource {
                 .collect(Collectors.toList());
     }
 
+    @RolesAllowed("admin")
     @HTTPBasicAuthEnabled
     @Operation(summary = "Get user", description = "Get user")
     @GET
@@ -86,6 +90,7 @@ public class BasicUserResource {
         return toDTO(user);
     }
 
+    @RolesAllowed("admin")
     @HTTPBasicAuthEnabled
     @Operation(summary = "Update user", description = "Update username or password. It won't update current role")
     @PUT
@@ -95,6 +100,7 @@ public class BasicUserResource {
         BasicUserEntity.update(user, rep.username, rep.password);
     }
 
+    @RolesAllowed("admin")
     @HTTPBasicAuthEnabled
     @Operation(summary = "Delete user", description = "Delete user")
     @DELETE

@@ -26,6 +26,7 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.jboss.logging.Logger;
 import org.quartz.SchedulerException;
 
+import javax.annotation.security.RolesAllowed;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.transaction.NotSupportedException;
@@ -55,6 +56,7 @@ public class VersionResource {
     @Inject
     VersionRepository versionRepository;
 
+    @RolesAllowed({"admin", "user"})
     @Operation(summary = "Get versions", description = "Get all versions available")
     @GET
     @Path("/")
@@ -77,6 +79,7 @@ public class VersionResource {
         return VersionEntity.findAll(sort).list();
     }
 
+    @RolesAllowed({"admin", "user"})
     @Operation(summary = "Create version", description = "Creates a new version and fires the importing process")
     @Transactional(Transactional.TxType.NEVER)
     @POST
@@ -113,6 +116,7 @@ public class VersionResource {
         }
     }
 
+    @RolesAllowed({"admin", "user"})
     @Operation(summary = "Get version", description = "Get version by id")
     @GET
     @Path("/{id}")
@@ -126,6 +130,7 @@ public class VersionResource {
         return version;
     }
 
+    @RolesAllowed({"admin", "user"})
     @Operation(summary = "Delete version", description = "Delete version by id")
     @Transactional(Transactional.TxType.NEVER)
     @DELETE
