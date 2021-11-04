@@ -1,0 +1,8 @@
+# Ignore everything in this directory
+*
+# Except
+!.gitignore
+!assets
+!index.html
+!login.html
+!login-error.html
