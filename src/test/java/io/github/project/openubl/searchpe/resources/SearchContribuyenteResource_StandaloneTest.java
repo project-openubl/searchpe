@@ -17,44 +17,26 @@
 package io.github.project.openubl.searchpe.resources;
 
 import io.github.project.openubl.searchpe.AbstractBaseTest;
-import io.quarkus.test.common.http.TestHTTPEndpoint;
+import io.github.project.openubl.searchpe.StandaloneProfileManager;
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
 
-import static org.hamcrest.CoreMatchers.is;
-
-@TestHTTPEndpoint(ContribuyenteResource.class)
-public abstract class ContribuyenteResourceTest extends AbstractBaseTest {
+@QuarkusTest
+@TestProfile(StandaloneProfileManager.class)
+public class SearchContribuyenteResource_StandaloneTest extends AbstractBaseTest {
 
     @Override
     public Class<?> getTestClass() {
-        return ContribuyenteResourceTest.class;
+        return SearchContribuyenteResource_StandaloneTest.class;
     }
 
     @Test
-    public void getContribuyente() {
-        // Given
-        String numeroDocumento = "11111111111";
-
-        // When
+    public void getContribuyentes() {
         givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/" + numeroDocumento)
-                .then()
-                .statusCode(200)
-                .body(
-                        "numeroDocumento", is(numeroDocumento),
-                        "nombre", is("mi empresa1")
-                );
-
-    }
-
-    @Test
-    public void getContribuyente_notFound() {
-        givenAuth("alice")
-                .header("Content-Type", "application/json")
-                .when()
-                .get("/someNumeroDocumento")
+                .get("/contribuyentes")
                 .then()
                 .statusCode(404);
     }

@@ -28,11 +28,11 @@ import org.junit.jupiter.api.Test;
 @QuarkusTest
 @TestProfile(EnterpriseProfileManager.class)
 @TestHTTPEndpoint(BasicUserResource.class)
-public class EnterpriseBasicUserResourceTest extends AbstractBaseTest {
+public class UserResource_EnterpriseTest extends AbstractBaseTest {
 
     @Override
     public Class<?> getTestClass() {
-        return EnterpriseBasicUserResourceTest.class;
+        return UserResource_EnterpriseTest.class;
     }
 
     @Test
