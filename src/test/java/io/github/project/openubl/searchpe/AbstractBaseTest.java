@@ -83,7 +83,7 @@ public abstract class AbstractBaseTest {
         if (oidcEnabled) {
             return given().auth().oauth2(getAccessToken(username));
         } else {
-            return given().auth().basic(username, username);
+            return given().auth().preemptive().basic(username, username);
         }
     }
 
