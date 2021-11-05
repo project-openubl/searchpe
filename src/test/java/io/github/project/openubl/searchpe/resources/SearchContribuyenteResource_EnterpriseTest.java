@@ -45,7 +45,7 @@ public class SearchContribuyenteResource_EnterpriseTest extends AbstractBaseTest
         VersionEntity version = givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .post("/versions")
+                .post("/api/versions")
                 .then()
                 .statusCode(200)
                 .body(notNullValue())
@@ -58,7 +58,7 @@ public class SearchContribuyenteResource_EnterpriseTest extends AbstractBaseTest
                     VersionEntity watchedVersion = givenAuth("alice")
                             .header("Content-Type", "application/json")
                             .when()
-                            .get("/versions/" + version.id)
+                            .get("/api/versions/" + version.id)
                             .then()
                             .extract().body().as(VersionEntity.class);
                     return watchedVersion.status == Status.COMPLETED;
@@ -68,7 +68,7 @@ public class SearchContribuyenteResource_EnterpriseTest extends AbstractBaseTest
         givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/contribuyentes")
+                .get("/api/contribuyentes")
                 .then()
                 .statusCode(200)
                 .body(
@@ -85,7 +85,7 @@ public class SearchContribuyenteResource_EnterpriseTest extends AbstractBaseTest
         VersionEntity version = givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .post("/versions")
+                .post("/api/versions")
                 .then()
                 .statusCode(200)
                 .body(notNullValue())
@@ -98,7 +98,7 @@ public class SearchContribuyenteResource_EnterpriseTest extends AbstractBaseTest
                     VersionEntity watchedVersion = givenAuth("alice")
                             .header("Content-Type", "application/json")
                             .when()
-                            .get("/versions/" + version.id)
+                            .get("/api/versions/" + version.id)
                             .then()
                             .extract().body().as(VersionEntity.class);
                     return watchedVersion.status == Status.COMPLETED;
@@ -108,7 +108,7 @@ public class SearchContribuyenteResource_EnterpriseTest extends AbstractBaseTest
         givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/contribuyentes?filterText=carlos")
+                .get("/api/contribuyentes?filterText=carlos")
                 .then()
                 .statusCode(200)
                 .body(
@@ -127,7 +127,7 @@ public class SearchContribuyenteResource_EnterpriseTest extends AbstractBaseTest
         VersionEntity version = givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .post("/versions")
+                .post("/api/versions")
                 .then()
                 .statusCode(200)
                 .body(notNullValue())
@@ -140,7 +140,7 @@ public class SearchContribuyenteResource_EnterpriseTest extends AbstractBaseTest
                     VersionEntity watchedVersion = givenAuth("alice")
                             .header("Content-Type", "application/json")
                             .when()
-                            .get("/versions/" + version.id)
+                            .get("/api/versions/" + version.id)
                             .then()
                             .extract().body().as(VersionEntity.class);
                     return watchedVersion.status == Status.COMPLETED;
@@ -150,7 +150,7 @@ public class SearchContribuyenteResource_EnterpriseTest extends AbstractBaseTest
         givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/contribuyentes?tipoContribuyente=natural")
+                .get("/api/contribuyentes?tipoContribuyente=natural")
                 .then()
                 .statusCode(200)
                 .body(
@@ -168,7 +168,7 @@ public class SearchContribuyenteResource_EnterpriseTest extends AbstractBaseTest
         VersionEntity version = givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .post("/versions")
+                .post("/api/versions")
                 .then()
                 .statusCode(200)
                 .body(notNullValue())
@@ -181,7 +181,7 @@ public class SearchContribuyenteResource_EnterpriseTest extends AbstractBaseTest
                     VersionEntity watchedVersion = givenAuth("alice")
                             .header("Content-Type", "application/json")
                             .when()
-                            .get("/versions/" + version.id)
+                            .get("/api/versions/" + version.id)
                             .then()
                             .extract().body().as(VersionEntity.class);
                     return watchedVersion.status == Status.COMPLETED;
@@ -191,7 +191,7 @@ public class SearchContribuyenteResource_EnterpriseTest extends AbstractBaseTest
         givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/contribuyentes?filterText=carlos&tipoContribuyente=natural")
+                .get("/api/contribuyentes?filterText=carlos&tipoContribuyente=natural")
                 .then()
                 .statusCode(200)
                 .body(
@@ -205,7 +205,7 @@ public class SearchContribuyenteResource_EnterpriseTest extends AbstractBaseTest
         givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/contribuyentes?filterText=carlos&tipoContribuyente=juridica")
+                .get("/api/contribuyentes?filterText=carlos&tipoContribuyente=juridica")
                 .then()
                 .statusCode(200)
                 .body(

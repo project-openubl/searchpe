@@ -67,13 +67,13 @@ const itemsToRow = (items: Contribuyente[]) => {
     [CONTRIBUYENTE_FIELD]: item,
     cells: [
       {
-        title: item.ruc,
+        title: item.numeroDocumento,
       },
       {
-        title: item.razonSocial,
+        title: item.nombre,
       },
       {
-        title: item.estadoContribuyente,
+        title: item.estado,
       },
     ],
   }));

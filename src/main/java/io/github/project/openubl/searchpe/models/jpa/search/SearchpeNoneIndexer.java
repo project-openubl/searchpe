@@ -23,8 +23,11 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Named;
 
 @ApplicationScoped
-@Named("searchpeNoneIndexer")
+@Named(SearchpeNoneIndexer.BEAN_NAME)
 public class SearchpeNoneIndexer implements AutomaticIndexingSynchronizationStrategy {
+
+    public static final String BEAN_NAME = "searchpeNoneIndexer";
+    public static final String BEAN_FULL_NAME = "bean:" + BEAN_NAME;
 
     @Override
     public void apply(AutomaticIndexingSynchronizationConfigurationContext context) {

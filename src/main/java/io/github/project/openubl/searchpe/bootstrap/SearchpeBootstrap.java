@@ -19,6 +19,7 @@ package io.github.project.openubl.searchpe.bootstrap;
 import io.github.project.openubl.searchpe.models.RoleType;
 import io.github.project.openubl.searchpe.models.jpa.entity.BasicUserEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
+import io.github.project.openubl.searchpe.models.jpa.search.SearchpeNoneIndexer;
 import io.quarkus.runtime.StartupEvent;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.hibernate.search.mapper.orm.session.SearchSession;
@@ -50,7 +51,7 @@ public class SearchpeBootstrap {
      */
     @Transactional
     void reindexSearchIndexes(@Observes StartupEvent ev) throws InterruptedException {
-        if (!searchOrmIndexSyncStrategy.equals("bean:searchpeNoneIndexer")) {
+        if (!searchOrmIndexSyncStrategy.equals(SearchpeNoneIndexer.BEAN_FULL_NAME)) {
             if (VersionEntity.count() == 0) {
                 searchSession.massIndexer().startAndWait();
             }

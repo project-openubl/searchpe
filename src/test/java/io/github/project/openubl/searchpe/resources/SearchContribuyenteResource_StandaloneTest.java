@@ -18,12 +18,14 @@ package io.github.project.openubl.searchpe.resources;
 
 import io.github.project.openubl.searchpe.AbstractBaseTest;
 import io.github.project.openubl.searchpe.StandaloneProfileManager;
+import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 @TestProfile(StandaloneProfileManager.class)
+@TestHTTPEndpoint(ContribuyenteResource.class)
 public class SearchContribuyenteResource_StandaloneTest extends AbstractBaseTest {
 
     @Override
@@ -36,7 +38,7 @@ public class SearchContribuyenteResource_StandaloneTest extends AbstractBaseTest
         givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/contribuyentes")
+                .get("/")
                 .then()
                 .statusCode(404);
     }

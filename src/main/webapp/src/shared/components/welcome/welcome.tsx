@@ -19,24 +19,24 @@ export const Welcome: React.FC<WelcomeProps> = ({ onPrimaryAction }) => {
     <EmptyState variant={EmptyStateVariant.small}>
       <EmptyStateIcon icon={RocketIcon} />
       <Title headingLevel="h4" size="lg">
-        Welcome to Searchpe
+        Bienvenido a Searchpe
       </Title>
       <EmptyStateBody>
-        Searchpe helps you to consume the data exposed by the SUNAT through the
-        'padrón reducido'. To start searching data you first need to have at
-        least one valid <strong>Version</strong>
+        Searchpe te ayuda a consumir los datos proveidos por la SUNAT a travéz
+        del 'padrón reducido'. Antes de empezar a consultar datos, necesitas
+        crear una <strong>Versión</strong>.
       </EmptyStateBody>
       <Button variant="primary" onClick={onPrimaryAction}>
-        Go to Versions
+        Ir a Versiones
       </Button>
       <EmptyStateSecondaryActions>
-        To learn more, visit the
+        Para aprender más visita la
         <a
           target="_blank"
           href="https://project-openubl.github.io"
           rel="noopener noreferrer"
         >
-          documentation.
+          documentación.
         </a>
       </EmptyStateSecondaryActions>
     </EmptyState>

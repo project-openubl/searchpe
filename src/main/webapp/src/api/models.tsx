@@ -45,9 +45,10 @@ export interface Version {
 }
 
 export interface Contribuyente {
-  ruc: string;
-  razonSocial: string;
-  estadoContribuyente: string;
+  tipoPersona: TipoContribuyente;
+  numeroDocumento: string;
+  nombre: string;
+  estado: string;
   ubigeo: string;
   condicionDomicilio: string;
   tipoVia: string;
@@ -61,3 +62,5 @@ export interface Contribuyente {
   manzana: string;
   kilometro: string;
 }
+
+export type TipoContribuyente = "NATURAL" | "JURIDICA";

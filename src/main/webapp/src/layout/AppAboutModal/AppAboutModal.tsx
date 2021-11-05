@@ -5,6 +5,8 @@ import {
   FlexItem,
   List,
   ListItem,
+  Stack,
+  StackItem,
   TextContent,
 } from "@patternfly/react-core";
 import {
@@ -14,7 +16,7 @@ import {
   InfoAltIcon,
 } from "@patternfly/react-icons";
 
-import brandImage from "images/logo-navbar.svg";
+import brandImage from "images/logo.svg";
 
 export interface AppAboutModalProps {
   isOpen: boolean;
@@ -29,48 +31,55 @@ export const AppAboutModal: React.FC<AppAboutModalProps> = ({
     <AboutModal
       isOpen={isOpen}
       onClose={onClose}
-      trademark="COPYRIGHT © 2020."
+      trademark={`COPYRIGHT © ${new Date().getFullYear()}`}
       brandImageSrc={brandImage}
       brandImageAlt="Logo"
-      productName=""
+      productName="Searchpe"
     >
-      <TextContent className="pf-u-py-xl">
-        <h4>About</h4>
-        <p>
-          <a
-            href="https://project-openubl.github.io/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Searchpe
-          </a>{" "}
-          allows you to consume the data exposed from SUNAT through the 'padrón
-          reducido' available online.
-        </p>
-      </TextContent>
-      <TextContent>
-        <h4>Links</h4>
-        <List>
-          <ListItem>
-            <a
-              href="https://project-openubl.github.io/"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Website
-            </a>
-          </ListItem>
-          <ListItem>
-            <a
-              href="https://project-openubl.github.io/"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Documentation
-            </a>
-          </ListItem>
-        </List>
-      </TextContent>
+      <Stack hasGutter>
+        <StackItem>
+          <TextContent className="pf-u-py-xl">
+            <h2>About</h2>
+            <p>
+              <a
+                href="https://project-openubl.github.io/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Searchpe
+              </a>{" "}
+              es un producto de Project OpenUBL que te permite consumir los
+              datos expuestos por la SUNAT a travéz del 'padrón reducido'.
+            </p>
+          </TextContent>
+        </StackItem>
+        <StackItem>
+          <TextContent>
+            <h2>Links</h2>
+            <List>
+              <ListItem>
+                <a
+                  href="https://project-openubl.github.io/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Website
+                </a>
+              </ListItem>
+              <ListItem>
+                <a
+                  href="https://project-openubl.github.io/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Documentation
+                </a>
+              </ListItem>
+            </List>
+          </TextContent>
+        </StackItem>
+      </Stack>
+
       <div className="pf-c-about-modal-box__strapline">
         <Flex>
           <FlexItem>

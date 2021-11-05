@@ -47,6 +47,7 @@ exports[`SimplePagination Renders without crashing 1`] = `
       "currPage": "Current page",
       "items": "",
       "itemsPerPage": "Items per page",
+      "ofWord": "of",
       "optionsToggle": "Items per page",
       "page": "",
       "paginationTitle": "Pagination",

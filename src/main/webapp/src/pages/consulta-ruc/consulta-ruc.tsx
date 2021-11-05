@@ -73,8 +73,8 @@ export const ConsultaRuc: React.FC = () => {
   return (
     <>
       <SimplePageSection
-        title="Search by RUC"
-        description="Write the RUC you are searching for and then press enter."
+        title="Buscar por 'Número de documento'"
+        description="Ingresa el número de RUC o DNI que deseas consultar."
       />
       <PageSection>
         <div
@@ -101,10 +101,11 @@ export const ConsultaRuc: React.FC = () => {
                     <EmptyState variant={EmptyStateVariant.small}>
                       <EmptyStateIcon icon={SearchIcon} />
                       <Title headingLevel="h2" size="lg">
-                        No results found
+                        No se encontraron resultados
                       </Title>
                       <EmptyStateBody>
-                        No results match the filter criteria.
+                        No se encontraron resultados que coincidan con el
+                        criterio de búsqueda.
                       </EmptyStateBody>
                     </EmptyState>
                   }

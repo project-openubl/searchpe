@@ -25,6 +25,7 @@ import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteId;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
+import io.github.project.openubl.searchpe.models.jpa.search.SearchpeNoneIndexer;
 import io.github.project.openubl.searchpe.utils.ResourceUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.openapi.annotations.Operation;
@@ -77,7 +78,7 @@ public class ContribuyenteResource {
             @QueryParam("limit") @DefaultValue("10") @Max(1_000) Integer limit,
             @QueryParam("sort_by") @DefaultValue("name") List<String> sortBy
     ) {
-        if (searchOrmIndexSyncStrategy.equals("bean:searchpeNoneIndexer")) {
+        if (searchOrmIndexSyncStrategy.equals(SearchpeNoneIndexer.BEAN_FULL_NAME)) {
             throw new NotFoundException();
         }
 

@@ -42,14 +42,14 @@ describe("useFetchContribuyente", () => {
   it("Fetch success", async () => {
     // Mock REST API
     const data: Contribuyente = {
-      ruc: "12345678910",
-      razonSocial: "my empresa",
-      estadoContribuyente: "ACTIVO",
+      numeroDocumento: "12345678910",
+      nombre: "my empresa",
+      estado: "ACTIVO",
       ubigeo: "123456",
     };
 
     new MockAdapter(axios)
-      .onGet(`${CONTRIBUYENTES}/${data.ruc}`)
+      .onGet(`${CONTRIBUYENTES}/${data.numeroDocumento}`)
       .reply(200, data);
 
     // Use hook
@@ -69,7 +69,7 @@ describe("useFetchContribuyente", () => {
     expect(fetchError).toBeUndefined();
 
     // Init fetch
-    act(() => fetchContribuyente(data.ruc));
+    act(() => fetchContribuyente(data.numeroDocumento));
     expect(result.current.isFetching).toBe(true);
 
     // Fetch finished

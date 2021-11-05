@@ -16,6 +16,7 @@
  */
 package io.github.project.openubl.searchpe;
 
+import io.github.project.openubl.searchpe.models.jpa.search.SearchpeNoneIndexer;
 import io.github.project.openubl.searchpe.resources.config.ElasticsearchServer;
 import io.github.project.openubl.searchpe.resources.config.KeycloakServer;
 import io.github.project.openubl.searchpe.resources.config.PostgresSQLServer;
@@ -64,7 +65,7 @@ public class ProfileManager implements QuarkusTestProfile {
                 testResources.add(new TestResourceEntry(SunatServer.class));
 
                 // Config
-                configOverrides.put("quarkus.hibernate-search-orm.automatic-indexing.synchronization.strategy", "bean:searchpeNoneIndexer");
+                configOverrides.put("quarkus.hibernate-search-orm.automatic-indexing.synchronization.strategy", SearchpeNoneIndexer.BEAN_FULL_NAME);
 
                 configOverrides.put("quarkus.oidc.auth-server-url", "http://localhost:8180/auth"); // Required to have this prop for running tests
                 configOverrides.put("quarkus.oidc.client-id", "searchpe"); // Required to have this prop for running tests

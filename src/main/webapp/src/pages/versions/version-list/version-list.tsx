@@ -50,9 +50,9 @@ import { formatNumber, getAxiosErrorMessage } from "utils/modelUtils";
 
 const columns: ICell[] = [
   { title: "Id", transforms: [sortable] },
-  { title: "Created", transforms: [sortable] },
+  { title: "Creado", transforms: [sortable] },
   { title: "Records" },
-  { title: "Status" },
+  { title: "Estado" },
 ];
 
 const columnIndexToField = (
@@ -125,12 +125,8 @@ export const VersionList: React.FC<VersionListProps> = () => {
 
   const { deleteVersion } = useDeleteVersion();
 
-  const {
-    versions,
-    isFetching,
-    fetchError,
-    fetchVersions,
-  } = useFetchVersions();
+  const { versions, isFetching, fetchError, fetchVersions } =
+    useFetchVersions();
   const {
     filterText,
     paginationQuery,
@@ -229,8 +225,8 @@ export const VersionList: React.FC<VersionListProps> = () => {
         then={<AppPlaceholder />}
       >
         <SimplePageSection
-          title="Versions"
-          description="Versions store a specific point in time data."
+          title="Versiones"
+          description="Las Versiones representan una versión específica del 'padrón reducido' de la SUNAT."
         />
         <PageSection>
           <AppTableWithControls
@@ -257,7 +253,7 @@ export const VersionList: React.FC<VersionListProps> = () => {
                     variant={ButtonVariant.primary}
                     onClick={handleNewVersion}
                   >
-                    New version
+                    Nueva versión
                   </Button>
                 </ToolbarItem>
               </ToolbarGroup>
@@ -267,10 +263,11 @@ export const VersionList: React.FC<VersionListProps> = () => {
               <EmptyState variant={EmptyStateVariant.small}>
                 <EmptyStateIcon icon={AddCircleOIcon} />
                 <Title headingLevel="h2" size="lg">
-                  No versions available
+                  No hay Versiones disponibles
                 </Title>
                 <EmptyStateBody>
-                  Add a version by clicking on <strong>New version</strong>.
+                  Crea una nueva versión haciendo click en{" "}
+                  <strong>Nueva versión</strong>.
                 </EmptyStateBody>
               </EmptyState>
             }

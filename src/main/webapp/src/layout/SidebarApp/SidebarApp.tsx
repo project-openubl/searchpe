@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 import { Nav, NavItem, PageSidebar, NavList } from "@patternfly/react-core";
 
 import { Paths } from "Paths";
+import { isElasticsearchEnabled } from "Constants";
 import { LayoutTheme } from "../LayoutUtils";
 
 export const SidebarApp: React.FC = () => {
@@ -12,20 +13,22 @@ export const SidebarApp: React.FC = () => {
         <NavList>
           <NavItem>
             <NavLink to={Paths.consultaRuc} activeClassName="pf-m-current">
-              RUC
+              Consulta número documento
             </NavLink>
           </NavItem>
-          <NavItem>
-            <NavLink
-              to={Paths.contribuyenteList}
-              activeClassName="pf-m-current"
-            >
-              Search
-            </NavLink>
-          </NavItem>
+          {isElasticsearchEnabled() && (
+            <NavItem>
+              <NavLink
+                to={Paths.contribuyenteList}
+                activeClassName="pf-m-current"
+              >
+                Buscar
+              </NavLink>
+            </NavItem>
+          )}
           <NavItem>
             <NavLink to={Paths.versionList} activeClassName="pf-m-current">
-              Versions
+              Versiones
             </NavLink>
           </NavItem>
         </NavList>
