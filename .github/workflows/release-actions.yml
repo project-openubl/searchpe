@@ -26,6 +26,10 @@ jobs:
   container-image:
     name: Container images
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        flavor: [ "standalone", "enterprise" ]
+      fail-fast: false
     steps:
       - uses: actions/checkout@v2.3.5
       - uses: actions/setup-java@v2
@@ -33,13 +37,15 @@ jobs:
           java-version: 11
           distribution: adopt
       - name: Build with Maven
-        run: ./mvnw package -Pnative -Dquarkus.native.container-build=true -DskipTests
+        run: ./mvnw package -Dquarkus.native.container-build=true -DskipTests $MAVEN_ARGS
+        env:
+          MAVEN_ARGS: "-P native,${{ matrix.flavor }}"
 
       - name: Push to Quay.io
         uses: elgohr/Publish-Docker-Github-Action@3.04
         with:
           registry: quay.io
-          name: projectopenubl/searchpe
+          name: projectopenubl/searchpe-${{ matrix.flavor }}
           username: ${{ secrets.QUAYIO_USERNAME }}
           password: ${{ secrets.QUAYIO_PASSWORD }}
           dockerfile: src/main/docker/Dockerfile.native
@@ -49,7 +55,7 @@ jobs:
         uses: elgohr/Publish-Docker-Github-Action@3.04
         with:
           registry: quay.io
-          name: projectopenubl/searchpe
+          name: projectopenubl/searchpe-${{ matrix.flavor }}
           username: ${{ secrets.QUAYIO_USERNAME }}
           password: ${{ secrets.QUAYIO_PASSWORD }}
           dockerfile: src/main/docker/Dockerfile.native
@@ -60,7 +66,7 @@ jobs:
         uses: elgohr/Publish-Docker-Github-Action@3.04
         with:
           registry: docker.pkg.github.com
-          name: project-openubl/searchpe/searchpe
+          name: project-openubl/searchpe/searchpe-${{ matrix.flavor }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
           dockerfile: src/main/docker/Dockerfile.native
@@ -70,7 +76,7 @@ jobs:
         uses: elgohr/Publish-Docker-Github-Action@3.04
         with:
           registry: docker.pkg.github.com
-          name: project-openubl/searchpe/searchpe
+          name: project-openubl/searchpe/searchpe-${{ matrix.flavor }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
           dockerfile: src/main/docker/Dockerfile.native
@@ -80,7 +86,7 @@ jobs:
       - name: Push to Docker Hub
         uses: elgohr/Publish-Docker-Github-Action@3.04
         with:
-          name: projectopenubl/searchpe
+          name: projectopenubl/searchpe-${{ matrix.flavor }}
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           dockerfile: src/main/docker/Dockerfile.native
@@ -89,7 +95,7 @@ jobs:
       - name: Push to Docker Hub
         uses: elgohr/Publish-Docker-Github-Action@3.04
         with:
-          name: projectopenubl/searchpe
+          name: projectopenubl/searchpe-${{ matrix.flavor }}
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           dockerfile: src/main/docker/Dockerfile.native
