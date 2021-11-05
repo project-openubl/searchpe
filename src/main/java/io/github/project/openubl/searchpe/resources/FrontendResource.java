@@ -25,6 +25,7 @@ import javax.inject.Inject;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import java.util.Optional;
 
 @Path("/templates")
 public class FrontendResource {
@@ -34,13 +35,13 @@ public class FrontendResource {
     Template settingsJS;
 
     @ConfigProperty(name = "quarkus.oidc.enabled")
-    Boolean isOidcEnabled;
+    Optional<Boolean> isOidcEnabled;
 
     @GET
     @Path("/settings.js")
     @Produces("text/javascript")
     public TemplateInstance getVersions() {
-        return settingsJS.data("defaultAuthMethod", isOidcEnabled ? "oidc" : "basicAuth");
+        return settingsJS.data("defaultAuthMethod", isOidcEnabled.isPresent() && isOidcEnabled.get() ? "oidc" : "basicAuth");
     }
 
 }
