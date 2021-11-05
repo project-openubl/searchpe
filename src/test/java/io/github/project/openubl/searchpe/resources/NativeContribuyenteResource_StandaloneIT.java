@@ -19,5 +19,5 @@ package io.github.project.openubl.searchpe.resources;
 import io.quarkus.test.junit.NativeImageTest;
 
 @NativeImageTest
-public class NativeVersionResourceIT extends VersionResourceTest {
+public class NativeContribuyenteResource_StandaloneIT extends ContribuyenteResource_StandaloneTest {
 }

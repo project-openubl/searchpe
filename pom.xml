@@ -440,6 +440,11 @@
                     <plugin>
                         <artifactId>maven-failsafe-plugin</artifactId>
                         <version>${surefire-plugin.version}</version>
+                        <configuration>
+                            <includes>
+                                <include>**/*StandaloneIT.java</include>
+                            </includes>
+                        </configuration>
                         <executions>
                             <execution>
                                 <configuration>
@@ -472,6 +477,11 @@
                     <plugin>
                         <artifactId>maven-failsafe-plugin</artifactId>
                         <version>${surefire-plugin.version}</version>
+                        <configuration>
+                            <includes>
+                                <include>**/*EnterpriseIT.java</include>
+                            </includes>
+                        </configuration>
                         <executions>
                             <execution>
                                 <configuration>
