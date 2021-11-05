@@ -3,6 +3,5 @@
 # Except
 !.gitignore
 !assets
-!index.html
 !login.html
 !login-error.html
