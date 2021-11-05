@@ -38,6 +38,7 @@ import org.hibernate.search.mapper.orm.scope.SearchScope;
 import org.hibernate.search.mapper.orm.search.loading.dsl.SearchLoadingOptionsStep;
 import org.hibernate.search.mapper.orm.session.SearchSession;
 
+import javax.annotation.security.RolesAllowed;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
@@ -64,6 +65,7 @@ public class ContribuyenteResource {
     @Inject
     SearchSession searchSession;
 
+    @RolesAllowed({"admin", "user"})
     @Operation(summary = "Search contribuyentes", description = "Get contribuyentes in a page")
     @GET
     @Path("/")
@@ -144,6 +146,7 @@ public class ContribuyenteResource {
         return result;
     }
 
+    @RolesAllowed({"admin", "user"})
     @Operation(summary = "Get contribuyente by numeroDocumento", description = "Get contribuyentes by numeroDocumento")
     @GET
     @Path("/{numeroDocumento}")

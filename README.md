@@ -1,27 +1,37 @@
 ![CI](https://github.com/project-openubl/searchpe/workflows/CI/badge.svg)
-[![Docker Repository on Quay](https://quay.io/repository/projectopenubl/searchpe/status "Docker Repository on Quay")](https://quay.io/repository/projectopenubl/searchpe)
 [![License](https://img.shields.io/badge/License-EPL%202.0-green.svg)](https://opensource.org/licenses/EPL-2.0)
+
+[![Docker Repository on Quay](https://quay.io/repository/projectopenubl/searchpe-standalone/status "Docker Repository on Quay")](https://quay.io/repository/projectopenubl/searchpe-standalone)
+[![Docker Repository on Quay](https://quay.io/repository/projectopenubl/searchpe-enterprise/status "Docker Repository on Quay")](https://quay.io/repository/projectopenubl/searchpe-enterprise)
 
 [![Project Chat](https://img.shields.io/badge/zulip-join_chat-brightgreen.svg?style=for-the-badge&logo=zulip)](https://projectopenubl.zulipchat.com/)
 
-# searchpe
+# Searchpe
 
 Microservicio que expone los datos provenientes del `padrón reducido` de la SUNAT.
 
 ## Ejecutar en modo desarrollo
-
-### Iniciar Elasticsearch
-
-```shell script
-docker run -p 9200:9200 -p 9300:9300 -e discovery.type=single-node docker.elastic.co/elasticsearch/elasticsearch:7.10.2
-```
 
 ### Iniciar servidor
 
 Puedes ejecutar la aplicación en modo desarrollo con:
 
 ```shell script
-./mvnw quarkus:dev
+./mvnw compile quarkus:dev
+```
+
+### Iniciar UI
+
+Instala las dependencias npm:
+
+```shell
+yarn --cwd src/main/webapp install
+```
+
+Inicia el la UI en modo desarrollo:
+
+```shell
+yarn --cwd src/main/webapp run start
 ```
 
 ## Getting started
