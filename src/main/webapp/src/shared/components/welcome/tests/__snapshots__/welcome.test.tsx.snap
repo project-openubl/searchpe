@@ -1,0 +1,39 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Welcome Renders without crashing 1`] = `
+<EmptyState
+  variant="small"
+>
+  <EmptyStateIcon
+    icon={[Function]}
+  />
+  <Title
+    headingLevel="h4"
+    size="lg"
+  >
+    Welcome to Searchpe
+  </Title>
+  <EmptyStateBody>
+    Searchpe helps you to consume the data exposed by the SUNAT through the 'padrón reducido'. To start searching data you first need to have at least one valid 
+    <strong>
+      Version
+    </strong>
+  </EmptyStateBody>
+  <Button
+    onClick={[Function]}
+    variant="primary"
+  >
+    Go to Versions
+  </Button>
+  <EmptyStateSecondaryActions>
+    To learn more, visit the
+    <a
+      href="https://project-openubl.github.io"
+      rel="noopener noreferrer"
+      target="_blank"
+    >
+      documentation.
+    </a>
+  </EmptyStateSecondaryActions>
+</EmptyState>
+`;
