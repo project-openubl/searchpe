@@ -454,8 +454,7 @@
       ],
       "requiredActions": [],
       "realmRoles": [
-        "admin",
-        "user"
+        "admin"
       ],
       "notBefore": 0,
       "groups": []

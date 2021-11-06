@@ -17,31 +17,23 @@
 package io.github.project.openubl.searchpe.resources;
 
 import io.github.project.openubl.searchpe.models.jpa.entity.BasicUserEntity;
-import io.github.project.openubl.searchpe.models.jpa.search.SearchpeNoneIndexer;
-import io.quarkus.qute.Location;
-import io.quarkus.qute.Template;
-import io.quarkus.qute.TemplateInstance;
 import io.quarkus.security.identity.SecurityIdentity;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import javax.inject.Inject;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import java.security.Principal;
-import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
-@Path("/whoami")
-public class WhoAmIResource {
+@Path("/current-user")
+public class CurrentUserResource {
 
     @Inject
     SecurityIdentity securityIdentity;
 
     @GET
-    @Path("/")
+    @Path("/whoami")
     @Produces("application/json")
     public BasicUserEntity getCurrentUser() {
         Principal principal = securityIdentity.getPrincipal();

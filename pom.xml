@@ -447,21 +447,19 @@
             </build>
         </profile>
         <profile>
+            <id>standalone-dev</id>
+            <properties>
+                <quarkus.profile>standalone</quarkus.profile>
+            </properties>
+        </profile>
+
+        <profile>
             <id>enterprise</id>
             <properties>
                 <quarkus.profile>enterprise</quarkus.profile>
             </properties>
             <build>
                 <plugins>
-                    <plugin>
-                        <artifactId>maven-surefire-plugin</artifactId>
-                        <version>${surefire-plugin.version}</version>
-                        <configuration>
-                            <systemPropertyVariables>
-                                <isTest>true</isTest>
-                            </systemPropertyVariables>
-                        </configuration>
-                    </plugin>
                     <plugin>
                         <artifactId>maven-failsafe-plugin</artifactId>
                         <version>${surefire-plugin.version}</version>
@@ -470,16 +468,17 @@
                                 <include>**/*EnterpriseIT.java</include>
                             </includes>
                         </configuration>
-                        <executions>
-                            <execution>
-                                <configuration>
-                                    <systemPropertyVariables>
-                                        <isTest>true</isTest>
-                                    </systemPropertyVariables>
-                                </configuration>
-                            </execution>
-                        </executions>
                     </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>enterprise-dev</id>
+            <properties>
+                <quarkus.profile>enterprise,dev</quarkus.profile>
+            </properties>
+            <build>
+                <plugins>
                     <plugin>
                         <groupId>io.fabric8</groupId>
                         <artifactId>docker-maven-plugin</artifactId>
