@@ -35,7 +35,6 @@ jobs:
           path: 'test-reports.tgz'
 
   native-tests:
-    needs: [ linux-jvm-tests ]
     name: Native Tests
     runs-on: ubuntu-latest
     strategy:
