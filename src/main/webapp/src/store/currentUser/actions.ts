@@ -11,15 +11,20 @@ export const {
   "currentUser/fetch/request",
   "currentUser/fetch/success",
   "currentUser/fetch/failure"
-)<void, User, AxiosError>();
+)<void, User, AxiosError | string>();
 
 export const fetchCurrentUser = () => {
   return (dispatch: any) => {
     dispatch(fetchRequest());
 
     return whoAmI()
-      .then(({ data }) => {
-        dispatch(fetchSuccess(data));
+      .then((response) => {
+        // For dev mode purposes
+        if (response.headers["content-type"].indexOf("text/html") !== -1) {
+          dispatch(fetchFailure("Invalid response"));
+        } else {
+          dispatch(fetchSuccess(response.data));
+        }
       })
       .catch((error) => {
         dispatch(fetchFailure(error));

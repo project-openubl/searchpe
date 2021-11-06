@@ -50,7 +50,7 @@ public abstract class CurrentUserResourceTest extends AbstractBaseTest {
         givenAuth("admin")
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/")
+                .get("/whoami")
                 .then()
                 .statusCode(200)
                 .body(

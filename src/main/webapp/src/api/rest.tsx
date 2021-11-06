@@ -12,7 +12,7 @@ import {
 
 export const VERSIONS = "/versions";
 export const CONTRIBUYENTES = "/contribuyentes";
-export const WHOAMI = "/whoami";
+export const WHOAMI = "/current-user/whoami";
 export const USERS = "/admin/users";
 
 export const getVersions = (active?: boolean): AxiosPromise<Version[]> => {

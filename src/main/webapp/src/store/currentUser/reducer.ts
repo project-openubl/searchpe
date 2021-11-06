@@ -8,7 +8,7 @@ export const stateKey = "currentUser";
 export type CurrentUserState = Readonly<{
   user?: User;
   isFetching: boolean;
-  fetchError?: AxiosError;
+  fetchError?: AxiosError | string;
 }>;
 
 export const defaultState: CurrentUserState = {

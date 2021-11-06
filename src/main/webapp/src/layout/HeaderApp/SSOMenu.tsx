@@ -21,15 +21,6 @@ export const SSOMenu: React.FC = () => {
   const currentUser = useSelector((state: RootState) =>
     currentUserSelectors.user(state)
   );
-
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const onDropdownSelect = () => {
-    setIsDropdownOpen((current) => !current);
-  };
-  const onDropdownToggle = (isOpen: boolean) => {
-    setIsDropdownOpen(isOpen);
-  };
-
   const logout = () => {
     if (getAuthMethod() === "basic") {
       document.cookie = `${getAuthFormCookieName()}=; Max-Age=0`;
@@ -37,6 +28,14 @@ export const SSOMenu: React.FC = () => {
     } else if (getAuthMethod() === "oidc") {
       window.location.replace(getOidcLogoutPath());
     }
+  };
+
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const onDropdownSelect = () => {
+    setIsDropdownOpen((current) => !current);
+  };
+  const onDropdownToggle = (isOpen: boolean) => {
+    setIsDropdownOpen(isOpen);
   };
 
   return (
