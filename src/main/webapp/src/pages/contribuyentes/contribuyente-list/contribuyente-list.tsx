@@ -37,9 +37,10 @@ import { Paths } from "Paths";
 import { DetailsModal } from "./components/details-modal/details-modal";
 
 const columns: ICell[] = [
-  { title: "RUC" },
-  { title: "Razón social", transforms: [sortable] },
-  { title: "Estado contribuyente" },
+  { title: "Número documento" },
+  { title: "Nombre", transforms: [sortable] },
+  { title: "Estado" },
+  { title: "Tipo persona" },
 ];
 
 const columnIndexToField = (
@@ -74,6 +75,9 @@ const itemsToRow = (items: Contribuyente[]) => {
       },
       {
         title: item.estado,
+      },
+      {
+        title: item.tipoPersona,
       },
     ],
   }));
@@ -117,7 +121,7 @@ export const ContribuyenteList: React.FC<ContribuyenteListProps> = () => {
 
   const actions: IActions = [
     {
-      title: "View details",
+      title: "Ver detalle",
       onClick: (
         event: React.MouseEvent,
         rowIndex: number,
@@ -156,8 +160,8 @@ export const ContribuyenteList: React.FC<ContribuyenteListProps> = () => {
         then={<AppPlaceholder />}
       >
         <SimplePageSection
-          title="Search by 'Razón social'"
-          description="Write the name of the entity you are searching for and then press enter."
+          title="Buscar por 'Nombre'"
+          description="Ingresa el nombre de la persona natural o jurídica que deseas consultar."
         />
         <PageSection>
           <AppTableWithControls

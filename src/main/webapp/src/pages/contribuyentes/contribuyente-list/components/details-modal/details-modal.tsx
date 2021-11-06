@@ -16,13 +16,13 @@ export const DetailsModal: React.FC<DetailsModalProps> = ({
   return (
     <Modal
       variant={ModalVariant.medium}
-      title="Details"
+      title="Detalle"
       isOpen={!!value}
       onClose={onClose}
       aria-label="details-modal"
       actions={[
         <Button key="close" variant="primary" onClick={onClose}>
-          Close
+          Cerrar
         </Button>,
       ]}
     >

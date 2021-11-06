@@ -1,3 +1,4 @@
+import { isElasticsearchEnabled } from "Constants";
 import React, { lazy, Suspense } from "react";
 import { Route, Switch, Redirect } from "react-router-dom";
 
@@ -21,7 +22,11 @@ export const AppRoutes = () => {
         {routes.map(({ path, component, ...rest }, index) => (
           <Route key={index} path={path} component={component} {...rest} />
         ))}
-        <Redirect from={Paths.base} to={Paths.consultaRuc} exact />
+        <Redirect
+          from={Paths.base}
+          to={isElasticsearchEnabled() ? Paths.contribuyenteList : Paths.consultaRuc}
+          exact
+        />
       </Switch>
     </Suspense>
   );

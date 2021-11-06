@@ -48,7 +48,7 @@ public class FrontendResource {
     public TemplateInstance getVersions() {
         return settingsJS
                 .data("defaultAuthMethod", isOidcEnabled.isPresent() && isOidcEnabled.get() ? "oidc" : "basic")
-                .data("isElasticsearchEnabled", Objects.equals(esSyncStrategy, SearchpeNoneIndexer.BEAN_FULL_NAME));
+                .data("isElasticsearchEnabled", !Objects.equals(esSyncStrategy, SearchpeNoneIndexer.BEAN_FULL_NAME));
     }
 
 }

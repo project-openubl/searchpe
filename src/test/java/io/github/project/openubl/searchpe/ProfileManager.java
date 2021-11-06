@@ -58,7 +58,7 @@ public class ProfileManager implements QuarkusTestProfile {
         switch (distributionFlavor) {
             case standalone:
                 // Profile
-                configProfile = "test";
+                configProfile = DistributionFlavor.standalone.toString();
 
                 // Test resources
                 testResources.add(new TestResourceEntry(PostgresSQLServer.class));
