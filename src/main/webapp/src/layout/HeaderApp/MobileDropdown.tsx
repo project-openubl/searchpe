@@ -1,5 +1,10 @@
 import React, { useState } from "react";
-import { Dropdown, DropdownItem, KebabToggle } from "@patternfly/react-core";
+import {
+  Dropdown,
+  DropdownItem,
+  DropdownSeparator,
+  KebabToggle,
+} from "@patternfly/react-core";
 import { HelpIcon } from "@patternfly/react-icons";
 import { AppAboutModal } from "../AppAboutModal";
 
@@ -27,6 +32,8 @@ export const MobileDropdown: React.FC = () => {
         toggle={<KebabToggle onToggle={onKebabDropdownToggle} />}
         isOpen={isKebabDropdownOpen}
         dropdownItems={[
+          <DropdownItem key="logout">Logout</DropdownItem>,
+          <DropdownSeparator key="separator" />,
           <DropdownItem key="about" onClick={toggleAboutModal}>
             <HelpIcon />
             &nbsp;About

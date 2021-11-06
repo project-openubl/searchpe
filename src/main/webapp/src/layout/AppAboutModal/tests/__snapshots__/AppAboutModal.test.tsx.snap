@@ -5,57 +5,65 @@ exports[`AppAboutModal 1`] = `
   appendTo={null}
   backgroundImageSrc=""
   brandImageAlt="Logo"
-  brandImageSrc="logo-navbar.svg"
+  brandImageSrc="logo.svg"
   className=""
   isOpen={true}
   noAboutModalBoxContentContainer={false}
   onClose={[MockFunction]}
-  productName=""
-  trademark="COPYRIGHT © 2020."
+  productName="Searchpe"
+  trademark="COPYRIGHT © 2021"
 >
-  <TextContent
-    className="pf-u-py-xl"
+  <Stack
+    hasGutter={true}
   >
-    <h4>
-      About
-    </h4>
-    <p>
-      <a
-        href="https://project-openubl.github.io/"
-        rel="noopener noreferrer"
-        target="_blank"
+    <StackItem>
+      <TextContent
+        className="pf-u-py-xl"
       >
-        Searchpe
-      </a>
-       
-      allows you to consume the data exposed from SUNAT through the 'padrón reducido' available online.
-    </p>
-  </TextContent>
-  <TextContent>
-    <h4>
-      Links
-    </h4>
-    <List>
-      <ListItem>
-        <a
-          href="https://project-openubl.github.io/"
-          rel="noopener noreferrer"
-          target="_blank"
-        >
-          Website
-        </a>
-      </ListItem>
-      <ListItem>
-        <a
-          href="https://project-openubl.github.io/"
-          rel="noopener noreferrer"
-          target="_blank"
-        >
-          Documentation
-        </a>
-      </ListItem>
-    </List>
-  </TextContent>
+        <h2>
+          About
+        </h2>
+        <p>
+          <a
+            href="https://project-openubl.github.io/"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            Searchpe
+          </a>
+           
+          es un producto de Project OpenUBL que te permite consumir los datos expuestos por la SUNAT a travéz del 'padrón reducido'.
+        </p>
+      </TextContent>
+    </StackItem>
+    <StackItem>
+      <TextContent>
+        <h2>
+          Links
+        </h2>
+        <List>
+          <ListItem>
+            <a
+              href="https://project-openubl.github.io/"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              Website
+            </a>
+          </ListItem>
+          <ListItem>
+            <a
+              href="https://project-openubl.github.io/"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              Documentation
+            </a>
+          </ListItem>
+        </List>
+      </TextContent>
+    </StackItem>
+  </Stack>
   <div
     className="pf-c-about-modal-box__strapline"
   >

@@ -1,5 +1,9 @@
 import React, { useState } from "react";
-import { useKeycloak } from "@react-keycloak/web";
+
+import { useSelector } from "react-redux";
+import { RootState } from "store/rootReducer";
+import { currentUserSelectors } from "store/currentUser";
+
 import {
   Dropdown,
   DropdownGroup,
@@ -7,53 +11,63 @@ import {
   DropdownToggle,
   PageHeaderToolsItem,
 } from "@patternfly/react-core";
+import {
+  getAuthFormCookieName,
+  getAuthMethod,
+  getOidcLogoutPath,
+} from "Constants";
 
 export const SSOMenu: React.FC = () => {
-  const { keycloak } = useKeycloak();
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const currentUser = useSelector((state: RootState) =>
+    currentUserSelectors.user(state)
+  );
 
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const onDropdownSelect = () => {
     setIsDropdownOpen((current) => !current);
   };
-
   const onDropdownToggle = (isOpen: boolean) => {
     setIsDropdownOpen(isOpen);
   };
 
+  const logout = () => {
+    if (getAuthMethod() === "basic") {
+      document.cookie = `${getAuthFormCookieName()}=; Max-Age=0`;
+      window.location.replace("/");
+    } else if (getAuthMethod() === "oidc") {
+      window.location.replace(getOidcLogoutPath());
+    }
+  };
+
   return (
     <PageHeaderToolsItem
+      id="user-dropdown"
       visibility={{
         default: "hidden",
         md: "visible",
+        lg: "visible",
+        xl: "visible",
+        "2xl": "visible",
       }} /** this user dropdown is hidden on mobile sizes */
     >
-      {keycloak && (
-        <Dropdown
-          isPlain
-          position="right"
-          onSelect={onDropdownSelect}
-          isOpen={isDropdownOpen}
-          toggle={
-            <DropdownToggle onToggle={onDropdownToggle}>
-              {(keycloak.idTokenParsed as any)["preferred_username"]}
-            </DropdownToggle>
-          }
-          dropdownItems={[
-            <DropdownGroup key="sso">
-              <DropdownItem
-                key="sso_user_management"
-                component="button"
-                onClick={() => keycloak.accountManagement()}
-              >
-                User management
-              </DropdownItem>
-              <DropdownItem key="sso_logout" onClick={() => keycloak.logout()}>
-                Logout
-              </DropdownItem>
-            </DropdownGroup>,
-          ]}
-        />
-      )}
+      <Dropdown
+        isPlain
+        position="right"
+        onSelect={onDropdownSelect}
+        isOpen={isDropdownOpen}
+        toggle={
+          <DropdownToggle onToggle={onDropdownToggle}>
+            {currentUser?.username}
+          </DropdownToggle>
+        }
+        dropdownItems={[
+          <DropdownGroup key="user-management">
+            <DropdownItem key="logout" onClick={logout}>
+              Logout
+            </DropdownItem>
+          </DropdownGroup>,
+        ]}
+      />
     </PageHeaderToolsItem>
   );
 };

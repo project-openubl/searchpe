@@ -1,9 +1,17 @@
 export type SEARCHPE_AUTH_METHOD = "oidc" | "basic";
 
+const SEARCHPE_SETTINGS = (window as any)["SEARCHPE_SETTINGS"];
 export const getAuthMethod = (): SEARCHPE_AUTH_METHOD => {
-  return (window as any)["SEARCHPE_DEFAULT_AUTH_METHOD"];
+  return SEARCHPE_SETTINGS.defaultAuthMethod;
+};
+
+export const getAuthFormCookieName = (): string => {
+  return SEARCHPE_SETTINGS.formCookieName;
+};
+export const getOidcLogoutPath = (): string => {
+  return SEARCHPE_SETTINGS.oidcLogoutPath;
 };
 
 export const isElasticsearchEnabled = (): boolean => {
-  return (window as any)["SEARCHPE_IS_ELASTICSEARCH_ENABLED"];
+  return SEARCHPE_SETTINGS.isElasticsearchEnabled;
 };

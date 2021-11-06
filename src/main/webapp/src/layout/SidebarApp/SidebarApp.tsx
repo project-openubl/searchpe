@@ -3,7 +3,7 @@ import { NavLink } from "react-router-dom";
 import { Nav, NavItem, PageSidebar, NavGroup } from "@patternfly/react-core";
 
 import { Paths } from "Paths";
-import { isElasticsearchEnabled } from "Constants";
+import { isElasticsearchEnabled, getAuthMethod } from "Constants";
 import { LayoutTheme } from "../LayoutUtils";
 
 export const SidebarApp: React.FC = () => {
@@ -34,6 +34,18 @@ export const SidebarApp: React.FC = () => {
             </NavLink>
           </NavItem>
         </NavGroup>
+        {getAuthMethod() === "basic" && (
+          <NavGroup title="Configuración">
+            <NavItem>
+              <NavLink
+                to={Paths.settings_userList}
+                activeClassName="pf-m-current"
+              >
+                Usuarios
+              </NavLink>
+            </NavItem>
+          </NavGroup>
+        )}
       </Nav>
     );
   };

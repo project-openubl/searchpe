@@ -11,28 +11,29 @@ exports[`Welcome Renders without crashing 1`] = `
     headingLevel="h4"
     size="lg"
   >
-    Welcome to Searchpe
+    Bienvenido a Searchpe
   </Title>
   <EmptyStateBody>
-    Searchpe helps you to consume the data exposed by the SUNAT through the 'padrón reducido'. To start searching data you first need to have at least one valid 
+    Searchpe te ayuda a consumir los datos proveidos por la SUNAT a travéz del 'padrón reducido'. Antes de empezar a consultar datos, necesitas crear una 
     <strong>
-      Version
+      Versión
     </strong>
+    .
   </EmptyStateBody>
   <Button
     onClick={[Function]}
     variant="primary"
   >
-    Go to Versions
+    Ir a Versiones
   </Button>
   <EmptyStateSecondaryActions>
-    To learn more, visit the
+    Para aprender más visita la
     <a
       href="https://project-openubl.github.io"
       rel="noopener noreferrer"
       target="_blank"
     >
-      documentation.
+      documentación.
     </a>
   </EmptyStateSecondaryActions>
 </EmptyState>

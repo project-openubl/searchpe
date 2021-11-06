@@ -1,2 +1,6 @@
-window["SEARCHPE_DEFAULT_AUTH_METHOD"] = "{defaultAuthMethod}";
-window["SEARCHPE_IS_ELASTICSEARCH_ENABLED"] = {isElasticsearchEnabled};
+window["SEARCHPE_SETTINGS"] = {
+    defaultAuthMethod: "{defaultAuthMethod}",
+    formCookieName: "{formCookieName}",
+    oidcLogoutPath: "{oidcLogoutPath}",
+    isElasticsearchEnabled: {isElasticsearchEnabled}
+};

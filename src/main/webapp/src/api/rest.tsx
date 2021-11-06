@@ -6,11 +6,14 @@ import {
   PageQuery,
   PageRepresentation,
   SortByQuery,
+  User,
   Version,
 } from "./models";
 
 export const VERSIONS = "/versions";
 export const CONTRIBUYENTES = "/contribuyentes";
+export const WHOAMI = "/whoami";
+export const USERS = "/admin/users";
 
 export const getVersions = (active?: boolean): AxiosPromise<Version[]> => {
   if (active === true || active === false) {
@@ -66,4 +69,12 @@ export const getVersion = (id: number): AxiosPromise<Version> => {
 
 export const getContribuyente = (ruc: string): AxiosPromise<Contribuyente> => {
   return APIClient.get(`${CONTRIBUYENTES}/${ruc}`);
+};
+
+export const getUsers = (): AxiosPromise<User[]> => {
+  return APIClient.get(USERS);
+};
+
+export const whoAmI = (): AxiosPromise<User> => {
+  return APIClient.get(WHOAMI);
 };

@@ -64,3 +64,9 @@ export interface Contribuyente {
 }
 
 export type TipoContribuyente = "NATURAL" | "JURIDICA";
+
+export interface User {
+  username: string;
+  password: string;
+  role: string;
+}

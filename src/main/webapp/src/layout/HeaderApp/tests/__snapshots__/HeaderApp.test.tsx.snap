@@ -7,12 +7,8 @@ exports[`Test snapshot 1`] = `
       <PageHeaderToolsGroup
         visibility={
           Object {
-            "2xl": "visible",
             "default": "hidden",
             "lg": "visible",
-            "md": "hidden",
-            "sm": "hidden",
-            "xl": "visible",
           }
         }
       >
@@ -32,6 +28,7 @@ exports[`Test snapshot 1`] = `
         >
           <MobileDropdown />
         </PageHeaderToolsItem>
+        <SSOMenu />
       </PageHeaderToolsGroup>
       <Avatar
         alt="Avatar image"
@@ -44,6 +41,11 @@ exports[`Test snapshot 1`] = `
       alt="brand"
       src="logo-navbar.svg"
     />
+  }
+  logoProps={
+    Object {
+      "href": "/",
+    }
   }
   showNavToggle={true}
 />

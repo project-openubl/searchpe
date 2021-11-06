@@ -16,47 +16,44 @@
  */
 package io.github.project.openubl.searchpe.resources;
 
+import io.github.project.openubl.searchpe.models.jpa.entity.BasicUserEntity;
 import io.github.project.openubl.searchpe.models.jpa.search.SearchpeNoneIndexer;
 import io.quarkus.qute.Location;
 import io.quarkus.qute.Template;
 import io.quarkus.qute.TemplateInstance;
+import io.quarkus.security.identity.SecurityIdentity;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import javax.inject.Inject;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import java.security.Principal;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
-@Path("/templates")
-public class FrontendResource {
+@Path("/whoami")
+public class WhoAmIResource {
 
     @Inject
-    @Location("settings.js")
-    Template settingsJS;
-
-    @ConfigProperty(name = "quarkus.oidc.enabled")
-    Optional<Boolean> isOidcEnabled;
-
-    @ConfigProperty(name = "quarkus.http.auth.form.cookie-name")
-    String formCookieName;
-
-    @ConfigProperty(name = "quarkus.oidc.logout.path")
-    String oidcLogoutPath;
-
-    @ConfigProperty(name = "quarkus.hibernate-search-orm.automatic-indexing.synchronization.strategy")
-    String esSyncStrategy;
+    SecurityIdentity securityIdentity;
 
     @GET
-    @Path("/settings.js")
-    @Produces("text/javascript")
-    public TemplateInstance getVersions() {
-        return settingsJS
-                .data("defaultAuthMethod", isOidcEnabled.isPresent() && isOidcEnabled.get() ? "oidc" : "basic")
-                .data("formCookieName", formCookieName)
-                .data("oidcLogoutPath", oidcLogoutPath)
-                .data("isElasticsearchEnabled", !Objects.equals(esSyncStrategy, SearchpeNoneIndexer.BEAN_FULL_NAME));
+    @Path("/")
+    @Produces("application/json")
+    public BasicUserEntity getCurrentUser() {
+        Principal principal = securityIdentity.getPrincipal();
+
+        String username = principal.getName();
+        Set<String> roles = securityIdentity.getRoles();
+
+        // Generate result
+        BasicUserEntity result = new BasicUserEntity();
+        result.username = username;
+        result.role = String.join(",", roles);
+        return result;
     }
 
 }

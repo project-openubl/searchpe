@@ -15,4 +15,7 @@ export enum Paths {
   consultaRuc = "/consulta-numero-documento",
   contribuyenteList = "/contribuyentes",
   versionList = "/versiones",
+
+  settings = "/settings",
+  settings_userList = "/settings/users",
 }
