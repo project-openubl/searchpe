@@ -1,3 +1,8 @@
+export enum Permission {
+  admin = "admin",
+  user = "user",
+}
+
 export type SEARCHPE_AUTH_METHOD = "oidc" | "basic";
 
 interface Settings {
@@ -17,8 +22,12 @@ const defaultSettings: Settings = {
 const SEARCHPE_SETTINGS: Settings =
   (window as any)["SEARCHPE_SETTINGS"] || defaultSettings;
 
-export const getAuthMethod = (): SEARCHPE_AUTH_METHOD => {
-  return SEARCHPE_SETTINGS.defaultAuthMethod;
+export const isBasicAuthEnabled = (): boolean => {
+  return SEARCHPE_SETTINGS.defaultAuthMethod === "basic";
+};
+
+export const isOidcAuthEnabled = (): boolean => {
+  return SEARCHPE_SETTINGS.defaultAuthMethod === "oidc";
 };
 
 export const getAuthFormCookieName = (): string => {

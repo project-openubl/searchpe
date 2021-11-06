@@ -13,7 +13,8 @@ import {
 } from "@patternfly/react-core";
 import {
   getAuthFormCookieName,
-  getAuthMethod,
+  isBasicAuthEnabled,
+  isOidcAuthEnabled,
   getOidcLogoutPath,
 } from "Constants";
 
@@ -22,10 +23,10 @@ export const SSOMenu: React.FC = () => {
     currentUserSelectors.user(state)
   );
   const logout = () => {
-    if (getAuthMethod() === "basic") {
+    if (isBasicAuthEnabled()) {
       document.cookie = `${getAuthFormCookieName()}=; Max-Age=0`;
       window.location.replace("/");
-    } else if (getAuthMethod() === "oidc") {
+    } else if (isOidcAuthEnabled()) {
       window.location.replace(getOidcLogoutPath());
     }
   };

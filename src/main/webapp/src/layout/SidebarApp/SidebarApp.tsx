@@ -1,10 +1,16 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
+
 import { Nav, NavItem, PageSidebar, NavGroup } from "@patternfly/react-core";
 
 import { Paths } from "Paths";
-import { isElasticsearchEnabled, getAuthMethod } from "Constants";
+import {
+  isElasticsearchEnabled,
+  isBasicAuthEnabled,
+  Permission,
+} from "Constants";
 import { LayoutTheme } from "../LayoutUtils";
+import { VisibilityByPermission } from "shared/containers";
 
 export const SidebarApp: React.FC = () => {
   const renderPageNav = () => {
@@ -34,17 +40,19 @@ export const SidebarApp: React.FC = () => {
             </NavLink>
           </NavItem>
         </NavGroup>
-        {getAuthMethod() === "basic" && (
-          <NavGroup title="Configuración">
-            <NavItem>
-              <NavLink
-                to={Paths.settings_userList}
-                activeClassName="pf-m-current"
-              >
-                Usuarios
-              </NavLink>
-            </NavItem>
-          </NavGroup>
+        {isBasicAuthEnabled() && (
+          <VisibilityByPermission hasAny={[Permission.admin]}>
+            <NavGroup title="Configuración">
+              <NavItem>
+                <NavLink
+                  to={Paths.settings_userList}
+                  activeClassName="pf-m-current"
+                >
+                  Usuarios
+                </NavLink>
+              </NavItem>
+            </NavGroup>
+          </VisibilityByPermission>
         )}
       </Nav>
     );

@@ -58,7 +58,7 @@ const App: React.FC = () => {
               const loginPopUp = window.open(
                 "http://localhost:8080",
                 "example",
-                "width=800,height=600"
+                "width=800,height=750"
               );
               const timer = setInterval(function () {
                 if (loginPopUp && loginPopUp.closed) {
