@@ -54,6 +54,7 @@ jobs:
           MAVEN_ARGS: "-P native,${{ matrix.flavor }}"
 
   ui-tests:
+    name: UI Tests
     runs-on: ubuntu-latest
     strategy:
       matrix:
