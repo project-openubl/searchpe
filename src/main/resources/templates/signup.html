@@ -6,16 +6,6 @@
     <link rel="stylesheet" href="assets/patternfly/patternfly.min.css"/>
     <title>Searchpe</title>
     <link rel="icon" href="assets/images/favicon.ico"/>
-    <script>
-        function showPasswordToggle() {
-            var x = document.getElementById("j_password");
-            if (x.type === "password") {
-                x.type = "text";
-            } else {
-                x.type = "password";
-            }
-        }
-    </script>
 </head>
 <body>
 <div class="pf-c-background-image">
@@ -42,16 +32,16 @@
         </header>
         <main class="pf-c-login__main">
             <header class="pf-c-login__main-header">
-                <h1 class="pf-c-title pf-m-3xl">Log in to your account</h1>
-                <p class="pf-c-login__main-header-desc">Enter your username and password credentials.</p>
+                <h1 class="pf-c-title pf-m-3xl">Sing up</h1>
+                <p class="pf-c-login__main-header-desc">Please create an initial admin user to get started.</p>
             </header>
             <div class="pf-c-login__main-body">
-                <form class="pf-c-form" action="j_security_check" method="post">
+                <form class="pf-c-form" action="j_security_signup" method="post">
                     <p class="pf-c-form__helper-text pf-m-error pf-m-hidden">
                         <span class="pf-c-form__helper-text-icon">
                             <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
                         </span>
-                        Invalid login credentials.
+                        Invalid data.
                     </p>
                     <div class="pf-c-form__group">
                         <label class="pf-c-form__label" for="j_username">
@@ -65,10 +55,11 @@
                                 type="text"
                                 id="j_username"
                                 name="j_username"
+                                autocomplete="off"
                         />
                     </div>
                     <div class="pf-c-form__group">
-                        <label class="pf-c-form__label" for="j_password">
+                        <label class="pf-c-form__label" for="j_password1">
                             <span class="pf-c-form__label-text">Password</span>
                             <span class="pf-c-form__label-required" aria-hidden="true">&#42;</span>
                         </label>
@@ -78,28 +69,35 @@
                                     required
                                     input="true"
                                     type="password"
-                                    id="j_password"
-                                    name="j_password"
+                                    id="j_password1"
+                                    name="j_password1"
                             />
-
-                            <button
-                                    class="pf-c-button pf-m-control"
-                                    type="button"
-                                    aria-label="Show password"
-                                    onclick="showPasswordToggle()"
-                            >
-                                <i class="fas fa-eye" aria-hidden="true"></i>
-                            </button>
+                        </div>
+                    </div>
+                    <div class="pf-c-form__group">
+                        <label class="pf-c-form__label" for="j_password2">
+                            <span class="pf-c-form__label-text">Password confirmation</span>
+                            <span class="pf-c-form__label-required" aria-hidden="true">&#42;</span>
+                        </label>
+                        <div class="pf-c-input-group">
+                            <input
+                                    class="pf-c-form-control"
+                                    required
+                                    input="true"
+                                    type="password"
+                                    id="j_password2"
+                                    name="j_password2"
+                            />
                         </div>
                     </div>
                     <div class="pf-c-form__group pf-m-action">
-                        <button class="pf-c-button pf-m-primary pf-m-block" type="submit">Log in</button>
+                        <button class="pf-c-button pf-m-primary pf-m-block" type="submit">Create</button>
                     </div>
                 </form>
             </div>
         </main>
         <footer class="pf-c-login__footer">
-            <p>Use this form to log in into the Console administration and start using Searchpe.</p>
+            <p>Welcome to Searchpe, the enterprise solution for managing natural and legal entities in your organization.</p>
         </footer>
     </div>
 </div>

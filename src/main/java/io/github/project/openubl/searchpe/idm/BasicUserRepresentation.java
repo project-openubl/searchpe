@@ -25,9 +25,6 @@ import java.util.Set;
 public class BasicUserRepresentation {
 
     private Long id;
-
-    @NotNull
-    @Size(min = 3, max = 250)
     private String fullName;
 
     @Pattern(regexp = "^[a-zA-Z0-9._-]{3,}$")

@@ -16,7 +16,7 @@ alter table if exists CONTRIBUYENTE rename column estado_contribuyente to estado
 CREATE TABLE BASIC_USER
 (
     id          int8         NOT NULL,
-    full_name   VARCHAR(250) NOT NULL,
+    full_name   VARCHAR(250),
     username    VARCHAR(250) NOT NULL,
     password    VARCHAR(250) NOT NULL,
     permissions VARCHAR(250),

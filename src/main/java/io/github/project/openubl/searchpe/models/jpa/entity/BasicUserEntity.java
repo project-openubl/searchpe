@@ -34,7 +34,6 @@ import java.util.stream.Collectors;
 @UserDefinition
 public class BasicUserEntity extends PanacheEntity {
 
-    @NotNull
     @Column(name = "full_name")
     public String fullName;
 
