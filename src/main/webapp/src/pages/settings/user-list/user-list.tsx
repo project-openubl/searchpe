@@ -1,14 +1,28 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { RouteComponentProps } from "react-router-dom";
+import { AxiosResponse } from "axios";
 
-import { PageSection } from "@patternfly/react-core";
+import { useDispatch } from "react-redux";
+import { deleteDialogActions } from "store/deleteDialog";
+import { alertActions } from "store/alert";
+
+import {
+  Button,
+  ButtonVariant,
+  Modal,
+  ModalVariant,
+  PageSection,
+  ToolbarGroup,
+  ToolbarItem,
+} from "@patternfly/react-core";
 import {
   cellWidth,
-  IActions,
+  IAction,
   ICell,
   IExtraColumnData,
   IExtraData,
   IRowData,
+  ISeparator,
   sortable,
   SortByDirection,
 } from "@patternfly/react-table";
@@ -22,10 +36,16 @@ import {
   SimplePageSection,
 } from "shared/components";
 import {
+  useDeleteUser,
+  useEntityModal,
   useFetchUsers,
   useTableControls,
   useTableControlsOffline,
 } from "shared/hooks";
+
+import { UserForm } from "./components/user-form";
+import { getAxiosErrorMessage } from "utils/modelUtils";
+import { Permission } from "Constants";
 
 const columns: ICell[] = [
   { title: "Username", transforms: [sortable, cellWidth(40)] },
@@ -93,7 +113,17 @@ export const filterByText = (filterText: string, item: User) => {
 export interface UserListProps extends RouteComponentProps {}
 
 export const UserList: React.FC<UserListProps> = () => {
-  const [, setCurrentRow] = useState<User>();
+  const dispatch = useDispatch();
+
+  const { deleteUser } = useDeleteUser();
+
+  const {
+    isOpen: isUserModalOpen,
+    data: userToUpdate,
+    create: openCreateUserModal,
+    update: openUpdateUserModal,
+    close: closeUserModal,
+  } = useEntityModal<User>();
 
   const { users, isFetching, fetchError, fetchUsers } = useFetchUsers(true);
 
@@ -119,8 +149,12 @@ export const UserList: React.FC<UserListProps> = () => {
     fetchUsers();
   }, [fetchUsers]);
 
-  const actions: IActions = [
-    {
+  const actionResolver = (rowData: IRowData): (IAction | ISeparator)[] => {
+    const row: User = getRow(rowData);
+
+    const actions: (IAction | ISeparator)[] = [];
+
+    actions.push({
       title: "Editar",
       onClick: (
         event: React.MouseEvent,
@@ -129,26 +163,67 @@ export const UserList: React.FC<UserListProps> = () => {
         extraData: IExtraData
       ) => {
         const row: User = getRow(rowData);
-        setCurrentRow(row);
+        openUpdateUserModal(row);
       },
-    },
-    {
-      title: "Eliminar",
-      onClick: (
-        event: React.MouseEvent,
-        rowIndex: number,
-        rowData: IRowData,
-        extraData: IExtraData
-      ) => {
-        const row: User = getRow(rowData);
-        setCurrentRow(row);
-      },
-    },
-  ];
+    });
 
-  // const handleOnEditModalClose = () => {
-  //   setCurrentRow(undefined);
-  // };
+    if (!row.role.split(",").some((f) => f === Permission.admin)) {
+      actions.push({
+        title: "Delete",
+        onClick: (
+          event: React.MouseEvent,
+          rowIndex: number,
+          rowData: IRowData,
+          extraData: IExtraData
+        ) => {
+          const row: User = getRow(rowData);
+          dispatch(
+            deleteDialogActions.openModal({
+              name: `${row.username}`,
+              type: "usuario",
+              onDelete: () => {
+                dispatch(deleteDialogActions.processing());
+                deleteUser(
+                  row,
+                  () => {
+                    dispatch(deleteDialogActions.closeModal());
+                    fetchUsers();
+                  },
+                  (error) => {
+                    dispatch(deleteDialogActions.closeModal());
+                    dispatch(
+                      alertActions.addAlert(
+                        "danger",
+                        "Error",
+                        getAxiosErrorMessage(error)
+                      )
+                    );
+                  }
+                );
+              },
+            })
+          );
+        },
+      });
+    }
+
+    return actions;
+  };
+
+  const areActionsDisabled = (): boolean => {
+    return false;
+  };
+
+  const handleOnUserFormSaved = (response: AxiosResponse<User>) => {
+    if (!userToUpdate) {
+      dispatch(
+        alertActions.addAlert("success", "Éxito", "Usuario actualizado")
+      );
+    }
+
+    closeUserModal();
+    fetchUsers();
+  };
 
   return (
     <>
@@ -169,15 +244,41 @@ export const UserList: React.FC<UserListProps> = () => {
             handlePaginationChange={handlePaginationChange}
             handleSortChange={handleSortChange}
             columns={columns}
-            actions={actions}
+            actionResolver={actionResolver}
+            areActionsDisabled={areActionsDisabled}
             isLoading={isFetching}
             loadingVariant="skeleton"
             fetchError={fetchError}
             filtersApplied={filterText.trim().length > 0}
+            toolbar={
+              <ToolbarGroup variant="button-group">
+                <ToolbarItem>
+                  <Button
+                    type="button"
+                    aria-label="new-user"
+                    variant={ButtonVariant.primary}
+                    onClick={openCreateUserModal}
+                  >
+                    Nuevo usuario
+                  </Button>
+                </ToolbarItem>
+              </ToolbarGroup>
+            }
           />
         </PageSection>
       </ConditionalRender>
-      {/* <UserModal value={currentRow} onClose={handleOnEditModalClose} /> */}
+      <Modal
+        title={`${userToUpdate ? "Editar" : "Crear"} usuario`}
+        variant={ModalVariant.medium}
+        isOpen={isUserModalOpen}
+        onClose={closeUserModal}
+      >
+        <UserForm
+          user={userToUpdate}
+          onSaved={handleOnUserFormSaved}
+          onCancel={closeUserModal}
+        />
+      </Modal>
     </>
   );
 };

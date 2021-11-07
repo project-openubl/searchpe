@@ -18,17 +18,18 @@ package io.github.project.openubl.searchpe.resources;
 
 import io.github.project.openubl.searchpe.AbstractBaseTest;
 import io.github.project.openubl.searchpe.StandaloneProfileManager;
-import io.github.project.openubl.searchpe.models.RoleType;
-import io.github.project.openubl.searchpe.models.jpa.entity.BasicUserEntity;
+import io.github.project.openubl.searchpe.idm.BasicUserRepresentation;
+import io.github.project.openubl.searchpe.security.Permission;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
 
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @QuarkusTest
@@ -43,10 +44,11 @@ public class UserResource_StandaloneTest extends AbstractBaseTest {
 
     @Test
     public void resourceNotAvailableForNotAdmins() {
-        BasicUserEntity user = new BasicUserEntity();
-        user.username = "newUser";
-        user.password = "newPassword";
-        user.role = "newRole";
+        BasicUserRepresentation user = new BasicUserRepresentation();
+        user.setFullName("newFullName");
+        user.setUsername("newUser");
+        user.setPassword("newPassword");
+        user.setPermissions(new HashSet<>(List.of(Permission.search)));
 
         // Create
         givenAuth("alice")
@@ -104,84 +106,66 @@ public class UserResource_StandaloneTest extends AbstractBaseTest {
                         "[0].id", is(notNullValue()),
                         "[0].username", is("admin"),
                         "[0].password", is(nullValue()),
-                        "[0].role", is("admin"),
+                        "[0].permissions", is(List.of("admin:app")),
 
                         "[1].id", is(notNullValue()),
                         "[1].username", is("alice"),
                         "[1].password", is(nullValue()),
-                        "[1].role", is("user")
+                        "[1].permissions", is(List.of("search", "version:write"))
                 );
     }
 
     @Test
     public void getOneUser() {
-        BasicUserEntity[] users = givenAuth("admin")
+        BasicUserRepresentation[] users = givenAuth("admin")
                 .header("Content-Type", "application/json")
                 .when()
                 .get("/")
                 .then()
                 .statusCode(200)
-                .extract().body().as(BasicUserEntity[].class);
+                .extract().body().as(BasicUserRepresentation[].class);
+
+        assertEquals(2, users.length);
+        BasicUserRepresentation userToGet = users[0];
 
         givenAuth("admin")
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/" + users[0].id)
+                .get("/" + userToGet.getId())
                 .then()
                 .statusCode(200)
                 .body(
-                        "id", is(users[0].id.intValue()),
-                        "username", is(notNullValue()),
+                        "id", is(userToGet.getId().intValue()),
+                        "username", is(userToGet.getUsername()),
                         "password", is(nullValue()),
-                        "role", is(notNullValue())
+                        "permissions", is(List.of(userToGet.getPermissions().toArray()))
                 );
     }
 
     @Test
     public void updateUser() {
         // Given
-        BasicUserEntity[] users = givenAuth("admin")
+        BasicUserRepresentation[] users = givenAuth("admin")
                 .header("Content-Type", "application/json")
                 .when()
                 .get("/")
                 .then()
                 .statusCode(200)
-                .extract().body().as(BasicUserEntity[].class);
+                .extract().body().as(BasicUserRepresentation[].class);
 
-        BasicUserEntity userToUpdate = users[0];
-        userToUpdate.username = "newUsername";
-        userToUpdate.password = "newPassword";
+        Optional<BasicUserRepresentation> userToUpdateOptional = Stream.of(users).filter(f -> f.getUsername().equals("alice")).findFirst();
+        assertTrue(userToUpdateOptional.isPresent());
 
-        // Then
-        givenAuth("admin")
-                .header("Content-Type", "application/json")
-                .when()
-                .body(userToUpdate)
-                .put("/" + userToUpdate.id)
-                .then()
-                .statusCode(204);
-    }
-
-    @Test
-    public void deleteUser() {
-        // Given
-        BasicUserEntity[] users = givenAuth("admin")
-                .header("Content-Type", "application/json")
-                .when()
-                .get("/")
-                .then()
-                .statusCode(200)
-                .extract().body().as(BasicUserEntity[].class);
-
-        Optional<BasicUserEntity> userToDeleteOptional = Stream.of(users).filter(f -> f.role.equals(RoleType.user.toString())).findFirst();
-        assertTrue(userToDeleteOptional.isPresent());
-        BasicUserEntity userToDelete = userToDeleteOptional.get();
+        BasicUserRepresentation userToUpdate = userToUpdateOptional.get();
+        userToUpdate.setUsername("newUsername");
+        userToUpdate.setPassword("newPassword");
 
         // When
         givenAuth("admin")
                 .header("Content-Type", "application/json")
                 .when()
-                .delete("/" + userToDelete.id)
+                .body(userToUpdate)
+                .put("/" + userToUpdate.getId())
                 .then()
                 .statusCode(200);
 
@@ -189,42 +173,106 @@ public class UserResource_StandaloneTest extends AbstractBaseTest {
         givenAuth("admin")
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/" + userToDelete.id)
+                .get("/" + userToUpdate.getId())
                 .then()
-                .statusCode(404);
+                .statusCode(200)
+                .body(
+                        "id", is(userToUpdate.getId().intValue()),
+                        "username", is(userToUpdate.getUsername()),
+                        "password", is(nullValue()),
+                        "permissions", is(notNullValue())
+                );
     }
 
     @Test
-    public void deleteAdminUserNotAllowed() {
+    public void deleteUser() {
         // Given
-        BasicUserEntity[] users = givenAuth("admin")
+        BasicUserRepresentation[] users = givenAuth("admin")
                 .header("Content-Type", "application/json")
                 .when()
                 .get("/")
                 .then()
                 .statusCode(200)
-                .extract().body().as(BasicUserEntity[].class);
+                .extract().body().as(BasicUserRepresentation[].class);
 
-        Optional<BasicUserEntity> userToDeleteOptional = Stream.of(users).filter(f -> f.role.equals(RoleType.admin.toString())).findFirst();
+        Optional<BasicUserRepresentation> userToDeleteOptional = Stream.of(users).filter(f -> f.getUsername().equals("alice")).findFirst();
         assertTrue(userToDeleteOptional.isPresent());
-        BasicUserEntity userToDelete = userToDeleteOptional.get();
+        BasicUserRepresentation userToDelete = userToDeleteOptional.get();
 
         // When
         givenAuth("admin")
                 .header("Content-Type", "application/json")
                 .when()
-                .delete("/" + userToDelete.id)
+                .delete("/" + userToDelete.getId())
                 .then()
-                .statusCode(400);
+                .statusCode(200);
+
+        // Then
+        givenAuth("admin")
+                .header("Content-Type", "application/json")
+                .when()
+                .get("/" + userToDelete.getId())
+                .then()
+                .statusCode(404);
     }
+
+//    @Test
+//    public void deleteAdminUserNotAllowed() {
+//        // Given
+//        BasicUserEntity[] users = givenAuth("admin")
+//                .header("Content-Type", "application/json")
+//                .when()
+//                .get("/")
+//                .then()
+//                .statusCode(200)
+//                .extract().body().as(BasicUserEntity[].class);
+//
+//        Optional<BasicUserEntity> userToDeleteOptional = Stream.of(users).filter(f -> f.permissions.equals(RoleType.admin.toString())).findFirst();
+//        assertTrue(userToDeleteOptional.isPresent());
+//        BasicUserEntity userToDelete = userToDeleteOptional.get();
+//
+//        // When
+//        givenAuth("admin")
+//                .header("Content-Type", "application/json")
+//                .when()
+//                .delete("/" + userToDelete.id)
+//                .then()
+//                .statusCode(400);
+//    }
 
     @Test
     public void createUser() {
         // Given
-        BasicUserEntity user = new BasicUserEntity();
-        user.username = "myUsername";
-        user.password = "myPassword";
-        user.role = RoleType.user.toString();
+        BasicUserRepresentation user = new BasicUserRepresentation();
+        user.setFullName("myFullName");
+        user.setUsername("myUsername");
+        user.setPassword("myPassword");
+        user.setPermissions(new HashSet<>(List.of(Permission.search)));
+
+        // When
+        givenAuth("admin")
+                .header("Content-Type", "application/json")
+                .when()
+                .body(user)
+                .post("/")
+                .then()
+                .statusCode(201)
+                .body(
+                        "fullName", is(user.getFullName()),
+                        "username", is(user.getUsername()),
+                        "password", is(nullValue()),
+                        "permissions", is(List.of(user.getPermissions().toArray()))
+                );
+    }
+
+    @Test
+    public void createDuplicateUserNotAllowed() {
+        // Given
+        BasicUserRepresentation user = new BasicUserRepresentation();
+        user.setFullName("myFullName");
+        user.setUsername("myUsername");
+        user.setPassword("myPassword");
+        user.setPermissions(new HashSet<>(List.of(Permission.search)));
 
         // When
         givenAuth("admin")
@@ -234,24 +282,15 @@ public class UserResource_StandaloneTest extends AbstractBaseTest {
                 .post("/")
                 .then()
                 .statusCode(201);
-    }
 
-    @Test
-    public void createDuplicateAdminUserNotAllowed() {
-        // Given
-        BasicUserEntity user = new BasicUserEntity();
-        user.username = "myUsername";
-        user.password = "myPassword";
-        user.role = RoleType.admin.toString();
-
-        // When
+        // Then
         givenAuth("admin")
                 .header("Content-Type", "application/json")
                 .when()
                 .body(user)
                 .post("/")
                 .then()
-                .statusCode(400);
+                .statusCode(409);
     }
 
 }

@@ -78,3 +78,15 @@ export const getUsers = (): AxiosPromise<User[]> => {
 export const whoAmI = (): AxiosPromise<User> => {
   return APIClient.get(WHOAMI);
 };
+
+export const createUser = (obj: User): AxiosPromise<User> => {
+  return APIClient.post(USERS, obj);
+};
+
+export const updateUser = (obj: User): AxiosPromise<User> => {
+  return APIClient.put(`${USERS}/${obj.id}`, obj);
+};
+
+export const deleteUser = (userId: number): AxiosPromise => {
+  return APIClient.delete(`${USERS}/${userId}`);
+};

@@ -21,6 +21,7 @@ import io.github.project.openubl.searchpe.jobs.ingest.IngestDataProgrammatically
 import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
+import io.github.project.openubl.searchpe.security.Permission;
 import io.quarkus.panache.common.Sort;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.jboss.logging.Logger;
@@ -56,7 +57,7 @@ public class VersionResource {
     @Inject
     VersionRepository versionRepository;
 
-    @RolesAllowed({"admin", "user"})
+    @RolesAllowed({Permission.admin, Permission.version_write})
     @Operation(summary = "Get versions", description = "Get all versions available")
     @GET
     @Path("/")
@@ -79,7 +80,7 @@ public class VersionResource {
         return VersionEntity.findAll(sort).list();
     }
 
-    @RolesAllowed({"admin", "user"})
+    @RolesAllowed({Permission.admin, Permission.version_write})
     @Operation(summary = "Create version", description = "Creates a new version and fires the importing process")
     @Transactional(Transactional.TxType.NEVER)
     @POST
@@ -116,7 +117,7 @@ public class VersionResource {
         }
     }
 
-    @RolesAllowed({"admin", "user"})
+    @RolesAllowed({Permission.admin, Permission.version_write})
     @Operation(summary = "Get version", description = "Get version by id")
     @GET
     @Path("/{id}")
@@ -130,7 +131,7 @@ public class VersionResource {
         return version;
     }
 
-    @RolesAllowed({"admin", "user"})
+    @RolesAllowed({Permission.admin, Permission.version_write})
     @Operation(summary = "Delete version", description = "Delete version by id")
     @Transactional(Transactional.TxType.NEVER)
     @DELETE
@@ -172,4 +173,5 @@ public class VersionResource {
             throw new InternalServerErrorException(e);
         }
     }
+
 }

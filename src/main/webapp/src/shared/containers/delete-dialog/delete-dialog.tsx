@@ -31,7 +31,7 @@ class DeleteDialogBase extends React.Component<Props, State> {
     return (
       <Modal
         variant={"small"}
-        title={config.title ? config.title : `Delete ${name}?`}
+        title={config.title ? config.title : `Eliminar ${name}?`}
         onClose={() => {
           onCancel();
         }}
@@ -43,7 +43,7 @@ class DeleteDialogBase extends React.Component<Props, State> {
             variant={ButtonVariant.danger}
             onClick={onDelete}
           >
-            {config.deleteBtnLabel ? config.deleteBtnLabel : "Delete"}
+            {config.deleteBtnLabel ? config.deleteBtnLabel : "Eliminar"}
           </Button>,
           <Button
             key="cancel"
@@ -53,7 +53,7 @@ class DeleteDialogBase extends React.Component<Props, State> {
               onCancel();
             }}
           >
-            {config.cancelBtnLabel ? config.cancelBtnLabel : "Cancel"}
+            {config.cancelBtnLabel ? config.cancelBtnLabel : "Cancelar"}
           </Button>,
         ]}
       >
@@ -61,7 +61,7 @@ class DeleteDialogBase extends React.Component<Props, State> {
           ? `Ops! There was a problem while executing your action.`
           : config.message
           ? config.message
-          : `Are you sure you want to delete this ${type}? This action will remove ${name} permanently.`}
+          : `¿Estas seguro de querer eliminar este(a) ${type}? Esta acción eliminará ${name} permanentemente.`}
       </Modal>
     );
   }

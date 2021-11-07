@@ -14,9 +14,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.project.openubl.searchpe.models;
+package io.github.project.openubl.searchpe.idm;
 
-public enum RoleType {
-    admin,
-    user
+import io.quarkus.runtime.annotations.RegisterForReflection;
+
+@RegisterForReflection
+public class ErrorRepresentation {
+
+    private String message;
+
+    public ErrorRepresentation() {
+    }
+
+    public ErrorRepresentation(String message) {
+        this.message = message;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
+
 }

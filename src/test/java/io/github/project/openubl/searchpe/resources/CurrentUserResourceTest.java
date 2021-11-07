@@ -20,6 +20,8 @@ import io.github.project.openubl.searchpe.AbstractBaseTest;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -44,7 +46,7 @@ public abstract class CurrentUserResourceTest extends AbstractBaseTest {
                 .statusCode(200)
                 .body(
                         "username", is("alice"),
-                        "role", is("user")
+                        "permissions", is(List.of("search", "version:write"))
                 );
 
         givenAuth("admin")
@@ -55,13 +57,8 @@ public abstract class CurrentUserResourceTest extends AbstractBaseTest {
                 .statusCode(200)
                 .body(
                         "username", is("admin"),
-                        "role", is("admin")
+                        "permissions", is(List.of("admin:app"))
                 );
-    }
-
-    @Test
-    public void whoAmI_userAdmin() {
-
     }
 
 }

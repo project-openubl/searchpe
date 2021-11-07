@@ -20,6 +20,7 @@ import io.github.project.openubl.searchpe.models.jpa.search.SearchpeNoneIndexer;
 import io.quarkus.qute.Location;
 import io.quarkus.qute.Template;
 import io.quarkus.qute.TemplateInstance;
+import io.quarkus.security.Authenticated;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import javax.inject.Inject;
@@ -48,6 +49,7 @@ public class FrontendResource {
     @ConfigProperty(name = "quarkus.hibernate-search-orm.automatic-indexing.synchronization.strategy")
     String esSyncStrategy;
 
+    @Authenticated
     @GET
     @Path("/settings.js")
     @Produces("text/javascript")

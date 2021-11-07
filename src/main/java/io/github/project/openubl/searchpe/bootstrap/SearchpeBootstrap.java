@@ -16,8 +16,6 @@
  */
 package io.github.project.openubl.searchpe.bootstrap;
 
-import io.github.project.openubl.searchpe.models.RoleType;
-import io.github.project.openubl.searchpe.models.jpa.entity.BasicUserEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.models.jpa.search.SearchpeNoneIndexer;
 import io.quarkus.runtime.StartupEvent;
@@ -37,13 +35,6 @@ public class SearchpeBootstrap {
 
     @Inject
     SearchSession searchSession;
-
-    @Transactional
-    void createAdminUserOnStart(@Observes StartupEvent ev) {
-        if (BasicUserEntity.count() == 0) {
-            BasicUserEntity.add("admin", "admin", RoleType.admin.toString());
-        }
-    }
 
     /**
      * If there is an upgrade of Version, the indexes in Elasticsearch should be deleted.
