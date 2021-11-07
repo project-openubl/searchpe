@@ -56,7 +56,7 @@ export const UserForm: React.FC<UserFormProps> = ({
     const payload: User = {
       username: formValues.username.trim(),
       password: formValues.password.trim(),
-      role: "",
+      permissions: [],
     };
 
     let promise: AxiosPromise<User>;

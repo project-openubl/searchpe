@@ -32,10 +32,6 @@ public class SignupServlet extends HttpServlet {
     @Inject
     Validator validator;
 
-    @Inject
-    @Location("signup.html")
-    Template signupHTML;
-
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String username = req.getParameter("j_username");
@@ -57,23 +53,32 @@ public class SignupServlet extends HttpServlet {
         userRepresentation.setFullName("");
         userRepresentation.setPermissions(new HashSet<>(List.of(Permission.admin)));
 
+        BasicUserEntity userCreated = null;
         Set<ConstraintViolation<BasicUserRepresentation>> violations = validator.validate(userRepresentation);
         if (violations.isEmpty()) {
             try {
                 tx.begin();
-                BasicUserEntity.add(userRepresentation);
+
+                long currentNumberOfAdmins = BasicUserEntity.find("from BasicUserEntity where permissions like '%" + Permission.admin + "'").count();
+                if (currentNumberOfAdmins == 0) {
+                    userCreated = BasicUserEntity.add(userRepresentation);
+                }
+
                 tx.commit();
-                resp.sendRedirect("login.html");
             } catch (NotSupportedException | HeuristicRollbackException | HeuristicMixedException | RollbackException | SystemException e) {
                 try {
                     tx.rollback();
                 } catch (SystemException se) {
                     LOGGER.error(se);
                 }
-                resp.sendRedirect("signup-error.html");
             }
+        }
+
+        if (userCreated != null) {
+            resp.sendRedirect("login.html");
         } else {
             resp.sendRedirect("signup-error.html");
         }
+
     }
 }
