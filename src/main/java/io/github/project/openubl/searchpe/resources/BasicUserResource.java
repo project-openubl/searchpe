@@ -16,9 +16,11 @@
  */
 package io.github.project.openubl.searchpe.resources;
 
-import io.github.project.openubl.searchpe.models.RoleType;
+import io.github.project.openubl.searchpe.idm.BasicUserRepresentation;
+import io.github.project.openubl.searchpe.idm.ErrorRepresentation;
 import io.github.project.openubl.searchpe.models.jpa.entity.BasicUserEntity;
 import io.github.project.openubl.searchpe.resources.interceptors.HTTPBasicAuthEnabled;
+import io.github.project.openubl.searchpe.security.Permission;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 
 import javax.annotation.security.RolesAllowed;
@@ -40,67 +42,75 @@ import java.util.stream.Collectors;
 @Produces("application/json")
 public class BasicUserResource {
 
-    private BasicUserEntity toDTO(BasicUserEntity entity) {
-        BasicUserEntity result = new BasicUserEntity();
-        result.id = entity.id;
-        result.username = entity.username;
-        result.role = entity.role;
-        return result;
-    }
-
-    @RolesAllowed("admin")
+    @RolesAllowed({Permission.admin, Permission.user_write})
     @HTTPBasicAuthEnabled
     @Operation(summary = "Create user", description = "Creates a new user")
     @POST
     @Path("/")
-    public Response createUser(@NotNull @Valid BasicUserEntity user) {
-        if (Objects.isNull(user.role)) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Can not create user without role")
+    public Response createUser(@NotNull @Valid BasicUserRepresentation rep) {
+        if (BasicUserEntity.find("username", rep.getUsername()).firstResultOptional().isPresent()) {
+            return Response.status(Response.Status.CONFLICT)
+                    .entity(new ErrorRepresentation("Username already exists"))
+                    .build();
+        }
+        if (!rep.getPermissions()
+                .stream()
+                .allMatch(permission -> Permission.allPermissions
+                        .stream()
+                        .anyMatch(systemPermission -> Objects.equals(systemPermission, permission))
+                )
+        ) {
+            return Response.status(Response.Status.CONFLICT)
+                    .entity(new ErrorRepresentation("Invalid permissions"))
                     .build();
         }
 
-        if (user.role.equals(RoleType.admin.toString())) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Only one admin user can exist")
-                    .build();
-        }
-
-        BasicUserEntity.add(user.username, user.password, user.role);
-        return Response.status(Response.Status.CREATED).build();
+        BasicUserEntity userEntity = BasicUserEntity.add(rep);
+        return Response.status(Response.Status.CREATED)
+                .entity(userEntity.toRepresentation())
+                .build();
     }
 
-    @RolesAllowed("admin")
+    @RolesAllowed({Permission.admin, Permission.user_write})
     @HTTPBasicAuthEnabled
     @Operation(summary = "Get users", description = "Get users")
     @GET
-    public List<BasicUserEntity> getUsers() {
+    public List<BasicUserRepresentation> getUsers() {
         return BasicUserEntity.findAll().stream()
-                .map(f -> toDTO((BasicUserEntity) f))
+                .map(f -> ((BasicUserEntity) f).toRepresentation())
                 .collect(Collectors.toList());
     }
 
-    @RolesAllowed("admin")
+    @RolesAllowed({Permission.admin, Permission.user_write})
     @HTTPBasicAuthEnabled
     @Operation(summary = "Get user", description = "Get user")
     @GET
     @Path("/{id}")
-    public BasicUserEntity getUser(@PathParam("id") Long id) {
+    public BasicUserRepresentation getUser(@PathParam("id") Long id) {
         BasicUserEntity user = (BasicUserEntity) BasicUserEntity.findByIdOptional(id).orElseThrow(NotFoundException::new);
-        return toDTO(user);
+        return user.toRepresentation();
     }
 
-    @RolesAllowed("admin")
+    @RolesAllowed({Permission.admin, Permission.user_write})
     @HTTPBasicAuthEnabled
     @Operation(summary = "Update user", description = "Update username or password. It won't update current role")
     @PUT
     @Path("/{id}")
-    public void updateUser(@NotNull @PathParam("id") Long id, @NotNull @Valid BasicUserEntity rep) {
+    public BasicUserRepresentation updateUser(@NotNull @PathParam("id") Long id, @NotNull BasicUserRepresentation rep) {
         BasicUserEntity user = (BasicUserEntity) BasicUserEntity.findByIdOptional(id).orElseThrow(NotFoundException::new);
-        BasicUserEntity.update(user, rep.username, rep.password);
+
+        if (rep.getFullName() != null) {
+            user.fullName = rep.getFullName();
+        }
+        if (rep.getUsername() != null) {
+            user.username = rep.getUsername();
+        }
+
+        BasicUserEntity update = BasicUserEntity.update(user, Optional.ofNullable(rep.getPassword()), Optional.ofNullable(rep.getPermissions()));
+        return update.toRepresentation();
     }
 
-    @RolesAllowed("admin")
+    @RolesAllowed({Permission.admin, Permission.user_write})
     @HTTPBasicAuthEnabled
     @Operation(summary = "Delete user", description = "Delete user")
     @DELETE
@@ -113,13 +123,8 @@ public class BasicUserResource {
         }
 
         BasicUserEntity user = userOptional.get();
-        if (Objects.equals(user.role, RoleType.admin.toString())) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Admin user can not be deleted")
-                    .build();
-        }
-
         user.delete();
         return Response.status(Response.Status.OK).build();
     }
+
 }

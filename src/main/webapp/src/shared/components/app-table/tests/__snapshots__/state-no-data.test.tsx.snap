@@ -1,0 +1,20 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`StateNoData Renders without crashing 1`] = `
+<EmptyState
+  variant="small"
+>
+  <EmptyStateIcon
+    icon={[Function]}
+  />
+  <Title
+    headingLevel="h2"
+    size="lg"
+  >
+    No data available
+  </Title>
+  <EmptyStateBody>
+    Create a new resource to search using this table.
+  </EmptyStateBody>
+</EmptyState>
+`;

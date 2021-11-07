@@ -1,0 +1,186 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`AppTableWithControls Renders adding toolbar 1`] = `
+<div
+  style={
+    Object {
+      "backgroundColor": "var(--pf-global--BackgroundColor--100)",
+    }
+  }
+>
+  <Toolbar>
+    <ToolbarContent
+      isExpanded={false}
+      showClearFiltersButton={false}
+    >
+      <ForwardRef>
+        <ToolbarItem>
+          <SearchInput
+            onSearch={[MockFunction]}
+          />
+        </ToolbarItem>
+      </ForwardRef>
+      <p>
+        This is an additional content to toolbar
+      </p>
+      <ToolbarItem
+        alignment={
+          Object {
+            "default": "alignRight",
+          }
+        }
+        variant="pagination"
+      >
+        <SimplePagination
+          count={120}
+          isTop={true}
+          onChange={[MockFunction]}
+          params={
+            Object {
+              "page": 1,
+              "perPage": 10,
+            }
+          }
+        />
+      </ToolbarItem>
+    </ToolbarContent>
+  </Toolbar>
+  <AppTable
+    columns={
+      Array [
+        Object {
+          "title": "Col1",
+        },
+      ]
+    }
+    isLoading={false}
+    onSort={[MockFunction]}
+    rows={
+      Array [
+        Object {
+          "cells": Array [
+            Object {
+              "title": "first",
+            },
+          ],
+        },
+        Object {
+          "cells": Array [
+            Object {
+              "title": "second",
+            },
+          ],
+        },
+        Object {
+          "cells": Array [
+            Object {
+              "title": "third",
+            },
+          ],
+        },
+      ]
+    }
+  />
+  <SimplePagination
+    count={120}
+    onChange={[MockFunction]}
+    params={
+      Object {
+        "page": 1,
+        "perPage": 10,
+      }
+    }
+  />
+</div>
+`;
+
+exports[`AppTableWithControls Renders without crashing 1`] = `
+<div
+  style={
+    Object {
+      "backgroundColor": "var(--pf-global--BackgroundColor--100)",
+    }
+  }
+>
+  <Toolbar>
+    <ToolbarContent
+      isExpanded={false}
+      showClearFiltersButton={false}
+    >
+      <ForwardRef>
+        <ToolbarItem>
+          <SearchInput
+            onSearch={[MockFunction]}
+          />
+        </ToolbarItem>
+      </ForwardRef>
+      <ToolbarItem
+        alignment={
+          Object {
+            "default": "alignRight",
+          }
+        }
+        variant="pagination"
+      >
+        <SimplePagination
+          count={120}
+          isTop={true}
+          onChange={[MockFunction]}
+          params={
+            Object {
+              "page": 1,
+              "perPage": 10,
+            }
+          }
+        />
+      </ToolbarItem>
+    </ToolbarContent>
+  </Toolbar>
+  <AppTable
+    columns={
+      Array [
+        Object {
+          "title": "Col1",
+        },
+      ]
+    }
+    isLoading={false}
+    onSort={[MockFunction]}
+    rows={
+      Array [
+        Object {
+          "cells": Array [
+            Object {
+              "title": "first",
+            },
+          ],
+        },
+        Object {
+          "cells": Array [
+            Object {
+              "title": "second",
+            },
+          ],
+        },
+        Object {
+          "cells": Array [
+            Object {
+              "title": "third",
+            },
+          ],
+        },
+      ]
+    }
+  />
+  <SimplePagination
+    count={120}
+    onChange={[MockFunction]}
+    params={
+      Object {
+        "page": 1,
+        "perPage": 10,
+      }
+    }
+  />
+</div>
+`;

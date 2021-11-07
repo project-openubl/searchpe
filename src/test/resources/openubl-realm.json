@@ -44,7 +44,15 @@
     "realm": [
       {
         "id": "d723b5ff-6c33-4152-b0ac-3ad9c1b79e6c",
-        "name": "admin",
+        "name": "admin:app",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "openubl",
+        "attributes": {}
+      },
+      {
+        "id": "9b7d9b92-a7eb-4b6f-abf8-19c0ea8cf1dc",
+        "name": "search",
         "composite": false,
         "clientRole": false,
         "containerId": "openubl",
@@ -52,7 +60,15 @@
       },
       {
         "id": "88607edb-72b0-46fb-8d76-1a75a51a50f0",
-        "name": "user",
+        "name": "version:write",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "openubl",
+        "attributes": {}
+      },
+      {
+        "id": "71e02816-6044-4dbf-92d2-5f45adfd2be9",
+        "name": "user:write",
         "composite": false,
         "clientRole": false,
         "containerId": "openubl",
@@ -454,8 +470,7 @@
       ],
       "requiredActions": [],
       "realmRoles": [
-        "admin",
-        "user"
+        "admin:app"
       ],
       "notBefore": 0,
       "groups": []
@@ -485,7 +500,8 @@
       ],
       "requiredActions": [],
       "realmRoles": [
-        "user"
+        "search",
+        "version:write"
       ],
       "notBefore": 0,
       "groups": []

@@ -1,0 +1,20 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`StateNoResults Renders without crashing 1`] = `
+<EmptyState
+  variant="small"
+>
+  <EmptyStateIcon
+    icon={[Function]}
+  />
+  <Title
+    headingLevel="h2"
+    size="lg"
+  >
+    No results found
+  </Title>
+  <EmptyStateBody>
+    No results match the filter criteria. Remove all filters or clear all filters to show results.
+  </EmptyStateBody>
+</EmptyState>
+`;

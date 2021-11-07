@@ -25,6 +25,8 @@ import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteId;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
+import io.github.project.openubl.searchpe.models.jpa.search.SearchpeNoneIndexer;
+import io.github.project.openubl.searchpe.security.Permission;
 import io.github.project.openubl.searchpe.utils.ResourceUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.openapi.annotations.Operation;
@@ -65,7 +67,7 @@ public class ContribuyenteResource {
     @Inject
     SearchSession searchSession;
 
-    @RolesAllowed({"admin", "user"})
+    @RolesAllowed({Permission.admin, Permission.search})
     @Operation(summary = "Search contribuyentes", description = "Get contribuyentes in a page")
     @GET
     @Path("/")
@@ -77,7 +79,7 @@ public class ContribuyenteResource {
             @QueryParam("limit") @DefaultValue("10") @Max(1_000) Integer limit,
             @QueryParam("sort_by") @DefaultValue("name") List<String> sortBy
     ) {
-        if (searchOrmIndexSyncStrategy.equals("bean:searchpeNoneIndexer")) {
+        if (searchOrmIndexSyncStrategy.equals(SearchpeNoneIndexer.BEAN_FULL_NAME)) {
             throw new NotFoundException();
         }
 
@@ -146,7 +148,7 @@ public class ContribuyenteResource {
         return result;
     }
 
-    @RolesAllowed({"admin", "user"})
+    @RolesAllowed({Permission.admin, Permission.search})
     @Operation(summary = "Get contribuyente by numeroDocumento", description = "Get contribuyentes by numeroDocumento")
     @GET
     @Path("/{numeroDocumento}")

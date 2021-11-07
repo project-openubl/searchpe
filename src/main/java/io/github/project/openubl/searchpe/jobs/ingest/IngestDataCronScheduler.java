@@ -54,7 +54,7 @@ public class IngestDataCronScheduler {
         try {
             tx.begin();
 
-            JobKey jobKey = JobKey.jobKey(SearchpeJobs.VERSION_ENTITY_IMPORT_JOB, SearchpeJobs.VERSION_ENTITY_JOB_GROUP);
+            JobKey jobKey = JobKey.jobKey(SearchpeJobs.VERSION_ENTITY_SCHEDULE_IMPORT_JOB, SearchpeJobs.VERSION_ENTITY_JOB_GROUP);
             JobDetail job = JobBuilder.newJob(IngestDataCronJob.class)
                     .withIdentity(jobKey)
                     .build();

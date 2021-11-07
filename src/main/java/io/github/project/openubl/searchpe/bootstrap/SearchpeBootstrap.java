@@ -16,9 +16,8 @@
  */
 package io.github.project.openubl.searchpe.bootstrap;
 
-import io.github.project.openubl.searchpe.models.RoleType;
-import io.github.project.openubl.searchpe.models.jpa.entity.BasicUserEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
+import io.github.project.openubl.searchpe.models.jpa.search.SearchpeNoneIndexer;
 import io.quarkus.runtime.StartupEvent;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.hibernate.search.mapper.orm.session.SearchSession;
@@ -37,20 +36,13 @@ public class SearchpeBootstrap {
     @Inject
     SearchSession searchSession;
 
-    @Transactional
-    void createAdminUserOnStart(@Observes StartupEvent ev) {
-        if (BasicUserEntity.count() == 0) {
-            BasicUserEntity.add("admin", "admin", RoleType.admin.toString());
-        }
-    }
-
     /**
      * If there is an upgrade of Version, the indexes in Elasticsearch should be deleted.
      * This will work under the assumption that on upgrades the DB will delete all data before.
      */
     @Transactional
     void reindexSearchIndexes(@Observes StartupEvent ev) throws InterruptedException {
-        if (!searchOrmIndexSyncStrategy.equals("bean:searchpeNoneIndexer")) {
+        if (!searchOrmIndexSyncStrategy.equals(SearchpeNoneIndexer.BEAN_FULL_NAME)) {
             if (VersionEntity.count() == 0) {
                 searchSession.massIndexer().startAndWait();
             }

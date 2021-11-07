@@ -16,15 +16,18 @@
  */
 package io.github.project.openubl.searchpe.resources;
 
+import io.github.project.openubl.searchpe.models.jpa.search.SearchpeNoneIndexer;
 import io.quarkus.qute.Location;
 import io.quarkus.qute.Template;
 import io.quarkus.qute.TemplateInstance;
+import io.quarkus.security.Authenticated;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import javax.inject.Inject;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import java.util.Objects;
 import java.util.Optional;
 
 @Path("/templates")
@@ -37,11 +40,25 @@ public class FrontendResource {
     @ConfigProperty(name = "quarkus.oidc.enabled")
     Optional<Boolean> isOidcEnabled;
 
+    @ConfigProperty(name = "quarkus.http.auth.form.cookie-name")
+    String formCookieName;
+
+    @ConfigProperty(name = "quarkus.oidc.logout.path")
+    String oidcLogoutPath;
+
+    @ConfigProperty(name = "quarkus.hibernate-search-orm.automatic-indexing.synchronization.strategy")
+    String esSyncStrategy;
+
+    @Authenticated
     @GET
     @Path("/settings.js")
     @Produces("text/javascript")
     public TemplateInstance getVersions() {
-        return settingsJS.data("defaultAuthMethod", isOidcEnabled.isPresent() && isOidcEnabled.get() ? "oidc" : "basicAuth");
+        return settingsJS
+                .data("defaultAuthMethod", isOidcEnabled.isPresent() && isOidcEnabled.get() ? "oidc" : "basic")
+                .data("formCookieName", formCookieName)
+                .data("oidcLogoutPath", oidcLogoutPath)
+                .data("isElasticsearchEnabled", !Objects.equals(esSyncStrategy, SearchpeNoneIndexer.BEAN_FULL_NAME));
     }
 
 }

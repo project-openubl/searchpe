@@ -21,6 +21,7 @@ import io.github.project.openubl.searchpe.jobs.ingest.IngestDataProgrammatically
 import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
+import io.github.project.openubl.searchpe.security.Permission;
 import io.quarkus.panache.common.Sort;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.jboss.logging.Logger;
@@ -39,7 +40,7 @@ import java.util.List;
 @Transactional
 @ApplicationScoped
 @Path("/versions")
-@Consumes("application/json")
+@Produces("application/json")
 public class VersionResource {
 
     private static final Logger logger = Logger.getLogger(VersionResource.class);
@@ -56,11 +57,11 @@ public class VersionResource {
     @Inject
     VersionRepository versionRepository;
 
-    @RolesAllowed({"admin", "user"})
+    @RolesAllowed({Permission.admin, Permission.version_write})
     @Operation(summary = "Get versions", description = "Get all versions available")
     @GET
     @Path("/")
-    @Produces("application/json")
+    @Consumes("application/json")
     public List<VersionEntity> getVersions(@QueryParam("active") Boolean active) {
         if (active != null) {
             List<VersionEntity> activeList = versionRepository.findActive().map(Arrays::asList).orElse(Collections.emptyList());
@@ -79,12 +80,12 @@ public class VersionResource {
         return VersionEntity.findAll(sort).list();
     }
 
-    @RolesAllowed({"admin", "user"})
+    @RolesAllowed({Permission.admin, Permission.version_write})
     @Operation(summary = "Create version", description = "Creates a new version and fires the importing process")
     @Transactional(Transactional.TxType.NEVER)
     @POST
     @Path("/")
-    @Produces("application/json")
+    @Consumes()
     public VersionEntity createVersion() {
         try {
             tx.begin();
@@ -116,11 +117,11 @@ public class VersionResource {
         }
     }
 
-    @RolesAllowed({"admin", "user"})
+    @RolesAllowed({Permission.admin, Permission.version_write})
     @Operation(summary = "Get version", description = "Get version by id")
     @GET
     @Path("/{id}")
-    @Produces("application/json")
+    @Consumes("application/json")
     public VersionEntity getVersion(@PathParam("id") Long id) {
         VersionEntity version = VersionEntity.findById(id);
         if (version == null) {
@@ -130,12 +131,12 @@ public class VersionResource {
         return version;
     }
 
-    @RolesAllowed({"admin", "user"})
+    @RolesAllowed({Permission.admin, Permission.version_write})
     @Operation(summary = "Delete version", description = "Delete version by id")
     @Transactional(Transactional.TxType.NEVER)
     @DELETE
     @Path("/{id}")
-    @Produces("application/json")
+    @Consumes("application/json")
     public void deleteVersion(@PathParam("id") Long id) {
         try {
             tx.begin();
@@ -172,4 +173,5 @@ public class VersionResource {
             throw new InternalServerErrorException(e);
         }
     }
+
 }

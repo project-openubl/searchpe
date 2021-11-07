@@ -18,8 +18,8 @@ package io.github.project.openubl.searchpe.resources;
 
 import io.github.project.openubl.searchpe.AbstractBaseTest;
 import io.github.project.openubl.searchpe.EnterpriseProfileManager;
-import io.github.project.openubl.searchpe.models.RoleType;
 import io.github.project.openubl.searchpe.models.jpa.entity.BasicUserEntity;
+import io.github.project.openubl.searchpe.security.Permission;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
@@ -88,7 +88,7 @@ public class UserResource_EnterpriseTest extends AbstractBaseTest {
         BasicUserEntity user = new BasicUserEntity();
         user.username = "myUsername";
         user.password = "myPassword";
-        user.role = RoleType.user.toString();
+        user.permissions = Permission.search;
 
         // When
         givenAuth("admin")

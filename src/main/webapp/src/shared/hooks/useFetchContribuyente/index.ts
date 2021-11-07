@@ -1,0 +1,1 @@
+export { useFetchContribuyente } from "./useFetchContribuyente";

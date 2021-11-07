@@ -16,6 +16,7 @@
  */
 package io.github.project.openubl.searchpe.models.jpa.entity;
 
+import io.github.project.openubl.searchpe.idm.BasicUserRepresentation;
 import io.quarkus.elytron.security.common.BcryptUtil;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import io.quarkus.security.jpa.Password;
@@ -23,15 +24,19 @@ import io.quarkus.security.jpa.Roles;
 import io.quarkus.security.jpa.UserDefinition;
 import io.quarkus.security.jpa.Username;
 
-import javax.persistence.Entity;
-import javax.persistence.Table;
-import javax.persistence.Version;
+import javax.persistence.*;
 import javax.validation.constraints.NotNull;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Entity
-@Table(name = "basic_user")
+@Table(name = "basic_user", uniqueConstraints = {@UniqueConstraint(columnNames = {"username"})})
 @UserDefinition
 public class BasicUserEntity extends PanacheEntity {
+
+    @NotNull
+    @Column(name = "full_name")
+    public String fullName;
 
     @NotNull
     @Username
@@ -42,30 +47,35 @@ public class BasicUserEntity extends PanacheEntity {
     public String password;
 
     @Roles
-    public String role;
+    public String permissions;
 
     @Version
     public int version;
 
-    /**
-     * Adds a new user in the database
-     *
-     * @param username the user name
-     * @param password the unencrypted password (it will be encrypted with bcrypt)
-     * @param role     the comma-separated roles
-     */
-    public static void add(String username, String password, String role) {
-        BasicUserEntity user = new BasicUserEntity();
-        user.username = username;
-        user.password = BcryptUtil.bcryptHash(password);
-        user.role = role;
-        user.persist();
+    public BasicUserRepresentation toRepresentation() {
+        BasicUserRepresentation result = new BasicUserRepresentation();
+        result.setId(id);
+        result.setFullName(fullName);
+        result.setUsername(username);
+        result.setPermissions(Arrays.stream(permissions.split(",")).sorted().collect(Collectors.toCollection(LinkedHashSet::new)));
+        return result;
     }
 
-    public static void update(BasicUserEntity user, String username, String password) {
-        user.username = username;
-        user.password = BcryptUtil.bcryptHash(password);
+    public static BasicUserEntity add(BasicUserRepresentation rep) {
+        BasicUserEntity user = new BasicUserEntity();
+        user.fullName = rep.getFullName();
+        user.username = rep.getUsername();
+        user.password = BcryptUtil.bcryptHash(rep.getPassword());
+        user.permissions = String.join(",", rep.getPermissions());
         user.persist();
+        return user;
+    }
+
+    public static BasicUserEntity update(BasicUserEntity user, Optional<String> password, Optional<Set<String>> permissions) {
+        password.ifPresent(newPassword -> user.password = BcryptUtil.bcryptHash(newPassword));
+        permissions.ifPresent(newPermissions -> user.permissions = String.join(",", newPermissions));
+        user.persist();
+        return user;
     }
 
 }

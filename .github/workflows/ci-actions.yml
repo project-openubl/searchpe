@@ -11,7 +11,7 @@ on:
       - "README.md"
 
 jobs:
-  linux-jvm-tests:
+  jvm-tests:
     name: JVM Tests
     runs-on: ubuntu-latest
     steps:
@@ -22,7 +22,7 @@ jobs:
           distribution: temurin
           cache: maven
       - name: Maven
-        run: mvn verify
+        run: mvn test
       - name: Prepare failure archive (if maven failed)
         if: failure()
         shell: bash
@@ -35,7 +35,6 @@ jobs:
           path: 'test-reports.tgz'
 
   native-tests:
-    needs: [ linux-jvm-tests ]
     name: Native Tests
     runs-on: ubuntu-latest
     strategy:
@@ -53,3 +52,27 @@ jobs:
         run: mvn verify -Dquarkus.native.container-build=true $MAVEN_ARGS
         env:
           MAVEN_ARGS: "-P native,${{ matrix.flavor }}"
+
+  ui-tests:
+    name: UI Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [ 12.x, 14.x ]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v2.4.0
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Build
+        working-directory: src/main/webapp
+        run: |
+          yarn install
+          yarn build
+      - name: Test
+        working-directory: src/main/webapp
+        run: yarn test --coverage --watchAll=false
+      - uses: codecov/codecov-action@v2.1.0
+        with:
+          flags: unitests
