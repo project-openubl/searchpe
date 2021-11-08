@@ -16,7 +16,7 @@ export const usePermission = ({ hasAny }: IArgs): IState => {
     currentUserSelectors.user(state)
   );
 
-  const userPermissions = currentUser?.role.split(",") || [];
+  const userPermissions = currentUser?.permissions || [];
   const isAllowed = hasAny.some((permission) => {
     return userPermissions.some((f) => f === permission);
   });

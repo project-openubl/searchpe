@@ -49,7 +49,7 @@ import { Permission } from "Constants";
 
 const columns: ICell[] = [
   { title: "Username", transforms: [sortable, cellWidth(40)] },
-  { title: "Role", transforms: [sortable, cellWidth(60)] },
+  { title: "Permissions", transforms: [cellWidth(60)] },
 ];
 
 const columnIndexToField = (
@@ -82,7 +82,7 @@ const itemsToRow = (items: User[]) => {
         title: item.username,
       },
       {
-        title: item.role,
+        title: item.permissions,
       },
     ],
   }));
@@ -96,8 +96,6 @@ export const compareByColumnIndex = (
   switch (columnIndex) {
     case 0: // username
       return a.username.localeCompare(b.username);
-    case 1: // role
-      return a.role.localeCompare(b.role);
     default:
       return 0;
   }
@@ -167,7 +165,7 @@ export const UserList: React.FC<UserListProps> = () => {
       },
     });
 
-    if (!row.role.split(",").some((f) => f === Permission.admin)) {
+    if (!row.permissions.some((f) => f === Permission.admin)) {
       actions.push({
         title: "Delete",
         onClick: (

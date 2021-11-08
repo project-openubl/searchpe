@@ -25,7 +25,7 @@ export const SSOMenu: React.FC = () => {
   const logout = () => {
     if (isBasicAuthEnabled()) {
       document.cookie = `${getAuthFormCookieName()}=; Max-Age=0`;
-      window.location.replace("/");
+      window.location.reload();
     } else if (isOidcAuthEnabled()) {
       window.location.replace(getOidcLogoutPath());
     }
