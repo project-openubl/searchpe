@@ -19,8 +19,8 @@ public class AuthSwitchServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        long currentNumberOfAdmins = BasicUserEntity.find("from BasicUserEntity where permissions like '%" + Permission.admin + "'").count();
-        if (currentNumberOfAdmins > 0) {
+        long currentNumberOfUsers = BasicUserEntity.count();
+        if (currentNumberOfUsers > 0) {
             resp.sendRedirect("login.html");
         } else {
             resp.sendRedirect("signup.html");

@@ -50,7 +50,6 @@ public class SignupServlet extends HttpServlet {
         BasicUserRepresentation userRepresentation = new BasicUserRepresentation();
         userRepresentation.setUsername(username);
         userRepresentation.setPassword(password1);
-        userRepresentation.setFullName("");
         userRepresentation.setPermissions(new HashSet<>(List.of(Permission.admin)));
 
         BasicUserEntity userCreated = null;
@@ -59,8 +58,8 @@ public class SignupServlet extends HttpServlet {
             try {
                 tx.begin();
 
-                long currentNumberOfAdmins = BasicUserEntity.find("from BasicUserEntity where permissions like '%" + Permission.admin + "'").count();
-                if (currentNumberOfAdmins == 0) {
+                long currentNumberOfUsers = BasicUserEntity.count();
+                if (currentNumberOfUsers == 0) {
                     userCreated = BasicUserEntity.add(userRepresentation);
                 }
 
