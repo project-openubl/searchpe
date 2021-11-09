@@ -167,7 +167,7 @@ public class UserResource_StandaloneTest extends AbstractBaseTest {
                 .body(userToUpdate)
                 .put("/" + userToUpdate.getId())
                 .then()
-                .statusCode(200);
+                .statusCode(202);
 
         // Then
         givenAuth("admin")
