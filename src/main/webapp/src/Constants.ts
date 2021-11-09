@@ -1,7 +1,15 @@
 export enum Permission {
-  admin = "admin",
-  user = "user",
+  admin = "admin:app",
+  search = "search",
+  version_write = "version:write",
+  user_write = "user:write",
 }
+export const ALL_PERMISSIONS: Permission[] = [
+  Permission.admin,
+  Permission.search,
+  Permission.version_write,
+  Permission.user_write,
+];
 
 export type SEARCHPE_AUTH_METHOD = "oidc" | "basic";
 

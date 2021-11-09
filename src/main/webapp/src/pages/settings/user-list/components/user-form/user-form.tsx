@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { AxiosError, AxiosPromise, AxiosResponse } from "axios";
 import { useFormik, FormikProvider, FormikHelpers } from "formik";
-import { object, string } from "yup";
+import { object, string, array } from "yup";
 
 import {
   ActionGroup,
@@ -20,10 +20,14 @@ import {
   getValidatedFromError,
   getValidatedFromErrorTouched,
 } from "utils/modelUtils";
+import { ALL_PERMISSIONS, Permission } from "Constants";
+import { SimpleSelectMultipleFormikField } from "shared/components/simple-select";
 
 export interface FormValues {
+  fullName: string;
   username: string;
   password: string;
+  permissions: Permission[];
 }
 
 export interface UserFormProps {
@@ -40,13 +44,17 @@ export const UserForm: React.FC<UserFormProps> = ({
   const [error, setError] = useState<AxiosError>();
 
   const initialValues: FormValues = {
+    fullName: user?.fullName || "",
     username: user?.username || "",
     password: "",
+    permissions: user?.permissions || [],
   };
 
   const validationSchema = object().shape({
+    fullName: string().trim().max(250),
     username: string().trim().required().min(3).max(120),
     password: string().trim().required().min(3).max(250),
+    permissions: array().required().min(1),
   });
 
   const onSubmit = (
@@ -54,9 +62,10 @@ export const UserForm: React.FC<UserFormProps> = ({
     formikHelpers: FormikHelpers<FormValues>
   ) => {
     const payload: User = {
+      fullName: formValues.fullName.trim(),
       username: formValues.username.trim(),
       password: formValues.password.trim(),
-      permissions: [],
+      permissions: formValues.permissions,
     };
 
     let promise: AxiosPromise<User>;
@@ -101,6 +110,47 @@ export const UserForm: React.FC<UserFormProps> = ({
             title={getAxiosErrorMessage(error)}
           />
         )}
+        <FormGroup
+          label="Nombre"
+          fieldId="fullName"
+          isRequired={true}
+          validated={getValidatedFromError(formik.errors.fullName)}
+          helperTextInvalid={formik.errors.fullName}
+        >
+          <TextInput
+            type="text"
+            name="fullName"
+            aria-label="fullName"
+            aria-describedby="fullName"
+            isRequired={true}
+            onChange={onChangeField}
+            onBlur={formik.handleBlur}
+            value={formik.values.fullName}
+            validated={getValidatedFromErrorTouched(
+              formik.errors.fullName,
+              formik.touched.fullName
+            )}
+          />
+        </FormGroup>
+        <FormGroup
+          label="Permisos"
+          fieldId="permissions"
+          isRequired={true}
+          validated={getValidatedFromError(formik.errors.permissions)}
+          helperTextInvalid={formik.errors.permissions}
+        >
+          <SimpleSelectMultipleFormikField
+            fieldConfig={{ name: "permissions" }}
+            selectConfig={{
+              variant: "checkbox",
+              "aria-label": "permissions",
+              "aria-describedby": "permissions",
+              placeholderText: "Permisos asignados",
+            }}
+            options={ALL_PERMISSIONS}
+            isEqual={(a, b) => a === b}
+          />
+        </FormGroup>
         <FormGroup
           label="Usuario"
           fieldId="username"
