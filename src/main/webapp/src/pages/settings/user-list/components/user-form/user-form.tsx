@@ -10,8 +10,10 @@ import {
   ButtonVariant,
   Form,
   FormGroup,
+  InputGroup,
   TextInput,
 } from "@patternfly/react-core";
+import { EditAltIcon } from "@patternfly/react-icons";
 
 import { createUser, updateUser } from "api/rest";
 import { User } from "api/models";
@@ -41,6 +43,7 @@ export const UserForm: React.FC<UserFormProps> = ({
   onSaved,
   onCancel,
 }) => {
+  const [isEditingPassword, setIsEditingPassword] = useState(false);
   const [error, setError] = useState<AxiosError>();
 
   const initialValues: FormValues = {
@@ -52,8 +55,16 @@ export const UserForm: React.FC<UserFormProps> = ({
 
   const validationSchema = object().shape({
     fullName: string().trim().max(250),
-    username: string().trim().required().min(3).max(120),
-    password: string().trim().required().min(3).max(250),
+    username: string()
+      .trim()
+      .required()
+      .min(3)
+      .max(120)
+      .matches(/^[a-zA-Z0-9._-]{3,}$/),
+    password:
+      user && !isEditingPassword
+        ? string().max(250)
+        : string().required().min(3).max(250),
     permissions: array().required().min(1),
   });
 
@@ -63,8 +74,10 @@ export const UserForm: React.FC<UserFormProps> = ({
   ) => {
     const payload: User = {
       fullName: formValues.fullName.trim(),
-      username: formValues.username.trim(),
-      password: formValues.password.trim(),
+      username: formValues.username,
+      password: (formValues.password !== ""
+        ? formValues.password
+        : undefined) as any,
       permissions: formValues.permissions,
     };
 
@@ -89,7 +102,7 @@ export const UserForm: React.FC<UserFormProps> = ({
       });
   };
 
-  const formik = useFormik({
+  let formik = useFormik({
     enableReinitialize: true,
     initialValues: initialValues,
     validationSchema: validationSchema,
@@ -174,28 +187,76 @@ export const UserForm: React.FC<UserFormProps> = ({
             autoComplete="off"
           />
         </FormGroup>
-        <FormGroup
-          label="Contraseña"
-          fieldId="password"
-          isRequired={true}
-          validated={getValidatedFromError(formik.errors.password)}
-          helperTextInvalid={formik.errors.password}
-        >
-          <TextInput
-            type="password"
-            name="password"
-            aria-label="password"
-            aria-describedby="password"
+        {user ? (
+          <FormGroup
+            label="Contraseña"
+            fieldId="password"
+            isRequired={isEditingPassword}
+            validated={
+              isEditingPassword
+                ? getValidatedFromError(formik.errors.password)
+                : "default"
+            }
+            helperTextInvalid={isEditingPassword ? formik.errors.password : ""}
+          >
+            <InputGroup>
+              <TextInput
+                type="password"
+                name="password"
+                aria-label="password"
+                aria-describedby="password"
+                isRequired={isEditingPassword}
+                onChange={onChangeField}
+                onBlur={formik.handleBlur}
+                value={isEditingPassword ? formik.values.password : "******"}
+                validated={
+                  isEditingPassword
+                    ? getValidatedFromErrorTouched(
+                        formik.errors.password,
+                        formik.touched.password
+                      )
+                    : "default"
+                }
+                isDisabled={!isEditingPassword}
+              />
+              <Button
+                variant="control"
+                aria-label="change-password"
+                onClick={() => {
+                  setIsEditingPassword((current) => {
+                    formik.setFieldValue("password", "");
+                    return !current;
+                  });
+                }}
+              >
+                <EditAltIcon />
+              </Button>
+            </InputGroup>
+          </FormGroup>
+        ) : (
+          <FormGroup
+            label="Contraseña"
+            fieldId="password"
             isRequired={true}
-            onChange={onChangeField}
-            onBlur={formik.handleBlur}
-            value={formik.values.password}
-            validated={getValidatedFromErrorTouched(
-              formik.errors.password,
-              formik.touched.password
-            )}
-          />
-        </FormGroup>
+            validated={getValidatedFromError(formik.errors.password)}
+            helperTextInvalid={formik.errors.password}
+          >
+            <TextInput
+              type="password"
+              name="password"
+              aria-label="password"
+              aria-describedby="password"
+              isRequired={true}
+              onChange={onChangeField}
+              onBlur={formik.handleBlur}
+              value={formik.values.password}
+              validated={getValidatedFromErrorTouched(
+                formik.errors.password,
+                formik.touched.password
+              )}
+            />
+          </FormGroup>
+        )}
 
         <ActionGroup>
           <Button

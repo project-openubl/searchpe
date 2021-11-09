@@ -16,8 +16,10 @@
  */
 package io.github.project.openubl.searchpe.idm;
 
+import io.github.project.openubl.searchpe.idm.validators.ValidPermission;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 
+import javax.validation.Valid;
 import javax.validation.constraints.*;
 import java.util.Set;
 
@@ -36,7 +38,8 @@ public class BasicUserRepresentation {
     @Size(min = 3, max = 250)
     private String password;
 
-    @NotNull
+    @ValidPermission
+    @Valid
     @NotEmpty
     private Set<String> permissions;
 
