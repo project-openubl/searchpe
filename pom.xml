@@ -486,9 +486,9 @@
                     <plugin>
                         <groupId>io.fabric8</groupId>
                         <artifactId>docker-maven-plugin</artifactId>
-                        <version>0.37.0</version>
+                        <version>0.38.0</version>
                         <configuration>
-                            <skip>${isTest}</skip>
+                            <skip>${skipTests}</skip>
                             <images>
                                 <image>
                                     <name>docker.elastic.co/elasticsearch/elasticsearch:7.10.2</name>
