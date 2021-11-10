@@ -33,4 +33,4 @@ jobs:
           -Dquarkus.container-image.password=${{ secrets.GITHUB_TOKEN }} \
           $MAVEN_ARGS
         env:
-          MAVEN_ARGS: "-P native,${{ matrix.flavor }}"
+          MAVEN_ARGS: "-P ui,native,${{ matrix.flavor }}"
