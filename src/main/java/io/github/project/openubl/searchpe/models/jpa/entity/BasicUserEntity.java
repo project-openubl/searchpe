@@ -70,9 +70,13 @@ public class BasicUserEntity extends PanacheEntity {
         return user;
     }
 
-    public static BasicUserEntity update(BasicUserEntity user, Optional<String> password, Optional<Set<String>> permissions) {
-        password.ifPresent(newPassword -> user.password = BcryptUtil.bcryptHash(newPassword));
-        permissions.ifPresent(newPermissions -> user.permissions = String.join(",", newPermissions));
+    public static BasicUserEntity update(BasicUserEntity user, BasicUserRepresentation rep) {
+        user.fullName = rep.getFullName();
+        user.username = rep.getUsername();
+        if (rep.getPassword() != null) {
+            user.password = BcryptUtil.bcryptHash(rep.getPassword());
+        }
+        user.permissions = String.join(",", rep.getPermissions());
         user.persist();
         return user;
     }

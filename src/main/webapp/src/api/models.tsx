@@ -1,3 +1,5 @@
+import { Permission } from "Constants";
+
 export interface PageQuery {
   page: number;
   perPage: number;
@@ -67,7 +69,8 @@ export type TipoContribuyente = "NATURAL" | "JURIDICA";
 
 export interface User {
   id?: number;
+  fullName?: string;
   username: string;
   password: string;
-  permissions: string[];
+  permissions: Permission[];
 }

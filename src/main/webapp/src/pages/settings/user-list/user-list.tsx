@@ -45,11 +45,11 @@ import {
 
 import { UserForm } from "./components/user-form";
 import { getAxiosErrorMessage } from "utils/modelUtils";
-import { Permission } from "Constants";
 
 const columns: ICell[] = [
-  { title: "Username", transforms: [sortable, cellWidth(40)] },
-  { title: "Permissions", transforms: [cellWidth(60)] },
+  { title: "Usuario", transforms: [sortable, cellWidth(30)] },
+  { title: "Permisos", transforms: [cellWidth(50)] },
+  { title: "Nombre", transforms: [cellWidth(20)] },
 ];
 
 const columnIndexToField = (
@@ -82,7 +82,10 @@ const itemsToRow = (items: User[]) => {
         title: item.username,
       },
       {
-        title: item.permissions,
+        title: item.permissions.join(", "),
+      },
+      {
+        title: item.fullName,
       },
     ],
   }));
@@ -148,8 +151,6 @@ export const UserList: React.FC<UserListProps> = () => {
   }, [fetchUsers]);
 
   const actionResolver = (rowData: IRowData): (IAction | ISeparator)[] => {
-    const row: User = getRow(rowData);
-
     const actions: (IAction | ISeparator)[] = [];
 
     actions.push({
@@ -165,45 +166,43 @@ export const UserList: React.FC<UserListProps> = () => {
       },
     });
 
-    if (!row.permissions.some((f) => f === Permission.admin)) {
-      actions.push({
-        title: "Delete",
-        onClick: (
-          event: React.MouseEvent,
-          rowIndex: number,
-          rowData: IRowData,
-          extraData: IExtraData
-        ) => {
-          const row: User = getRow(rowData);
-          dispatch(
-            deleteDialogActions.openModal({
-              name: `${row.username}`,
-              type: "usuario",
-              onDelete: () => {
-                dispatch(deleteDialogActions.processing());
-                deleteUser(
-                  row,
-                  () => {
-                    dispatch(deleteDialogActions.closeModal());
-                    fetchUsers();
-                  },
-                  (error) => {
-                    dispatch(deleteDialogActions.closeModal());
-                    dispatch(
-                      alertActions.addAlert(
-                        "danger",
-                        "Error",
-                        getAxiosErrorMessage(error)
-                      )
-                    );
-                  }
-                );
-              },
-            })
-          );
-        },
-      });
-    }
+    actions.push({
+      title: "Eliminar",
+      onClick: (
+        event: React.MouseEvent,
+        rowIndex: number,
+        rowData: IRowData,
+        extraData: IExtraData
+      ) => {
+        const row: User = getRow(rowData);
+        dispatch(
+          deleteDialogActions.openModal({
+            name: `${row.username}`,
+            type: "usuario",
+            onDelete: () => {
+              dispatch(deleteDialogActions.processing());
+              deleteUser(
+                row,
+                () => {
+                  dispatch(deleteDialogActions.closeModal());
+                  fetchUsers();
+                },
+                (error) => {
+                  dispatch(deleteDialogActions.closeModal());
+                  dispatch(
+                    alertActions.addAlert(
+                      "danger",
+                      "Error",
+                      getAxiosErrorMessage(error)
+                    )
+                  );
+                }
+              );
+            },
+          })
+        );
+      },
+    });
 
     return actions;
   };

@@ -22,17 +22,22 @@ import io.github.project.openubl.searchpe.models.jpa.entity.BasicUserEntity;
 import io.github.project.openubl.searchpe.resources.interceptors.HTTPBasicAuthEnabled;
 import io.github.project.openubl.searchpe.security.Permission;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.jboss.logging.Logger;
 
 import javax.annotation.security.RolesAllowed;
 import javax.enterprise.context.ApplicationScoped;
+import javax.inject.Inject;
 import javax.transaction.Transactional;
+import javax.validation.ConstraintViolation;
 import javax.validation.Valid;
+import javax.validation.Validator;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Response;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Transactional
@@ -41,6 +46,11 @@ import java.util.stream.Collectors;
 @Consumes("application/json")
 @Produces("application/json")
 public class BasicUserResource {
+
+    private static final Logger LOGGER = Logger.getLogger(BasicUserResource.class);
+
+    @Inject
+    Validator validator;
 
     @RolesAllowed({Permission.admin, Permission.user_write})
     @HTTPBasicAuthEnabled
@@ -96,18 +106,28 @@ public class BasicUserResource {
     @Operation(summary = "Update user", description = "Update username or password. It won't update current role")
     @PUT
     @Path("/{id}")
-    public BasicUserRepresentation updateUser(@NotNull @PathParam("id") Long id, @NotNull BasicUserRepresentation rep) {
+    public Response updateUser(@NotNull @PathParam("id") Long id, @NotNull BasicUserRepresentation rep) {
         BasicUserEntity user = (BasicUserEntity) BasicUserEntity.findByIdOptional(id).orElseThrow(NotFoundException::new);
 
-        if (rep.getFullName() != null) {
-            user.fullName = rep.getFullName();
-        }
-        if (rep.getUsername() != null) {
-            user.username = rep.getUsername();
+        // Doing this for making the validator pass
+        boolean tempPasswordSet = false;
+        if (rep.getPassword() == null) {
+            rep.setPassword("123456789");
+            tempPasswordSet = true;
         }
 
-        BasicUserEntity update = BasicUserEntity.update(user, Optional.ofNullable(rep.getPassword()), Optional.ofNullable(rep.getPermissions()));
-        return update.toRepresentation();
+        Set<ConstraintViolation<BasicUserRepresentation>> violations = validator.validate(rep);
+        if (!violations.isEmpty()) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("The info sent is not valid").build();
+        }
+
+        // Restore password
+        if (tempPasswordSet) {
+            rep.setPassword(null);
+        }
+
+        BasicUserEntity update = BasicUserEntity.update(user, rep);
+        return Response.accepted(update.toRepresentation()).build();
     }
 
     @RolesAllowed({Permission.admin, Permission.user_write})

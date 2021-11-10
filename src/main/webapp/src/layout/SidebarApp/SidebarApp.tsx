@@ -16,32 +16,40 @@ export const SidebarApp: React.FC = () => {
   const renderPageNav = () => {
     return (
       <Nav id="nav-sidebar" aria-label="Nav" theme={LayoutTheme}>
-        <NavGroup title="Consultas">
-          {isElasticsearchEnabled() && (
+        <VisibilityByPermission hasAny={[Permission.admin, Permission.search]}>
+          <NavGroup title="Consultas">
+            {isElasticsearchEnabled() && (
+              <NavItem>
+                <NavLink
+                  to={Paths.contribuyenteList}
+                  activeClassName="pf-m-current"
+                >
+                  Buscar
+                </NavLink>
+              </NavItem>
+            )}
             <NavItem>
-              <NavLink
-                to={Paths.contribuyenteList}
-                activeClassName="pf-m-current"
-              >
-                Buscar
+              <NavLink to={Paths.consultaRuc} activeClassName="pf-m-current">
+                Número documento
               </NavLink>
             </NavItem>
-          )}
-          <NavItem>
-            <NavLink to={Paths.consultaRuc} activeClassName="pf-m-current">
-              Número documento
-            </NavLink>
-          </NavItem>
-        </NavGroup>
-        <NavGroup title="Padrón reducido">
-          <NavItem>
-            <NavLink to={Paths.versionList} activeClassName="pf-m-current">
-              Versiones
-            </NavLink>
-          </NavItem>
-        </NavGroup>
+          </NavGroup>
+        </VisibilityByPermission>
+        <VisibilityByPermission
+          hasAny={[Permission.admin, Permission.version_write]}
+        >
+          <NavGroup title="Padrón reducido">
+            <NavItem>
+              <NavLink to={Paths.versionList} activeClassName="pf-m-current">
+                Versiones
+              </NavLink>
+            </NavItem>
+          </NavGroup>
+        </VisibilityByPermission>
         {isBasicAuthEnabled() && (
-          <VisibilityByPermission hasAny={[Permission.admin]}>
+          <VisibilityByPermission
+            hasAny={[Permission.admin, Permission.user_write]}
+          >
             <NavGroup title="Configuración">
               <NavItem>
                 <NavLink
