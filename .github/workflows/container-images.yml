@@ -23,15 +23,27 @@ jobs:
         run: ./mvnw package -Dquarkus.native.container-build=true -DskipTests $MAVEN_ARGS
         env:
           MAVEN_ARGS: "-P ui,native,${{ matrix.flavor }}"
+      - name: Extract image name
+        shell: bash
+        run: |
+          bash -c '
+          flavor="standalone";
+          image_name="searchpe";
+          if [ $flavor != "standalone" ]; then
+            image_name="$image_name-$flavor"
+          fi
+          echo $image_name;
+          echo "##[set-output name=searchpe_image_name;]$(echo $image_name)"'
+        id: extract_image_name
       - name: Extract branch name
         shell: bash
-        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        run: echo "##[set-output name=branch;]$(echo ${{ matrix.flavor }})"
         id: extract_branch
       - name: Push to Quay.io
         uses: elgohr/Publish-Docker-Github-Action@3.04
         with:
           registry: quay.io
-          name: projectopenubl/searchpe-${{ matrix.flavor }}
+          name: projectopenubl/${{ steps.extract_image_name.outputs.searchpe_image_name }}
           username: ${{ secrets.QUAYIO_USERNAME }}
           password: ${{ secrets.QUAYIO_PASSWORD }}
           dockerfile: src/main/docker/Dockerfile.native
@@ -41,7 +53,7 @@ jobs:
         uses: elgohr/Publish-Docker-Github-Action@3.04
         with:
           registry: ghcr.io
-          name: ${{ github.repository_owner }}/${{ github.event.repository.name }}/searchpe-${{ matrix.flavor }}
+          name: ${{ github.repository_owner }}/${{ github.event.repository.name }}/${{ steps.extract_image_name.outputs.searchpe_image_name }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
           dockerfile: src/main/docker/Dockerfile.native
@@ -50,7 +62,7 @@ jobs:
       - name: Push to Docker Hub
         uses: elgohr/Publish-Docker-Github-Action@3.04
         with:
-          name: projectopenubl/searchpe-${{ matrix.flavor }}
+          name: projectopenubl/${{ steps.extract_image_name.outputs.searchpe_image_name }}
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           dockerfile: src/main/docker/Dockerfile.native
