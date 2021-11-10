@@ -1,6 +1,6 @@
 name: PR build container images
 
-on: [push]
+on: [ push ]
 
 jobs:
   container-images:
@@ -16,6 +16,18 @@ jobs:
         with:
           java-version: 11
           distribution: temurin
+      - name: Extract image name
+        shell: bash
+        run: |
+          bash -c '
+          flavor="standalone";
+          image_name="searchpe";
+          if [ $flavor != "standalone" ]; then
+            image_name="$image_name-$flavor"
+          fi
+          echo $image_name;
+          echo "##[set-output name=searchpe_image_name;]$(echo $image_name)"'
+        id: extract_image_name
       - name: Extract branch name
         shell: bash
         run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
@@ -26,7 +38,7 @@ jobs:
           -Dquarkus.container-image.build=true \
           -Dquarkus.container-image.push=true \
           -Dquarkus.container-image.group=${{ github.repository_owner }} \
-          -Dquarkus.container-image.name=${{ github.event.repository.name }}/searchpe-${{ matrix.flavor }} \
+          -Dquarkus.container-image.name=${{ github.event.repository.name }}/${{ steps.extract_image_name.outputs.searchpe_image_name }} \
           -Dquarkus.container-image.tag=${{ steps.extract_branch.outputs.branch }} \
           -Dquarkus.container-image.registry=ghcr.io \
           -Dquarkus.container-image.username=${{ github.actor }} \
