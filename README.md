@@ -34,7 +34,7 @@ Inicia la UI en modo desarrollo:
 yarn --cwd src/main/webapp run start
 ```
 
-## Getting started
+## Links
 
 - [Documentación](https://project-openubl.github.io)
 - [Discusiones](https://github.com/project-openubl/searchpe/discussions)

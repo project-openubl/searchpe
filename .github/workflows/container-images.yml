@@ -27,7 +27,7 @@ jobs:
         shell: bash
         run: |
           bash -c '
-          flavor="standalone";
+          flavor=${{ matrix.flavor }};
           image_name="searchpe";
           if [ $flavor != "standalone" ]; then
             image_name="$image_name-$flavor"
