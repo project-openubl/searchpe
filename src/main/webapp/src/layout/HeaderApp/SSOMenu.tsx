@@ -7,29 +7,19 @@ import { currentUserSelectors } from "store/currentUser";
 import {
   Dropdown,
   DropdownGroup,
-  DropdownItem,
   DropdownToggle,
   PageHeaderToolsItem,
 } from "@patternfly/react-core";
-import {
-  getAuthFormCookieName,
-  isBasicAuthEnabled,
-  isOidcAuthEnabled,
-  getOidcLogoutPath,
-} from "Constants";
+
+import { isBasicAuthEnabled, isOidcAuthEnabled } from "Constants";
+
+import { BasicMenuDropdownItems } from "./BasicMenuDropdownItems";
+import { OidcMenuDropdownItems } from "./OidcMenuDropdownItems";
 
 export const SSOMenu: React.FC = () => {
   const currentUser = useSelector((state: RootState) =>
     currentUserSelectors.user(state)
   );
-  const logout = () => {
-    if (isBasicAuthEnabled()) {
-      document.cookie = `${getAuthFormCookieName()}=; Max-Age=0`;
-      window.location.reload();
-    } else if (isOidcAuthEnabled()) {
-      window.location.replace(getOidcLogoutPath());
-    }
-  };
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const onDropdownSelect = () => {
@@ -38,6 +28,13 @@ export const SSOMenu: React.FC = () => {
   const onDropdownToggle = (isOpen: boolean) => {
     setIsDropdownOpen(isOpen);
   };
+
+  let authDropdownItems;
+  if (isBasicAuthEnabled()) {
+    authDropdownItems = <BasicMenuDropdownItems />;
+  } else if (isOidcAuthEnabled()) {
+    authDropdownItems = <OidcMenuDropdownItems />;
+  }
 
   return (
     <PageHeaderToolsItem
@@ -62,9 +59,7 @@ export const SSOMenu: React.FC = () => {
         }
         dropdownItems={[
           <DropdownGroup key="user-management">
-            <DropdownItem key="logout" onClick={logout}>
-              Logout
-            </DropdownItem>
+            {authDropdownItems}
           </DropdownGroup>,
         ]}
       />

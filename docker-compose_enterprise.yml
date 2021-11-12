@@ -21,12 +21,12 @@ services:
   postgresql:
     image: postgres:13.1
     environment:
-      POSTGRES_DB: db
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
+      POSTGRES_DB: searchpe_db
+      POSTGRES_USER: db_username
+      POSTGRES_PASSWORD: db_password
     network_mode: "host"
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U user -d db" ]
+      test: [ "CMD-SHELL", "pg_isready -U db_username -d searchpe_db" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -50,7 +50,7 @@ services:
       KEYCLOAK_IMPORT: /tmp/openubl-realm.json
       DB_VENDOR: h2
     volumes:
-      - ./src/test/resources/openubl-realm.json:/tmp/openubl-realm.json:z
+      - ./src/main/resources/openubl-realm.json:/tmp/openubl-realm.json:z
     command:
       - "-Djboss.bind.address.private=127.0.0.1"
       - "-Djboss.bind.address=0.0.0.0"

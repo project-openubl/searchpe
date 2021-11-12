@@ -35,11 +35,12 @@
 
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-        <quarkus.platform.version>2.4.1.Final</quarkus.platform.version>
+        <quarkus.platform.version>2.4.2.Final</quarkus.platform.version>
 
+        <maven.compiler.parameters>true</maven.compiler.parameters>
         <surefire-plugin.version>3.0.0-M5</surefire-plugin.version>
         <compiler-plugin.version>3.8.1</compiler-plugin.version>
-        <maven.compiler.parameters>true</maven.compiler.parameters>
+        <maven-assembly-plugin.version>3.3.0</maven-assembly-plugin.version>
 
         <awaitility.version>4.1.1</awaitility.version>
         <testcontainers.version>1.15.3</testcontainers.version>
@@ -405,33 +406,6 @@
         </profile>
 
         <profile>
-            <id>distribution</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-assembly-plugin</artifactId>
-                        <version>3.3.0</version>
-                        <executions>
-                            <execution>
-                                <id>distribution</id>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>single</goal>
-                                </goals>
-                                <configuration>
-                                    <descriptors>
-                                        <descriptor>src/main/assembly/assembly.xml</descriptor>
-                                    </descriptors>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-
-        <profile>
             <id>standalone</id>
             <properties>
                 <quarkus.profile>standalone</quarkus.profile>
@@ -446,6 +420,26 @@
                                 <include>**/*StandaloneIT.java</include>
                             </includes>
                         </configuration>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <version>${maven-assembly-plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>distribution</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                                <configuration>
+                                    <descriptors>
+                                        <descriptor>src/main/assembly/standalone/assembly.xml</descriptor>
+                                    </descriptors>
+                                </configuration>
+                            </execution>
+                        </executions>
                     </plugin>
                 </plugins>
             </build>
@@ -472,6 +466,25 @@
                                 <include>**/*EnterpriseIT.java</include>
                             </includes>
                         </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <version>${maven-assembly-plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>distribution</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                                <configuration>
+                                    <descriptors>
+                                        <descriptor>src/main/assembly/enterprise/assembly.xml</descriptor>
+                                    </descriptors>
+                                </configuration>
+                            </execution>
+                        </executions>
                     </plugin>
                 </plugins>
             </build>
