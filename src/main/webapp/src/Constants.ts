@@ -41,9 +41,6 @@ export const isOidcAuthEnabled = (): boolean => {
 export const getAuthFormCookieName = (): string => {
   return SEARCHPE_SETTINGS.formCookieName;
 };
-export const getOidcLogoutPath = (): string => {
-  return SEARCHPE_SETTINGS.oidcLogoutPath;
-};
 
 export const isElasticsearchEnabled = (): boolean => {
   return SEARCHPE_SETTINGS.isElasticsearchEnabled;

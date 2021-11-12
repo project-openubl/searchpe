@@ -10,14 +10,30 @@ import configureStore from "./store";
 import { initApi } from "axios-config";
 import { getBaseApiUrl } from "utils/modelUtils";
 
+import KeycloakWrapper from "./keycloak";
+import { isBasicAuthEnabled, isOidcAuthEnabled } from "Constants";
+
 initApi(getBaseApiUrl());
 
+const BasicApp = (
+  <Provider store={configureStore()}>
+    <App />
+  </Provider>
+);
+
+const OidcApp = <KeycloakWrapper>{BasicApp}</KeycloakWrapper>;
+
+let SearchpeApp;
+if (isBasicAuthEnabled()) {
+  SearchpeApp = BasicApp;
+} else if (isOidcAuthEnabled()) {
+  SearchpeApp = OidcApp;
+} else {
+  throw new Error("Couldn't define auth method");
+}
+
 ReactDOM.render(
-  <React.StrictMode>
-    <Provider store={configureStore()}>
-      <App />
-    </Provider>
-  </React.StrictMode>,
+  <React.StrictMode>{SearchpeApp}</React.StrictMode>,
   document.getElementById("root")
 );
 

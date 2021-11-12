@@ -20,9 +20,10 @@ import io.github.project.openubl.searchpe.models.jpa.search.SearchpeNoneIndexer;
 import io.quarkus.qute.Location;
 import io.quarkus.qute.Template;
 import io.quarkus.qute.TemplateInstance;
-import io.quarkus.security.Authenticated;
+
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
+import javax.annotation.security.PermitAll;
 import javax.inject.Inject;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -37,28 +38,52 @@ public class FrontendResource {
     @Location("settings.js")
     Template settingsJS;
 
+    @Inject
+    @Location("keycloak.json")
+    Template keycloakJSON;
+
     @ConfigProperty(name = "quarkus.oidc.enabled")
     Optional<Boolean> isOidcEnabled;
 
     @ConfigProperty(name = "quarkus.http.auth.form.cookie-name")
-    String formCookieName;
-
-    @ConfigProperty(name = "quarkus.oidc.logout.path")
-    String oidcLogoutPath;
+    Optional<String> formCookieName;
 
     @ConfigProperty(name = "quarkus.hibernate-search-orm.automatic-indexing.synchronization.strategy")
-    String esSyncStrategy;
+    Optional<String> esSyncStrategy;
 
-    @Authenticated
+    @ConfigProperty(name = "quarkus.oidc.auth-server-url")
+    Optional<String> oidcServerUrl;
+
+    @ConfigProperty(name = "quarkus.oidc.client-id")
+    Optional<String> oidcClientId;
+
+    @PermitAll
     @GET
     @Path("/settings.js")
     @Produces("text/javascript")
-    public TemplateInstance getVersions() {
+    public TemplateInstance getSettingsJS() {
         return settingsJS
                 .data("defaultAuthMethod", isOidcEnabled.isPresent() && isOidcEnabled.get() ? "oidc" : "basic")
-                .data("formCookieName", formCookieName)
-                .data("oidcLogoutPath", oidcLogoutPath)
-                .data("isElasticsearchEnabled", !Objects.equals(esSyncStrategy, SearchpeNoneIndexer.BEAN_FULL_NAME));
+                .data("formCookieName", formCookieName.orElse(""))
+                .data("isElasticsearchEnabled", !Objects.equals(esSyncStrategy.orElse(""), SearchpeNoneIndexer.BEAN_FULL_NAME));
     }
 
+    @PermitAll
+    @GET
+    @Path("/keycloak.json")
+    @Produces("application/json")
+    public TemplateInstance getKeycloakJSON() {
+        String realmName = "";
+        String serverUrl = "";
+
+        if (oidcServerUrl.isPresent()) {
+            realmName = oidcServerUrl.get().substring(oidcServerUrl.get().lastIndexOf("/") + 1);
+            serverUrl = oidcServerUrl.get().substring(0, oidcServerUrl.get().indexOf("/realms"));
+        }
+
+        return keycloakJSON
+                .data("oidcRealm", realmName)
+                .data("oidcServerUrl", serverUrl)
+                .data("oidcResource", "searchpe-ui");
+    }
 }
