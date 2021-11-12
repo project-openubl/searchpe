@@ -126,7 +126,7 @@ export const UserForm: React.FC<UserFormProps> = ({
         <FormGroup
           label="Nombre"
           fieldId="fullName"
-          isRequired={true}
+          isRequired={false}
           validated={getValidatedFromError(formik.errors.fullName)}
           helperTextInvalid={formik.errors.fullName}
         >
@@ -135,7 +135,7 @@ export const UserForm: React.FC<UserFormProps> = ({
             name="fullName"
             aria-label="fullName"
             aria-describedby="fullName"
-            isRequired={true}
+            isRequired={false}
             onChange={onChangeField}
             onBlur={formik.handleBlur}
             value={formik.values.fullName}

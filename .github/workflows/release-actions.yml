@@ -9,6 +9,10 @@ jobs:
   distribution:
     name: Java artifacts
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        flavor: [ "standalone", "enterprise" ]
+      fail-fast: false
     steps:
       - uses: actions/checkout@v2.4.0
       - uses: actions/setup-java@v2
@@ -16,11 +20,13 @@ jobs:
           java-version: 11
           distribution: temurin
       - name: Build with maven
-        run: ./mvnw -DskipTests package -Pdistribution
+        run: ./mvnw -DskipTests package
+        env:
+          MAVEN_ARGS: "-P ui,distribution,${{ matrix.flavor }}"
       - name: Upload archive
         uses: actions/upload-artifact@v2.2.4
         with:
-          name: searchpe-distribution
+          name: searchpe-${{ matrix.flavor }}-distribution
           path: target/searchpe-*-distribution.zip
 
   container-image:
@@ -39,13 +45,25 @@ jobs:
       - name: Build with Maven
         run: ./mvnw package -Dquarkus.native.container-build=true -DskipTests $MAVEN_ARGS
         env:
-          MAVEN_ARGS: "-P native,${{ matrix.flavor }}"
+          MAVEN_ARGS: "-P ui,native,${{ matrix.flavor }}"
+      - name: Extract image name
+        shell: bash
+        run: |
+          bash -c '
+          flavor=${{ matrix.flavor }};
+          image_name="searchpe";
+          if [ $flavor != "standalone" ]; then
+            image_name="$image_name-$flavor"
+          fi
+          echo $image_name;
+          echo "##[set-output name=searchpe_image_name;]$(echo $image_name)"'
+        id: extract_image_name
 
       - name: Push to Quay.io
         uses: elgohr/Publish-Docker-Github-Action@3.04
         with:
           registry: quay.io
-          name: projectopenubl/searchpe-${{ matrix.flavor }}
+          name: projectopenubl/${{ steps.extract_image_name.outputs.searchpe_image_name }}
           username: ${{ secrets.QUAYIO_USERNAME }}
           password: ${{ secrets.QUAYIO_PASSWORD }}
           dockerfile: src/main/docker/Dockerfile.native
@@ -55,7 +73,7 @@ jobs:
         uses: elgohr/Publish-Docker-Github-Action@3.04
         with:
           registry: quay.io
-          name: projectopenubl/searchpe-${{ matrix.flavor }}
+          name: projectopenubl/${{ steps.extract_image_name.outputs.searchpe_image_name }}
           username: ${{ secrets.QUAYIO_USERNAME }}
           password: ${{ secrets.QUAYIO_PASSWORD }}
           dockerfile: src/main/docker/Dockerfile.native
@@ -66,7 +84,7 @@ jobs:
         uses: elgohr/Publish-Docker-Github-Action@3.04
         with:
           registry: docker.pkg.github.com
-          name: project-openubl/searchpe/searchpe-${{ matrix.flavor }}
+          name: project-openubl/searchpe/${{ steps.extract_image_name.outputs.searchpe_image_name }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
           dockerfile: src/main/docker/Dockerfile.native
@@ -76,7 +94,7 @@ jobs:
         uses: elgohr/Publish-Docker-Github-Action@3.04
         with:
           registry: docker.pkg.github.com
-          name: project-openubl/searchpe/searchpe-${{ matrix.flavor }}
+          name: project-openubl/searchpe/${{ steps.extract_image_name.outputs.searchpe_image_name }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
           dockerfile: src/main/docker/Dockerfile.native
@@ -86,7 +104,7 @@ jobs:
       - name: Push to Docker Hub
         uses: elgohr/Publish-Docker-Github-Action@3.04
         with:
-          name: projectopenubl/searchpe-${{ matrix.flavor }}
+          name: projectopenubl/${{ steps.extract_image_name.outputs.searchpe_image_name }}
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           dockerfile: src/main/docker/Dockerfile.native
@@ -95,7 +113,7 @@ jobs:
       - name: Push to Docker Hub
         uses: elgohr/Publish-Docker-Github-Action@3.04
         with:
-          name: projectopenubl/searchpe-${{ matrix.flavor }}
+          name: projectopenubl/${{ steps.extract_image_name.outputs.searchpe_image_name }}
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           dockerfile: src/main/docker/Dockerfile.native
@@ -123,19 +141,32 @@ jobs:
         id: get_version
         run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
 
-      - name: Download distribution
+      - name: Download standalone distribution
         uses: actions/download-artifact@v2
         with:
-          name: searchpe-distribution
-          path: .
-      - name: Upload release artifact
+          name: searchpe-standalone-distribution
+          path: standalone
+      - name: Download enterprise distribution
+        uses: actions/download-artifact@v2
+        with:
+          name: searchpe-enterprise-distribution
+          path: enterprise
+
+      - name: Upload standalone release artifact
         uses: actions/upload-release-asset@v1.0.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: searchpe-${{ steps.get_version.outputs.VERSION }}-distribution.zip
+          asset_path: standalone/searchpe-${{ steps.get_version.outputs.VERSION }}-distribution.zip
           asset_name: searchpe-${{ steps.get_version.outputs.VERSION }}.zip
           asset_content_type: application/zip
-
-
+      - name: Upload enterprise release artifact
+        uses: actions/upload-release-asset@v1.0.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: enterprise/searchpe-${{ steps.get_version.outputs.VERSION }}-distribution.zip
+          asset_name: searchpe-${{ steps.get_version.outputs.VERSION }}.zip
+          asset_content_type: application/zip

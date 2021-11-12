@@ -54,7 +54,7 @@ public class FrontendResource {
     @ConfigProperty(name = "quarkus.oidc.auth-server-url")
     Optional<String> oidcServerUrl;
 
-    @ConfigProperty(name = "quarkus.oidc.ui-client-id")
+    @ConfigProperty(name = "searchpe.oidc.ui-client-id")
     Optional<String> oidcClientId;
 
     @PermitAll

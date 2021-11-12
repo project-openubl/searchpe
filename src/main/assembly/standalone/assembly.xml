@@ -33,8 +33,13 @@
             <outputDirectory></outputDirectory>
         </fileSet>
         <fileSet>
-            <directory>src/main/distribution</directory>
-            <outputDirectory></outputDirectory>
+            <directory>src/main/distribution/bin</directory>
+            <outputDirectory>/bin</outputDirectory>
+            <filtered>false</filtered>
+        </fileSet>
+        <fileSet>
+            <directory>src/main/distribution/config/standalone</directory>
+            <outputDirectory>/config</outputDirectory>
             <filtered>false</filtered>
         </fileSet>
     </fileSets>
