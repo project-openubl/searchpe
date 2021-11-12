@@ -54,7 +54,7 @@ public class FrontendResource {
     @ConfigProperty(name = "quarkus.oidc.auth-server-url")
     Optional<String> oidcServerUrl;
 
-    @ConfigProperty(name = "quarkus.oidc.client-id")
+    @ConfigProperty(name = "quarkus.oidc.ui-client-id")
     Optional<String> oidcClientId;
 
     @PermitAll
@@ -84,6 +84,6 @@ public class FrontendResource {
         return keycloakJSON
                 .data("oidcRealm", realmName)
                 .data("oidcServerUrl", serverUrl)
-                .data("oidcResource", "searchpe-ui");
+                .data("oidcResource", oidcClientId.orElse(""));
     }
 }
