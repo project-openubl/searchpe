@@ -1,7 +1,7 @@
 ![CI](https://github.com/project-openubl/searchpe/workflows/CI/badge.svg)
 [![License](https://img.shields.io/badge/License-EPL%202.0-green.svg)](https://opensource.org/licenses/EPL-2.0)
 
-[![Docker Repository on Quay](https://quay.io/repository/projectopenubl/searchpe-standalone/status "Docker Repository on Quay")](https://quay.io/repository/projectopenubl/searchpe-standalone)
+[![Docker Repository on Quay](https://quay.io/repository/projectopenubl/searchpe/status "Docker Repository on Quay")](https://quay.io/repository/projectopenubl/searchpe)
 [![Docker Repository on Quay](https://quay.io/repository/projectopenubl/searchpe-enterprise/status "Docker Repository on Quay")](https://quay.io/repository/projectopenubl/searchpe-enterprise)
 
 [![Project Chat](https://img.shields.io/badge/zulip-join_chat-brightgreen.svg?style=for-the-badge&logo=zulip)](https://projectopenubl.zulipchat.com/)
