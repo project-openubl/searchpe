@@ -20,7 +20,7 @@ jobs:
           java-version: 11
           distribution: temurin
       - name: Build with maven
-        run: ./mvnw -DskipTests package
+        run: ./mvnw -DskipTests package $MAVEN_ARGS
         env:
           MAVEN_ARGS: "-P ui,distribution,${{ matrix.flavor }}"
       - name: Upload archive
