@@ -2,11 +2,11 @@
 @REM Copyright 2019 Project OpenUBL, Inc. and/or its affiliates
 @REM and other contributors as indicated by the @author tags.
 @REM
-@REM Licensed under the Eclipse Public License - v 2.0 (the "License");
+@REM Licensed under the Apache License, Version 2.0 (the "License");
 @REM you may not use this file except in compliance with the License.
 @REM You may obtain a copy of the License at
 @REM
-@REM https://www.eclipse.org/legal/epl-2.0/
+@REM http://www.apache.org/licenses/LICENSE-2.0
 @REM
 @REM Unless required by applicable law or agreed to in writing, software
 @REM distributed under the License is distributed on an "AS IS" BASIS,
