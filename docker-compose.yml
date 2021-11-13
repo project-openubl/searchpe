@@ -33,10 +33,11 @@ services:
       retries: 5
 
   searchpe:
-    image: quay.io/projectopenubl/searchpe:master
+    image: quay.io/projectopenubl/searchpe
     ports:
-      - 8080:8080
+      - 8180:8080
     environment:
+      QUARKUS_HTTP_PORT: 8080
       QUARKUS_DATASOURCE_USERNAME: db_username
       QUARKUS_DATASOURCE_PASSWORD: db_password
       QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgresql:5432/searchpe_db
