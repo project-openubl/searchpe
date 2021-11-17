@@ -472,6 +472,12 @@
       "realmRoles": [
         "admin:app"
       ],
+      "clientRoles": {
+        "account": [
+          "manage-account",
+          "view-profile"
+        ]
+      },
       "notBefore": 0,
       "groups": []
     },
@@ -503,6 +509,12 @@
         "search",
         "version:write"
       ],
+      "clientRoles": {
+        "account": [
+          "manage-account",
+          "view-profile"
+        ]
+      },
       "notBefore": 0,
       "groups": []
     },
