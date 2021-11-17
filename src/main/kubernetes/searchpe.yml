@@ -1,0 +1,206 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: searchpe-db
+  labels:
+    app.kubernetes.io/name: searchpe-db
+    app.kubernetes.io/component: database
+    app.kubernetes.io/instance: searchpe-db
+    app.kubernetes.io/part-of: openubl-searchpe
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: searchpe-db
+  labels:
+    app.kubernetes.io/name: searchpe-db
+    app.kubernetes.io/component: database
+    app.kubernetes.io/instance: searchpe-db
+    app.kubernetes.io/part-of: openubl-searchpe
+spec:
+  ports:
+    - name: tcp
+      protocol: TCP
+      port: 5432
+      targetPort: 5432
+  selector:
+    app.kubernetes.io/name: searchpe-db
+  type: ClusterIP
+  sessionAffinity: None
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: searchpe-db
+  labels:
+    app.kubernetes.io/name: searchpe-db
+    app.kubernetes.io/component: database
+    app.kubernetes.io/instance: searchpe-db
+    app.kubernetes.io/part-of: openubl-searchpe
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: searchpe-db
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: searchpe-db
+    spec:
+      volumes:
+        - name: searchpe-db-data
+          persistentVolumeClaim:
+            claimName: searchpe-db
+      containers:
+        - name: postgres
+          image: postgres:10.6
+          ports:
+            - containerPort: 5432
+              protocol: TCP
+          env:
+            - name: POSTGRES_USER
+              value: "db_username"
+            - name: POSTGRES_PASSWORD
+              value: "db_password"
+            - name: POSTGRES_DB
+              value: "searchpe_db"
+          resources: { }
+          livenessProbe:
+            exec:
+              command:
+                - "/bin/sh"
+                - "-c"
+                - 'psql -U $POSTGRES_USER -d $POSTGRES_DB -c ''SELECT 1'' '
+            initialDelaySeconds: 60
+            timeoutSeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - "/bin/sh"
+                - "-c"
+                - 'psql -U $POSTGRES_USER -d $POSTGRES_DB -c ''SELECT 1'' '
+            initialDelaySeconds: 10
+            timeoutSeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          terminationMessagePath: "/dev/termination-log"
+          terminationMessagePolicy: File
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: searchpe-db-data
+              mountPath: "/var/lib/postgresql"
+          securityContext:
+            privileged: false
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      securityContext: { }
+      schedulerName: default-scheduler
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 25%
+  revisionHistoryLimit: 10
+  progressDeadlineSeconds: 600
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: searchpe
+  labels:
+    app.kubernetes.io/name: searchpe
+    app.kubernetes.io/component: rest
+    app.kubernetes.io/instance: searchpe
+    app.kubernetes.io/part-of: openubl-searchpe
+spec:
+  ports:
+    - name: tcp
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
+  selector:
+    app.kubernetes.io/name: searchpe
+  type: ClusterIP
+  sessionAffinity: None
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    prometheus.io/port: "8080"
+    prometheus.io/scheme: http
+    prometheus.io/scrape: "true"
+    prometheus.io/path: /q/metrics
+  labels:
+    app.kubernetes.io/component: rest
+    app.kubernetes.io/name: searchpe
+    app.kubernetes.io/part-of: openubl-searchpe
+  name: searchpe
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: searchpe
+      app.kubernetes.io/part-of: openubl-searchpe
+  template:
+    metadata:
+      annotations:
+        prometheus.io/port: "8080"
+        prometheus.io/scheme: http
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /q/metrics
+      labels:
+        app.kubernetes.io/component: rest
+        app.kubernetes.io/name: searchpe
+        app.kubernetes.io/part-of: openubl-searchpe
+    spec:
+      containers:
+        - name: searchpe
+          image: quay.io/projectopenubl/searchpe
+          imagePullPolicy: Always
+          env:
+            - name: KUBERNETES_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: QUARKUS_DATASOURCE_USERNAME
+              value: "db_username"
+            - name: QUARKUS_DATASOURCE_PASSWORD
+              value: "db_password"
+            - name: QUARKUS_DATASOURCE_JDBC_URL
+              value: "jdbc:postgresql://searchpe-db:5432/searchpe_db"
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /q/health/live
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 0
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 10
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /q/health/ready
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 0
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 10
