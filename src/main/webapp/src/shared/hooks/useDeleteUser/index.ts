@@ -1,1 +1,0 @@
-export { useDeleteUser } from "./useDeleteUser";

@@ -2,6 +2,8 @@ import React, { useEffect } from "react";
 import { RouteComponentProps } from "react-router-dom";
 import Moment from "react-moment";
 
+import { useDelete } from "@project-openubl/lib-ui";
+
 import {
   Button,
   ButtonVariant,
@@ -34,7 +36,6 @@ import {
   VersionStatusIcon,
 } from "shared/components";
 import {
-  useDeleteVersion,
   useFetchVersions,
   useTableControls,
   useTableControlsOffline,
@@ -44,7 +45,7 @@ import { useDispatch } from "react-redux";
 import { deleteDialogActions } from "store/deleteDialog";
 import { alertActions } from "store/alert";
 
-import { createVersion } from "api/rest";
+import { createVersion, deleteVersion } from "api/rest";
 import { Version } from "api/models";
 import { formatNumber, getAxiosErrorMessage } from "utils/modelUtils";
 
@@ -123,7 +124,9 @@ export interface VersionListProps extends RouteComponentProps {}
 export const VersionList: React.FC<VersionListProps> = () => {
   const dispatch = useDispatch();
 
-  const { deleteVersion } = useDeleteVersion();
+  const { requestDelete: requestDeleteVersion } = useDelete<Version>({
+    onDelete: (version: Version) => deleteVersion(version.id!),
+  });
 
   const { versions, isFetching, fetchError, fetchVersions } =
     useFetchVersions();
@@ -175,7 +178,7 @@ export const VersionList: React.FC<VersionListProps> = () => {
               type: "version",
               onDelete: () => {
                 dispatch(deleteDialogActions.processing());
-                deleteVersion(
+                requestDeleteVersion(
                   row,
                   () => {
                     dispatch(deleteDialogActions.closeModal());

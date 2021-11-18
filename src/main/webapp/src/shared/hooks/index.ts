@@ -1,6 +1,3 @@
-export { useDeleteUser } from "./useDeleteUser";
-export { useDeleteVersion } from "./useDeleteVersion";
-export { useEntityModal } from "./useEntityModal";
 export { useFetchContribuyente } from "./useFetchContribuyente";
 export { useFetchContribuyentes } from "./useFetchContribuyentes";
 export { useFetchUsers } from "./useFetchUsers";

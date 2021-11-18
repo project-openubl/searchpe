@@ -6,6 +6,8 @@ import { useDispatch } from "react-redux";
 import { deleteDialogActions } from "store/deleteDialog";
 import { alertActions } from "store/alert";
 
+import { useModal, useDelete } from "@project-openubl/lib-ui";
+
 import {
   Button,
   ButtonVariant,
@@ -36,8 +38,6 @@ import {
   SimplePageSection,
 } from "shared/components";
 import {
-  useDeleteUser,
-  useEntityModal,
   useFetchUsers,
   useTableControls,
   useTableControlsOffline,
@@ -45,6 +45,7 @@ import {
 
 import { UserForm } from "./components/user-form";
 import { getAxiosErrorMessage } from "utils/modelUtils";
+import { deleteUser } from "api/rest";
 
 const columns: ICell[] = [
   { title: "Usuario", transforms: [sortable, cellWidth(30)] },
@@ -116,15 +117,16 @@ export interface UserListProps extends RouteComponentProps {}
 export const UserList: React.FC<UserListProps> = () => {
   const dispatch = useDispatch();
 
-  const { deleteUser } = useDeleteUser();
+  const { requestDelete: requestDeleteUser } = useDelete<User>({
+    onDelete: (user: User) => deleteUser(user.id!),
+  });
 
   const {
     isOpen: isUserModalOpen,
     data: userToUpdate,
-    create: openCreateUserModal,
-    update: openUpdateUserModal,
+    open: openUserModal,
     close: closeUserModal,
-  } = useEntityModal<User>();
+  } = useModal<User>();
 
   const { users, isFetching, fetchError, fetchUsers } = useFetchUsers(true);
 
@@ -162,7 +164,7 @@ export const UserList: React.FC<UserListProps> = () => {
         extraData: IExtraData
       ) => {
         const row: User = getRow(rowData);
-        openUpdateUserModal(row);
+        openUserModal(row);
       },
     });
 
@@ -181,7 +183,7 @@ export const UserList: React.FC<UserListProps> = () => {
             type: "usuario",
             onDelete: () => {
               dispatch(deleteDialogActions.processing());
-              deleteUser(
+              requestDeleteUser(
                 row,
                 () => {
                   dispatch(deleteDialogActions.closeModal());
@@ -254,7 +256,7 @@ export const UserList: React.FC<UserListProps> = () => {
                     type="button"
                     aria-label="new-user"
                     variant={ButtonVariant.primary}
-                    onClick={openCreateUserModal}
+                    onClick={() => openUserModal()}
                   >
                     Nuevo usuario
                   </Button>
