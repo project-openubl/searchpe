@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useHistory } from "react-router-dom";
 
-import { SimplePlaceholder } from "@project-openubl/lib-ui";
+import { SimplePlaceholder, ConditionalRender } from "@project-openubl/lib-ui";
 
 import {
   Bullseye,
@@ -26,12 +26,7 @@ import {
 
 import { Contribuyente, SortByQuery } from "api/models";
 
-import {
-  Welcome,
-  ConditionalRender,
-  SimplePageSection,
-  SearchInput,
-} from "shared/components";
+import { Welcome, SimplePageSection, SearchInput } from "shared/components";
 import { useFetchContribuyentes } from "shared/hooks";
 
 import { Paths } from "Paths";

@@ -12,6 +12,7 @@ import {
   useTable,
   SimpleTableWithToolbar,
   SimplePlaceholder,
+  ConditionalRender,
 } from "@project-openubl/lib-ui";
 
 import {
@@ -36,11 +37,7 @@ import {
 
 import { User } from "api/models";
 
-import {
-  ConditionalRender,
-  SearchInput,
-  SimplePageSection,
-} from "shared/components";
+import { SearchInput, SimplePageSection } from "shared/components";
 import { useFetchUsers } from "shared/hooks";
 
 import { UserForm } from "./components/user-form";

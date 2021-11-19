@@ -1,1 +1,1 @@
-export { ContribuyenteDetails } from "./contribuyente-details";
+export * from "./contribuyente-details";

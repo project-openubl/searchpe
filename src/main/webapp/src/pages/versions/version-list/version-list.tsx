@@ -7,6 +7,7 @@ import {
   useTableControls,
   SimpleTableWithToolbar,
   SimplePlaceholder,
+  ConditionalRender,
 } from "@project-openubl/lib-ui";
 
 import {
@@ -27,7 +28,6 @@ import {
 } from "@patternfly/react-table";
 
 import {
-  ConditionalRender,
   SearchInput,
   SimplePageSection,
   VersionStatusIcon,

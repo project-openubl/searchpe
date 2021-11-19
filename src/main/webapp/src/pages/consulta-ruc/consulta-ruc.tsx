@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { useHistory } from "react-router-dom";
 
-import { SimplePlaceholder } from "@project-openubl/lib-ui";
+import { SimplePlaceholder, ConditionalRender } from "@project-openubl/lib-ui";
 
 import {
   Bullseye,
@@ -21,7 +21,6 @@ import {
 import { SearchIcon } from "@patternfly/react-icons";
 
 import {
-  ConditionalRender,
   SimplePageSection,
   SearchInput,
   Welcome,

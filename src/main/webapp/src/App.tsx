@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { HashRouter } from "react-router-dom";
 
-import { SimplePlaceholder } from "@project-openubl/lib-ui";
+import { SimplePlaceholder, ConditionalRender } from "@project-openubl/lib-ui";
 
 import {
   Bullseye,
@@ -26,7 +26,6 @@ import { DefaultLayout } from "./layout";
 import NotificationsPortal from "@redhat-cloud-services/frontend-components-notifications/NotificationPortal";
 import "@redhat-cloud-services/frontend-components-notifications/index.css";
 
-import { ConditionalRender } from "shared/components";
 import DeleteDialog from "./shared/containers/delete-dialog";
 
 const App: React.FC = () => {
