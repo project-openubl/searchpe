@@ -1,10 +1,6 @@
-export { AppPlaceholder } from "./app-placeholder";
-export { AppTable } from "./app-table";
-export { AppTableWithControls } from "./app-table-with-controls";
-export { ConditionalRender } from "./conditional-render";
-export { ContribuyenteDetails } from "./contribuyente-details";
-export { SearchInput } from "./search-input";
-export { SimplePageSection } from "./simple-page-section";
-export { SimplePagination } from "./simple-pagination";
-export { VersionStatusIcon } from "./version-status";
-export { Welcome } from "./welcome";
+export * from "./contribuyente-details";
+export * from "./formik-select";
+export * from "./search-input";
+export * from "./simple-page-section";
+export * from "./version-status";
+export * from "./welcome";

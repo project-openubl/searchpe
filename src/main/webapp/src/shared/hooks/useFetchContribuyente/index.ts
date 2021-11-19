@@ -1,1 +1,1 @@
-export { useFetchContribuyente } from "./useFetchContribuyente";
+export * from "./useFetchContribuyente";

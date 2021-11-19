@@ -1,1 +1,1 @@
-export { SimplePageSection } from "./simple-page-section";
+export * from "./simple-page-section";

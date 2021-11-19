@@ -1,6 +1,8 @@
 import React, { useEffect } from "react";
 import { HashRouter } from "react-router-dom";
 
+import { SimplePlaceholder, ConditionalRender } from "@project-openubl/lib-ui";
+
 import {
   Bullseye,
   Button,
@@ -24,7 +26,6 @@ import { DefaultLayout } from "./layout";
 import NotificationsPortal from "@redhat-cloud-services/frontend-components-notifications/NotificationPortal";
 import "@redhat-cloud-services/frontend-components-notifications/index.css";
 
-import { AppPlaceholder, ConditionalRender } from "shared/components";
 import DeleteDialog from "./shared/containers/delete-dialog";
 
 const App: React.FC = () => {
@@ -77,7 +78,7 @@ const App: React.FC = () => {
 
   return (
     <HashRouter>
-      <ConditionalRender when={isFetchingUser} then={<AppPlaceholder />}>
+      <ConditionalRender when={isFetchingUser} then={<SimplePlaceholder />}>
         <DefaultLayout>
           <AppRoutes />
         </DefaultLayout>

@@ -23,7 +23,7 @@ import {
   getValidatedFromErrorTouched,
 } from "utils/modelUtils";
 import { ALL_PERMISSIONS, Permission } from "Constants";
-import { SimpleSelectMultipleFormikField } from "shared/components/simple-select";
+import { FormikSelectMultiple } from "shared/components";
 
 export interface FormValues {
   fullName: string;
@@ -152,7 +152,7 @@ export const UserForm: React.FC<UserFormProps> = ({
           validated={getValidatedFromError(formik.errors.permissions)}
           helperTextInvalid={formik.errors.permissions}
         >
-          <SimpleSelectMultipleFormikField
+          <FormikSelectMultiple
             fieldConfig={{ name: "permissions" }}
             selectConfig={{
               variant: "checkbox",

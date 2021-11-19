@@ -1,6 +1,8 @@
 import React, { useEffect } from "react";
 import { useHistory } from "react-router-dom";
 
+import { SimplePlaceholder, ConditionalRender } from "@project-openubl/lib-ui";
+
 import {
   Bullseye,
   Card,
@@ -19,8 +21,6 @@ import {
 import { SearchIcon } from "@patternfly/react-icons";
 
 import {
-  AppPlaceholder,
-  ConditionalRender,
   SimplePageSection,
   SearchInput,
   Welcome,
@@ -63,7 +63,10 @@ export const ConsultaRuc: React.FC = () => {
   if (isFetchingVersions || (versions && versions.length === 0)) {
     return (
       <Bullseye>
-        <ConditionalRender when={isFetchingVersions} then={<AppPlaceholder />}>
+        <ConditionalRender
+          when={isFetchingVersions}
+          then={<SimplePlaceholder />}
+        >
           <Welcome onPrimaryAction={handleOnViewVersion} />
         </ConditionalRender>
       </Bullseye>
@@ -93,7 +96,7 @@ export const ConsultaRuc: React.FC = () => {
             <CardBody>
               <ConditionalRender
                 when={isFetchingContribuyente}
-                then={<AppPlaceholder />}
+                then={<SimplePlaceholder />}
               >
                 <ConditionalRender
                   when={!!contribuyenteFetchError}

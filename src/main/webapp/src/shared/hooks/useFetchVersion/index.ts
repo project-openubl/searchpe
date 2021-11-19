@@ -1,1 +1,1 @@
-export { useFetchVersion } from "./useFetchVersion";
+export * from "./useFetchVersion";

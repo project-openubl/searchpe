@@ -1,10 +1,19 @@
-import React, { useEffect } from "react";
-import { RouteComponentProps } from "react-router-dom";
+import React, { useEffect, useState } from "react";
 import { AxiosResponse } from "axios";
 
 import { useDispatch } from "react-redux";
 import { deleteDialogActions } from "store/deleteDialog";
 import { alertActions } from "store/alert";
+
+import {
+  useModal,
+  useDelete,
+  useTableControls,
+  useTable,
+  SimpleTableWithToolbar,
+  SimplePlaceholder,
+  ConditionalRender,
+} from "@project-openubl/lib-ui";
 
 import {
   Button,
@@ -19,32 +28,21 @@ import {
   cellWidth,
   IAction,
   ICell,
-  IExtraColumnData,
   IExtraData,
+  IRow,
   IRowData,
   ISeparator,
   sortable,
-  SortByDirection,
 } from "@patternfly/react-table";
 
 import { User } from "api/models";
 
-import {
-  AppPlaceholder,
-  AppTableWithControls,
-  ConditionalRender,
-  SimplePageSection,
-} from "shared/components";
-import {
-  useDeleteUser,
-  useEntityModal,
-  useFetchUsers,
-  useTableControls,
-  useTableControlsOffline,
-} from "shared/hooks";
+import { SearchInput, SimplePageSection } from "shared/components";
+import { useFetchUsers } from "shared/hooks";
 
 import { UserForm } from "./components/user-form";
 import { getAxiosErrorMessage } from "utils/modelUtils";
+import { deleteUser } from "api/rest";
 
 const columns: ICell[] = [
   { title: "Usuario", transforms: [sortable, cellWidth(30)] },
@@ -52,27 +50,7 @@ const columns: ICell[] = [
   { title: "Nombre", transforms: [cellWidth(20)] },
 ];
 
-const columnIndexToField = (
-  _: React.MouseEvent,
-  index: number,
-  direction: SortByDirection,
-  extraData: IExtraColumnData
-) => {
-  switch (index) {
-    case 0:
-      return "username";
-    case 1:
-      return "password";
-    default:
-      throw new Error("Invalid column index=" + index);
-  }
-};
-
 const USER_FIELD = "user";
-
-const getRow = (rowData: IRowData): User => {
-  return rowData[USER_FIELD];
-};
 
 const itemsToRow = (items: User[]) => {
   return items.map((item) => ({
@@ -89,6 +67,10 @@ const itemsToRow = (items: User[]) => {
       },
     ],
   }));
+};
+
+const getRow = (rowData: IRowData): User => {
+  return rowData[USER_FIELD];
 };
 
 export const compareByColumnIndex = (
@@ -111,39 +93,36 @@ export const filterByText = (filterText: string, item: User) => {
   );
 };
 
-export interface UserListProps extends RouteComponentProps {}
-
-export const UserList: React.FC<UserListProps> = () => {
+export const UserList: React.FC = () => {
   const dispatch = useDispatch();
+  const [filterText, setFilterText] = useState("");
 
-  const { deleteUser } = useDeleteUser();
+  const { requestDelete: requestDeleteUser } = useDelete<User>({
+    onDelete: (user: User) => deleteUser(user.id!),
+  });
 
   const {
     isOpen: isUserModalOpen,
     data: userToUpdate,
-    create: openCreateUserModal,
-    update: openUpdateUserModal,
+    open: openUserModal,
     close: closeUserModal,
-  } = useEntityModal<User>();
+  } = useModal<User>();
 
   const { users, isFetching, fetchError, fetchUsers } = useFetchUsers(true);
 
   const {
-    filterText,
-    paginationQuery,
-    sortBy,
-    handleFilterTextChange,
-    handlePaginationChange,
-    handleSortChange,
-  } = useTableControls({ columnToField: columnIndexToField });
+    page: currentPage,
+    sortBy: currentSortBy,
+    changePage: onPageChange,
+    changeSortBy: onChangeSortBy,
+  } = useTableControls();
 
-  const { pageItems, filteredItems } = useTableControlsOffline({
+  const { pageItems, filteredItems } = useTable<User>({
     items: users || [],
-    filterText: filterText,
-    paginationQuery: paginationQuery,
-    sortBy: sortBy,
-    compareByColumnIndex: compareByColumnIndex,
-    filterByText: filterByText,
+    currentPage: currentPage,
+    currentSortBy: currentSortBy,
+    compareToByColumn: compareByColumnIndex,
+    filterItem: (item) => filterByText(filterText, item),
   });
 
   useEffect(() => {
@@ -162,7 +141,7 @@ export const UserList: React.FC<UserListProps> = () => {
         extraData: IExtraData
       ) => {
         const row: User = getRow(rowData);
-        openUpdateUserModal(row);
+        openUserModal(row);
       },
     });
 
@@ -181,7 +160,7 @@ export const UserList: React.FC<UserListProps> = () => {
             type: "usuario",
             onDelete: () => {
               dispatch(deleteDialogActions.processing());
-              deleteUser(
+              requestDeleteUser(
                 row,
                 () => {
                   dispatch(deleteDialogActions.closeModal());
@@ -211,6 +190,8 @@ export const UserList: React.FC<UserListProps> = () => {
     return false;
   };
 
+  const rows: IRow[] = itemsToRow(pageItems || []);
+
   const handleOnUserFormSaved = (response: AxiosResponse<User>) => {
     if (!userToUpdate) {
       dispatch(
@@ -226,35 +207,46 @@ export const UserList: React.FC<UserListProps> = () => {
     <>
       <ConditionalRender
         when={isFetching && !(users || fetchError)}
-        then={<AppPlaceholder />}
+        then={<SimplePlaceholder />}
       >
         <SimplePageSection title="Usuarios" />
         <PageSection>
-          <AppTableWithControls
-            count={filteredItems.length}
-            items={pageItems}
-            hiddeBottomPagination={true}
-            itemsToRow={itemsToRow}
-            pagination={paginationQuery}
-            sortBy={sortBy}
-            handleFilterTextChange={handleFilterTextChange}
-            handlePaginationChange={handlePaginationChange}
-            handleSortChange={handleSortChange}
-            columns={columns}
+          <SimpleTableWithToolbar
+            hasTopPagination
+            hasBottomPagination
+            totalCount={filteredItems.length}
+            // Sorting
+            sortBy={currentSortBy}
+            onSort={onChangeSortBy}
+            // Pagination
+            currentPage={currentPage}
+            onPageChange={onPageChange}
+            // Table
+            rows={rows}
+            cells={columns}
             actionResolver={actionResolver}
             areActionsDisabled={areActionsDisabled}
+            // Fech data
             isLoading={isFetching}
             loadingVariant="skeleton"
             fetchError={fetchError}
+            // Toolbar filters
             filtersApplied={filterText.trim().length > 0}
-            toolbar={
+            toolbarToggle={
+              <ToolbarGroup variant="filter-group">
+                <ToolbarItem>
+                  <SearchInput onSearch={setFilterText} />
+                </ToolbarItem>
+              </ToolbarGroup>
+            }
+            toolbarActions={
               <ToolbarGroup variant="button-group">
                 <ToolbarItem>
                   <Button
                     type="button"
                     aria-label="new-user"
                     variant={ButtonVariant.primary}
-                    onClick={openCreateUserModal}
+                    onClick={() => openUserModal()}
                   >
                     Nuevo usuario
                   </Button>

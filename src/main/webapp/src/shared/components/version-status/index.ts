@@ -1,1 +1,1 @@
-export { VersionStatusIcon } from "./version-status";
+export * from "./version-status";
