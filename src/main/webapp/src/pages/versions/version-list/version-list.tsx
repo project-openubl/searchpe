@@ -1,45 +1,38 @@
-import React, { useEffect } from "react";
-import { RouteComponentProps } from "react-router-dom";
+import React, { useEffect, useState } from "react";
 import Moment from "react-moment";
 
-import { useDelete } from "@project-openubl/lib-ui";
+import {
+  useDelete,
+  useTable,
+  useTableControls,
+  SimpleTableWithToolbar,
+  SimplePlaceholder,
+} from "@project-openubl/lib-ui";
 
 import {
   Button,
   ButtonVariant,
-  EmptyState,
-  EmptyStateBody,
-  EmptyStateIcon,
-  EmptyStateVariant,
   PageSection,
-  Title,
   ToolbarGroup,
   ToolbarItem,
 } from "@patternfly/react-core";
 import {
   IAction,
   ICell,
-  IExtraColumnData,
   IExtraData,
+  IRow,
   IRowData,
   ISeparator,
   sortable,
-  SortByDirection,
 } from "@patternfly/react-table";
-import { AddCircleOIcon } from "@patternfly/react-icons";
 
 import {
-  AppPlaceholder,
-  AppTableWithControls,
   ConditionalRender,
+  SearchInput,
   SimplePageSection,
   VersionStatusIcon,
 } from "shared/components";
-import {
-  useFetchVersions,
-  useTableControls,
-  useTableControlsOffline,
-} from "shared/hooks";
+import { useFetchVersions } from "shared/hooks";
 
 import { useDispatch } from "react-redux";
 import { deleteDialogActions } from "store/deleteDialog";
@@ -56,27 +49,7 @@ const columns: ICell[] = [
   { title: "Estado" },
 ];
 
-const columnIndexToField = (
-  _: React.MouseEvent,
-  index: number,
-  direction: SortByDirection,
-  extraData: IExtraColumnData
-) => {
-  switch (index) {
-    case 0:
-      return "id";
-    case 1:
-      return "createdAt";
-    default:
-      throw new Error("Invalid column index=" + index);
-  }
-};
-
 const VERSION_FIELD = "version";
-
-const getRow = (rowData: IRowData): Version => {
-  return rowData[VERSION_FIELD];
-};
 
 const itemsToRow = (items: Version[]) => {
   return items.map((item) => ({
@@ -96,6 +69,10 @@ const itemsToRow = (items: Version[]) => {
       },
     ],
   }));
+};
+
+const getRow = (rowData: IRowData): Version => {
+  return rowData[VERSION_FIELD];
 };
 
 export const compareByColumnIndex = (
@@ -119,10 +96,9 @@ export const filterByText = (filterText: string, item: Version) => {
   );
 };
 
-export interface VersionListProps extends RouteComponentProps {}
-
-export const VersionList: React.FC<VersionListProps> = () => {
+export const VersionList: React.FC = () => {
   const dispatch = useDispatch();
+  const [filterText, setFilterText] = useState("");
 
   const { requestDelete: requestDeleteVersion } = useDelete<Version>({
     onDelete: (version: Version) => deleteVersion(version.id!),
@@ -130,21 +106,20 @@ export const VersionList: React.FC<VersionListProps> = () => {
 
   const { versions, isFetching, fetchError, fetchVersions } =
     useFetchVersions();
+
   const {
-    filterText,
-    paginationQuery,
-    sortBy,
-    handleFilterTextChange,
-    handlePaginationChange,
-    handleSortChange,
-  } = useTableControls({ columnToField: columnIndexToField });
-  const { pageItems, filteredItems } = useTableControlsOffline({
+    page: currentPage,
+    sortBy: currentSortBy,
+    changePage: onPageChange,
+    changeSortBy: onChangeSortBy,
+  } = useTableControls();
+
+  const { pageItems, filteredItems } = useTable<Version>({
     items: versions || [],
-    filterText: filterText,
-    paginationQuery: paginationQuery,
-    sortBy: sortBy,
-    compareByColumnIndex: compareByColumnIndex,
-    filterByText: filterByText,
+    currentPage: currentPage,
+    currentSortBy: currentSortBy,
+    compareToByColumn: compareByColumnIndex,
+    filterItem: (item) => filterByText(filterText, item),
   });
 
   useEffect(() => {
@@ -209,6 +184,8 @@ export const VersionList: React.FC<VersionListProps> = () => {
     return false;
   };
 
+  const rows: IRow[] = itemsToRow(pageItems || []);
+
   const handleNewVersion = () => {
     createVersion()
       .then(() => {
@@ -225,29 +202,42 @@ export const VersionList: React.FC<VersionListProps> = () => {
     <>
       <ConditionalRender
         when={isFetching && !(versions || fetchError)}
-        then={<AppPlaceholder />}
+        then={<SimplePlaceholder />}
       >
         <SimplePageSection
           title="Versiones"
           description="Las Versiones representan una versión específica del 'padrón reducido' de la SUNAT."
         />
         <PageSection>
-          <AppTableWithControls
-            count={filteredItems.length}
-            items={pageItems}
-            itemsToRow={itemsToRow}
-            pagination={paginationQuery}
-            sortBy={sortBy}
-            handleFilterTextChange={handleFilterTextChange}
-            handlePaginationChange={handlePaginationChange}
-            handleSortChange={handleSortChange}
-            columns={columns}
+          <SimpleTableWithToolbar
+            hasTopPagination
+            hasBottomPagination
+            totalCount={filteredItems.length}
+            // Sorting
+            sortBy={currentSortBy}
+            onSort={onChangeSortBy}
+            // Pagination
+            currentPage={currentPage}
+            onPageChange={onPageChange}
+            // Table
+            rows={rows}
+            cells={columns}
             actionResolver={actionResolver}
             areActionsDisabled={areActionsDisabled}
+            // Fech data
             isLoading={isFetching}
             loadingVariant="none"
             fetchError={fetchError}
-            toolbar={
+            // Toolbar filters
+            filtersApplied={filterText.trim().length > 0}
+            toolbarToggle={
+              <ToolbarGroup variant="filter-group">
+                <ToolbarItem>
+                  <SearchInput onSearch={setFilterText} />
+                </ToolbarItem>
+              </ToolbarGroup>
+            }
+            toolbarActions={
               <ToolbarGroup variant="button-group">
                 <ToolbarItem>
                   <Button
@@ -260,19 +250,6 @@ export const VersionList: React.FC<VersionListProps> = () => {
                   </Button>
                 </ToolbarItem>
               </ToolbarGroup>
-            }
-            filtersApplied={filterText.trim().length > 0}
-            noDataState={
-              <EmptyState variant={EmptyStateVariant.small}>
-                <EmptyStateIcon icon={AddCircleOIcon} />
-                <Title headingLevel="h2" size="lg">
-                  No hay Versiones disponibles
-                </Title>
-                <EmptyStateBody>
-                  Crea una nueva versión haciendo click en{" "}
-                  <strong>Nueva versión</strong>.
-                </EmptyStateBody>
-              </EmptyState>
             }
           />
         </PageSection>

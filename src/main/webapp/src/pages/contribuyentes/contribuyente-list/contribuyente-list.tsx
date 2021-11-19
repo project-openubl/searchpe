@@ -1,36 +1,38 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { RouteComponentProps, useHistory } from "react-router-dom";
+import { useHistory } from "react-router-dom";
+
+import { SimplePlaceholder } from "@project-openubl/lib-ui";
 
 import {
   Bullseye,
-  EmptyState,
-  EmptyStateBody,
-  EmptyStateIcon,
-  EmptyStateVariant,
   PageSection,
-  Title,
+  ToolbarGroup,
+  ToolbarItem,
 } from "@patternfly/react-core";
 import {
   IActions,
   ICell,
-  IExtraColumnData,
   IExtraData,
+  IRow,
   IRowData,
   sortable,
-  SortByDirection,
 } from "@patternfly/react-table";
-import { AddCircleOIcon } from "@patternfly/react-icons";
 
-import { Contribuyente, PageQuery, SortByQuery } from "api/models";
+import {
+  useModal,
+  useTableControls,
+  SimpleTableWithToolbar,
+} from "@project-openubl/lib-ui";
+
+import { Contribuyente, SortByQuery } from "api/models";
 
 import {
   Welcome,
-  AppPlaceholder,
-  AppTableWithControls,
   ConditionalRender,
   SimplePageSection,
+  SearchInput,
 } from "shared/components";
-import { useFetchContribuyentes, useTableControls } from "shared/hooks";
+import { useFetchContribuyentes } from "shared/hooks";
 
 import { Paths } from "Paths";
 
@@ -43,25 +45,30 @@ const columns: ICell[] = [
   { title: "Tipo persona" },
 ];
 
-const columnIndexToField = (
-  _: React.MouseEvent,
-  index: number,
-  direction: SortByDirection,
-  extraData: IExtraColumnData
-) => {
-  switch (index) {
-    case 1:
-      return "razonSocial";
-    default:
-      throw new Error("Invalid column index=" + index);
+const toSortByQuery = (sortBy?: {
+  index: number;
+  direction: "asc" | "desc";
+}): SortByQuery | undefined => {
+  if (!sortBy) {
+    return undefined;
   }
+
+  let field: string;
+  switch (sortBy.index) {
+    case 1:
+      field = "nombre";
+      break;
+    default:
+      return undefined;
+  }
+
+  return {
+    orderBy: field,
+    orderDirection: sortBy.direction,
+  };
 };
 
 const CONTRIBUYENTE_FIELD = "contribuyente";
-
-const getRow = (rowData: IRowData): Contribuyente => {
-  return rowData[CONTRIBUYENTE_FIELD];
-};
 
 const itemsToRow = (items: Contribuyente[]) => {
   return items.map((item) => ({
@@ -83,12 +90,19 @@ const itemsToRow = (items: Contribuyente[]) => {
   }));
 };
 
-export interface ContribuyenteListProps extends RouteComponentProps {}
+const getRow = (rowData: IRowData): Contribuyente => {
+  return rowData[CONTRIBUYENTE_FIELD];
+};
 
-export const ContribuyenteList: React.FC<ContribuyenteListProps> = () => {
+export const ContribuyenteList: React.FC = () => {
   const history = useHistory();
+  const [filterText, setFilterText] = useState("");
 
-  const [currentRow, setCurrentRow] = useState<Contribuyente>();
+  const {
+    data: modalData,
+    open: openModal,
+    close: closeModal,
+  } = useModal<Contribuyente>();
 
   const {
     contribuyentes,
@@ -99,25 +113,19 @@ export const ContribuyenteList: React.FC<ContribuyenteListProps> = () => {
   } = useFetchContribuyentes(true);
 
   const {
-    filterText,
-    paginationQuery,
-    sortByQuery,
-    sortBy,
-    handleFilterTextChange,
-    handlePaginationChange,
-    handleSortChange,
-  } = useTableControls({ columnToField: columnIndexToField });
+    page: currentPage,
+    sortBy: currentSortBy,
+    changePage: onPageChange,
+    changeSortBy: onChangeSortBy,
+  } = useTableControls();
 
-  const reloadTable = useCallback(
-    (filterText: string, pagination: PageQuery, sortBy?: SortByQuery) => {
-      fetchContribuyentes(pagination, sortBy, filterText);
-    },
-    [fetchContribuyentes]
-  );
+  const reloadTable = useCallback(() => {
+    fetchContribuyentes(currentPage, toSortByQuery(currentSortBy), filterText);
+  }, [filterText, currentPage, currentSortBy, fetchContribuyentes]);
 
   useEffect(() => {
-    reloadTable(filterText, paginationQuery, sortByQuery);
-  }, [filterText, paginationQuery, sortByQuery, reloadTable]);
+    reloadTable();
+  }, [reloadTable]);
 
   const actions: IActions = [
     {
@@ -129,14 +137,12 @@ export const ContribuyenteList: React.FC<ContribuyenteListProps> = () => {
         extraData: IExtraData
       ) => {
         const row: Contribuyente = getRow(rowData);
-        setCurrentRow(row);
+        openModal(row);
       },
     },
   ];
 
-  const handleOnDetailsModalClose = () => {
-    setCurrentRow(undefined);
-  };
+  const rows: IRow[] = itemsToRow(contribuyentes?.data || []);
 
   const handleOnWelcomePrimaryAction = () => {
     history.push(Paths.versionList);
@@ -157,45 +163,43 @@ export const ContribuyenteList: React.FC<ContribuyenteListProps> = () => {
     <>
       <ConditionalRender
         when={isFetching && !(contribuyentes || fetchError)}
-        then={<AppPlaceholder />}
+        then={<SimplePlaceholder />}
       >
         <SimplePageSection
           title="Buscar por 'Nombre'"
           description="Ingresa el nombre de la persona natural o jurídica que deseas consultar."
         />
         <PageSection>
-          <AppTableWithControls
-            count={contribuyentes ? contribuyentes.meta.count : 0}
-            items={contribuyentes ? contribuyentes.data : []}
-            hiddeBottomPagination={true}
-            itemsToRow={itemsToRow}
-            pagination={paginationQuery}
-            sortBy={sortBy}
-            handleFilterTextChange={handleFilterTextChange}
-            handlePaginationChange={handlePaginationChange}
-            handleSortChange={handleSortChange}
-            columns={columns}
+          <SimpleTableWithToolbar
+            hasTopPagination
+            totalCount={contribuyentes ? contribuyentes.meta.count : 0}
+            // Sorting
+            sortBy={currentSortBy}
+            onSort={onChangeSortBy}
+            // Pagination
+            currentPage={currentPage}
+            onPageChange={onPageChange}
+            // Table
+            rows={rows}
+            cells={columns}
             actions={actions}
+            // Fech data
             isLoading={isFetching}
             loadingVariant="skeleton"
             fetchError={fetchError}
+            // Toolbar filters
             filtersApplied={filterText.trim().length > 0}
-            noDataState={
-              <EmptyState variant={EmptyStateVariant.small}>
-                <EmptyStateIcon icon={AddCircleOIcon} />
-                <Title headingLevel="h2" size="lg">
-                  No entities available
-                </Title>
-                <EmptyStateBody>
-                  Start importing entities going to the{" "}
-                  <strong>Versions</strong> menu.
-                </EmptyStateBody>
-              </EmptyState>
+            toolbarToggle={
+              <ToolbarGroup variant="filter-group">
+                <ToolbarItem>
+                  <SearchInput onSearch={setFilterText} />
+                </ToolbarItem>
+              </ToolbarGroup>
             }
           />
         </PageSection>
       </ConditionalRender>
-      <DetailsModal value={currentRow} onClose={handleOnDetailsModalClose} />
+      <DetailsModal value={modalData} onClose={closeModal} />
     </>
   );
 };

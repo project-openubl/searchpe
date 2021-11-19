@@ -1,10 +1,11 @@
 import React, { lazy, Suspense } from "react";
 import { Switch, Redirect } from "react-router-dom";
 
+import { SimplePlaceholder } from "@project-openubl/lib-ui";
+
 import { IProtectedRouteProps, ProtectedRoute } from "ProtectedRoute";
 import { isElasticsearchEnabled, Permission } from "Constants";
 
-import { AppPlaceholder } from "shared/components";
 import { Paths } from "./Paths";
 
 const ConsultaRuc = lazy(() => import("./pages/consulta-ruc"));
@@ -41,7 +42,7 @@ export const AppRoutes = () => {
   ];
 
   return (
-    <Suspense fallback={<AppPlaceholder />}>
+    <Suspense fallback={<SimplePlaceholder />}>
       <Switch>
         {routes.map(({ path, component, ...rest }, index) => (
           <ProtectedRoute
