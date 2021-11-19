@@ -5,11 +5,11 @@ import {
   ISimpleSelectProps,
   OptionWithValue,
   SimpleSelect,
-} from "./simple-select";
+} from "@project-openubl/lib-ui";
 
 type OptionLike = string | SelectOptionObject | OptionWithValue;
 
-export interface ISimpleSelectMultipleFormikFieldProps {
+export interface IFormikSelectMultipleProps {
   fieldConfig: FieldHookConfig<OptionLike[]>;
   selectConfig: Omit<
     ISimpleSelectProps,
@@ -19,12 +19,12 @@ export interface ISimpleSelectMultipleFormikFieldProps {
   isEqual?: (a: OptionLike, b: OptionLike) => boolean;
 }
 
-export const SimpleSelectMultipleFormikField = ({
+export const FormikSelectMultiple = ({
   fieldConfig,
   selectConfig,
   options,
   isEqual = (a, b) => a === b,
-}: ISimpleSelectMultipleFormikFieldProps) => {
+}: IFormikSelectMultipleProps) => {
   const [field, , helpers] = useField(fieldConfig);
 
   return (

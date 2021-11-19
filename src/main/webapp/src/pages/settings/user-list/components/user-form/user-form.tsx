@@ -23,7 +23,7 @@ import {
   getValidatedFromErrorTouched,
 } from "utils/modelUtils";
 import { ALL_PERMISSIONS, Permission } from "Constants";
-import { SimpleSelectMultipleFormikField } from "shared/components/simple-select";
+import { SimpleSelectMultipleFormikField } from "shared/components";
 
 export interface FormValues {
   fullName: string;
