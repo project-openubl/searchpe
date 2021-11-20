@@ -38,11 +38,15 @@ import {
 import { User } from "api/models";
 
 import { SearchInput, SimplePageSection } from "shared/components";
-import { useFetchUsers } from "shared/hooks";
+import { useClientInstance, useFetchUsers } from "shared/hooks";
 
 import { UserForm } from "./components/user-form";
 import { getAxiosErrorMessage } from "utils/modelUtils";
 import { deleteUser } from "api/rest";
+import {
+  CoreClusterResourceKind,
+  CoreClusterResource,
+} from "api-client/resources/core";
 
 const columns: ICell[] = [
   { title: "Usuario", transforms: [sortable, cellWidth(30)] },
@@ -108,8 +112,10 @@ export const UserList: React.FC = () => {
     close: closeUserModal,
   } = useModal<User>();
 
-  const { users, isFetching, fetchError, fetchUsers } = useFetchUsers(true);
-
+  const { list } = useClientInstance();
+  // const { users, isFetching, fetchError, fetchUsers } = useFetchUsers(true);
+  list(new CoreClusterResource(CoreClusterResourceKind.LocalUser));
+  
   const {
     page: currentPage,
     sortBy: currentSortBy,
