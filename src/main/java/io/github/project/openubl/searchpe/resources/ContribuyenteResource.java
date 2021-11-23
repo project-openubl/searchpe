@@ -29,6 +29,8 @@ import io.github.project.openubl.searchpe.models.jpa.search.SearchpeNoneIndexer;
 import io.github.project.openubl.searchpe.security.Permission;
 import io.github.project.openubl.searchpe.utils.ResourceUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.metrics.annotation.Counted;
+import org.eclipse.microprofile.metrics.annotation.Timed;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.hibernate.search.engine.search.predicate.dsl.BooleanPredicateClausesStep;
 import org.hibernate.search.engine.search.query.SearchResult;
@@ -72,6 +74,8 @@ public class ContribuyenteResource {
     @GET
     @Path("/")
     @Produces("application/json")
+    @Counted(name = "searchContribuyenteChecks", description = "How many times the advanced search was used")
+    @Timed(name = "searchContribuyenteTimer", description = "How long it took to serve the advanced search")
     public PageRepresentation<ContribuyenteEntity> getContribuyentes(
             @QueryParam("filterText") String filterText,
             @QueryParam("tipoContribuyente") String tipoContribuyenteQuery,
@@ -153,6 +157,8 @@ public class ContribuyenteResource {
     @GET
     @Path("/{numeroDocumento}")
     @Produces("application/json")
+    @Counted(name = "getContribuyenteChecks", description = "How many times the endpoint was used")
+    @Timed(name = "getContribuyenteTimer", description = "How long it took to serve the data")
     public ContribuyenteEntity getContribuyente(@PathParam("numeroDocumento") String numeroDocumento) {
         VersionEntity version = versionRepository.findActive().orElseThrow(NotFoundException::new);
         return contribuyenteRepository.findByIdOptional(new ContribuyenteId(version.id, numeroDocumento)).orElseThrow(NotFoundException::new);
