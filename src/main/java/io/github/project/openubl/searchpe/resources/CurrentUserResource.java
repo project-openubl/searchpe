@@ -17,9 +17,9 @@
 package io.github.project.openubl.searchpe.resources;
 
 import io.github.project.openubl.searchpe.idm.BasicUserRepresentation;
-import io.github.project.openubl.searchpe.models.jpa.entity.BasicUserEntity;
 import io.quarkus.security.Authenticated;
 import io.quarkus.security.identity.SecurityIdentity;
+import org.eclipse.microprofile.metrics.annotation.Counted;
 
 import javax.inject.Inject;
 import javax.ws.rs.GET;
@@ -40,6 +40,7 @@ public class CurrentUserResource {
     @GET
     @Path("/whoami")
     @Produces("application/json")
+    @Counted(name = "getCurrentUserChecks", description = "How many times the current user data was requested")
     public BasicUserRepresentation getCurrentUser() {
         Principal principal = securityIdentity.getPrincipal();
 
