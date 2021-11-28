@@ -1,9 +1,4 @@
 import React, { useState } from "react";
-
-import { useSelector } from "react-redux";
-import { RootState } from "store/rootReducer";
-import { currentUserSelectors } from "store/currentUser";
-
 import {
   Dropdown,
   DropdownGroup,
@@ -11,15 +6,14 @@ import {
   PageHeaderToolsItem,
 } from "@patternfly/react-core";
 
+import { useCurrentUserQuery } from "queries/currentUser";
 import { isBasicAuthEnabled, isOidcAuthEnabled } from "Constants";
 
 import { BasicMenuDropdownItems } from "./BasicMenuDropdownItems";
 import { OidcMenuDropdownItems } from "./OidcMenuDropdownItems";
 
 export const SSOMenu: React.FC = () => {
-  const currentUser = useSelector((state: RootState) =>
-    currentUserSelectors.user(state)
-  );
+  const currentUser = useCurrentUserQuery();
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const onDropdownSelect = () => {
@@ -54,7 +48,7 @@ export const SSOMenu: React.FC = () => {
         isOpen={isDropdownOpen}
         toggle={
           <DropdownToggle onToggle={onDropdownToggle}>
-            {currentUser?.username}
+            {currentUser.data?.username}
           </DropdownToggle>
         }
         dropdownItems={[

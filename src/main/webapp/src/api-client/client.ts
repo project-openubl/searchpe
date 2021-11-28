@@ -33,11 +33,15 @@ export interface IClusterClient {
   apiRoot: string;
 }
 
-export class ApiClient {
+export class ClusterClient {
   public apiRoot: string;
   private requester: AxiosInstance;
 
-  constructor(apiRoot: string, customResponseType: ResponseType = "json") {
+  constructor(
+    apiRoot: string,
+    getToken: () => Promise<string | null>,
+    customResponseType: ResponseType = "json"
+  ) {
     this.apiRoot = apiRoot;
     this.requester = axios.create({
       baseURL: this.apiRoot,
@@ -47,6 +51,19 @@ export class ApiClient {
       transformResponse: undefined,
       responseType: customResponseType,
     });
+
+    this.requester.interceptors.request.use(
+      async (config) => {
+        const token = await getToken();
+        if (token && config.headers) {
+          config.headers["Authorization"] = "Bearer " + token;
+        }
+        return config;
+      },
+      (error) => {
+        Promise.reject(error);
+      }
+    );
   }
 
   public list = async (

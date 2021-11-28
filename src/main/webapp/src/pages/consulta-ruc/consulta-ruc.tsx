@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useState } from "react";
 import { useHistory } from "react-router-dom";
 
 import { SimplePlaceholder, ConditionalRender } from "@project-openubl/lib-ui";
@@ -20,39 +20,28 @@ import {
 } from "@patternfly/react-core";
 import { SearchIcon } from "@patternfly/react-icons";
 
+import { useVersionsQuery } from "queries/versions";
+import { useContribuyenteQuery } from "queries/contribuyentes";
 import {
   SimplePageSection,
   SearchInput,
   Welcome,
   ContribuyenteDetails,
 } from "shared/components";
-import { useFetchContribuyente, useFetchVersions } from "shared/hooks";
 
 import { Paths } from "Paths";
 
 export const ConsultaRuc: React.FC = () => {
   const history = useHistory();
 
-  const {
-    versions,
-    isFetching: isFetchingVersions,
-    fetchVersions,
-  } = useFetchVersions();
+  const versions = useVersionsQuery();
 
-  const {
-    contribuyente,
-    isFetching: isFetchingContribuyente,
-    fetchError: contribuyenteFetchError,
-    fetchContribuyente,
-  } = useFetchContribuyente();
+  const [numeroDocumento, setNumeroDocumento] = useState("");
+  const contribuyente = useContribuyenteQuery(numeroDocumento);
 
-  useEffect(() => {
-    fetchVersions({ watch: false, active: true });
-  }, [fetchVersions]);
-
-  const handleOnSearch = (ruc: string) => {
-    if (ruc.trim().length > 0) {
-      fetchContribuyente(ruc);
+  const handleOnSearch = (numeroDocumento: string) => {
+    if (numeroDocumento.trim().length > 0) {
+      setNumeroDocumento(numeroDocumento);
     }
   };
 
@@ -60,11 +49,11 @@ export const ConsultaRuc: React.FC = () => {
     history.push(Paths.versionList);
   };
 
-  if (isFetchingVersions || (versions && versions.length === 0)) {
+  if (versions.isFetching || (versions.data && versions.data.length === 0)) {
     return (
       <Bullseye>
         <ConditionalRender
-          when={isFetchingVersions}
+          when={versions.isFetching}
           then={<SimplePlaceholder />}
         >
           <Welcome onPrimaryAction={handleOnViewVersion} />
@@ -95,11 +84,11 @@ export const ConsultaRuc: React.FC = () => {
           <Card>
             <CardBody>
               <ConditionalRender
-                when={isFetchingContribuyente}
+                when={contribuyente.isFetching}
                 then={<SimplePlaceholder />}
               >
                 <ConditionalRender
-                  when={!!contribuyenteFetchError}
+                  when={!!contribuyente.isError}
                   then={
                     <EmptyState variant={EmptyStateVariant.small}>
                       <EmptyStateIcon icon={SearchIcon} />
@@ -113,8 +102,8 @@ export const ConsultaRuc: React.FC = () => {
                     </EmptyState>
                   }
                 >
-                  {contribuyente && (
-                    <ContribuyenteDetails value={contribuyente} />
+                  {contribuyente.data && (
+                    <ContribuyenteDetails value={contribuyente.data} />
                   )}
                 </ConditionalRender>
               </ConditionalRender>

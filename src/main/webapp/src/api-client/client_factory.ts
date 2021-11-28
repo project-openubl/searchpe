@@ -1,5 +1,5 @@
 import { ResponseType } from "axios";
-import { ApiClient } from "./client";
+import { ClusterClient } from "./client";
 
 export class ClientFactoryUnknownClusterError extends Error {
   constructor(clusterName: string) {
@@ -24,14 +24,15 @@ export class ClientFactoryMissingApiRoot extends Error {
 
 export const ClientFactory = {
   cluster: (
+    getToken: () => Promise<string | null>,
     clusterApi: string,
     customResponseType: ResponseType = "json"
-  ): ApiClient => {
+  ): ClusterClient => {
     if (!clusterApi) {
       throw new ClientFactoryMissingApiRoot();
     }
 
-    const newClient = new ApiClient(clusterApi, customResponseType);
-    return newClient;
+    const result = new ClusterClient(clusterApi, getToken, customResponseType);
+    return result;
   },
 };

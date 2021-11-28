@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { HashRouter } from "react-router-dom";
 
 import { SimplePlaceholder, ConditionalRender } from "@project-openubl/lib-ui";
@@ -14,10 +14,6 @@ import {
 } from "@patternfly/react-core";
 import { WarningTriangleIcon } from "@patternfly/react-icons";
 
-import { useDispatch, useSelector } from "react-redux";
-import { RootState } from "store/rootReducer";
-import { currentUserActions, currentUserSelectors } from "store/currentUser";
-
 import { AppRoutes } from "./Routes";
 import "./App.scss";
 
@@ -27,21 +23,12 @@ import NotificationsPortal from "@redhat-cloud-services/frontend-components-noti
 import "@redhat-cloud-services/frontend-components-notifications/index.css";
 
 import DeleteDialog from "./shared/containers/delete-dialog";
+import { useCurrentUserQuery } from "queries/currentUser";
 
 const App: React.FC = () => {
-  const dispatch = useDispatch();
-  useEffect(() => {
-    dispatch(currentUserActions.fetchCurrentUser());
-  }, [dispatch]);
+  const currentUser = useCurrentUserQuery();
 
-  const isFetchingUser = useSelector((state: RootState) =>
-    currentUserSelectors.isFetching(state)
-  );
-  const userFetchError = useSelector((state: RootState) =>
-    currentUserSelectors.fetchError(state)
-  );
-
-  if (userFetchError) {
+  if (currentUser.isError) {
     return (
       <Bullseye>
         <EmptyState variant={EmptyStateVariant.small}>
@@ -78,7 +65,10 @@ const App: React.FC = () => {
 
   return (
     <HashRouter>
-      <ConditionalRender when={isFetchingUser} then={<SimplePlaceholder />}>
+      <ConditionalRender
+        when={currentUser.isFetching}
+        then={<SimplePlaceholder />}
+      >
         <DefaultLayout>
           <AppRoutes />
         </DefaultLayout>

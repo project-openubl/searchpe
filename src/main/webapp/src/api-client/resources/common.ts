@@ -1,11 +1,13 @@
 export type ApiResource = ClusterResource;
 
-export interface IResource {
+export interface IApiResource {
   listPath(): string;
-  idPath(name: string): string;
+  idPath(id: string): string;
 }
 
-export interface IKindPlural {
+export interface IGroupVersionKindPlural {
+  group: string;
+  version: string;
   kindPlural: string;
 }
 
@@ -13,14 +15,17 @@ function idPath(listPath: string, name: string) {
   return [listPath, name].join("/");
 }
 
-export abstract class ClusterResource implements ApiResource {
-  public abstract gvk(): IKindPlural;
-
+export abstract class ClusterResource implements IApiResource {
+  public abstract gvk(): IGroupVersionKindPlural;
   public listPath(): string {
-    return ["/", this.gvk().kindPlural].join("/");
+    return [
+      "/api",
+      this.gvk().group,
+      this.gvk().version,
+      this.gvk().kindPlural,
+    ].join("/");
   }
-
-  public idPath(name: string): string {
-    return idPath(this.listPath(), name);
+  public idPath(id: string): string {
+    return idPath(this.listPath(), id);
   }
 }
