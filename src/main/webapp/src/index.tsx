@@ -10,9 +10,6 @@ import { ReactQueryDevtools } from "react-query/devtools";
 import { Provider } from "react-redux";
 import configureStore from "./store";
 
-import KeycloakWrapper from "./keycloak";
-import { isBasicAuthEnabled, isOidcAuthEnabled } from "Constants";
-
 const queryCache = new QueryCache();
 const queryClient = new QueryClient({
   queryCache,
@@ -24,26 +21,12 @@ const queryClient = new QueryClient({
   },
 });
 
-const BasicApp = (
-  <Provider store={configureStore()}>
-    <App />
-  </Provider>
-);
-const OidcApp = <KeycloakWrapper>{BasicApp}</KeycloakWrapper>;
-
-let SearchpeApp;
-if (isBasicAuthEnabled()) {
-  SearchpeApp = BasicApp;
-} else if (isOidcAuthEnabled()) {
-  SearchpeApp = OidcApp;
-} else {
-  throw new Error("Couldn't define auth method");
-}
-
 ReactDOM.render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      {SearchpeApp}
+      <Provider store={configureStore()}>
+        <App />
+      </Provider>
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   </React.StrictMode>,

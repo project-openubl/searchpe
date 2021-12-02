@@ -20,10 +20,9 @@ import io.github.project.openubl.searchpe.models.jpa.search.SearchpeNoneIndexer;
 import io.quarkus.qute.Location;
 import io.quarkus.qute.Template;
 import io.quarkus.qute.TemplateInstance;
-
+import io.quarkus.security.Authenticated;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-import javax.annotation.security.PermitAll;
 import javax.inject.Inject;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -38,26 +37,19 @@ public class FrontendResource {
     @Location("settings.js")
     Template settingsJS;
 
-    @Inject
-    @Location("keycloak.json")
-    Template keycloakJSON;
-
     @ConfigProperty(name = "quarkus.oidc.enabled")
     Optional<Boolean> isOidcEnabled;
 
     @ConfigProperty(name = "quarkus.http.auth.form.cookie-name")
     Optional<String> formCookieName;
 
+    @ConfigProperty(name = "quarkus.oidc.logout.path")
+    Optional<String> oidcLogoutPath;
+
     @ConfigProperty(name = "quarkus.hibernate-search-orm.automatic-indexing.synchronization.strategy")
     Optional<String> esSyncStrategy;
 
-    @ConfigProperty(name = "quarkus.oidc.auth-server-url")
-    Optional<String> oidcServerUrl;
-
-    @ConfigProperty(name = "searchpe.oidc.ui-client-id")
-    Optional<String> oidcClientId;
-
-    @PermitAll
+    @Authenticated
     @GET
     @Path("/settings.js")
     @Produces("text/javascript")
@@ -65,25 +57,8 @@ public class FrontendResource {
         return settingsJS
                 .data("defaultAuthMethod", isOidcEnabled.isPresent() && isOidcEnabled.get() ? "oidc" : "basic")
                 .data("formCookieName", formCookieName.orElse(""))
+                .data("oidcLogoutPath", oidcLogoutPath.orElse(""))
                 .data("isElasticsearchEnabled", !Objects.equals(esSyncStrategy.orElse(""), SearchpeNoneIndexer.BEAN_FULL_NAME));
     }
 
-    @PermitAll
-    @GET
-    @Path("/keycloak.json")
-    @Produces("application/json")
-    public TemplateInstance getKeycloakJSON() {
-        String realmName = "";
-        String serverUrl = "";
-
-        if (oidcServerUrl.isPresent()) {
-            realmName = oidcServerUrl.get().substring(oidcServerUrl.get().lastIndexOf("/") + 1);
-            serverUrl = oidcServerUrl.get().substring(0, oidcServerUrl.get().indexOf("/realms"));
-        }
-
-        return keycloakJSON
-                .data("oidcRealm", realmName)
-                .data("oidcServerUrl", serverUrl)
-                .data("oidcResource", oidcClientId.orElse(""));
-    }
 }

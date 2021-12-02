@@ -24,7 +24,6 @@ export class ClientFactoryMissingApiRoot extends Error {
 
 export const ClientFactory = {
   cluster: (
-    getToken: () => Promise<string | null>,
     clusterApi: string,
     customResponseType: ResponseType = "json"
   ): ClusterClient => {
@@ -32,7 +31,7 @@ export const ClientFactory = {
       throw new ClientFactoryMissingApiRoot();
     }
 
-    const result = new ClusterClient(clusterApi, getToken, customResponseType);
+    const result = new ClusterClient(clusterApi, customResponseType);
     return result;
   },
 };
