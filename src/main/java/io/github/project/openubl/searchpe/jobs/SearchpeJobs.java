@@ -22,9 +22,7 @@ public interface SearchpeJobs {
     String VERSION_ENTITY_JOB_GROUP = "versionEntityJobGroup";
 
     String VERSION_ENTITY_SCHEDULE_IMPORT_JOB = "versionEntityScheduleImportJob";
-    String VERSION_ENTITY_IMPORT_JOB = "versionEntityImportJob";
     String VERSION_ENTITY_CLEAN_JOB = "versionEntityCleanJob";
-    String VERSION_ENTITY_DELETE_JOB = "versionEntityDeleteJob";
 
 
     // Triggers

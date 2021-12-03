@@ -32,12 +32,14 @@ public class IngestDataProgrammaticallyScheduler {
     Scheduler quartz;
 
     public void schedule(Long versionId) throws SchedulerException {
-        JobKey jobKey = JobKey.jobKey(SearchpeJobs.VERSION_ENTITY_IMPORT_JOB, SearchpeJobs.VERSION_ENTITY_JOB_GROUP);
+        String jobName = UUID.randomUUID().toString();
+
+        JobKey jobKey = JobKey.jobKey(jobName, SearchpeJobs.VERSION_ENTITY_JOB_GROUP);
         JobDetail job = JobBuilder.newJob(IngestDataProgrammaticallyJob.class)
                 .withIdentity(jobKey)
                 .build();
 
-        TriggerKey triggerKey = TriggerKey.triggerKey(UUID.randomUUID().toString(), SearchpeJobs.VERSION_ENTITY_TRIGGER_IMPORT_PROGRAMMATICALLY);
+        TriggerKey triggerKey = TriggerKey.triggerKey(jobName, SearchpeJobs.VERSION_ENTITY_TRIGGER_IMPORT_PROGRAMMATICALLY);
         Trigger trigger = TriggerBuilder.newTrigger()
                 .withIdentity(triggerKey)
                 .usingJobData(IngestDataProgrammaticallyJob.VERSION_ID, String.valueOf(versionId))
