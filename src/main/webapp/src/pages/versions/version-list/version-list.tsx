@@ -15,6 +15,7 @@ import {
   ToolbarItem,
 } from "@patternfly/react-core";
 import {
+  cellWidth,
   IAction,
   ICell,
   IExtraData,
@@ -43,10 +44,10 @@ import { Version } from "api/models";
 import { formatNumber, getAxiosErrorMessage } from "utils/modelUtils";
 
 const columns: ICell[] = [
-  { title: "Id", transforms: [sortable] },
-  { title: "Creado", transforms: [sortable] },
-  { title: "Records" },
-  { title: "Estado" },
+  { title: "Id", transforms: [sortable, cellWidth(10)] },
+  { title: "Creado", transforms: [sortable, cellWidth(30)] },
+  { title: "Records", transforms: [cellWidth(30)] },
+  { title: "Estado", transforms: [cellWidth(30)] },
 ];
 
 const VERSION_FIELD = "version";

@@ -10,6 +10,7 @@ import {
   ToolbarItem,
 } from "@patternfly/react-core";
 import {
+  cellWidth,
   IActions,
   ICell,
   IExtraData,
@@ -37,10 +38,10 @@ import { Contribuyente, SortByQuery } from "api/models";
 import { DetailsModal } from "./components/details-modal/details-modal";
 
 const columns: ICell[] = [
-  { title: "Número documento" },
-  { title: "Nombre", transforms: [sortable] },
-  { title: "Estado" },
-  { title: "Tipo persona" },
+  { title: "Número documento", transforms: [cellWidth(20)] },
+  { title: "Nombre", transforms: [sortable, cellWidth(50)] },
+  { title: "Estado", transforms: [cellWidth(15)] },
+  { title: "Tipo persona", transforms: [cellWidth(15)] },
 ];
 
 const toSortByQuery = (sortBy?: {
