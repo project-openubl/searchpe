@@ -66,7 +66,7 @@ const App: React.FC = () => {
   return (
     <HashRouter>
       <ConditionalRender
-        when={currentUser.isFetching}
+        when={currentUser.isLoading}
         then={<SimplePlaceholder />}
       >
         <DefaultLayout>

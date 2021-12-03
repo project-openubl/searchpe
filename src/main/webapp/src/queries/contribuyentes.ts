@@ -54,6 +54,7 @@ export const useContribuyentesQuery = (
       ).data;
     },
     keepPreviousData: true,
+    refetchOnMount: true,
   });
   return result;
 };
@@ -70,6 +71,7 @@ export const useContribuyenteQuery = (
     },
     enabled: !!numeroDocumento,
     retry: false,
+    refetchOnMount: true,
   });
   return result;
 };

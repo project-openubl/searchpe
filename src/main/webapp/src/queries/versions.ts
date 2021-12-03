@@ -33,14 +33,17 @@ export const useVersionsQuery = (): UseQueryResult<
       return (await client.list<Version[]>(versionResource)).data;
     },
     refetchInterval: (data) => {
-      const flag = (data || []).every(
-        (f) => f.status === "COMPLETED" || f.status === "ERROR"
-      );
-      if (!flag) {
-        return 5_000;
-      } else {
-        return false;
+      if (data && data.length > 0) {
+        const someIsBegingDeleted = data.some((f) => f.status === "DELETING");
+        const someIsInProgress = data.some(
+          (f) => f.status !== "COMPLETED" && f.status !== "ERROR"
+        );
+        if (someIsBegingDeleted || someIsInProgress) {
+          return 5_000;
+        }
       }
+
+      return false;
     },
     select: sortVersionListByIdCallback,
   });
@@ -59,6 +62,8 @@ export const useCreateVersionMutation = (
     {
       onSuccess: (response) => {
         queryClient.invalidateQueries("versions");
+        queryClient.invalidateQueries("contribuyente");
+        queryClient.invalidateQueries("contribuyentes");
         onSuccess && onSuccess(response);
       },
     }
@@ -77,6 +82,8 @@ export const useDeleteVersionMutation = (
     {
       onSuccess: () => {
         queryClient.invalidateQueries("versions");
+        queryClient.invalidateQueries("contribuyente");
+        queryClient.invalidateQueries("contribuyentes");
         onSuccess && onSuccess();
       },
     }
