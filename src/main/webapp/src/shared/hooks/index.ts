@@ -1,6 +1,2 @@
-export { useFetchContribuyente } from "./useFetchContribuyente";
-export { useFetchContribuyentes } from "./useFetchContribuyentes";
-export { useFetchUsers } from "./useFetchUsers";
-export { useFetchVersion } from "./useFetchVersion";
-export { useFetchVersions } from "./useFetchVersions";
+export { useClientInstance } from "./useClientInstance";
 export { usePermission } from "./usePermission";

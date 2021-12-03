@@ -1,13 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import Moment from "react-moment";
 
 import {
-  useDelete,
   useTable,
   useTableControls,
   SimpleTableWithToolbar,
-  SimplePlaceholder,
-  ConditionalRender,
 } from "@project-openubl/lib-ui";
 
 import {
@@ -28,17 +25,20 @@ import {
 } from "@patternfly/react-table";
 
 import {
+  useCreateVersionMutation,
+  useDeleteVersionMutation,
+  useVersionsQuery,
+} from "queries/versions";
+import {
   SearchInput,
   SimplePageSection,
   VersionStatusIcon,
 } from "shared/components";
-import { useFetchVersions } from "shared/hooks";
 
 import { useDispatch } from "react-redux";
 import { deleteDialogActions } from "store/deleteDialog";
 import { alertActions } from "store/alert";
 
-import { createVersion, deleteVersion } from "api/rest";
 import { Version } from "api/models";
 import { formatNumber, getAxiosErrorMessage } from "utils/modelUtils";
 
@@ -98,14 +98,12 @@ export const filterByText = (filterText: string, item: Version) => {
 
 export const VersionList: React.FC = () => {
   const dispatch = useDispatch();
+
+  const versions = useVersionsQuery();
+  const versionMutation = useCreateVersionMutation();
+  const deleleteVersionMutation = useDeleteVersionMutation();
+
   const [filterText, setFilterText] = useState("");
-
-  const { requestDelete: requestDeleteVersion } = useDelete<Version>({
-    onDelete: (version: Version) => deleteVersion(version.id!),
-  });
-
-  const { versions, isFetching, fetchError, fetchVersions } =
-    useFetchVersions();
 
   const {
     page: currentPage,
@@ -115,16 +113,12 @@ export const VersionList: React.FC = () => {
   } = useTableControls();
 
   const { pageItems, filteredItems } = useTable<Version>({
-    items: versions || [],
+    items: versions.data || [],
     currentPage: currentPage,
     currentSortBy: currentSortBy,
     compareToByColumn: compareByColumnIndex,
     filterItem: (item) => filterByText(filterText, item),
   });
-
-  useEffect(() => {
-    fetchVersions({ watch: true });
-  }, [fetchVersions]);
 
   const actionResolver = (rowData: IRowData): (IAction | ISeparator)[] => {
     const row: Version = getRow(rowData);
@@ -153,14 +147,9 @@ export const VersionList: React.FC = () => {
               type: "version",
               onDelete: () => {
                 dispatch(deleteDialogActions.processing());
-                requestDeleteVersion(
-                  row,
-                  () => {
-                    dispatch(deleteDialogActions.closeModal());
-                    fetchVersions({ watch: true });
-                  },
-                  (error) => {
-                    dispatch(deleteDialogActions.closeModal());
+                deleleteVersionMutation
+                  .mutateAsync(row)
+                  .catch((error) => {
                     dispatch(
                       alertActions.addAlert(
                         "danger",
@@ -168,8 +157,10 @@ export const VersionList: React.FC = () => {
                         getAxiosErrorMessage(error)
                       )
                     );
-                  }
-                );
+                  })
+                  .finally(() => {
+                    dispatch(deleteDialogActions.closeModal());
+                  });
               },
             })
           );
@@ -186,74 +177,65 @@ export const VersionList: React.FC = () => {
 
   const rows: IRow[] = itemsToRow(pageItems || []);
 
-  const handleNewVersion = () => {
-    createVersion()
-      .then(() => {
-        fetchVersions({ watch: true });
-      })
-      .catch((error) => {
-        dispatch(
-          alertActions.addAlert("danger", "Error", getAxiosErrorMessage(error))
-        );
-      });
+  const onNewVersion = () => {
+    versionMutation.mutateAsync().catch((error) => {
+      dispatch(
+        alertActions.addAlert("danger", "Error", getAxiosErrorMessage(error))
+      );
+    });
   };
 
   return (
     <>
-      <ConditionalRender
-        when={isFetching && !(versions || fetchError)}
-        then={<SimplePlaceholder />}
-      >
-        <SimplePageSection
-          title="Versiones"
-          description="Las Versiones representan una versión específica del 'padrón reducido' de la SUNAT."
+      <SimplePageSection
+        title="Versiones"
+        description="Las Versiones representan una versión específica del 'padrón reducido' de la SUNAT."
+      />
+      <PageSection>
+        <SimpleTableWithToolbar
+          hasTopPagination
+          hasBottomPagination
+          totalCount={filteredItems.length}
+          // Sorting
+          sortBy={currentSortBy}
+          onSort={onChangeSortBy}
+          // Pagination
+          currentPage={currentPage}
+          onPageChange={onPageChange}
+          // Table
+          rows={rows}
+          cells={columns}
+          actionResolver={actionResolver}
+          areActionsDisabled={areActionsDisabled}
+          // Fech data
+          isLoading={versions.isFetching}
+          loadingVariant="none"
+          fetchError={versions.isError}
+          // Toolbar filters
+          filtersApplied={filterText.trim().length > 0}
+          toolbarToggle={
+            <ToolbarGroup variant="filter-group">
+              <ToolbarItem>
+                <SearchInput onSearch={setFilterText} />
+              </ToolbarItem>
+            </ToolbarGroup>
+          }
+          toolbarActions={
+            <ToolbarGroup variant="button-group">
+              <ToolbarItem>
+                <Button
+                  type="button"
+                  aria-label="new-version"
+                  variant={ButtonVariant.primary}
+                  onClick={onNewVersion}
+                >
+                  Nueva versión
+                </Button>
+              </ToolbarItem>
+            </ToolbarGroup>
+          }
         />
-        <PageSection>
-          <SimpleTableWithToolbar
-            hasTopPagination
-            hasBottomPagination
-            totalCount={filteredItems.length}
-            // Sorting
-            sortBy={currentSortBy}
-            onSort={onChangeSortBy}
-            // Pagination
-            currentPage={currentPage}
-            onPageChange={onPageChange}
-            // Table
-            rows={rows}
-            cells={columns}
-            actionResolver={actionResolver}
-            areActionsDisabled={areActionsDisabled}
-            // Fech data
-            isLoading={isFetching}
-            loadingVariant="none"
-            fetchError={fetchError}
-            // Toolbar filters
-            filtersApplied={filterText.trim().length > 0}
-            toolbarToggle={
-              <ToolbarGroup variant="filter-group">
-                <ToolbarItem>
-                  <SearchInput onSearch={setFilterText} />
-                </ToolbarItem>
-              </ToolbarGroup>
-            }
-            toolbarActions={
-              <ToolbarGroup variant="button-group">
-                <ToolbarItem>
-                  <Button
-                    type="button"
-                    aria-label="new-version"
-                    variant={ButtonVariant.primary}
-                    onClick={handleNewVersion}
-                  >
-                    Nueva versión
-                  </Button>
-                </ToolbarItem>
-              </ToolbarGroup>
-            }
-          />
-        </PageSection>
-      </ConditionalRender>
+      </PageSection>
     </>
   );
 };

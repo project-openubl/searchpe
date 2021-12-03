@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { AxiosError, AxiosPromise, AxiosResponse } from "axios";
 import { useFormik, FormikProvider, FormikHelpers } from "formik";
 import { object, string, array } from "yup";
 
@@ -15,7 +14,9 @@ import {
 } from "@patternfly/react-core";
 import { EditAltIcon } from "@patternfly/react-icons";
 
-import { createUser, updateUser } from "api/rest";
+import { useCreateUserMutation, useUpdateUserMutation } from "queries/users";
+import { FormikSelectMultiple } from "shared/components";
+
 import { User } from "api/models";
 import {
   getAxiosErrorMessage,
@@ -23,7 +24,6 @@ import {
   getValidatedFromErrorTouched,
 } from "utils/modelUtils";
 import { ALL_PERMISSIONS, Permission } from "Constants";
-import { FormikSelectMultiple } from "shared/components";
 
 export interface FormValues {
   fullName: string;
@@ -34,7 +34,7 @@ export interface FormValues {
 
 export interface UserFormProps {
   user?: User;
-  onSaved: (response: AxiosResponse<User>) => void;
+  onSaved: (user: User) => void;
   onCancel: () => void;
 }
 
@@ -43,8 +43,11 @@ export const UserForm: React.FC<UserFormProps> = ({
   onSaved,
   onCancel,
 }) => {
+  const createUserMutation = useCreateUserMutation();
+  const updateUserMutation = useUpdateUserMutation();
+
+  const [error, setError] = useState();
   const [isEditingPassword, setIsEditingPassword] = useState(false);
-  const [error, setError] = useState<AxiosError>();
 
   const initialValues: FormValues = {
     fullName: user?.fullName || "",
@@ -80,17 +83,12 @@ export const UserForm: React.FC<UserFormProps> = ({
         : undefined) as any,
       permissions: formValues.permissions,
     };
-
-    let promise: AxiosPromise<User>;
+    let promise: Promise<User>;
     if (user) {
-      promise = updateUser({
-        ...user,
-        ...payload,
-      });
+      promise = updateUserMutation.mutateAsync({ ...user, ...payload });
     } else {
-      promise = createUser(payload);
+      promise = createUserMutation.mutateAsync(payload);
     }
-
     promise
       .then((response) => {
         formikHelpers.setSubmitting(false);

@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from "react";
-import { AxiosResponse } from "axios";
+import React, { useState } from "react";
 
 import { useDispatch } from "react-redux";
 import { deleteDialogActions } from "store/deleteDialog";
@@ -7,7 +6,6 @@ import { alertActions } from "store/alert";
 
 import {
   useModal,
-  useDelete,
   useTableControls,
   useTable,
   SimpleTableWithToolbar,
@@ -38,11 +36,10 @@ import {
 import { User } from "api/models";
 
 import { SearchInput, SimplePageSection } from "shared/components";
-import { useFetchUsers } from "shared/hooks";
 
 import { UserForm } from "./components/user-form";
 import { getAxiosErrorMessage } from "utils/modelUtils";
-import { deleteUser } from "api/rest";
+import { useDeleteUserMutation, useUsersQuery } from "queries/users";
 
 const columns: ICell[] = [
   { title: "Usuario", transforms: [sortable, cellWidth(30)] },
@@ -97,9 +94,8 @@ export const UserList: React.FC = () => {
   const dispatch = useDispatch();
   const [filterText, setFilterText] = useState("");
 
-  const { requestDelete: requestDeleteUser } = useDelete<User>({
-    onDelete: (user: User) => deleteUser(user.id!),
-  });
+  const usersQuery = useUsersQuery();
+  const deleteUserMutation = useDeleteUserMutation();
 
   const {
     isOpen: isUserModalOpen,
@@ -107,8 +103,6 @@ export const UserList: React.FC = () => {
     open: openUserModal,
     close: closeUserModal,
   } = useModal<User>();
-
-  const { users, isFetching, fetchError, fetchUsers } = useFetchUsers(true);
 
   const {
     page: currentPage,
@@ -118,16 +112,12 @@ export const UserList: React.FC = () => {
   } = useTableControls();
 
   const { pageItems, filteredItems } = useTable<User>({
-    items: users || [],
+    items: usersQuery.data || [],
     currentPage: currentPage,
     currentSortBy: currentSortBy,
     compareToByColumn: compareByColumnIndex,
     filterItem: (item) => filterByText(filterText, item),
   });
-
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
 
   const actionResolver = (rowData: IRowData): (IAction | ISeparator)[] => {
     const actions: (IAction | ISeparator)[] = [];
@@ -160,14 +150,9 @@ export const UserList: React.FC = () => {
             type: "usuario",
             onDelete: () => {
               dispatch(deleteDialogActions.processing());
-              requestDeleteUser(
-                row,
-                () => {
-                  dispatch(deleteDialogActions.closeModal());
-                  fetchUsers();
-                },
-                (error) => {
-                  dispatch(deleteDialogActions.closeModal());
+              deleteUserMutation
+                .mutateAsync(row)
+                .catch((error) => {
                   dispatch(
                     alertActions.addAlert(
                       "danger",
@@ -175,8 +160,10 @@ export const UserList: React.FC = () => {
                       getAxiosErrorMessage(error)
                     )
                   );
-                }
-              );
+                })
+                .finally(() => {
+                  dispatch(deleteDialogActions.closeModal());
+                });
             },
           })
         );
@@ -192,21 +179,19 @@ export const UserList: React.FC = () => {
 
   const rows: IRow[] = itemsToRow(pageItems || []);
 
-  const handleOnUserFormSaved = (response: AxiosResponse<User>) => {
+  const handleOnUserFormSaved = (user: User) => {
     if (!userToUpdate) {
       dispatch(
         alertActions.addAlert("success", "Éxito", "Usuario actualizado")
       );
     }
-
     closeUserModal();
-    fetchUsers();
   };
 
   return (
     <>
       <ConditionalRender
-        when={isFetching && !(users || fetchError)}
+        when={usersQuery.isFetching && !(usersQuery.data || usersQuery.isError)}
         then={<SimplePlaceholder />}
       >
         <SimplePageSection title="Usuarios" />
@@ -227,9 +212,9 @@ export const UserList: React.FC = () => {
             actionResolver={actionResolver}
             areActionsDisabled={areActionsDisabled}
             // Fech data
-            isLoading={isFetching}
+            isLoading={usersQuery.isFetching}
             loadingVariant="skeleton"
-            fetchError={fetchError}
+            fetchError={usersQuery.isError}
             // Toolbar filters
             filtersApplied={filterText.trim().length > 0}
             toolbarToggle={

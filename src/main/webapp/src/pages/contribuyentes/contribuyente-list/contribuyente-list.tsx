@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useHistory } from "react-router-dom";
 
 import { SimplePlaceholder, ConditionalRender } from "@project-openubl/lib-ui";
@@ -24,12 +24,15 @@ import {
   SimpleTableWithToolbar,
 } from "@project-openubl/lib-ui";
 
-import { Contribuyente, SortByQuery } from "api/models";
-
+import {
+  IContribuyentesParams,
+  IContribuyentesParamsBuilder,
+  useContribuyentesQuery,
+} from "queries/contribuyentes";
 import { Welcome, SimplePageSection, SearchInput } from "shared/components";
-import { useFetchContribuyentes } from "shared/hooks";
 
 import { Paths } from "Paths";
+import { Contribuyente, SortByQuery } from "api/models";
 
 import { DetailsModal } from "./components/details-modal/details-modal";
 
@@ -91,7 +94,6 @@ const getRow = (rowData: IRowData): Contribuyente => {
 
 export const ContribuyenteList: React.FC = () => {
   const history = useHistory();
-  const [filterText, setFilterText] = useState("");
 
   const {
     data: modalData,
@@ -99,14 +101,7 @@ export const ContribuyenteList: React.FC = () => {
     close: closeModal,
   } = useModal<Contribuyente>();
 
-  const {
-    contribuyentes,
-    isFetching,
-    fetchError,
-    fetchCount,
-    fetchContribuyentes,
-  } = useFetchContribuyentes(true);
-
+  const [filterText, setFilterText] = useState("");
   const {
     page: currentPage,
     sortBy: currentSortBy,
@@ -114,13 +109,23 @@ export const ContribuyenteList: React.FC = () => {
     changeSortBy: onChangeSortBy,
   } = useTableControls();
 
-  const reloadTable = useCallback(() => {
-    fetchContribuyentes(currentPage, toSortByQuery(currentSortBy), filterText);
-  }, [filterText, currentPage, currentSortBy, fetchContribuyentes]);
+  const [queryParams, setQueryParams] = useState<IContribuyentesParams>(
+    new IContribuyentesParamsBuilder()
+      .withFilterText(filterText)
+      .withPagination(currentPage)
+      .withSorting(toSortByQuery(currentSortBy))
+      .build()
+  );
+  const contribuyentes = useContribuyentesQuery(queryParams);
 
   useEffect(() => {
-    reloadTable();
-  }, [reloadTable]);
+    const params = new IContribuyentesParamsBuilder()
+      .withFilterText(filterText)
+      .withPagination(currentPage)
+      .withSorting(toSortByQuery(currentSortBy))
+      .build();
+    setQueryParams(params);
+  }, [filterText, currentPage, currentSortBy]);
 
   const actions: IActions = [
     {
@@ -137,15 +142,15 @@ export const ContribuyenteList: React.FC = () => {
     },
   ];
 
-  const rows: IRow[] = itemsToRow(contribuyentes?.data || []);
+  const rows: IRow[] = itemsToRow(contribuyentes.data?.data || []);
 
   const handleOnWelcomePrimaryAction = () => {
     history.push(Paths.versionList);
   };
 
   if (
-    fetchCount === 1 &&
-    (contribuyentes?.data === undefined || contribuyentes?.data.length === 0)
+    contribuyentes.isFetched &&
+    (!contribuyentes.data || contribuyentes.data.data.length === 0)
   ) {
     return (
       <Bullseye>
@@ -157,7 +162,7 @@ export const ContribuyenteList: React.FC = () => {
   return (
     <>
       <ConditionalRender
-        when={isFetching && !(contribuyentes || fetchError)}
+        when={!!contribuyentes.data && !(contribuyentes.data || contribuyentes)}
         then={<SimplePlaceholder />}
       >
         <SimplePageSection
@@ -167,7 +172,7 @@ export const ContribuyenteList: React.FC = () => {
         <PageSection>
           <SimpleTableWithToolbar
             hasTopPagination
-            totalCount={contribuyentes ? contribuyentes.meta.count : 0}
+            totalCount={contribuyentes.data?.meta.count || 0}
             // Sorting
             sortBy={currentSortBy}
             onSort={onChangeSortBy}
@@ -179,9 +184,9 @@ export const ContribuyenteList: React.FC = () => {
             cells={columns}
             actions={actions}
             // Fech data
-            isLoading={isFetching}
+            isLoading={contribuyentes.isFetching}
             loadingVariant="skeleton"
-            fetchError={fetchError}
+            fetchError={contribuyentes.isError}
             // Toolbar filters
             filtersApplied={filterText.trim().length > 0}
             toolbarToggle={

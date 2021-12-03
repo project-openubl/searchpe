@@ -1,6 +1,0 @@
-{
-  "realm": "{oidcRealm}",
-  "auth-server-url": "{oidcServerUrl}",
-  "resource": "{oidcResource}",
-  "public-client": true
-}

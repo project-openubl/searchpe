@@ -4,36 +4,32 @@ import "./index.scss";
 import App from "./App";
 import reportWebVitals from "./reportWebVitals";
 
+import { QueryClientProvider, QueryClient, QueryCache } from "react-query";
+import { ReactQueryDevtools } from "react-query/devtools";
+
 import { Provider } from "react-redux";
 import configureStore from "./store";
 
-import { initApi } from "axios-config";
-import { getBaseApiUrl } from "utils/modelUtils";
-
-import KeycloakWrapper from "./keycloak";
-import { isBasicAuthEnabled, isOidcAuthEnabled } from "Constants";
-
-initApi(getBaseApiUrl());
-
-const BasicApp = (
-  <Provider store={configureStore()}>
-    <App />
-  </Provider>
-);
-
-const OidcApp = <KeycloakWrapper>{BasicApp}</KeycloakWrapper>;
-
-let SearchpeApp;
-if (isBasicAuthEnabled()) {
-  SearchpeApp = BasicApp;
-} else if (isOidcAuthEnabled()) {
-  SearchpeApp = OidcApp;
-} else {
-  throw new Error("Couldn't define auth method");
-}
+const queryCache = new QueryCache();
+const queryClient = new QueryClient({
+  queryCache,
+  defaultOptions: {
+    queries: {
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 ReactDOM.render(
-  <React.StrictMode>{SearchpeApp}</React.StrictMode>,
+  <React.StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <Provider store={configureStore()}>
+        <App />
+      </Provider>
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
+  </React.StrictMode>,
   document.getElementById("root")
 );
 
