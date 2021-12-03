@@ -3,8 +3,8 @@ import { UseQueryResult, useQuery } from "react-query";
 import { CoreClusterResource, CoreClusterResourceKind } from "api-client";
 import { Contribuyente, PageRepresentation } from "api/models";
 
-import { useClientInstance } from "shared/hooks";
 import { ApiClientError } from "api-client/types";
+import { useSearchpeClient } from "./fetchHelpers";
 
 const resource = new CoreClusterResource(CoreClusterResourceKind.Contribuyente);
 
@@ -45,27 +45,31 @@ export class IContribuyentesParamsBuilder {
 export const useContribuyentesQuery = (
   params: IContribuyentesParams
 ): UseQueryResult<PageRepresentation<Contribuyente>, ApiClientError> => {
-  const client = useClientInstance();
-  const result = useQuery<PageRepresentation<Contribuyente>, ApiClientError>(
-    ["contribuyentes", params],
-    async (): Promise<PageRepresentation<Contribuyente>> => {
-      return (await client.list(resource, params)).data;
+  const client = useSearchpeClient();
+  const result = useQuery<PageRepresentation<Contribuyente>, ApiClientError>({
+    queryKey: ["contribuyentes", params],
+    queryFn: async (): Promise<PageRepresentation<Contribuyente>> => {
+      return (
+        await client.list<PageRepresentation<Contribuyente>>(resource, params)
+      ).data;
     },
-    { keepPreviousData: true }
-  );
+    keepPreviousData: true,
+  });
   return result;
 };
 
 export const useContribuyenteQuery = (
   numeroDocumento: string | null
 ): UseQueryResult<Contribuyente, ApiClientError> => {
-  const client = useClientInstance();
-  const result = useQuery<Contribuyente, ApiClientError>(
-    ["contribuyente", numeroDocumento],
-    async (): Promise<Contribuyente> => {
-      return (await client.get(resource, numeroDocumento || "")).data;
+  const client = useSearchpeClient();
+  const result = useQuery<Contribuyente, ApiClientError>({
+    queryKey: ["contribuyente", numeroDocumento],
+    queryFn: async (): Promise<Contribuyente> => {
+      return (await client.get<Contribuyente>(resource, numeroDocumento || ""))
+        .data;
     },
-    { enabled: !!numeroDocumento, retry: false }
-  );
+    enabled: !!numeroDocumento,
+    retry: false,
+  });
   return result;
 };

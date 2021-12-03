@@ -10,8 +10,8 @@ import {
 import { AdminClusterResource, AdminClusterResourceKind } from "api-client";
 import { User } from "api/models";
 
-import { useClientInstance } from "shared/hooks";
 import { ApiClientError } from "api-client/types";
+import { useSearchpeClient } from "./fetchHelpers";
 
 const userResource = new AdminClusterResource(AdminClusterResourceKind.User);
 
@@ -19,27 +19,25 @@ export const useUsersQuery = (): UseQueryResult<User[], ApiClientError> => {
   const sortUserListByUsernameCallback = useCallback((data: User[]): User[] => {
     return data.sort((a, b) => a.username.localeCompare(b.username));
   }, []);
-  const client = useClientInstance();
-  const result = useQuery<User[], ApiClientError>(
-    "users",
-    async () => {
-      return (await client.list(userResource)).data;
+  const client = useSearchpeClient();
+  const result = useQuery<User[], ApiClientError>({
+    queryKey: "users",
+    queryFn: async () => {
+      return (await client.list<User[]>(userResource)).data;
     },
-    {
-      select: sortUserListByUsernameCallback,
-    }
-  );
+    select: sortUserListByUsernameCallback,
+  });
   return result;
 };
 
 export const useCreateUserMutation = (
   onSuccess?: (user: User) => void
 ): UseMutationResult<User, ApiClientError, User> => {
-  const client = useClientInstance();
+  const client = useSearchpeClient();
   const queryClient = useQueryClient();
   return useMutation<User, ApiClientError, User>(
     async (user: User) => {
-      return (await client.create(userResource, user)).data;
+      return (await client.create<User>(userResource, user)).data;
     },
     {
       onSuccess: (response) => {
@@ -53,12 +51,13 @@ export const useCreateUserMutation = (
 export const useUpdateUserMutation = (
   onSuccess?: (user: User) => void
 ): UseMutationResult<User, ApiClientError, User> => {
-  const client = useClientInstance();
+  const client = useSearchpeClient();
   const queryClient = useQueryClient();
   return useMutation<User, ApiClientError, User>(
     async (user: User) => {
-      return (await client.put(userResource, user.id?.toString() || "", user))
-        .data;
+      return (
+        await client.put<User>(userResource, user.id?.toString() || "", user)
+      ).data;
     },
     {
       onSuccess: (response) => {
@@ -72,11 +71,11 @@ export const useUpdateUserMutation = (
 export const useDeleteUserMutation = (
   onSuccess?: () => void
 ): UseMutationResult<void, ApiClientError, User, unknown> => {
-  const client = useClientInstance();
+  const client = useSearchpeClient();
   const queryClient = useQueryClient();
   return useMutation<void, ApiClientError, User>(
-    (user: User) => {
-      return client.delete(userResource, `${user.id}`);
+    async (user: User) => {
+      await client.delete<void>(userResource, `${user.id}`);
     },
     {
       onSuccess: () => {

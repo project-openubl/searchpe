@@ -10,8 +10,8 @@ import {
 import { CoreClusterResource, CoreClusterResourceKind } from "api-client";
 import { Version } from "api/models";
 
-import { useClientInstance } from "shared/hooks";
 import { ApiClientError } from "api-client/types";
+import { useSearchpeClient } from "./fetchHelpers";
 
 const versionResource = new CoreClusterResource(
   CoreClusterResourceKind.Version
@@ -26,40 +26,38 @@ export const useVersionsQuery = (): UseQueryResult<
     []
   );
 
-  const client = useClientInstance();
-  const result = useQuery<Version[], ApiClientError>(
-    "versions",
-    async () => {
-      return (await client.list(versionResource)).data;
+  const client = useSearchpeClient();
+  const result = useQuery<Version[], ApiClientError>({
+    queryKey: "versions",
+    queryFn: async () => {
+      return (await client.list<Version[]>(versionResource)).data;
     },
-    {
-      refetchInterval: (data) => {
-        const flag = (data || []).every(
-          (f) =>
-            f.status === "COMPLETED" ||
-            f.status === "ERROR" ||
-            f.status === "DELETING"
-        );
-        if (!flag) {
-          return 5_000;
-        } else {
-          return false;
-        }
-      },
-      select: sortVersionListByIdCallback,
-    }
-  );
+    refetchInterval: (data) => {
+      const flag = (data || []).every(
+        (f) =>
+          f.status === "COMPLETED" ||
+          f.status === "ERROR" ||
+          f.status === "DELETING"
+      );
+      if (!flag) {
+        return 5_000;
+      } else {
+        return false;
+      }
+    },
+    select: sortVersionListByIdCallback,
+  });
   return result;
 };
 
 export const useCreateVersionMutation = (
   onSuccess?: (version: Version) => void
 ): UseMutationResult<Version, ApiClientError, void> => {
-  const client = useClientInstance();
+  const client = useSearchpeClient();
   const queryClient = useQueryClient();
   return useMutation<Version, ApiClientError, void>(
     async () => {
-      return (await client.create(versionResource, {})).data;
+      return (await client.create<Version>(versionResource, {})).data;
     },
     {
       onSuccess: (response) => {
@@ -73,11 +71,11 @@ export const useCreateVersionMutation = (
 export const useDeleteVersionMutation = (
   onSuccess?: () => void
 ): UseMutationResult<void, ApiClientError, Version, unknown> => {
-  const client = useClientInstance();
+  const client = useSearchpeClient();
   const queryClient = useQueryClient();
   return useMutation<void, ApiClientError, Version>(
-    (version: Version) => {
-      return client.delete(versionResource, `${version.id}`);
+    async (version: Version) => {
+      await client.delete<void>(versionResource, `${version.id}`);
     },
     {
       onSuccess: () => {
