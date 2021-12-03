@@ -64,7 +64,7 @@
     ]
   },
   "devDependencies": {
-    "@cypress/code-coverage": "^3.9.11",
+    "@cypress/code-coverage": "^3.9.12",
     "@cypress/instrument-cra": "^1.4.0",
     "@testing-library/react-hooks": "^7.0.2",
     "@types/enzyme": "^3.10.10",
