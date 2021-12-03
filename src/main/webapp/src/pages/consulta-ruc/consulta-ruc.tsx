@@ -1,10 +1,8 @@
 import React, { useState } from "react";
-import { useHistory } from "react-router-dom";
 
 import { SimplePlaceholder, ConditionalRender } from "@project-openubl/lib-ui";
 
 import {
-  Bullseye,
   Card,
   CardBody,
   EmptyState,
@@ -20,22 +18,14 @@ import {
 } from "@patternfly/react-core";
 import { SearchIcon } from "@patternfly/react-icons";
 
-import { useVersionsQuery } from "queries/versions";
 import { useContribuyenteQuery } from "queries/contribuyentes";
 import {
   SimplePageSection,
   SearchInput,
-  Welcome,
   ContribuyenteDetails,
 } from "shared/components";
 
-import { Paths } from "Paths";
-
 export const ConsultaRuc: React.FC = () => {
-  const history = useHistory();
-
-  const versions = useVersionsQuery();
-
   const [numeroDocumento, setNumeroDocumento] = useState("");
   const contribuyente = useContribuyenteQuery(numeroDocumento);
 
@@ -44,23 +34,6 @@ export const ConsultaRuc: React.FC = () => {
       setNumeroDocumento(numeroDocumento);
     }
   };
-
-  const handleOnViewVersion = () => {
-    history.push(Paths.versionList);
-  };
-
-  if (versions.isFetching || (versions.data && versions.data.length === 0)) {
-    return (
-      <Bullseye>
-        <ConditionalRender
-          when={versions.isFetching}
-          then={<SimplePlaceholder />}
-        >
-          <Welcome onPrimaryAction={handleOnViewVersion} />
-        </ConditionalRender>
-      </Bullseye>
-    );
-  }
 
   return (
     <>

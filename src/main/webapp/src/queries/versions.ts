@@ -34,10 +34,7 @@ export const useVersionsQuery = (): UseQueryResult<
     },
     refetchInterval: (data) => {
       const flag = (data || []).every(
-        (f) =>
-          f.status === "COMPLETED" ||
-          f.status === "ERROR" ||
-          f.status === "DELETING"
+        (f) => f.status === "COMPLETED" || f.status === "ERROR"
       );
       if (!flag) {
         return 5_000;

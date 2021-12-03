@@ -20,6 +20,7 @@ export const useCurrentUserQuery = (): UseQueryResult<User, ApiClientError> => {
     queryFn: async () => {
       return (await client.get<User>(whoAmIResource, "")).data;
     },
+    retry: process.env.NODE_ENV === "development" ? false : undefined,
   });
   return result;
 };
