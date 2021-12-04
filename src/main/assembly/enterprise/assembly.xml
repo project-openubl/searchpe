@@ -21,16 +21,25 @@
 
     <id>distribution</id>
     <formats>
+        <format>tar.gz</format>
         <format>zip</format>
+        <format>dir</format>
     </formats>
 
     <baseDirectory>${project.build.finalName}</baseDirectory>
+
+    <files>
+        <file>
+            <source>LICENSE.txt</source>
+            <outputDirectory>./</outputDirectory>
+        </file>
+    </files>
 
     <!-- Add distribution files -->
     <fileSets>
         <fileSet>
             <directory>${project.build.directory}/quarkus-app</directory>
-            <outputDirectory></outputDirectory>
+            <outputDirectory>./</outputDirectory>
         </fileSet>
         <fileSet>
             <directory>src/main/distribution/bin</directory>

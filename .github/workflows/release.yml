@@ -54,6 +54,45 @@ jobs:
             HEAD
             *_VERSION
 
+  build-jvm:
+    needs: [ version ]
+    name: Build JVM (${{ matrix.flavor }})
+    strategy:
+      fail-fast: true
+      matrix:
+        flavor: [ "standalone", "enterprise" ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: artifacts
+          path: artifacts
+      - name: Read HEAD ref
+        id: head
+        uses: juliangruber/read-file-action@v1
+        with:
+          path: artifacts/HEAD
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ steps.head.outputs.content }}
+
+      - name: Setup Java
+        uses: actions/setup-java@v2
+        with:
+          java-version: 11
+          distribution: temurin
+          cache: maven
+
+      - name: Build and Create distribution
+        run: ./mvnw -B --file pom.xml package -DskipTests -P ui,${{ matrix.flavor }},${{ matrix.flavor }}-distribution
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: artifacts
+          path: |
+            target/distributions/*.zip
+            target/distributions/*.tar.gz
+
   build-native:
     needs: [ version ]
     name: Build Native on ${{ matrix.os }} (${{ matrix.flavor }})
@@ -101,7 +140,7 @@ jobs:
       - name: Build Native
         run: ./mvnw -B --file pom.xml package -DskipTests -P native,ui,${{ matrix.flavor }}
       - name: Create distribution
-        run: ./mvnw -B --file pom.xml package -DskipTests -P ${{ matrix.flavor }},${{ matrix.flavor }}-distribution
+        run: ./mvnw -B --file pom.xml package -DskipTests -P ${{ matrix.flavor }},${{ matrix.flavor }}-native-distribution
       - name: Upload build artifact
         uses: actions/upload-artifact@v2
         with:
