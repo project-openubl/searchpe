@@ -1,0 +1,66 @@
+project:
+  name: searchpe
+  description: Consultas RUC/DNI al "padrón reducido" de la SUNAT
+  longDescription: Consulta el DNI o RUC de cualquier persona natural o jurídica registrada en el territorio peruano. La información es obtenida del padrón reducido de la SUNAT.
+  website: https://project-openubl.github.io/
+  authors:
+    - Carlos E. Feria Vila
+  license: Apache-2
+  java:
+    groupId: io.github.project.openubl.searchpe
+    version: 11
+  extraProperties:
+    inceptionYear: 2019
+
+release:
+  github:
+    owner: carlosthe19916
+    name: searchpe
+
+distributions:
+  searchpe:
+    artifacts:
+      - path: target/{{distributionName}}-{{projectVersion}}.zip
+  searchpe-enterprise:
+    artifacts:
+      - path: target/{{distributionName}}-{{projectVersion}}.zip
+
+checksum:
+  files: false
+
+announce:
+  discussions:
+    active: RELEASE
+    organization: project-openubl
+    team: searchpe
+    title: '{{projectNameCapitalized}} {{projectVersion}} released!'
+    message: '🚀 {{projectNameCapitalized}} {{projectVersion}} has been released! {{releaseNotesUrl}}'
+  mail:
+    active: RELEASE
+    transport: SMTP
+    mimeType: TEXT
+    port: 587
+    auth: true
+    host: smtp.gmail.com
+    username: carlosthe19916@gmail.com
+    password:
+    from: projectopenubl@googlegroups.com
+    to: projectopenubl@googlegroups.com
+    bcc: carlosthe19916@gmail.com
+    subject: '{{projectNameCapitalized}} {{projectVersion}} released!'
+    message: |
+      We just launched {{projectNameCapitalized}} {{projectVersion}}!
+      {{changelog}}
+    properties:
+      'mail.smtp.starttls.enable': true
+  twitter:
+    active: RELEASE
+    status: '🚀 {{projectNameCapitalized}} {{projectVersion}} has been released! {{releaseNotesUrl}}'
+  zulip:
+    active: RELEASE
+    account: projectopenubl@my.zulipchat.com
+    apiHost: https://projectopenubl.zulipchat.com/api/v1
+    channel: announcements
+    subject: '{{projectNameCapitalized}} {{projectVersion}} released!'
+    message: '🚀 {{projectNameCapitalized}} {{projectVersion}} has been released! {{releaseNotesUrl}}'
+

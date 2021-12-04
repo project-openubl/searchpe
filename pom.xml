@@ -46,6 +46,8 @@
         <testcontainers.version>1.15.3</testcontainers.version>
 
         <license.dir>${basedir}</license.dir>
+
+        <executable-suffix/>
     </properties>
 
     <url>https://project-openubl.github.io/</url>
@@ -202,7 +204,6 @@
             <scope>test</scope>
         </dependency>
 
-
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
@@ -236,6 +237,14 @@
     </dependencies>
 
     <build>
+        <extensions>
+            <extension>
+                <groupId>kr.motd.maven</groupId>
+                <artifactId>os-maven-plugin</artifactId>
+                <version>1.7.0</version>
+            </extension>
+        </extensions>
+
         <plugins>
             <plugin>
                 <groupId>${quarkus.platform.group-id}</groupId>
@@ -329,11 +338,8 @@
                                 </goals>
                                 <configuration>
                                     <systemPropertyVariables>
-                                        <native.image.path>
-                                            ${project.build.directory}/${project.build.finalName}-runner
-                                        </native.image.path>
-                                        <java.util.logging.manager>org.jboss.logmanager.LogManager
-                                        </java.util.logging.manager>
+                                        <native.image.path>${project.build.directory}/${project.build.finalName}-runner</native.image.path>
+                                        <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                                         <maven.home>${maven.home}</maven.home>
                                     </systemPropertyVariables>
                                 </configuration>
@@ -431,26 +437,6 @@
                             </includes>
                         </configuration>
                     </plugin>
-
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-assembly-plugin</artifactId>
-                        <version>${maven-assembly-plugin.version}</version>
-                        <executions>
-                            <execution>
-                                <id>distribution</id>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>single</goal>
-                                </goals>
-                                <configuration>
-                                    <descriptors>
-                                        <descriptor>src/main/assembly/standalone/assembly.xml</descriptor>
-                                    </descriptors>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
                 </plugins>
             </build>
         </profile>
@@ -459,6 +445,38 @@
             <properties>
                 <quarkus.profile>standalone</quarkus.profile>
             </properties>
+        </profile>
+        <profile>
+            <id>standalone-distribution</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <version>${maven-assembly-plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>native-distribution</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                                <configuration combine.self="append">
+                                    <attach>false</attach>
+                                    <appendAssemblyId>false</appendAssemblyId>
+                                    <finalName>${project.artifactId}-${project.version}-${os.detected.classifier}</finalName>
+                                    <outputDirectory>${project.build.directory}/distributions</outputDirectory>
+                                    <workDirectory>${project.build.directory}/assembly/work</workDirectory>
+                                    <skipAssembly>false</skipAssembly>
+                                    <descriptors>
+                                        <descriptor>src/main/assembly/standalone/native-assembly.xml</descriptor>
+                                    </descriptors>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
 
         <profile>
@@ -476,25 +494,6 @@
                                 <include>**/*EnterpriseIT.java</include>
                             </includes>
                         </configuration>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-assembly-plugin</artifactId>
-                        <version>${maven-assembly-plugin.version}</version>
-                        <executions>
-                            <execution>
-                                <id>distribution</id>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>single</goal>
-                                </goals>
-                                <configuration>
-                                    <descriptors>
-                                        <descriptor>src/main/assembly/enterprise/assembly.xml</descriptor>
-                                    </descriptors>
-                                </configuration>
-                            </execution>
-                        </executions>
                     </plugin>
                 </plugins>
             </build>
@@ -525,7 +524,7 @@
                                         </ports>
                                         <log>
                                             <enabled>false</enabled>
-                                            <prefix>Elasticsearch: </prefix>
+                                            <prefix>Elasticsearch:</prefix>
                                             <date>default</date>
                                             <color>cyan</color>
                                         </log>
@@ -555,5 +554,38 @@
                 </plugins>
             </build>
         </profile>
+        <profile>
+            <id>enterprise-distribution</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <version>${maven-assembly-plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>native-distribution</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                                <configuration combine.self="append">
+                                    <attach>false</attach>
+                                    <appendAssemblyId>false</appendAssemblyId>
+                                    <finalName>${project.artifactId}-enterprise-${project.version}-${os.detected.classifier}</finalName>
+                                    <outputDirectory>${project.build.directory}/distributions</outputDirectory>
+                                    <workDirectory>${project.build.directory}/assembly/work</workDirectory>
+                                    <skipAssembly>false</skipAssembly>
+                                    <descriptors>
+                                        <descriptor>src/main/assembly/enterprise/native-assembly.xml</descriptor>
+                                    </descriptors>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
     </profiles>
 </project>

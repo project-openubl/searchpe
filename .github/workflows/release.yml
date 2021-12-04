@@ -1,0 +1,156 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version"
+        required: true
+      next:
+        description: "Next version"
+        required: false
+
+jobs:
+  version:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Setup Java
+        uses: actions/setup-java@v2
+        with:
+          java-version: 11
+          distribution: temurin
+      - name: 'Set release version'
+        id: version
+        run: |
+          RELEASE_VERSION=${{ github.event.inputs.version }}
+          NEXT_VERSION=${{ github.event.inputs.next }}
+          PLAIN_VERSION=`echo ${RELEASE_VERSION} | awk 'match($0, /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)/) { print substr($0, RSTART, RLENGTH); }'`
+          COMPUTED_NEXT_VERSION="${PLAIN_VERSION}-SNAPSHOT"
+          if [ -z $NEXT_VERSION ]
+          then
+            NEXT_VERSION=$COMPUTED_NEXT_VERSION
+          fi
+          ./mvnw -B versions:set versions:commit -DnewVersion=$RELEASE_VERSION
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "GitHub Action"
+          git commit -a -m "🏁 Releasing version $RELEASE_VERSION"
+          git push origin HEAD:main
+          git rev-parse HEAD > HEAD
+          echo $RELEASE_VERSION > RELEASE_VERSION
+          echo $PLAIN_VERSION > PLAIN_VERSION
+          echo $NEXT_VERSION > NEXT_VERSION
+
+      - name: 'Upload version files'
+        uses: actions/upload-artifact@v2
+        with:
+          name: artifacts
+          path: |
+            HEAD
+            *_VERSION
+
+  build-native:
+    needs: [ version ]
+    name: Build Native artifacts on ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        flavor: [ "standalone", "enterprise" ]
+        os: [ ubuntu-latest, macOS-latest, windows-latest ]
+        gu-binary: [ gu, gu.cmd ]
+        exclude:
+          - os: ubuntu-latest
+            gu-binary: gu.cmd
+          - os: macos-latest
+            gu-binary: gu.cmd
+          - os: windows-latest
+            gu-binary: gu
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: artifacts
+      - name: Read HEAD ref
+        id: head
+        uses: juliangruber/read-file-action@v1
+        with:
+          path: artifacts/HEAD
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ steps.head.outputs.content }}
+
+      - name: Add Developer Command Prompt for Microsoft Visual C++
+        if: ${{ runner.os == 'Windows' }}
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Set up GraalVM
+        uses: DeLaGuardo/setup-graalvm@4.0
+        with:
+          graalvm: 21.3.0
+          java: java11
+      - name: Install native-image component
+        run: |
+          ${{ matrix.gu-binary }} install native-image
+
+      - name: Build Native
+        run: ./mvnw -B --file pom.xml package -DskipTests $MAVEN_ARGS
+        env:
+          MAVEN_ARGS: "-P native,ui,${{ matrix.flavor }}"
+      - name: Create distribution
+        run: ./mvnw -B --file pom.xml package -DskipTests -Pdistribution
+        env:
+          MAVEN_ARGS: "-P ${{ matrix.flavor }}-distribution"
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: artifacts
+          path: |
+            target/distributions/*.zip
+            target/distributions/*.tar.gz
+
+#  release:
+#    name: Release
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Checkout
+#        uses: actions/checkout@v2
+#        with:
+#          fetch-depth: 0
+#      - name: Setup Java
+#        uses: actions/setup-java@v2
+#        with:
+#          java-version: 11
+#          distribution: temurin
+#      - name: 'Set release version'
+#        id: version
+#        run: |
+#          RELEASE_VERSION=${{ github.event.inputs.version }}
+#          NEXT_VERSION=${{ github.event.inputs.next }}
+#          PLAIN_VERSION=`echo ${RELEASE_VERSION} | awk 'match($0, /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)/) { print substr($0, RSTART, RLENGTH); }'`
+#          COMPUTED_NEXT_VERSION="${PLAIN_VERSION}-SNAPSHOT"
+#          if [ -z $NEXT_VERSION ]
+#          then
+#            NEXT_VERSION=$COMPUTED_NEXT_VERSION
+#          fi
+#          ./mvnw -B versions:set versions:commit -DnewVersion=$RELEASE_VERSION
+#          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+#          git config --global user.name "GitHub Action"
+#          git commit -a -m "🏁 Releasing version $RELEASE_VERSION"
+#          git push origin HEAD:main
+#          git rev-parse HEAD > HEAD
+#          echo $RELEASE_VERSION > RELEASE_VERSION
+#          echo $PLAIN_VERSION > PLAIN_VERSION
+#          echo $NEXT_VERSION > NEXT_VERSION
+#
+#      - name: Universal distribution (Java)
+#        run: |
+#          mvn package -DskipTests -Pstandalone
+#          mvn package -DskipTests -Penterprise
+#      - name: JReleaser
+#        uses: jreleaser/release-action@v1
+#        env:
+#          JRELEASER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
