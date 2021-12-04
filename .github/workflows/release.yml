@@ -56,7 +56,7 @@ jobs:
 
   build-native:
     needs: [ version ]
-    name: Build Native artifacts on ${{ matrix.os }} ${{ matrix.flavor }}
+    name: Build Native on ${{ matrix.os }} (${{ matrix.flavor }})
     strategy:
       fail-fast: false
       matrix:
@@ -99,13 +99,9 @@ jobs:
           ${{ matrix.gu-binary }} install native-image
 
       - name: Build Native
-        run: ./mvnw -B --file pom.xml package -DskipTests $MAVEN_ARGS
-        env:
-          MAVEN_ARGS: "-P native,ui,${{ matrix.flavor }}"
+        run: ./mvnw -B --file pom.xml package -DskipTests -P native,ui,${{ matrix.flavor }}
       - name: Create distribution
-        run: ./mvnw -B --file pom.xml package -DskipTests -Pdistribution
-        env:
-          MAVEN_ARGS: "-P ${{ matrix.flavor }}-distribution"
+        run: ./mvnw -B --file pom.xml package -DskipTests -P ${{ matrix.flavor }}-distribution
       - name: Upload build artifact
         uses: actions/upload-artifact@v2
         with:
