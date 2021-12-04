@@ -56,9 +56,9 @@ jobs:
 
   build-native:
     needs: [ version ]
-    name: Build Native artifacts on ${{ matrix.os }}
+    name: Build Native artifacts on ${{ matrix.os }} ${{ matrix.flavor }}
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         flavor: [ "standalone", "enterprise" ]
         os: [ ubuntu-latest, macOS-latest, windows-latest ]
