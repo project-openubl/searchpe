@@ -24,6 +24,7 @@ jobs:
         with:
           java-version: 11
           distribution: temurin
+          cache: maven
       - name: 'Set release version'
         id: version
         run: |
@@ -74,6 +75,7 @@ jobs:
       - uses: actions/download-artifact@v2
         with:
           name: artifacts
+          path: artifacts
       - name: Read HEAD ref
         id: head
         uses: juliangruber/read-file-action@v1
