@@ -58,7 +58,7 @@ jobs:
     needs: [ version ]
     name: Build Native on ${{ matrix.os }} (${{ matrix.flavor }})
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         flavor: [ "standalone", "enterprise" ]
         os: [ ubuntu-latest, macOS-latest, windows-latest ]
@@ -101,7 +101,7 @@ jobs:
       - name: Build Native
         run: ./mvnw -B --file pom.xml package -DskipTests -P native,ui,${{ matrix.flavor }}
       - name: Create distribution
-        run: ./mvnw -B --file pom.xml package -DskipTests -P ${{ matrix.flavor }}-distribution
+        run: ./mvnw -B --file pom.xml package -DskipTests -P ${{ matrix.flavor }},${{ matrix.flavor }}-distribution
       - name: Upload build artifact
         uses: actions/upload-artifact@v2
         with:
