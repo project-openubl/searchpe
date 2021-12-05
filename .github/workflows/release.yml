@@ -200,7 +200,7 @@ jobs:
         uses: jreleaser/release-action@v1
         env:
           JRELEASER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          JRELEASER_PROJECT_VERSION: ${{ steps.release_version.outputs.content }}
+          JRELEASER_PROJECT_VERSION: 3.1.0.Final
       - name: Set next version
         env:
           NEXT_VERSION: ${{ steps.version.outputs.NEXT_VERSION }}
