@@ -13,14 +13,15 @@ project:
     inceptionYear: 2019
 
 distributions:
-  jvm:
+  standalone-jvm:
     artifacts:
       - path: artifacts/{{distributionName}}-{{projectVersion}}-jvm.tar.gz
       - path: artifacts/{{distributionName}}-{{projectVersion}}-jvm.zip
-
+  enterprise-jvm:
+    artifacts:
       - path: artifacts/{{distributionName}}-enterprise-{{projectVersion}}-jvm.tar.gz
       - path: artifacts/{{distributionName}}-enterprise-{{projectVersion}}-jvm.zip
-  native:
+  standalone-native:
     type: NATIVE_IMAGE
     artifacts:
       - path: artifacts/{{distributionName}}-{{projectVersion}}-linux-x86_64.tar.gz
@@ -29,7 +30,9 @@ distributions:
         platform: windows-x86_64
       - path: artifacts/{{distributionName}}-{{projectVersion}}-osx-x86_64.zip
         platform: osx-x86_64
-
+  enterprise-native:
+    type: NATIVE_IMAGE
+    artifacts:
       - path: artifacts/{{distributionName}}-enterprise-{{projectVersion}}-linux-x86_64.tar.gz
         platform: linux-x86_64
       - path: artifacts/{{distributionName}}-enterprise-{{projectVersion}}-windows-x86_64.zip
