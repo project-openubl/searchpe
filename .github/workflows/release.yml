@@ -25,7 +25,7 @@ jobs:
           java-version: 11
           distribution: temurin
           cache: maven
-      - name: 'Set release version'
+      - name: Set release version
         id: version
         run: |
           RELEASE_VERSION=${{ github.event.inputs.version }}
@@ -46,7 +46,7 @@ jobs:
           echo $PLAIN_VERSION > PLAIN_VERSION
           echo $NEXT_VERSION > NEXT_VERSION
 
-      - name: 'Upload version files'
+      - name: Upload version files
         uses: actions/upload-artifact@v2
         with:
           name: artifacts
@@ -201,7 +201,6 @@ jobs:
         env:
           JRELEASER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           JRELEASER_PROJECT_VERSION: ${{ steps.release_version.outputs.content }}
-
       - name: Set next version
         env:
           NEXT_VERSION: ${{ steps.version.outputs.NEXT_VERSION }}
