@@ -41,7 +41,6 @@ release:
   github:
     owner: carlosthe19916
     name: searchpe
-    override: true
 
 #announce:
 #  discussions:
