@@ -204,4 +204,4 @@ jobs:
           git config --global user.email "project.openubl.preview.bot@gmail.com"
           git config --global user.name "Project-Openubl Bot"
           git commit -a -m "⬆️  Next version $NEXT_VERSION"
-          git push origin HEAD:main
+          git push origin HEAD:master
