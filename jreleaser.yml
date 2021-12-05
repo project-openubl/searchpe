@@ -15,29 +15,29 @@ project:
 distributions:
   standalone-jvm:
     artifacts:
-      - path: artifacts/{{distributionName}}-{{projectVersion}}-jvm.tar.gz
-      - path: artifacts/{{distributionName}}-{{projectVersion}}-jvm.zip
+      - path: artifacts/searchpe-{{projectVersion}}-jvm.tar.gz
+      - path: artifacts/searchpe-{{projectVersion}}-jvm.zip
   enterprise-jvm:
     artifacts:
-      - path: artifacts/{{distributionName}}-enterprise-{{projectVersion}}-jvm.tar.gz
-      - path: artifacts/{{distributionName}}-enterprise-{{projectVersion}}-jvm.zip
+      - path: artifacts/searchpe-enterprise-{{projectVersion}}-jvm.tar.gz
+      - path: artifacts/searchpe-enterprise-{{projectVersion}}-jvm.zip
   standalone-native:
     type: NATIVE_IMAGE
     artifacts:
-      - path: artifacts/{{distributionName}}-{{projectVersion}}-linux-x86_64.tar.gz
+      - path: artifacts/searchpe-{{projectVersion}}-linux-x86_64.tar.gz
         platform: linux-x86_64
-      - path: artifacts/{{distributionName}}-{{projectVersion}}-windows-x86_64.zip
+      - path: artifacts/searchpe-{{projectVersion}}-windows-x86_64.zip
         platform: windows-x86_64
-      - path: artifacts/{{distributionName}}-{{projectVersion}}-osx-x86_64.zip
+      - path: artifacts/searchpe-{{projectVersion}}-osx-x86_64.zip
         platform: osx-x86_64
   enterprise-native:
     type: NATIVE_IMAGE
     artifacts:
-      - path: artifacts/{{distributionName}}-enterprise-{{projectVersion}}-linux-x86_64.tar.gz
+      - path: artifacts/searchpe-enterprise-{{projectVersion}}-linux-x86_64.tar.gz
         platform: linux-x86_64
-      - path: artifacts/{{distributionName}}-enterprise-{{projectVersion}}-windows-x86_64.zip
+      - path: artifacts/searchpe-enterprise-{{projectVersion}}-windows-x86_64.zip
         platform: windows-x86_64
-      - path: artifacts/{{distributionName}}-enterprise-{{projectVersion}}-osx-x86_64.zip
+      - path: artifacts/searchpe-enterprise-{{projectVersion}}-osx-x86_64.zip
         platform: osx-x86_64
 
 release:
