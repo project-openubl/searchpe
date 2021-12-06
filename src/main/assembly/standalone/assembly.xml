@@ -47,12 +47,12 @@
         </fileSet>
         <fileSet>
             <directory>src/main/distribution/bin</directory>
-            <outputDirectory>/bin</outputDirectory>
+            <outputDirectory>./bin</outputDirectory>
             <filtered>false</filtered>
         </fileSet>
         <fileSet>
             <directory>src/main/distribution/config/standalone</directory>
-            <outputDirectory>/config</outputDirectory>
+            <outputDirectory>./config</outputDirectory>
             <filtered>false</filtered>
         </fileSet>
     </fileSets>
