@@ -24,7 +24,7 @@
 
     <groupId>io.github.project-openubl</groupId>
     <artifactId>searchpe</artifactId>
-    <version>3.2.0-SNAPSHOT</version>
+    <version>3.2.0.Final</version>
 
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
