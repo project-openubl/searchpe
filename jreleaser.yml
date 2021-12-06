@@ -44,6 +44,7 @@ release:
   github:
     owner: carlosthe19916
     name: searchpe
+    branch: master
 
 #announce:
 #  discussions:
