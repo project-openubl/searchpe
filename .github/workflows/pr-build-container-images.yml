@@ -16,6 +16,7 @@ jobs:
         with:
           java-version: 11
           distribution: temurin
+
       - name: Extract image name
         shell: bash
         run: |
@@ -32,17 +33,16 @@ jobs:
         shell: bash
         run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
         id: extract_branch
-      - name: Build and Push to GitHub Packages
+
+      - name: Build container image
         run: |
-          mvn package -DskipTests \
+          mvn -U -B package --file pom.xml -DskipTests \
           -Dquarkus.container-image.build=true \
           -Dquarkus.container-image.push=true \
+          -Dquarkus.container-image.registry=ghcr.io \
           -Dquarkus.container-image.group=${{ github.repository_owner }} \
           -Dquarkus.container-image.name=${{ github.event.repository.name }}/${{ steps.extract_image_name.outputs.searchpe_image_name }} \
           -Dquarkus.container-image.tag=${{ steps.extract_branch.outputs.branch }} \
-          -Dquarkus.container-image.registry=ghcr.io \
           -Dquarkus.container-image.username=${{ github.actor }} \
           -Dquarkus.container-image.password=${{ secrets.GITHUB_TOKEN }} \
-          $MAVEN_ARGS
-        env:
-          MAVEN_ARGS: "-P ui,native,${{ matrix.flavor }}"
+          -P native,ui,${{ matrix.flavor }}

@@ -21,24 +21,24 @@ distributions:
     artifacts:
       - path: artifacts/searchpe-enterprise-{{projectVersion}}-jvm.tar.gz
       - path: artifacts/searchpe-enterprise-{{projectVersion}}-jvm.zip
-  standalone-native:
-    type: NATIVE_IMAGE
-    artifacts:
-      - path: artifacts/searchpe-{{projectVersion}}-linux-x86_64.tar.gz
-        platform: linux-x86_64
-      - path: artifacts/searchpe-{{projectVersion}}-windows-x86_64.zip
-        platform: windows-x86_64
-      - path: artifacts/searchpe-{{projectVersion}}-osx-x86_64.zip
-        platform: osx-x86_64
-  enterprise-native:
-    type: NATIVE_IMAGE
-    artifacts:
-      - path: artifacts/searchpe-enterprise-{{projectVersion}}-linux-x86_64.tar.gz
-        platform: linux-x86_64
-      - path: artifacts/searchpe-enterprise-{{projectVersion}}-windows-x86_64.zip
-        platform: windows-x86_64
-      - path: artifacts/searchpe-enterprise-{{projectVersion}}-osx-x86_64.zip
-        platform: osx-x86_64
+#  standalone-native:
+#    type: NATIVE_IMAGE
+#    artifacts:
+#      - path: artifacts/searchpe-{{projectVersion}}-linux-x86_64.tar.gz
+#        platform: linux-x86_64
+#      - path: artifacts/searchpe-{{projectVersion}}-windows-x86_64.zip
+#        platform: windows-x86_64
+#      - path: artifacts/searchpe-{{projectVersion}}-osx-x86_64.zip
+#        platform: osx-x86_64
+#  enterprise-native:
+#    type: NATIVE_IMAGE
+#    artifacts:
+#      - path: artifacts/searchpe-enterprise-{{projectVersion}}-linux-x86_64.tar.gz
+#        platform: linux-x86_64
+#      - path: artifacts/searchpe-enterprise-{{projectVersion}}-windows-x86_64.zip
+#        platform: windows-x86_64
+#      - path: artifacts/searchpe-enterprise-{{projectVersion}}-osx-x86_64.zip
+#        platform: osx-x86_64
 
 release:
   github:
@@ -53,31 +53,31 @@ announce:
     team: searchpe
     title: '{{projectNameCapitalized}} {{projectVersion}} released!'
     message: '🚀 {{projectNameCapitalized}} {{projectVersion}} has been released! {{releaseNotesUrl}}'
-  mail:
-    active: RELEASE
-    transport: SMTP
-    mimeType: TEXT
-    port: 587
-    auth: true
-    host: smtp.gmail.com
-    username: projectopenubl@gmail.com
-    from: projectopenubl@googlegroups.com
-    to: cferiavi@gmail.com
-    bcc: carlosthe19916@gmail.com
-    subject: '{{projectNameCapitalized}} {{projectVersion}} released!'
-    message: |
-      We just launched {{projectNameCapitalized}} {{projectVersion}}!
-      {{changelog}}
-    properties:
-      'mail.smtp.starttls.enable': true
-  twitter:
-    active: RELEASE
-    status: '🚀 {{projectNameCapitalized}} {{projectVersion}} has been released! {{releaseNotesUrl}}'
-  zulip:
-    active: RELEASE
-    account: carlosthe19916@gmail.com
-    apiHost: https://projectopenubl.zulipchat.com/api/v1
-    channel: announcements
-    subject: '{{projectNameCapitalized}} {{projectVersion}} released!'
-    message: '🚀 {{projectNameCapitalized}} {{projectVersion}} has been released! {{releaseNotesUrl}}'
+#  mail:
+#    active: RELEASE
+#    transport: SMTP
+#    mimeType: TEXT
+#    port: 587
+#    auth: true
+#    host: smtp.gmail.com
+#    username: projectopenubl@gmail.com
+#    from: projectopenubl@googlegroups.com
+#    to: cferiavi@gmail.com
+#    bcc: carlosthe19916@gmail.com
+#    subject: '{{projectNameCapitalized}} {{projectVersion}} released!'
+#    message: |
+#      We just launched {{projectNameCapitalized}} {{projectVersion}}!
+#      {{changelog}}
+#    properties:
+#      'mail.smtp.starttls.enable': true
+#  twitter:
+#    active: RELEASE
+#    status: '🚀 {{projectNameCapitalized}} {{projectVersion}} has been released! {{releaseNotesUrl}}'
+#  zulip:
+#    active: RELEASE
+#    account: carlosthe19916@gmail.com
+#    apiHost: https://projectopenubl.zulipchat.com/api/v1
+#    channel: announcements
+#    subject: '{{projectNameCapitalized}} {{projectVersion}} released!'
+#    message: '🚀 {{projectNameCapitalized}} {{projectVersion}} has been released! {{releaseNotesUrl}}'
 

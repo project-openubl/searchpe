@@ -2,8 +2,8 @@ name: Container images generator
 
 on:
   push:
-    branches-ignore:
-      - "dependabot/**"
+    branches:
+      - master
 
 jobs:
   container-images:
@@ -19,10 +19,7 @@ jobs:
         with:
           java-version: 11
           distribution: temurin
-      - name: Build with Maven
-        run: ./mvnw package -Dquarkus.native.container-build=true -DskipTests $MAVEN_ARGS
-        env:
-          MAVEN_ARGS: "-P ui,native,${{ matrix.flavor }}"
+
       - name: Extract image name
         shell: bash
         run: |
@@ -35,36 +32,16 @@ jobs:
           echo $image_name;
           echo "##[set-output name=searchpe_image_name;]$(echo $image_name)"'
         id: extract_image_name
-      - name: Extract branch name
-        shell: bash
-        run: echo "##[set-output name=branch;]$(echo ${{ matrix.flavor }})"
-        id: extract_branch
-      - name: Push to Quay.io
-        uses: elgohr/Publish-Docker-Github-Action@3.04
-        with:
-          registry: quay.io
-          name: projectopenubl/${{ steps.extract_image_name.outputs.searchpe_image_name }}
-          username: ${{ secrets.QUAYIO_USERNAME }}
-          password: ${{ secrets.QUAYIO_PASSWORD }}
-          dockerfile: src/main/docker/Dockerfile.native
-          snapshot: false
-          tags: ${{ steps.extract_branch.outputs.branch }}
-      - name: Push to GitHub Packages
-        uses: elgohr/Publish-Docker-Github-Action@3.04
-        with:
-          registry: ghcr.io
-          name: ${{ github.repository_owner }}/${{ github.event.repository.name }}/${{ steps.extract_image_name.outputs.searchpe_image_name }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          dockerfile: src/main/docker/Dockerfile.native
-          snapshot: false
-          tags: ${{ steps.extract_branch.outputs.branch }}
-      - name: Push to Docker Hub
-        uses: elgohr/Publish-Docker-Github-Action@3.04
-        with:
-          name: projectopenubl/${{ steps.extract_image_name.outputs.searchpe_image_name }}
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-          dockerfile: src/main/docker/Dockerfile.native
-          snapshot: false
-          tags: ${{ steps.extract_branch.outputs.branch }}
+
+      - name: Build container image
+        run: |
+          mvn -U -B package --file pom.xml -DskipTests \
+          -Dquarkus.native.container-build=true \
+          -Dquarkus.container-image.push=true \
+          -Dquarkus.container-image.registry=quay.io \
+          -Dquarkus.container-image.group=projectopenubl \
+          -Dquarkus.container-image.name=${{ steps.extract_image_name.outputs.searchpe_image_name }} \
+          -Dquarkus.container-image.tag=early-access \
+          -Dquarkus.container-image.username=${{ secrets.QUAYIO_USERNAME }} \
+          -Dquarkus.container-image.password=${{ secrets.QUAYIO_PASSWORD }} \
+          -P native,ui,${{ matrix.flavor }}
