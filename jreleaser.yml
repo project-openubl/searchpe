@@ -46,39 +46,38 @@ release:
     name: searchpe
     branch: master
 
-#announce:
-#  discussions:
-#    active: RELEASE
-#    organization: project-openubl
-#    team: searchpe
-#    title: '{{projectNameCapitalized}} {{projectVersion}} released!'
-#    message: '🚀 {{projectNameCapitalized}} {{projectVersion}} has been released! {{releaseNotesUrl}}'
-#  mail:
-#    active: RELEASE
-#    transport: SMTP
-#    mimeType: TEXT
-#    port: 587
-#    auth: true
-#    host: smtp.gmail.com
-#    username: carlosthe19916@gmail.com
-#    password:
-#    from: projectopenubl@googlegroups.com
-#    to: projectopenubl@googlegroups.com
-#    bcc: carlosthe19916@gmail.com
-#    subject: '{{projectNameCapitalized}} {{projectVersion}} released!'
-#    message: |
-#      We just launched {{projectNameCapitalized}} {{projectVersion}}!
-#      {{changelog}}
-#    properties:
-#      'mail.smtp.starttls.enable': true
-#  twitter:
-#    active: RELEASE
-#    status: '🚀 {{projectNameCapitalized}} {{projectVersion}} has been released! {{releaseNotesUrl}}'
-#  zulip:
-#    active: RELEASE
-#    account: projectopenubl@my.zulipchat.com
-#    apiHost: https://projectopenubl.zulipchat.com/api/v1
-#    channel: announcements
-#    subject: '{{projectNameCapitalized}} {{projectVersion}} released!'
-#    message: '🚀 {{projectNameCapitalized}} {{projectVersion}} has been released! {{releaseNotesUrl}}'
-#
+announce:
+  discussions:
+    active: RELEASE
+    organization: carlosthe19916
+    team: searchpe
+    title: '{{projectNameCapitalized}} {{projectVersion}} released!'
+    message: '🚀 {{projectNameCapitalized}} {{projectVersion}} has been released! {{releaseNotesUrl}}'
+  mail:
+    active: RELEASE
+    transport: SMTP
+    mimeType: TEXT
+    port: 587
+    auth: true
+    host: smtp.gmail.com
+    username: projectopenubl@gmail.com
+    from: projectopenubl@googlegroups.com
+    to: cferiavi@gmail.com
+    bcc: carlosthe19916@gmail.com
+    subject: '{{projectNameCapitalized}} {{projectVersion}} released!'
+    message: |
+      We just launched {{projectNameCapitalized}} {{projectVersion}}!
+      {{changelog}}
+    properties:
+      'mail.smtp.starttls.enable': true
+  twitter:
+    active: RELEASE
+    status: '🚀 {{projectNameCapitalized}} {{projectVersion}} has been released! {{releaseNotesUrl}}'
+  zulip:
+    active: RELEASE
+    account: carlosthe19916@gmail.com
+    apiHost: https://projectopenubl.zulipchat.com/api/v1
+    channel: announcements
+    subject: '{{projectNameCapitalized}} {{projectVersion}} released!'
+    message: '🚀 {{projectNameCapitalized}} {{projectVersion}} has been released! {{releaseNotesUrl}}'
+
