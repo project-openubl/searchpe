@@ -191,16 +191,11 @@ jobs:
           distribution: temurin
           cache: maven
 
-      - name: Read HEAD ref
-        id: release_version
-        uses: juliangruber/read-file-action@v1
-        with:
-          path: artifacts/RELEASE_VERSION
       - name: Release with JReleaser
         uses: jreleaser/release-action@v1
         env:
           JRELEASER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          JRELEASER_PROJECT_VERSION: 3.1.0.Final
+          JRELEASER_PROJECT_VERSION: ${{ steps.version.outputs.NEXT_VERSION }}
       - name: Set next version
         env:
           NEXT_VERSION: ${{ steps.version.outputs.NEXT_VERSION }}
