@@ -45,6 +45,7 @@ release:
     owner: project-openubl
     name: searchpe
     branch: master
+    overwrite: true
 
 announce:
   discussions:
