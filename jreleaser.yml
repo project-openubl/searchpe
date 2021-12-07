@@ -50,7 +50,7 @@ announce:
   discussions:
     active: RELEASE
     organization: project-openubl
-    team: searchpe
+    team: Contributors
     title: '{{projectNameCapitalized}} {{projectVersion}} released!'
     message: '🚀 {{projectNameCapitalized}} {{projectVersion}} has been released! {{releaseNotesUrl}}'
 #  mail:
