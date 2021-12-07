@@ -239,6 +239,7 @@ jobs:
           docker load -i artifacts/searchpe-enterprise-container-image.tar
 
           # Tag images
+          docker tag quay.io/projectopenubl/searchpe-standalone:latest quay.io/projectopenubl/searchpe:latest
           docker tag quay.io/projectopenubl/searchpe-standalone:latest quay.io/projectopenubl/searchpe:${{ steps.version.outputs.RELEASE_VERSION }}
           docker tag quay.io/projectopenubl/searchpe-enterprise:latest quay.io/projectopenubl/searchpe-enterprise:${{ steps.version.outputs.RELEASE_VERSION }}
 
