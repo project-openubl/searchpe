@@ -183,12 +183,14 @@ jobs:
           mvn -U -B package --file pom.xml -DskipTests \
           -Dquarkus.native.container-build=true \
           -Dquarkus.container-image.push=false \
+          -Dquarkus.container-image.build=true \
+          -Dquarkus.container-image.registry=quay.io \
           -Dquarkus.container-image.group=projectopenubl \
           -Dquarkus.container-image.name=searchpe-${{ matrix.flavor }} \
           -Dquarkus.container-image.tag=latest \
           -P native,ui,${{ matrix.flavor }}
       - name: Save container image
-        run: docker save -o searchpe-${{ matrix.flavor }}-container-image.tar projectopenubl/searchpe-${{ matrix.flavor }}:latest
+        run: docker save -o searchpe-${{ matrix.flavor }}-container-image.tar quay.io/projectopenubl/searchpe-${{ matrix.flavor }}:latest
       - name: Upload container image
         uses: actions/upload-artifact@v2
         with:
@@ -236,13 +238,9 @@ jobs:
           docker load -i artifacts/searchpe-standalone-container-image.tar
           docker load -i artifacts/searchpe-enterprise-container-image.tar
 
-          # Standalone
-          docker tag projectopenubl/searchpe-standalone:latest quay.io/projectopenubl/searchpe:latest
-          docker tag projectopenubl/searchpe-standalone:latest quay.io/projectopenubl/searchpe:${{ steps.version.outputs.RELEASE_VERSION }}
-
-          # Enterprise
-          docker tag projectopenubl/searchpe-enterprise:latest quay.io/projectopenubl/searchpe:latest
-          docker tag projectopenubl/searchpe-enterprise:latest quay.io/projectopenubl/searchpe:${{ steps.version.outputs.RELEASE_VERSION }}
+          # Tag images
+          docker tag quay.io/projectopenubl/searchpe-standalone:latest quay.io/projectopenubl/searchpe:${{ steps.version.outputs.RELEASE_VERSION }}
+          docker tag quay.io/projectopenubl/searchpe-enterprise:latest quay.io/projectopenubl/searchpe-enterprise:${{ steps.version.outputs.RELEASE_VERSION }}
 
       - name: Login to Quay.io
         uses: docker/login-action@v1
