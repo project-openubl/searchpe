@@ -1,0 +1,83 @@
+project:
+  name: searchpe
+  description: Consultas RUC/DNI al "padrón reducido" de la SUNAT
+  longDescription: Consulta el DNI o RUC de cualquier persona natural o jurídica registrada en el territorio peruano. La información es obtenida del padrón reducido de la SUNAT.
+  website: https://project-openubl.github.io/
+  authors:
+    - Carlos E. Feria Vila
+  license: Apache-2
+  java:
+    groupId: io.github.project.openubl.searchpe
+    version: 11
+  extraProperties:
+    inceptionYear: 2019
+
+distributions:
+  standalone-jvm:
+    artifacts:
+      - path: artifacts/searchpe-{{projectVersion}}-jvm.tar.gz
+      - path: artifacts/searchpe-{{projectVersion}}-jvm.zip
+  enterprise-jvm:
+    artifacts:
+      - path: artifacts/searchpe-enterprise-{{projectVersion}}-jvm.tar.gz
+      - path: artifacts/searchpe-enterprise-{{projectVersion}}-jvm.zip
+#  standalone-native:
+#    type: NATIVE_IMAGE
+#    artifacts:
+#      - path: artifacts/searchpe-{{projectVersion}}-linux-x86_64.tar.gz
+#        platform: linux-x86_64
+#      - path: artifacts/searchpe-{{projectVersion}}-windows-x86_64.zip
+#        platform: windows-x86_64
+#      - path: artifacts/searchpe-{{projectVersion}}-osx-x86_64.zip
+#        platform: osx-x86_64
+#  enterprise-native:
+#    type: NATIVE_IMAGE
+#    artifacts:
+#      - path: artifacts/searchpe-enterprise-{{projectVersion}}-linux-x86_64.tar.gz
+#        platform: linux-x86_64
+#      - path: artifacts/searchpe-enterprise-{{projectVersion}}-windows-x86_64.zip
+#        platform: windows-x86_64
+#      - path: artifacts/searchpe-enterprise-{{projectVersion}}-osx-x86_64.zip
+#        platform: osx-x86_64
+
+release:
+  github:
+    owner: project-openubl
+    name: searchpe
+    branch: master
+
+announce:
+  discussions:
+    active: RELEASE
+    organization: project-openubl
+    team: searchpe
+    title: '{{projectNameCapitalized}} {{projectVersion}} released!'
+    message: '🚀 {{projectNameCapitalized}} {{projectVersion}} has been released! {{releaseNotesUrl}}'
+#  mail:
+#    active: RELEASE
+#    transport: SMTP
+#    mimeType: TEXT
+#    port: 587
+#    auth: true
+#    host: smtp.gmail.com
+#    username: projectopenubl@gmail.com
+#    from: projectopenubl@googlegroups.com
+#    to: cferiavi@gmail.com
+#    bcc: carlosthe19916@gmail.com
+#    subject: '{{projectNameCapitalized}} {{projectVersion}} released!'
+#    message: |
+#      We just launched {{projectNameCapitalized}} {{projectVersion}}!
+#      {{changelog}}
+#    properties:
+#      'mail.smtp.starttls.enable': true
+#  twitter:
+#    active: RELEASE
+#    status: '🚀 {{projectNameCapitalized}} {{projectVersion}} has been released! {{releaseNotesUrl}}'
+#  zulip:
+#    active: RELEASE
+#    account: carlosthe19916@gmail.com
+#    apiHost: https://projectopenubl.zulipchat.com/api/v1
+#    channel: announcements
+#    subject: '{{projectNameCapitalized}} {{projectVersion}} released!'
+#    message: '🚀 {{projectNameCapitalized}} {{projectVersion}} has been released! {{releaseNotesUrl}}'
+
