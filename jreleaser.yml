@@ -42,14 +42,14 @@ distributions:
 
 release:
   github:
-    owner: carlosthe19916
+    owner: project-openubl
     name: searchpe
     branch: master
 
 announce:
   discussions:
     active: RELEASE
-    organization: carlosthe19916
+    organization: project-openubl
     team: searchpe
     title: '{{projectNameCapitalized}} {{projectVersion}} released!'
     message: '🚀 {{projectNameCapitalized}} {{projectVersion}} has been released! {{releaseNotesUrl}}'
