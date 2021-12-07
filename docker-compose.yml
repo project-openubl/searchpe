@@ -33,7 +33,7 @@ services:
       retries: 5
 
   searchpe:
-    image: quay.io/projectopenubl/searchpe:standalone
+    image: quay.io/projectopenubl/searchpe:early-access
     ports:
       - 8180:8080
     environment:
