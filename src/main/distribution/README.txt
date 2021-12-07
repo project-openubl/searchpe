@@ -13,4 +13,3 @@ configuración de Searchpe.
 
 ## Arrancar Searchpe
 Si estas usando Searchpe en JVM Mode entonces ejecuta ./bin/standalone.sh o ./bin/standalone.bat dependiendo de tu Sistema Operativo.
-Si estas usando Searchpe en Native Mode entonces ejecuta /bin/run.sh o /bin/run.bat
