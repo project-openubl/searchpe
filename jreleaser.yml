@@ -55,4 +55,7 @@ announce:
     channel: announcements
     subject: '{{projectNameCapitalized}} {{projectVersion}} released!'
     message: '🚀 {{projectNameCapitalized}} {{projectVersion}} has been released! {{releaseNotesUrl}}'
+  twitter:
+    active: RELEASE
+    status: '🚀 {{projectNameCapitalized}} {{projectVersion}} has been released! {{releaseNotesUrl}}'
 
