@@ -46,6 +46,7 @@ release:
     name: searchpe
     branch: master
     overwrite: true
+    discussionCategoryName: Announcements
 
 announce:
   zulip:
