@@ -253,10 +253,10 @@ jobs:
       - name: Push to images to registry
         run: |
           docker push quay.io/projectopenubl/searchpe:latest
-          docker push quay.io/projectopenubl/searchpe:${{ steps.version.outputs.RELEASE_VERSION }}
+          docker push quay.io/projectopenubl/searchpe:v${{ steps.version.outputs.RELEASE_VERSION }}
 
           docker push quay.io/projectopenubl/searchpe-enterprise:latest
-          docker push quay.io/projectopenubl/searchpe-enterprise:${{ steps.version.outputs.RELEASE_VERSION }}
+          docker push quay.io/projectopenubl/searchpe-enterprise:v${{ steps.version.outputs.RELEASE_VERSION }}
 
       - name: Release with JReleaser
         uses: jreleaser/release-action@v1
