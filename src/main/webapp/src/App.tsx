@@ -17,7 +17,7 @@ import { WarningTriangleIcon } from "@patternfly/react-icons";
 import { AppRoutes } from "./Routes";
 import "./App.scss";
 
-import { DefaultLayout } from "./layout";
+import { DefaultLayout } from "./shared/components/layout";
 
 import NotificationsPortal from "@redhat-cloud-services/frontend-components-notifications/NotificationPortal";
 import "@redhat-cloud-services/frontend-components-notifications/index.css";

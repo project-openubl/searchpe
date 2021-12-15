@@ -101,8 +101,8 @@ export const VersionList: React.FC = () => {
   const dispatch = useDispatch();
 
   const versions = useVersionsQuery();
-  const versionMutation = useCreateVersionMutation();
-  const deleleteVersionMutation = useDeleteVersionMutation();
+  const createVersionMutation = useCreateVersionMutation();
+  const deleteVersionMutation = useDeleteVersionMutation();
 
   const [filterText, setFilterText] = useState("");
 
@@ -148,7 +148,7 @@ export const VersionList: React.FC = () => {
               type: "version",
               onDelete: () => {
                 dispatch(deleteDialogActions.processing());
-                deleleteVersionMutation
+                deleteVersionMutation
                   .mutateAsync(row)
                   .catch((error) => {
                     dispatch(
@@ -179,7 +179,7 @@ export const VersionList: React.FC = () => {
   const rows: IRow[] = itemsToRow(pageItems || []);
 
   const onNewVersion = () => {
-    versionMutation.mutateAsync().catch((error) => {
+    createVersionMutation.mutateAsync().catch((error) => {
       dispatch(
         alertActions.addAlert("danger", "Error", getAxiosErrorMessage(error))
       );
