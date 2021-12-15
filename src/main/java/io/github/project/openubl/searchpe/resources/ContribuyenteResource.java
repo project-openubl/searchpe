@@ -44,6 +44,7 @@ import org.hibernate.search.mapper.orm.session.SearchSession;
 
 import javax.annotation.security.RolesAllowed;
 import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.context.RequestScoped;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
 import javax.validation.constraints.Max;
@@ -53,7 +54,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Transactional
-@ApplicationScoped
+@RequestScoped
 @Path("/contribuyentes")
 public class ContribuyenteResource {
 

@@ -22,12 +22,13 @@ import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import org.jboss.logging.Logger;
 
 import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.context.Dependent;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 import javax.transaction.*;
 import java.util.Date;
 
-@ApplicationScoped
+@Dependent
 public class VersionEventManager {
 
     private static final Logger LOGGER = Logger.getLogger(VersionEventManager.class);

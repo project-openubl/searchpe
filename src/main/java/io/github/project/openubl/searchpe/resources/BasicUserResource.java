@@ -26,6 +26,7 @@ import org.jboss.logging.Logger;
 
 import javax.annotation.security.RolesAllowed;
 import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.context.RequestScoped;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
 import javax.validation.ConstraintViolation;
@@ -41,7 +42,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Transactional
-@ApplicationScoped
+@RequestScoped
 @Path("/admin/users")
 @Consumes("application/json")
 @Produces("application/json")

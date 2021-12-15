@@ -23,13 +23,14 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.context.Dependent;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.UUID;
 
-@ApplicationScoped
+@Dependent
 public class FileManager {
 
     private static final Logger LOGGER = Logger.getLogger(FileManager.class);

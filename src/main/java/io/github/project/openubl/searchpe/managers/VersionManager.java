@@ -20,10 +20,11 @@ import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 
 import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.context.Dependent;
 import javax.transaction.Transactional;
 
 @Transactional
-@ApplicationScoped
+@Dependent
 public class VersionManager {
 
     public void deleteVersion(Long versionId) {

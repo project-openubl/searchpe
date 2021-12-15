@@ -23,11 +23,12 @@ import io.quarkus.panache.common.Parameters;
 import io.quarkus.panache.common.Sort;
 
 import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.context.Dependent;
 import javax.transaction.Transactional;
 import java.util.Optional;
 
 @Transactional
-@ApplicationScoped
+@Dependent
 public class VersionRepository implements PanacheRepository<VersionEntity> {
 
     public Optional<VersionEntity> findActive() {

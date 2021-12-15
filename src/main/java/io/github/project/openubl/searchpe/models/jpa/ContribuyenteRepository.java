@@ -28,11 +28,12 @@ import io.quarkus.panache.common.Parameters;
 import io.quarkus.panache.common.Sort;
 
 import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.context.Dependent;
 import javax.transaction.Transactional;
 import java.util.List;
 
 @Transactional
-@ApplicationScoped
+@Dependent
 public class ContribuyenteRepository implements PanacheRepositoryBase<ContribuyenteEntity, ContribuyenteId> {
 
     public static final String[] SORT_BY_FIELDS = {"nombre"};
