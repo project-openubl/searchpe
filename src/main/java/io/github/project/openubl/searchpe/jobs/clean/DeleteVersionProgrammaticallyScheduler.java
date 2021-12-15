@@ -20,7 +20,6 @@ import io.github.project.openubl.searchpe.jobs.SearchpeJobs;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.quartz.*;
 
-import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.context.Dependent;
 import javax.inject.Inject;
 import java.util.UUID;
