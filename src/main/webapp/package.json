@@ -4,7 +4,7 @@
   "private": true,
   "dependencies": {
     "@patternfly/react-core": "^4.168.8",
-    "@patternfly/react-table": "^4.44.4",
+    "@patternfly/react-table": "^4.61.15",
     "@project-openubl/lib-ui": "1.5.0",
     "@redhat-cloud-services/frontend-components-notifications": "^3.2.4",
     "@testing-library/jest-dom": "^5.11.4",
