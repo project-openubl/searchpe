@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@patternfly/react-core": "^4.168.8",
+    "@patternfly/react-core": "^4.192.15",
     "@patternfly/react-table": "^4.44.4",
     "@project-openubl/lib-ui": "1.5.0",
     "@redhat-cloud-services/frontend-components-notifications": "^3.2.4",
