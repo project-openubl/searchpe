@@ -43,7 +43,7 @@ jobs:
           echo $PLAIN_VERSION > PLAIN_VERSION
           echo $NEXT_VERSION > NEXT_VERSION
       - name: Upload version files
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: artifacts
           path: |
@@ -81,7 +81,7 @@ jobs:
       - name: Build and Create distribution
         run: ./mvnw -B --file pom.xml package -DskipTests -P ui,${{ matrix.flavor }},${{ matrix.flavor }}-distribution
       - name: Upload build artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: artifacts
           path: |
@@ -137,7 +137,7 @@ jobs:
   #      - name: Create distribution
   #        run: ./mvnw -B --file pom.xml package -DskipTests -P ${{ matrix.flavor }},${{ matrix.flavor }}-native-distribution
   #      - name: Upload build artifact
-  #        uses: actions/upload-artifact@v2
+  #        uses: actions/upload-artifact@v3
   #        with:
   #          name: artifacts
   #          path: |
@@ -186,7 +186,7 @@ jobs:
       - name: Save container image
         run: docker save -o searchpe-${{ matrix.flavor }}-container-image.tar quay.io/projectopenubl/searchpe-${{ matrix.flavor }}:latest
       - name: Upload container image
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: artifacts
           path: searchpe-${{ matrix.flavor }}-container-image.tar
