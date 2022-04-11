@@ -376,33 +376,30 @@
                         </configuration>
                         <executions>
                             <execution>
-                                <id>install node and yarn</id>
+                                <id>install node and npm</id>
                                 <goals>
-                                    <goal>install-node-and-yarn</goal>
+                                    <goal>install-node-and-npm</goal>
                                 </goals>
                                 <configuration>
-                                    <nodeVersion>v12.22.7</nodeVersion>
-                                    <yarnVersion>v1.22.15</yarnVersion>
+                                    <nodeVersion>v16.14.0</nodeVersion>
+                                    <npmVersion>8.5.4</npmVersion>
                                 </configuration>
                             </execution>
                             <execution>
-                                <id>yarn install</id>
+                                <id>npm install</id>
                                 <goals>
-                                    <goal>yarn</goal>
+                                    <goal>npm</goal>
                                 </goals>
                                 <configuration>
-                                    <arguments>install --network-timeout 600000</arguments>
+                                    <arguments>install</arguments>
                                 </configuration>
                             </execution>
                             <execution>
-                                <id>yarn run build</id>
+                                <id>npm run build</id>
                                 <goals>
-                                    <goal>yarn</goal>
+                                    <goal>npm</goal>
                                 </goals>
                                 <configuration>
-                                    <environmentVariables>
-                                        <CI>false</CI>
-                                    </environmentVariables>
                                     <arguments>run build</arguments>
                                 </configuration>
                             </execution>

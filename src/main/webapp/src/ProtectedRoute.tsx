@@ -1,5 +1,4 @@
 import React from "react";
-import { Route, RouteProps } from "react-router-dom";
 
 import {
   Bullseye,
@@ -12,16 +11,16 @@ import {
 import { WarningTriangleIcon } from "@patternfly/react-icons";
 
 import { usePermission } from "shared/hooks";
-
 import { Permission } from "Constants";
 
-export interface IProtectedRouteProps extends RouteProps {
+export interface IProtectedRouteProps {
   hasAny: Permission[];
+  children: React.ReactElement;
 }
 
 export const ProtectedRoute: React.FC<IProtectedRouteProps> = ({
   hasAny,
-  ...rest
+  children,
 }) => {
   const { isAllowed } = usePermission({ hasAny });
 
@@ -37,9 +36,5 @@ export const ProtectedRoute: React.FC<IProtectedRouteProps> = ({
     </Bullseye>
   );
 
-  if (!isAllowed) {
-    return <Route render={() => notAuthorizedState}></Route>;
-  }
-
-  return <Route {...rest} />;
+  return !isAllowed ? notAuthorizedState : children;
 };

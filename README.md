@@ -22,13 +22,13 @@ Puedes ejecutar la aplicación en modo desarrollo con:
 Instala las dependencias npm:
 
 ```shell
-yarn --cwd src/main/webapp install
+npm install --prefix src/main/webapp
 ```
 
 Inicia la UI en modo desarrollo:
 
 ```shell
-yarn --cwd src/main/webapp run start
+npm run start --prefix src/main/webapp
 ```
 
 ## Links
