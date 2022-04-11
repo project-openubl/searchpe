@@ -21,7 +21,7 @@ export const SidebarApp: React.FC = () => {
           <NavGroup title="Consultas">
             {isElasticsearchEnabled() && (
               <NavLink
-                to={Paths.contribuyenteList}
+                to={Paths.contribuyentes}
                 className={({ isActive }) =>
                   css("pf-c-nav__link", isActive ? "pf-m-current" : "")
                 }
@@ -44,7 +44,7 @@ export const SidebarApp: React.FC = () => {
         >
           <NavGroup title="Padrón reducido">
             <NavLink
-              to={Paths.versionList}
+              to={Paths.versiones}
               className={({ isActive }) =>
                 css("pf-c-nav__link", isActive ? "pf-m-current" : "")
               }
@@ -59,7 +59,7 @@ export const SidebarApp: React.FC = () => {
           >
             <NavGroup title="Configuración">
               <NavLink
-                to={Paths.settings_userList}
+                to={Paths.settings_users}
                 className={({ isActive }) =>
                   css("pf-c-nav__link", isActive ? "pf-m-current" : "")
                 }
