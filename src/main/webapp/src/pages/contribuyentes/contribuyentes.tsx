@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import { SimplePlaceholder, ConditionalRender } from "@project-openubl/lib-ui";
 
@@ -88,8 +87,6 @@ const getRow = (rowData: IRowData): Contribuyente => {
 };
 
 export const Contribuyentes: React.FC = () => {
-  const navigate = useNavigate();
-
   const {
     data: modalData,
     open: openModal,
