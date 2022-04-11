@@ -90,7 +90,7 @@ export const filterByText = (filterText: string, item: User) => {
   );
 };
 
-export const UserList: React.FC = () => {
+export const Users: React.FC = () => {
   const dispatch = useDispatch();
   const [filterText, setFilterText] = useState("");
 
