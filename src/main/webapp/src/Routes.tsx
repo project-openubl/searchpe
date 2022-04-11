@@ -1,9 +1,9 @@
-import React, { lazy, Suspense } from "react";
-import { Switch, Redirect } from "react-router-dom";
+import { lazy, Suspense } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
 
 import { SimplePlaceholder } from "@project-openubl/lib-ui";
 
-import { IProtectedRouteProps, ProtectedRoute } from "ProtectedRoute";
+import { ProtectedRoute } from "ProtectedRoute";
 import { isElasticsearchEnabled, Permission } from "Constants";
 
 import { Paths } from "./Paths";
@@ -14,54 +14,79 @@ const Versions = lazy(() => import("./pages/versions"));
 const Settings = lazy(() => import("./pages/settings"));
 
 export const AppRoutes = () => {
-  const routes: IProtectedRouteProps[] = [
-    {
-      component: ConsultaRuc,
-      path: Paths.consultaRuc,
-      exact: false,
-      hasAny: [Permission.admin, Permission.search],
-    },
-    {
-      component: Contribuyentes,
-      path: Paths.contribuyenteList,
-      exact: false,
-      hasAny: [Permission.admin, Permission.search],
-    },
-    {
-      component: Versions,
-      path: Paths.versionList,
-      exact: false,
-      hasAny: [Permission.admin, Permission.version_write],
-    },
-    {
-      component: Settings,
-      path: Paths.settings,
-      exact: false,
-      hasAny: [Permission.admin, Permission.user_write],
-    },
-  ];
+  // const routes = [
+  //   {
+  //     Component: ConsultaRuc,
+  //     path: Paths.consultaRuc,
+  //     hasAny: [Permission.admin, Permission.search],
+  //   },
+  //   {
+  //     Component: Contribuyentes,
+  //     path: Paths.contribuyenteList,
+  //     hasAny: [Permission.admin, Permission.search],
+  //   },
+  //   {
+  //     Component: Versions,
+  //     path: Paths.versionList,
+  //     hasAny: [Permission.admin, Permission.version_write],
+  //   },
+  //   {
+  //     Component: Settings,
+  //     path: Paths.settings,
+  //     hasAny: [Permission.admin, Permission.user_write],
+  //   },
+  // ];
 
   return (
     <Suspense fallback={<SimplePlaceholder />}>
-      <Switch>
-        {routes.map(({ path, component, ...rest }, index) => (
-          <ProtectedRoute
-            key={index}
-            path={path}
-            component={component}
-            {...rest}
-          />
-        ))}
-        <Redirect
-          from={Paths.base}
-          to={
-            isElasticsearchEnabled()
-              ? Paths.contribuyenteList
-              : Paths.consultaRuc
+      <Routes>
+        <Route
+          path={Paths.consultaRuc}
+          element={
+            <ProtectedRoute hasAny={[Permission.admin, Permission.search]}>
+              <ConsultaRuc />
+            </ProtectedRoute>
           }
-          exact
         />
-      </Switch>
+        <Route
+          path="/contribuyentes/*"
+          element={
+            <ProtectedRoute hasAny={[Permission.admin, Permission.search]}>
+              <Contribuyentes />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/versiones/*"
+          element={
+            <ProtectedRoute
+              hasAny={[Permission.admin, Permission.version_write]}
+            >
+              <Versions />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings/*"
+          element={
+            <ProtectedRoute hasAny={[Permission.admin, Permission.user_write]}>
+              <Settings />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="*"
+          element={
+            <Navigate
+              to={
+                isElasticsearchEnabled()
+                  ? Paths.contribuyenteList
+                  : Paths.consultaRuc
+              }
+            />
+          }
+        />
+      </Routes>
     </Suspense>
   );
 };

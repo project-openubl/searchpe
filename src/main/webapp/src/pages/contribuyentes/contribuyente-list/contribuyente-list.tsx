@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import { SimplePlaceholder, ConditionalRender } from "@project-openubl/lib-ui";
 
@@ -94,7 +94,7 @@ const getRow = (rowData: IRowData): Contribuyente => {
 };
 
 export const ContribuyenteList: React.FC = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const {
     data: modalData,
@@ -146,7 +146,7 @@ export const ContribuyenteList: React.FC = () => {
   const rows: IRow[] = itemsToRow(contribuyentes.data?.data || []);
 
   const handleOnWelcomePrimaryAction = () => {
-    history.push(Paths.versionList);
+    navigate(Paths.versionList);
   };
 
   if (

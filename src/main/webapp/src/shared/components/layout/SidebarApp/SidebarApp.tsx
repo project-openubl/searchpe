@@ -1,7 +1,8 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 
-import { Nav, NavItem, PageSidebar, NavGroup } from "@patternfly/react-core";
+import { Nav, PageSidebar, NavGroup } from "@patternfly/react-core";
+import { css } from "@patternfly/react-styles";
 
 import { Paths } from "Paths";
 import {
@@ -19,31 +20,37 @@ export const SidebarApp: React.FC = () => {
         <VisibilityByPermission hasAny={[Permission.admin, Permission.search]}>
           <NavGroup title="Consultas">
             {isElasticsearchEnabled() && (
-              <NavItem>
-                <NavLink
-                  to={Paths.contribuyenteList}
-                  activeClassName="pf-m-current"
-                >
-                  Buscar
-                </NavLink>
-              </NavItem>
-            )}
-            <NavItem>
-              <NavLink to={Paths.consultaRuc} activeClassName="pf-m-current">
-                Número documento
+              <NavLink
+                to={Paths.contribuyenteList}
+                className={({ isActive }) =>
+                  css("pf-c-nav__link", isActive ? "pf-m-current" : "")
+                }
+              >
+                Buscar
               </NavLink>
-            </NavItem>
+            )}
+            <NavLink
+              to={Paths.consultaRuc}
+              className={({ isActive }) =>
+                css("pf-c-nav__link", isActive ? "pf-m-current" : "")
+              }
+            >
+              Número documento
+            </NavLink>
           </NavGroup>
         </VisibilityByPermission>
         <VisibilityByPermission
           hasAny={[Permission.admin, Permission.version_write]}
         >
           <NavGroup title="Padrón reducido">
-            <NavItem>
-              <NavLink to={Paths.versionList} activeClassName="pf-m-current">
-                Versiones
-              </NavLink>
-            </NavItem>
+            <NavLink
+              to={Paths.versionList}
+              className={({ isActive }) =>
+                css("pf-c-nav__link", isActive ? "pf-m-current" : "")
+              }
+            >
+              Versiones
+            </NavLink>
           </NavGroup>
         </VisibilityByPermission>
         {isBasicAuthEnabled() && (
@@ -51,14 +58,14 @@ export const SidebarApp: React.FC = () => {
             hasAny={[Permission.admin, Permission.user_write]}
           >
             <NavGroup title="Configuración">
-              <NavItem>
-                <NavLink
-                  to={Paths.settings_userList}
-                  activeClassName="pf-m-current"
-                >
-                  Usuarios
-                </NavLink>
-              </NavItem>
+              <NavLink
+                to={Paths.settings_userList}
+                className={({ isActive }) =>
+                  css("pf-c-nav__link", isActive ? "pf-m-current" : "")
+                }
+              >
+                Usuarios
+              </NavLink>
             </NavGroup>
           </VisibilityByPermission>
         )}
