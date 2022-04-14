@@ -43,6 +43,7 @@ import org.hibernate.search.mapper.orm.session.SearchSession;
 
 import javax.annotation.security.RolesAllowed;
 import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
 import javax.validation.constraints.Max;
@@ -66,7 +67,14 @@ public class ContribuyenteResource {
     ContribuyenteRepository contribuyenteRepository;
 
     @Inject
-    SearchSession searchSession;
+    Instance<SearchSession> searchSession;
+
+    private Optional<SearchSession> getSearchSession() {
+        for (SearchSession session : searchSession) {
+            return Optional.of(session);
+        }
+        return Optional.empty();
+    }
 
     @RolesAllowed({Permission.admin, Permission.search})
     @Operation(summary = "Search contribuyentes", description = "Get contribuyentes in a page")
@@ -85,6 +93,8 @@ public class ContribuyenteResource {
         if (isESEnabled.isEmpty() || !isESEnabled.get()) {
             throw new NotFoundException();
         }
+
+        SearchSession searchSession = getSearchSession().orElseThrow(() -> new IllegalStateException("Could not find a SearchSession available"));
 
         Optional<VersionEntity> versionOptional = versionRepository.findActive();
         if (versionOptional.isEmpty()) {
