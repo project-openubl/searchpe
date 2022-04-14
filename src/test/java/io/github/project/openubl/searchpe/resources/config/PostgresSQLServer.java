@@ -42,7 +42,7 @@ public class PostgresSQLServer implements QuarkusTestResourceLifecycleManager {
                 .withEnv("POSTGRES_USER", DB_USERNAME)
                 .withEnv("POSTGRES_PASSWORD", DB_PASSWORD)
                 .waitingFor(Wait.forLogMessage(".* database system is ready to accept .*", 1));
-        ;
+
         postgreSQL.start();
 
         String host = postgreSQL.getHost();

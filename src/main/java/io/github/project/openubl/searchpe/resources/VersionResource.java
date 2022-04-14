@@ -85,7 +85,6 @@ public class VersionResource {
     @Transactional(Transactional.TxType.NEVER)
     @POST
     @Path("/")
-    @Consumes()
     public VersionEntity createVersion() {
         try {
             tx.begin();

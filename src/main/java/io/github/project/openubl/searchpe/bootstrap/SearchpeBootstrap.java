@@ -16,37 +16,22 @@
  */
 package io.github.project.openubl.searchpe.bootstrap;
 
-import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
-import io.github.project.openubl.searchpe.models.jpa.search.SearchpeNoneIndexer;
+import io.github.project.openubl.searchpe.resources.BasicUserResource;
 import io.quarkus.runtime.StartupEvent;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.hibernate.search.mapper.orm.session.SearchSession;
+import org.jboss.logging.Logger;
 
 import javax.enterprise.event.Observes;
-import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.transaction.Transactional;
 
 @Singleton
 public class SearchpeBootstrap {
 
-    @ConfigProperty(name = "quarkus.hibernate-search-orm.automatic-indexing.synchronization.strategy")
-    String searchOrmIndexSyncStrategy;
+    private static final Logger LOGGER = Logger.getLogger(BasicUserResource.class);
 
-    @Inject
-    SearchSession searchSession;
-
-    /**
-     * If there is an upgrade of Version, the indexes in Elasticsearch should be deleted.
-     * This will work under the assumption that on upgrades the DB will delete all data before.
-     */
     @Transactional
     void reindexSearchIndexes(@Observes StartupEvent ev) throws InterruptedException {
-        if (!searchOrmIndexSyncStrategy.equals(SearchpeNoneIndexer.BEAN_FULL_NAME)) {
-            if (VersionEntity.count() == 0) {
-                searchSession.massIndexer().startAndWait();
-            }
-        }
+        LOGGER.info("SearchPE started");
     }
 
 }
