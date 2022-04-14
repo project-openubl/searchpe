@@ -453,26 +453,6 @@
         </profile>
 
         <profile>
-            <id>standalone</id>
-            <properties>
-                <quarkus.profile>standalone</quarkus.profile>
-            </properties>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-failsafe-plugin</artifactId>
-                        <version>${surefire-plugin.version}</version>
-                        <configuration>
-                            <includes>
-                                <include>**/*StandaloneIT.java</include>
-                            </includes>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
             <id>standalone-distribution</id>
             <build>
                 <plugins>
@@ -537,25 +517,6 @@
             </build>
         </profile>
 
-        <profile>
-            <id>enterprise</id>
-            <properties>
-                <quarkus.profile>enterprise</quarkus.profile>
-            </properties>
-            <build>
-                <plugins>
-                    <plugin>
-                        <artifactId>maven-failsafe-plugin</artifactId>
-                        <version>${surefire-plugin.version}</version>
-                        <configuration>
-                            <includes>
-                                <include>**/*EnterpriseIT.java</include>
-                            </includes>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
         <profile>
             <id>enterprise-distribution</id>
             <build>

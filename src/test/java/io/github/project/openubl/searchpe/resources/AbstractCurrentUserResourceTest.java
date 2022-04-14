@@ -29,11 +29,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @TestHTTPEndpoint(CurrentUserResource.class)
-public abstract class CurrentUserResourceTest extends AbstractBaseTest {
+public abstract class AbstractCurrentUserResourceTest extends AbstractBaseTest {
 
     @Override
     public Class<?> getTestClass() {
-        return CurrentUserResourceTest.class;
+        return AbstractCurrentUserResourceTest.class;
     }
 
     @Test

@@ -35,11 +35,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @QuarkusTest
 @TestProfile(StandaloneProfileManager.class)
 @TestHTTPEndpoint(BasicUserResource.class)
-public class UserResource_StandaloneTest extends AbstractBaseTest {
+public class StandaloneUserResourceTest extends AbstractBaseTest {
 
     @Override
     public Class<?> getTestClass() {
-        return UserResource_StandaloneTest.class;
+        return StandaloneUserResourceTest.class;
     }
 
     @Test

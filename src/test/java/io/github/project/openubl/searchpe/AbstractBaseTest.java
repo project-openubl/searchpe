@@ -49,12 +49,9 @@ public abstract class AbstractBaseTest {
 
     private Flyway flyway() {
         Config config = ConfigProvider.getConfig();
-        String username = config.getOptionalValue("quarkus.datasource.username", String.class)
-                .orElseThrow(() -> new IllegalStateException("Could not init Flyway Clean phase due to quarkus.datasource.username not available"));
-        String password = config.getOptionalValue("quarkus.datasource.password", String.class)
-                .orElseThrow(() -> new IllegalStateException("Could not init Flyway Clean phase due to quarkus.datasource.password not available"));
-        String jdbUrl = config.getOptionalValue("quarkus.datasource.jdbc.url", String.class)
-                .orElseThrow(() -> new IllegalStateException("Could not init Flyway Clean phase due to quarkus.datasource.jdbc.url not available"));
+        String username = config.getValue("quarkus.datasource.username", String.class);
+        String password = config.getValue("quarkus.datasource.password", String.class);
+        String jdbUrl = config.getValue("quarkus.datasource.jdbc.url", String.class);
 
         // Flyway
         final String packageName = getTestClass().getName();

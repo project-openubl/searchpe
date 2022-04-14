@@ -32,11 +32,11 @@ import java.util.List;
 @QuarkusTest
 @TestProfile(EnterpriseProfileManager.class)
 @TestHTTPEndpoint(BasicUserResource.class)
-public class UserResource_EnterpriseTest extends AbstractBaseTest {
+public class EnterpriseUserResourceTest extends AbstractBaseTest {
 
     @Override
     public Class<?> getTestClass() {
-        return UserResource_EnterpriseTest.class;
+        return EnterpriseUserResourceTest.class;
     }
 
     @Test

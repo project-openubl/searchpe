@@ -16,8 +16,12 @@
  */
 package io.github.project.openubl.searchpe.resources;
 
-import io.quarkus.test.junit.NativeImageTest;
+import io.github.project.openubl.searchpe.EnterpriseProfileManager;
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
 
-@NativeImageTest
-public class NativeContribuyenteResource_StandaloneIT extends ContribuyenteResource_StandaloneTest {
+@QuarkusTest
+@TestProfile(EnterpriseProfileManager.class)
+public class EnterpriseContribuyenteResourceTest extends AbstractContribuyenteResourceTest {
+
 }
