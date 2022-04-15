@@ -16,7 +16,6 @@
  */
 package io.github.project.openubl.searchpe.resources;
 
-import io.github.project.openubl.searchpe.models.jpa.search.SearchpeNoneIndexer;
 import io.quarkus.qute.Location;
 import io.quarkus.qute.Template;
 import io.quarkus.qute.TemplateInstance;
@@ -40,14 +39,14 @@ public class FrontendResource {
     @ConfigProperty(name = "quarkus.oidc.enabled")
     Optional<Boolean> isOidcEnabled;
 
+    @ConfigProperty(name = "quarkus.hibernate-search-orm.enabled")
+    Optional<Boolean> isESEnabled;
+
     @ConfigProperty(name = "quarkus.http.auth.form.cookie-name")
     Optional<String> formCookieName;
 
     @ConfigProperty(name = "quarkus.oidc.logout.path")
     Optional<String> oidcLogoutPath;
-
-    @ConfigProperty(name = "quarkus.hibernate-search-orm.automatic-indexing.synchronization.strategy")
-    Optional<String> esSyncStrategy;
 
     @Authenticated
     @GET
@@ -58,7 +57,7 @@ public class FrontendResource {
                 .data("defaultAuthMethod", isOidcEnabled.isPresent() && isOidcEnabled.get() ? "oidc" : "basic")
                 .data("formCookieName", formCookieName.orElse(""))
                 .data("oidcLogoutPath", oidcLogoutPath.orElse(""))
-                .data("isElasticsearchEnabled", !Objects.equals(esSyncStrategy.orElse(""), SearchpeNoneIndexer.BEAN_FULL_NAME));
+                .data("isElasticsearchEnabled", isESEnabled.isPresent() && isESEnabled.get());
     }
 
 }

@@ -16,12 +16,12 @@
  */
 package io.github.project.openubl.searchpe.resources;
 
-import io.github.project.openubl.searchpe.StandaloneProfileManager;
+import io.github.project.openubl.searchpe.EnterpriseProfileManager;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 
 @QuarkusTest
-@TestProfile(StandaloneProfileManager.class)
-public class CurrentUserResource_StandaloneTest extends CurrentUserResourceTest {
+@TestProfile(EnterpriseProfileManager.class)
+public class EnterpriseVersionResourceTest extends AbstractVersionResourceTest {
 
 }

@@ -23,11 +23,11 @@ import org.junit.jupiter.api.Test;
 import static org.hamcrest.CoreMatchers.is;
 
 @TestHTTPEndpoint(ContribuyenteResource.class)
-public abstract class ContribuyenteResourceTest extends AbstractBaseTest {
+public abstract class AbstractContribuyenteResourceTest extends AbstractBaseTest {
 
     @Override
     public Class<?> getTestClass() {
-        return ContribuyenteResourceTest.class;
+        return AbstractContribuyenteResourceTest.class;
     }
 
     @Test

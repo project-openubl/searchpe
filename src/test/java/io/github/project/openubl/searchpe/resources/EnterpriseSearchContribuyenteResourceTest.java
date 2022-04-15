@@ -32,11 +32,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @QuarkusTest
 @TestProfile(EnterpriseProfileManager.class)
-public class SearchContribuyenteResource_EnterpriseTest extends AbstractBaseTest {
+public class EnterpriseSearchContribuyenteResourceTest extends AbstractBaseTest {
 
     @Override
     public Class<?> getTestClass() {
-        return SearchContribuyenteResource_EnterpriseTest.class;
+        return EnterpriseSearchContribuyenteResourceTest.class;
     }
 
     @Test

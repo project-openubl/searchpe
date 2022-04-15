@@ -18,6 +18,7 @@ package io.github.project.openubl.searchpe.resources;
 
 import io.github.project.openubl.searchpe.AbstractBaseTest;
 import io.github.project.openubl.searchpe.EnterpriseProfileManager;
+import io.github.project.openubl.searchpe.idm.BasicUserRepresentation;
 import io.github.project.openubl.searchpe.models.jpa.entity.BasicUserEntity;
 import io.github.project.openubl.searchpe.security.Permission;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
@@ -25,14 +26,17 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
 
+import java.util.HashSet;
+import java.util.List;
+
 @QuarkusTest
 @TestProfile(EnterpriseProfileManager.class)
 @TestHTTPEndpoint(BasicUserResource.class)
-public class UserResource_EnterpriseTest extends AbstractBaseTest {
+public class EnterpriseUserResourceTest extends AbstractBaseTest {
 
     @Override
     public Class<?> getTestClass() {
-        return UserResource_EnterpriseTest.class;
+        return EnterpriseUserResourceTest.class;
     }
 
     @Test
@@ -85,10 +89,10 @@ public class UserResource_EnterpriseTest extends AbstractBaseTest {
     @Test
     public void createUser() {
         // Given
-        BasicUserEntity user = new BasicUserEntity();
-        user.username = "myUsername";
-        user.password = "myPassword";
-        user.permissions = Permission.search;
+        BasicUserRepresentation user = new BasicUserRepresentation();
+        user.setUsername("myUsername");
+        user.setPassword("myPassword");
+        user.setPermissions(new HashSet<>(List.of(Permission.search)));
 
         // When
         givenAuth("admin")

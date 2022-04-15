@@ -16,12 +16,10 @@
  */
 package io.github.project.openubl.searchpe.resources;
 
-import io.github.project.openubl.searchpe.StandaloneProfileManager;
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
+import io.quarkus.test.junit.QuarkusIntegrationTest;
+import org.junit.jupiter.api.Disabled;
 
-@QuarkusTest
-@TestProfile(StandaloneProfileManager.class)
-public class ContribuyenteResource_StandaloneTest extends ContribuyenteResourceTest {
-
+@Disabled
+@QuarkusIntegrationTest
+public class NativeStandaloneContribuyenteResourceIT extends StandaloneContribuyenteResourceTest {
 }

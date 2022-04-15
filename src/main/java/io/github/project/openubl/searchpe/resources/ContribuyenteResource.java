@@ -25,7 +25,6 @@ import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteId;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
-import io.github.project.openubl.searchpe.models.jpa.search.SearchpeNoneIndexer;
 import io.github.project.openubl.searchpe.security.Permission;
 import io.github.project.openubl.searchpe.utils.ResourceUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -44,6 +43,7 @@ import org.hibernate.search.mapper.orm.session.SearchSession;
 
 import javax.annotation.security.RolesAllowed;
 import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
 import javax.validation.constraints.Max;
@@ -57,8 +57,8 @@ import java.util.Optional;
 @Path("/contribuyentes")
 public class ContribuyenteResource {
 
-    @ConfigProperty(name = "quarkus.hibernate-search-orm.automatic-indexing.synchronization.strategy")
-    String searchOrmIndexSyncStrategy;
+    @ConfigProperty(name = "quarkus.hibernate-search-orm.enabled")
+    Optional<Boolean> isESEnabled;
 
     @Inject
     VersionRepository versionRepository;
@@ -67,7 +67,14 @@ public class ContribuyenteResource {
     ContribuyenteRepository contribuyenteRepository;
 
     @Inject
-    SearchSession searchSession;
+    Instance<SearchSession> searchSession;
+
+    private Optional<SearchSession> getSearchSession() {
+        for (SearchSession session : searchSession) {
+            return Optional.of(session);
+        }
+        return Optional.empty();
+    }
 
     @RolesAllowed({Permission.admin, Permission.search})
     @Operation(summary = "Search contribuyentes", description = "Get contribuyentes in a page")
@@ -83,9 +90,11 @@ public class ContribuyenteResource {
             @QueryParam("limit") @DefaultValue("10") @Max(1_000) Integer limit,
             @QueryParam("sort_by") @DefaultValue("name") List<String> sortBy
     ) {
-        if (searchOrmIndexSyncStrategy.equals(SearchpeNoneIndexer.BEAN_FULL_NAME)) {
+        if (isESEnabled.isEmpty() || !isESEnabled.get()) {
             throw new NotFoundException();
         }
+
+        SearchSession searchSession = getSearchSession().orElseThrow(() -> new IllegalStateException("Could not find a SearchSession available"));
 
         Optional<VersionEntity> versionOptional = versionRepository.findActive();
         if (versionOptional.isEmpty()) {

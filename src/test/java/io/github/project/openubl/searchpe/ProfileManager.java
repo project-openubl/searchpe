@@ -16,60 +16,33 @@
  */
 package io.github.project.openubl.searchpe;
 
-import io.github.project.openubl.searchpe.models.jpa.search.SearchpeNoneIndexer;
-import io.github.project.openubl.searchpe.resources.config.ElasticsearchServer;
-import io.github.project.openubl.searchpe.resources.config.KeycloakServer;
-import io.github.project.openubl.searchpe.resources.config.PostgresSQLServer;
 import io.github.project.openubl.searchpe.resources.config.SunatServer;
 import io.quarkus.test.junit.QuarkusTestProfile;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-public class ProfileManager implements QuarkusTestProfile {
-
-    static final String testModeKey = "searchpe.test.mode";
+public abstract class ProfileManager implements QuarkusTestProfile {
 
     enum DistributionFlavor {
         standalone, enterprise
     }
 
-    String configProfile;
-    List<TestResourceEntry> testResources = new ArrayList<>();
-    Map<String, String> configOverrides = new HashMap<>();
-
-    public ProfileManager() {
-        String testModeFlavor = System.getProperty(testModeKey, DistributionFlavor.standalone.toString());
-        DistributionFlavor distributionFlavor = DistributionFlavor.valueOf(testModeFlavor);
-
-        init(distributionFlavor);
-    }
+    protected String configProfile;
+    protected List<TestResourceEntry> testResources = new ArrayList<>();
 
     public ProfileManager(DistributionFlavor distributionFlavor) {
         init(distributionFlavor);
     }
 
     private void init(DistributionFlavor distributionFlavor) {
-        configOverrides.put("quarkus.datasource.devservices.enabled", "false");
-        configOverrides.put("quarkus.keycloak.devservices.enabled", "false");
-
         switch (distributionFlavor) {
             case standalone:
                 // Profile
                 configProfile = DistributionFlavor.standalone.toString();
 
                 // Test resources
-                testResources.add(new TestResourceEntry(PostgresSQLServer.class));
                 testResources.add(new TestResourceEntry(SunatServer.class));
-
-                // Config
-                configOverrides.put("quarkus.hibernate-search-orm.automatic-indexing.synchronization.strategy", SearchpeNoneIndexer.BEAN_FULL_NAME);
-
-                configOverrides.put("quarkus.oidc.auth-server-url", "http://localhost:8180/auth"); // Required to have this prop for running tests
-                configOverrides.put("quarkus.oidc.client-id", "searchpe"); // Required to have this prop for running tests
-                configOverrides.put("quarkus.oidc.credentials.secret", "secret"); // Required to have this prop for running tests
 
                 break;
             case enterprise:
@@ -77,14 +50,7 @@ public class ProfileManager implements QuarkusTestProfile {
                 configProfile = DistributionFlavor.enterprise.toString();
 
                 // Test resources
-                testResources.add(new TestResourceEntry(PostgresSQLServer.class));
                 testResources.add(new TestResourceEntry(SunatServer.class));
-                testResources.add(new TestResourceEntry(ElasticsearchServer.class));
-                testResources.add(new TestResourceEntry(KeycloakServer.class));
-
-                // Config
-                configOverrides.put("quarkus.hibernate-search-orm.automatic-indexing.synchronization.strategy", "sync");
-                configOverrides.put("quarkus.oidc.enabled", "true"); // Without this ti doesn't take effect and tests fail
 
                 break;
         }
@@ -92,16 +58,11 @@ public class ProfileManager implements QuarkusTestProfile {
 
     @Override
     public String getConfigProfile() {
-        return configProfile;
+        return "test," + configProfile;
     }
 
     @Override
     public List<TestResourceEntry> testResources() {
         return testResources;
-    }
-
-    @Override
-    public Map<String, String> getConfigOverrides() {
-        return configOverrides;
     }
 }

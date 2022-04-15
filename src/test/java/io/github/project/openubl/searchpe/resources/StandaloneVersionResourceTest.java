@@ -22,6 +22,6 @@ import io.quarkus.test.junit.TestProfile;
 
 @QuarkusTest
 @TestProfile(StandaloneProfileManager.class)
-public class VersionResource_StandaloneTest extends VersionResourceTest {
+public class StandaloneVersionResourceTest extends AbstractVersionResourceTest {
 
 }

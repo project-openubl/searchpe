@@ -16,8 +16,10 @@
  */
 package io.github.project.openubl.searchpe.resources;
 
-import io.quarkus.test.junit.NativeImageTest;
+import io.quarkus.test.junit.QuarkusIntegrationTest;
+import org.junit.jupiter.api.Disabled;
 
-@NativeImageTest
-public class NativeContribuyenteResource_EnterpriseIT extends ContribuyenteResource_EnterpriseTest {
+@Disabled
+@QuarkusIntegrationTest
+public class NativeEnterpriseCurrentUserResourceIT extends EnterpriseCurrentUserResourceTest {
 }

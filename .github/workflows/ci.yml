@@ -39,7 +39,7 @@ jobs:
           distribution: temurin
           cache: maven
       - name: Build with Maven
-        run: mvn verify -Dquarkus.native.container-build=true -P native,ui,${{ matrix.flavor }}
+        run: mvn verify -Dquarkus.native.container-build=true -P native,${{ matrix.flavor }}
 
   ui-tests:
     name: UI Tests
