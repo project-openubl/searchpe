@@ -453,7 +453,7 @@
         </profile>
 
         <profile>
-            <id>standalone-distribution</id>
+            <id>distribution-standalone</id>
             <build>
                 <plugins>
                     <plugin>
@@ -462,7 +462,7 @@
                         <version>${maven-assembly-plugin.version}</version>
                         <executions>
                             <execution>
-                                <id>distribution</id>
+                                <id>standalone-distribution</id>
                                 <phase>package</phase>
                                 <goals>
                                     <goal>single</goal>
@@ -485,7 +485,7 @@
             </build>
         </profile>
         <profile>
-            <id>standalone-native-distribution</id>
+            <id>distribution-enterprise</id>
             <build>
                 <plugins>
                     <plugin>
@@ -494,40 +494,7 @@
                         <version>${maven-assembly-plugin.version}</version>
                         <executions>
                             <execution>
-                                <id>native-distribution</id>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>single</goal>
-                                </goals>
-                                <configuration combine.self="append">
-                                    <attach>false</attach>
-                                    <appendAssemblyId>false</appendAssemblyId>
-                                    <finalName>${project.artifactId}-${project.version}-${os.detected.classifier}</finalName>
-                                    <outputDirectory>${project.build.directory}/distributions</outputDirectory>
-                                    <workDirectory>${project.build.directory}/assembly/work</workDirectory>
-                                    <skipAssembly>false</skipAssembly>
-                                    <descriptors>
-                                        <descriptor>src/main/assembly/standalone/native-assembly.xml</descriptor>
-                                    </descriptors>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-
-        <profile>
-            <id>enterprise-distribution</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-assembly-plugin</artifactId>
-                        <version>${maven-assembly-plugin.version}</version>
-                        <executions>
-                            <execution>
-                                <id>distribution</id>
+                                <id>enterprise-distribution</id>
                                 <phase>package</phase>
                                 <goals>
                                     <goal>single</goal>
@@ -549,38 +516,5 @@
                 </plugins>
             </build>
         </profile>
-        <profile>
-            <id>enterprise-native-distribution</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-assembly-plugin</artifactId>
-                        <version>${maven-assembly-plugin.version}</version>
-                        <executions>
-                            <execution>
-                                <id>native-distribution</id>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>single</goal>
-                                </goals>
-                                <configuration combine.self="append">
-                                    <attach>false</attach>
-                                    <appendAssemblyId>false</appendAssemblyId>
-                                    <finalName>${project.artifactId}-enterprise-${project.version}-${os.detected.classifier}</finalName>
-                                    <outputDirectory>${project.build.directory}/distributions</outputDirectory>
-                                    <workDirectory>${project.build.directory}/assembly/work</workDirectory>
-                                    <skipAssembly>false</skipAssembly>
-                                    <descriptors>
-                                        <descriptor>src/main/assembly/enterprise/native-assembly.xml</descriptor>
-                                    </descriptors>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-
     </profiles>
 </project>

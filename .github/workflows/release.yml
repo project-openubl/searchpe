@@ -52,7 +52,7 @@ jobs:
 
   build-jvm:
     needs: [ version ]
-    name: Build JVM (${{ matrix.flavor }})
+    name: Build JVM
     strategy:
       fail-fast: true
       matrix:
@@ -79,7 +79,7 @@ jobs:
           cache: maven
 
       - name: Build and Create distribution
-        run: ./mvnw -B --file pom.xml package -DskipTests -P ui,${{ matrix.flavor }},${{ matrix.flavor }}-distribution
+        run: mvn -B --file pom.xml package -DskipTests -P ui,distribution-${{ matrix.flavor }}
       - name: Upload build artifact
         uses: actions/upload-artifact@v3
         with:
@@ -88,65 +88,9 @@ jobs:
             target/distributions/*.zip
             target/distributions/*.tar.gz
 
-  #  build-native:
-  #    needs: [ version ]
-  #    name: Build Native on ${{ matrix.os }} (${{ matrix.flavor }})
-  #    strategy:
-  #      fail-fast: true
-  #      matrix:
-  #        flavor: [ "standalone", "enterprise" ]
-  #        os: [ ubuntu-latest, macOS-latest, windows-latest ]
-  #        gu-binary: [ gu, gu.cmd ]
-  #        exclude:
-  #          - os: ubuntu-latest
-  #            gu-binary: gu.cmd
-  #          - os: macos-latest
-  #            gu-binary: gu.cmd
-  #          - os: windows-latest
-  #            gu-binary: gu
-  #    runs-on: ${{ matrix.os }}
-  #    steps:
-  #      - uses: actions/download-artifact@v3
-  #        with:
-  #          name: artifacts
-  #          path: artifacts
-  #      - name: Read HEAD ref
-  #        id: head
-  #        uses: juliangruber/read-file-action@v1
-  #        with:
-  #          path: artifacts/HEAD
-  #      - uses: actions/checkout@v3
-  #        with:
-  #          ref: ${{ steps.head.outputs.content }}
-  #
-  #      - name: Add Developer Command Prompt for Microsoft Visual C++
-  #        if: ${{ runner.os == 'Windows' }}
-  #        uses: ilammy/msvc-dev-cmd@v1
-  #
-  #      - name: Set up GraalVM
-  #        uses: DeLaGuardo/setup-graalvm@4.0
-  #        with:
-  #          graalvm: 21.3.0
-  #          java: java11
-  #      - name: Install native-image component
-  #        run: |
-  #          ${{ matrix.gu-binary }} install native-image
-  #
-  #      - name: Build Native
-  #        run: ./mvnw -B --file pom.xml package -DskipTests -P native,ui,${{ matrix.flavor }}
-  #      - name: Create distribution
-  #        run: ./mvnw -B --file pom.xml package -DskipTests -P ${{ matrix.flavor }},${{ matrix.flavor }}-native-distribution
-  #      - name: Upload build artifact
-  #        uses: actions/upload-artifact@v3
-  #        with:
-  #          name: artifacts
-  #          path: |
-  #            target/distributions/*.zip
-  #            target/distributions/*.tar.gz
-
   build-container:
     needs: [ version ]
-    name: Build Container (${{ matrix.flavor }})
+    name: Build Container
     strategy:
       fail-fast: true
       matrix:
@@ -243,7 +187,7 @@ jobs:
           username: ${{ secrets.QUAYIO_USERNAME }}
           password: ${{ secrets.QUAYIO_PASSWORD }}
 
-      - name: Push to images to registry
+      - name: Push images to registry
         run: |
           docker push quay.io/projectopenubl/searchpe:latest
           docker push quay.io/projectopenubl/searchpe:v${{ steps.version.outputs.RELEASE_VERSION }}
@@ -266,6 +210,8 @@ jobs:
           JRELEASER_TWITTER_ACCESS_TOKEN_SECRET: ${{ secrets.JRELEASER_TWITTER_ACCESS_TOKEN_SECRET }}
           JRELEASER_SLACK_TOKEN: ${{ secrets.JRELEASER_SLACK_TOKEN }}
           JRELEASER_SLACK_WEBHOOK: ${{ secrets.JRELEASER_SLACK_WEBHOOK }}
+          JRELEASER_MAIL_PASSWORD: ${{ secrets.JRELEASER_MAIL_PASSWORD }}
+          JRELEASER_ARTICLE_: ${{ secrets.JRELEASER_ARTICLE_TOKEN }}
 
       - name: Set next version
         env:
