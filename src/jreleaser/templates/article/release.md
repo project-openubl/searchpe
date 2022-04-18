@@ -1,6 +1,6 @@
 ---
 title: {{projectNameCapitalized}} {{projectEffectiveVersion}} released!
-description: {{projectEffectiveVersion}} is the latest release.
+description: {{projectEffectiveVersion}} es el último release.
 date: {{#f_now}}YYYY-MM-dd{{/f_now}}
 authors: [carlosthe19916]
 tags: [searchpe, release]
