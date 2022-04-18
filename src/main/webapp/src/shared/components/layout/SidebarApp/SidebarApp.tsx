@@ -1,7 +1,7 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 
-import { Nav, PageSidebar, NavGroup } from "@patternfly/react-core";
+import { Nav, PageSidebar, NavList } from "@patternfly/react-core";
 import { css } from "@patternfly/react-styles";
 
 import { Paths } from "Paths";
@@ -17,8 +17,10 @@ export const SidebarApp: React.FC = () => {
   const renderPageNav = () => {
     return (
       <Nav id="nav-sidebar" aria-label="Nav" theme={LayoutTheme}>
-        <VisibilityByPermission hasAny={[Permission.admin, Permission.search]}>
-          <NavGroup title="Consultas">
+        <NavList title="Consultas">
+          <VisibilityByPermission
+            hasAny={[Permission.admin, Permission.search]}
+          >
             {isElasticsearchEnabled() && (
               <NavLink
                 to={Paths.contribuyentes}
@@ -37,12 +39,10 @@ export const SidebarApp: React.FC = () => {
             >
               Número documento
             </NavLink>
-          </NavGroup>
-        </VisibilityByPermission>
-        <VisibilityByPermission
-          hasAny={[Permission.admin, Permission.version_write]}
-        >
-          <NavGroup title="Padrón reducido">
+          </VisibilityByPermission>
+          <VisibilityByPermission
+            hasAny={[Permission.admin, Permission.version_write]}
+          >
             <NavLink
               to={Paths.versiones}
               className={({ isActive }) =>
@@ -51,13 +51,11 @@ export const SidebarApp: React.FC = () => {
             >
               Versiones
             </NavLink>
-          </NavGroup>
-        </VisibilityByPermission>
-        {isBasicAuthEnabled() && (
-          <VisibilityByPermission
-            hasAny={[Permission.admin, Permission.user_write]}
-          >
-            <NavGroup title="Configuración">
+          </VisibilityByPermission>
+          {isBasicAuthEnabled() && (
+            <VisibilityByPermission
+              hasAny={[Permission.admin, Permission.user_write]}
+            >
               <NavLink
                 to={Paths.settings_users}
                 className={({ isActive }) =>
@@ -66,9 +64,9 @@ export const SidebarApp: React.FC = () => {
               >
                 Usuarios
               </NavLink>
-            </NavGroup>
-          </VisibilityByPermission>
-        )}
+            </VisibilityByPermission>
+          )}
+        </NavList>
       </Nav>
     );
   };
