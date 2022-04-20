@@ -74,4 +74,6 @@ export enum AdminClusterResourceKind {
 
 export enum CurrentUserClusterResourceKind {
   WhoAmI = "whoami",
+  Credentials = "credentials",
+  Profile = "profile",
 }

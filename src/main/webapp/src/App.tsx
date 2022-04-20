@@ -25,6 +25,8 @@ import "@redhat-cloud-services/frontend-components-notifications/index.css";
 import DeleteDialog from "./shared/containers/delete-dialog";
 import { useCurrentUserQuery } from "queries/currentUser";
 
+import { ConfirmationContextProvider } from "@project-openubl/lib-ui";
+
 const App: React.FC = () => {
   const currentUser = useCurrentUserQuery();
 
@@ -69,9 +71,11 @@ const App: React.FC = () => {
         when={currentUser.isLoading}
         then={<SimplePlaceholder />}
       >
-        <DefaultLayout>
-          <AppRoutes />
-        </DefaultLayout>
+        <ConfirmationContextProvider>
+          <DefaultLayout>
+            <AppRoutes />
+          </DefaultLayout>
+        </ConfirmationContextProvider>
         <NotificationsPortal />
         <DeleteDialog />
       </ConditionalRender>

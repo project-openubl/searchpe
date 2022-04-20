@@ -17,11 +17,31 @@
 package io.github.project.openubl.searchpe.resources;
 
 import io.github.project.openubl.searchpe.StandaloneProfileManager;
+import io.github.project.openubl.searchpe.idm.BasicUserPasswordChangeRepresentation;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
+import static org.hamcrest.CoreMatchers.is;
 
 @QuarkusTest
 @TestProfile(StandaloneProfileManager.class)
 public class StandaloneCurrentUserResourceTest extends AbstractCurrentUserResourceTest {
+
+    @Test
+    public void updateCredentials() {
+        BasicUserPasswordChangeRepresentation rep = new BasicUserPasswordChangeRepresentation();
+        rep.setNewPassword("newPassword");
+
+        givenAuth("alice")
+                .header("Content-Type", "application/json")
+                .when()
+                .body(rep)
+                .post("/credentials")
+                .then()
+                .statusCode(200);
+    }
 
 }

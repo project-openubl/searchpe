@@ -32,6 +32,7 @@ export const MobileDropdown: React.FC = () => {
         toggle={<KebabToggle onToggle={onKebabDropdownToggle} />}
         isOpen={isKebabDropdownOpen}
         dropdownItems={[
+          <DropdownItem key="profile">Profile</DropdownItem>,
           <DropdownItem key="logout">Logout</DropdownItem>,
           <DropdownSeparator key="separator" />,
           <DropdownItem key="about" onClick={toggleAboutModal}>

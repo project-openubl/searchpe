@@ -57,7 +57,7 @@ export const SidebarApp: React.FC = () => {
               hasAny={[Permission.admin, Permission.user_write]}
             >
               <NavLink
-                to={Paths.settings_users}
+                to={Paths.users}
                 className={({ isActive }) =>
                   css("pf-c-nav__link", isActive ? "pf-m-current" : "")
                 }
