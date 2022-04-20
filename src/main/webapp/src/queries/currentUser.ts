@@ -1,4 +1,10 @@
-import { UseQueryResult, useQuery } from "react-query";
+import {
+  UseQueryResult,
+  useQuery,
+  UseMutationResult,
+  useQueryClient,
+  useMutation,
+} from "react-query";
 
 import {
   CurrentUserClusterResource,
@@ -6,11 +12,18 @@ import {
 } from "api-client";
 import { ApiClientError } from "api-client/types";
 
-import { User } from "api/models";
+import { User, UserPasswordChange } from "api/models";
 import { useSearchpeClient } from "./fetchHelpers";
+import { AxiosError } from "axios";
 
 const whoAmIResource = new CurrentUserClusterResource(
   CurrentUserClusterResourceKind.WhoAmI
+);
+const profileResource = new CurrentUserClusterResource(
+  CurrentUserClusterResourceKind.Profile
+);
+const credentialsResource = new CurrentUserClusterResource(
+  CurrentUserClusterResourceKind.Credentials
 );
 
 export const useCurrentUserQuery = (): UseQueryResult<User, ApiClientError> => {
@@ -24,4 +37,43 @@ export const useCurrentUserQuery = (): UseQueryResult<User, ApiClientError> => {
     retry: process.env.NODE_ENV === "development" ? false : undefined,
   });
   return result;
+};
+
+export const useUpdateCurrentUserProfileMutation = (
+  onSuccess: () => void,
+  onError: (err: AxiosError) => void
+): UseMutationResult<void, ApiClientError, User> => {
+  const client = useSearchpeClient();
+  const queryClient = useQueryClient();
+  return useMutation<void, ApiClientError, User>(
+    async (user: User) => {
+      return (await client.put<void>(profileResource, "", user)).data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries("users");
+        queryClient.invalidateQueries("currentUser");
+        onSuccess && onSuccess();
+      },
+      onError,
+    }
+  );
+};
+
+export const useUpdateCurrentUserPasswordMutation = (
+  onSuccess: () => void,
+  onError: (err: AxiosError) => void
+): UseMutationResult<void, ApiClientError, UserPasswordChange> => {
+  const client = useSearchpeClient();
+  return useMutation<void, ApiClientError, UserPasswordChange>(
+    async (password: UserPasswordChange) => {
+      return (await client.create<void>(credentialsResource, password)).data;
+    },
+    {
+      onSuccess: () => {
+        onSuccess && onSuccess();
+      },
+      onError,
+    }
+  );
 };

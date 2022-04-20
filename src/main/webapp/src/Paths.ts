@@ -3,5 +3,6 @@ export enum Paths {
   contribuyentes = "/contribuyentes",
   versiones = "/versiones",
 
-  settings_users = "/settings/users",
+  users = "/settings/users",
+  profile = "/profile",
 }

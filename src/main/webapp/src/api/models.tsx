@@ -71,6 +71,10 @@ export interface User {
   id?: number;
   fullName?: string;
   username: string;
-  password: string;
-  permissions: Permission[];
+  password?: string;
+  permissions?: Permission[];
+}
+
+export interface UserPasswordChange {
+  newPassword: string;
 }

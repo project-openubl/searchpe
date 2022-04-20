@@ -10,7 +10,8 @@ import { Paths } from "Paths";
 const ConsultaRuc = lazy(() => import("./pages/consulta-ruc"));
 const Contribuyentes = lazy(() => import("./pages/contribuyentes"));
 const Versions = lazy(() => import("./pages/versions"));
-const SettingsUsers = lazy(() => import("./pages/settings/users"));
+const Users = lazy(() => import("./pages/users"));
+const Profile = lazy(() => import("./pages/profile"));
 
 export const AppRoutes = () => {
   const routes = [
@@ -30,19 +31,25 @@ export const AppRoutes = () => {
       hasAny: [Permission.admin, Permission.version_write],
     },
     {
-      Component: SettingsUsers,
-      path: Paths.settings_users,
+      Component: Users,
+      path: Paths.users,
       hasAny: [Permission.admin, Permission.user_write],
+    },
+    {
+      Component: Profile,
+      path: Paths.profile,
+      hasAny: [],
+      hasDescendant: true,
     },
   ];
 
   return (
     <Suspense fallback={<SimplePlaceholder />}>
       <Routes>
-        {routes.map(({ path, hasAny, Component }, index) => (
+        {routes.map(({ path, hasAny, hasDescendant, Component }, index) => (
           <Route
             key={index}
-            path={path}
+            path={hasDescendant ? `${path}/*` : path}
             element={
               <ProtectedRoute hasAny={hasAny}>
                 <Component />

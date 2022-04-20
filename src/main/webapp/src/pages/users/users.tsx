@@ -57,7 +57,7 @@ const itemsToRow = (items: User[]) => {
         title: item.username,
       },
       {
-        title: item.permissions.join(", "),
+        title: item.permissions?.join(", "),
       },
       {
         title: item.fullName,
@@ -102,7 +102,7 @@ export const Users: React.FC = () => {
     data: userToUpdate,
     open: openUserModal,
     close: closeUserModal,
-  } = useModal<User>();
+  } = useModal<"create" | "update", User>();
 
   const {
     page: currentPage,
@@ -131,7 +131,7 @@ export const Users: React.FC = () => {
         extraData: IExtraData
       ) => {
         const row: User = getRow(rowData);
-        openUserModal(row);
+        openUserModal("update", row);
       },
     });
 
@@ -231,7 +231,7 @@ export const Users: React.FC = () => {
                     type="button"
                     aria-label="new-user"
                     variant={ButtonVariant.primary}
-                    onClick={() => openUserModal()}
+                    onClick={() => openUserModal("create")}
                   >
                     Nuevo usuario
                   </Button>

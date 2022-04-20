@@ -16,6 +16,7 @@
  */
 package io.github.project.openubl.searchpe.models.jpa.entity;
 
+import io.github.project.openubl.searchpe.idm.BasicUserPasswordChangeRepresentation;
 import io.github.project.openubl.searchpe.idm.BasicUserRepresentation;
 import io.quarkus.elytron.security.common.BcryptUtil;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
@@ -24,9 +25,14 @@ import io.quarkus.security.jpa.Roles;
 import io.quarkus.security.jpa.UserDefinition;
 import io.quarkus.security.jpa.Username;
 
-import javax.persistence.*;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
+import javax.persistence.Version;
 import javax.validation.constraints.NotNull;
-import java.util.*;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.stream.Collectors;
 
 @Entity
@@ -76,9 +82,17 @@ public class BasicUserEntity extends PanacheEntity {
         if (rep.getPassword() != null) {
             user.password = BcryptUtil.bcryptHash(rep.getPassword());
         }
-        user.permissions = String.join(",", rep.getPermissions());
+        if (rep.getPermissions() != null) {
+            user.permissions = String.join(",", rep.getPermissions());
+        }
         user.persist();
         return user;
+    }
+
+    public static void changePassword(BasicUserEntity user, BasicUserPasswordChangeRepresentation rep) {
+        user.password = BcryptUtil.bcryptHash(rep.getNewPassword());
+        user.fullName = "carlos";
+        user.persist();
     }
 
 }
