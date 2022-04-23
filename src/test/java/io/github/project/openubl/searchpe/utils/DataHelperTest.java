@@ -16,7 +16,7 @@
  */
 package io.github.project.openubl.searchpe.utils;
 
-import io.github.project.openubl.searchpe.StandaloneProfileManager;
+import io.github.project.openubl.searchpe.DefaultProfileManager;
 import io.github.project.openubl.searchpe.managers.FileManager;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.quarkus.test.junit.QuarkusTest;
@@ -38,7 +38,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 @QuarkusTest
-@TestProfile(StandaloneProfileManager.class)
+@TestProfile(DefaultProfileManager.class)
 public class DataHelperTest {
 
     @Inject

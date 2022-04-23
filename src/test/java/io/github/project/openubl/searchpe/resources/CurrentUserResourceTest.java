@@ -17,46 +17,44 @@
 package io.github.project.openubl.searchpe.resources;
 
 import io.github.project.openubl.searchpe.AbstractBaseTest;
+import io.github.project.openubl.searchpe.BasicProfileManager;
+import io.github.project.openubl.searchpe.DefaultProfileManager;
+import io.github.project.openubl.searchpe.idm.BasicUserPasswordChangeRepresentation;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
 
-import static org.hamcrest.CoreMatchers.is;
+import java.util.List;
 
-@TestHTTPEndpoint(ContribuyenteResource.class)
-public abstract class AbstractContribuyenteResourceTest extends AbstractBaseTest {
+import static org.awaitility.Awaitility.await;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
+@QuarkusTest
+@TestProfile(BasicProfileManager.class)
+@TestHTTPEndpoint(CurrentUserResource.class)
+public class CurrentUserResourceTest extends AbstractBaseTest {
 
     @Override
     public Class<?> getTestClass() {
-        return AbstractContribuyenteResourceTest.class;
+        return CurrentUserResourceTest.class;
     }
 
     @Test
-    public void getContribuyente() {
-        // Given
-        String numeroDocumento = "11111111111";
+    public void updateCredentials() {
+        BasicUserPasswordChangeRepresentation rep = new BasicUserPasswordChangeRepresentation();
+        rep.setNewPassword("newPassword");
 
-        // When
         givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/" + numeroDocumento)
+                .body(rep)
+                .post("/credentials")
                 .then()
-                .statusCode(200)
-                .body(
-                        "numeroDocumento", is(numeroDocumento),
-                        "nombre", is("mi empresa1")
-                );
-
-    }
-
-    @Test
-    public void getContribuyente_notFound() {
-        givenAuth("alice")
-                .header("Content-Type", "application/json")
-                .when()
-                .get("/someNumeroDocumento")
-                .then()
-                .statusCode(404);
+                .statusCode(200);
     }
 
 }

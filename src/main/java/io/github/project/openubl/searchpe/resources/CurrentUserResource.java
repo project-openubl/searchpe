@@ -20,29 +20,19 @@ import io.github.project.openubl.searchpe.idm.BasicUserPasswordChangeRepresentat
 import io.github.project.openubl.searchpe.idm.BasicUserRepresentation;
 import io.github.project.openubl.searchpe.models.jpa.entity.BasicUserEntity;
 import io.github.project.openubl.searchpe.resources.interceptors.HTTPBasicAuthEnabled;
-import io.quarkus.elytron.security.common.BcryptUtil;
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
-import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.security.Authenticated;
 import io.quarkus.security.identity.SecurityIdentity;
-import org.eclipse.microprofile.metrics.annotation.Counted;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
-import javax.validation.ConstraintViolation;
 import javax.ws.rs.Consumes;
-import javax.ws.rs.GET;
-import javax.ws.rs.NotFoundException;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Response;
 import java.security.Principal;
-import java.util.LinkedHashSet;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @ApplicationScoped
 @Consumes("application/json")
@@ -52,30 +42,6 @@ public class CurrentUserResource {
 
     @Inject
     SecurityIdentity securityIdentity;
-
-    @Authenticated
-    @GET
-    @Path("/whoami")
-    @Counted(name = "getCurrentUserChecks", description = "How many times the current user data was requested")
-    public BasicUserRepresentation getCurrentUser() {
-        Principal principal = securityIdentity.getPrincipal();
-
-        String username = principal.getName();
-        Set<String> roles = securityIdentity.getRoles();
-
-        // Generate result
-        BasicUserRepresentation result = new BasicUserRepresentation();
-        result.setUsername(username);
-        result.setPermissions(roles.stream().sorted().collect(Collectors.toCollection(LinkedHashSet::new)));
-
-        BasicUserEntity.find("username", username).<BasicUserEntity>firstResultOptional()
-                .ifPresent(entity -> {
-                    result.setId(entity.id);
-                    result.setFullName(entity.fullName);
-                });
-
-        return result;
-    }
 
     @Transactional
     @Authenticated

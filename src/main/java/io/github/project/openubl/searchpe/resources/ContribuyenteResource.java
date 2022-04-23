@@ -16,7 +16,9 @@
  */
 package io.github.project.openubl.searchpe.resources;
 
+import io.github.project.openubl.searchpe.models.FilterBean;
 import io.github.project.openubl.searchpe.models.PageBean;
+import io.github.project.openubl.searchpe.models.PageModel;
 import io.github.project.openubl.searchpe.models.PageRepresentation;
 import io.github.project.openubl.searchpe.models.SortBean;
 import io.github.project.openubl.searchpe.models.TipoPersona;
@@ -26,6 +28,7 @@ import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteId;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.security.Permission;
+import io.github.project.openubl.searchpe.utils.EntityToRepresentation;
 import io.github.project.openubl.searchpe.utils.ResourceUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.metrics.annotation.Counted;
@@ -47,7 +50,13 @@ import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
 import javax.validation.constraints.Max;
-import javax.ws.rs.*;
+import javax.ws.rs.DefaultValue;
+import javax.ws.rs.GET;
+import javax.ws.rs.NotFoundException;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -66,16 +75,6 @@ public class ContribuyenteResource {
     @Inject
     ContribuyenteRepository contribuyenteRepository;
 
-    @Inject
-    Instance<SearchSession> searchSession;
-
-    private Optional<SearchSession> getSearchSession() {
-        for (SearchSession session : searchSession) {
-            return Optional.of(session);
-        }
-        return Optional.empty();
-    }
-
     @RolesAllowed({Permission.admin, Permission.search})
     @Operation(summary = "Search contribuyentes", description = "Get contribuyentes in a page")
     @GET
@@ -85,17 +84,11 @@ public class ContribuyenteResource {
     @Timed(name = "searchContribuyenteTimer", description = "How long it took to serve the advanced search")
     public PageRepresentation<ContribuyenteEntity> getContribuyentes(
             @QueryParam("filterText") String filterText,
-            @QueryParam("tipoContribuyente") String tipoContribuyenteQuery,
+            @QueryParam("tipoContribuyente") String tipoPersona,
             @QueryParam("offset") @DefaultValue("0") @Max(9_000) Integer offset,
             @QueryParam("limit") @DefaultValue("10") @Max(1_000) Integer limit,
             @QueryParam("sort_by") @DefaultValue("name") List<String> sortBy
     ) {
-        if (isESEnabled.isEmpty() || !isESEnabled.get()) {
-            throw new NotFoundException();
-        }
-
-        SearchSession searchSession = getSearchSession().orElseThrow(() -> new IllegalStateException("Could not find a SearchSession available"));
-
         Optional<VersionEntity> versionOptional = versionRepository.findActive();
         if (versionOptional.isEmpty()) {
             PageRepresentation<ContribuyenteEntity> result = new PageRepresentation<>();
@@ -115,50 +108,17 @@ public class ContribuyenteResource {
         PageBean pageBean = ResourceUtils.getPageBean(offset, limit);
         List<SortBean> sortBeans = ResourceUtils.getSortBeans(sortBy, ContribuyenteRepository.SORT_BY_FIELDS);
 
-        SearchSort searchSort = null;
-        if (!sortBeans.isEmpty()) {
-            SearchScope<ContribuyenteEntity> searchScope = searchSession.scope(ContribuyenteEntity.class);
+        FilterBean filterBean = new FilterBean();
+        filterBean.setFilterText(filterText);
+        filterBean.setTipoPersona(tipoPersona);
 
-            CompositeSortComponentsStep<?> compositeSortComponents = searchScope.sort().composite();
-            sortBeans.stream()
-                    .map(f -> searchScope.sort()
-                            .field(f.getFieldName() + "_sort")
-                            .order(f.isAsc() ? SortOrder.ASC : SortOrder.DESC)
-                            .toSort())
-                    .forEach(compositeSortComponents::add);
-
-            searchSort = compositeSortComponents.toSort();
+        PageModel<ContribuyenteEntity> list;
+        if (!isESEnabled.orElse(false)) {
+            list = contribuyenteRepository.list(version, filterBean, pageBean, sortBeans);
+        } else {
+            list = contribuyenteRepository.listES(version, filterBean, pageBean, sortBeans);
         }
-
-        SearchQueryOptionsStep<?, ContribuyenteEntity, SearchLoadingOptionsStep, ?, ?> searchQuery = searchSession.search(ContribuyenteEntity.class)
-                .where(f -> {
-                    BooleanPredicateClausesStep<?> result = f.bool();
-                    result = result.must(f.match().field("embeddedId.versionId").matching(version.id));
-                    if (filterText != null && !filterText.trim().isEmpty()) {
-                        result = result.must(f.match().fields("nombre").matching(filterText));
-                    }
-                    if (tipoContribuyenteQuery != null && !tipoContribuyenteQuery.trim().isEmpty()) {
-                        TipoPersona tipoContribuyente = TipoPersona.valueOf(tipoContribuyenteQuery.trim().toUpperCase());
-                        result = result.must(f.match().field("tipoPersona").matching(tipoContribuyente));
-                    }
-                    return result;
-                });
-
-        if (searchSort != null) {
-            searchQuery = searchQuery.sort(searchSort);
-        }
-        SearchResult<ContribuyenteEntity> searchResult = searchQuery.fetch(offset, limit);
-
-        PageRepresentation.Meta meta = new PageRepresentation.Meta();
-        meta.setOffset(pageBean.getOffset());
-        meta.setLimit(pageBean.getLimit());
-        meta.setCount(searchResult.total().hitCount());
-
-        PageRepresentation<ContribuyenteEntity> result = new PageRepresentation<>();
-        result.setMeta(meta);
-        result.setData(searchResult.hits());
-
-        return result;
+        return EntityToRepresentation.toRepresentation(list, entity -> entity);
     }
 
     @RolesAllowed({Permission.admin, Permission.search})

@@ -14,12 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.project.openubl.searchpe.resources;
+package io.github.project.openubl.searchpe;
 
-import io.quarkus.test.junit.QuarkusIntegrationTest;
-import org.junit.jupiter.api.Disabled;
+public class DefaultProfileManager extends ProfileManager {
 
-@Disabled
-@QuarkusIntegrationTest
-public class NativeEnterpriseContribuyenteResourceIT extends EnterpriseContribuyenteResourceTest {
+    @Override
+    public String getProfile() {
+        return "";
+    }
+
 }

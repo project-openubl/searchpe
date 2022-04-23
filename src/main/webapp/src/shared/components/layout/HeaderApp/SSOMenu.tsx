@@ -7,10 +7,10 @@ import {
 } from "@patternfly/react-core";
 
 import { useCurrentUserQuery } from "queries/currentUser";
-import { isBasicAuthEnabled, isOidcAuthEnabled } from "Constants";
 
 import { BasicMenuDropdownItems } from "./BasicMenuDropdownItems";
 import { OidcMenuDropdownItems } from "./OidcMenuDropdownItems";
+import { isAuthDisabled } from "Constants";
 
 export const SSOMenu: React.FC = () => {
   const currentUser = useCurrentUserQuery();
@@ -23,12 +23,12 @@ export const SSOMenu: React.FC = () => {
     setIsDropdownOpen(isOpen);
   };
 
-  let authDropdownItems;
-  if (isBasicAuthEnabled()) {
-    authDropdownItems = <BasicMenuDropdownItems />;
-  } else if (isOidcAuthEnabled()) {
-    authDropdownItems = <OidcMenuDropdownItems />;
-  }
+  // let authDropdownItems;
+  // if (isBasicAuthEnabled()) {
+  //   authDropdownItems = <BasicMenuDropdownItems />;
+  // } else if (isOidcAuthEnabled()) {
+  //   authDropdownItems = <OidcMenuDropdownItems />;
+  // }
 
   return (
     <PageHeaderToolsItem
@@ -41,22 +41,26 @@ export const SSOMenu: React.FC = () => {
         "2xl": "visible",
       }} /** this user dropdown is hidden on mobile sizes */
     >
-      <Dropdown
-        isPlain
-        position="right"
-        onSelect={onDropdownSelect}
-        isOpen={isDropdownOpen}
-        toggle={
-          <DropdownToggle onToggle={onDropdownToggle}>
-            {currentUser.data?.username}
-          </DropdownToggle>
-        }
-        dropdownItems={[
-          <DropdownGroup key="user-management">
-            {authDropdownItems}
-          </DropdownGroup>,
-        ]}
-      />
+      {!isAuthDisabled() && (
+        <Dropdown
+          isPlain
+          position="right"
+          onSelect={onDropdownSelect}
+          isOpen={isDropdownOpen}
+          toggle={
+            <DropdownToggle onToggle={onDropdownToggle}>
+              {currentUser.data?.username}
+            </DropdownToggle>
+          }
+          dropdownItems={
+            [
+              // <DropdownGroup key="user-management">
+              //   {authDropdownItems}
+              // </DropdownGroup>,
+            ]
+          }
+        />
+      )}
     </PageHeaderToolsItem>
   );
 };

@@ -16,8 +16,9 @@
  */
 package io.github.project.openubl.searchpe.resources;
 
-import io.github.project.openubl.searchpe.StandaloneProfileManager;
-import io.github.project.openubl.searchpe.idm.BasicUserPasswordChangeRepresentation;
+import io.github.project.openubl.searchpe.AbstractBaseTest;
+import io.github.project.openubl.searchpe.DefaultProfileManager;
+import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
@@ -27,21 +28,38 @@ import java.util.List;
 import static org.hamcrest.CoreMatchers.is;
 
 @QuarkusTest
-@TestProfile(StandaloneProfileManager.class)
-public class StandaloneCurrentUserResourceTest extends AbstractCurrentUserResourceTest {
+@TestProfile(DefaultProfileManager.class)
+@TestHTTPEndpoint(WhoAmIResource.class)
+public class WhoAmIResourceTest extends AbstractBaseTest {
+
+    @Override
+    public Class<?> getTestClass() {
+        return WhoAmIResourceTest.class;
+    }
 
     @Test
-    public void updateCredentials() {
-        BasicUserPasswordChangeRepresentation rep = new BasicUserPasswordChangeRepresentation();
-        rep.setNewPassword("newPassword");
-
+    public void whoAmITest() {
         givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .body(rep)
-                .post("/credentials")
+                .get("/")
                 .then()
-                .statusCode(200);
+                .statusCode(200)
+                .body(
+                        "username", is("alice"),
+                        "permissions", is(List.of("search", "version:write"))
+                );
+
+        givenAuth("admin")
+                .header("Content-Type", "application/json")
+                .when()
+                .get("/")
+                .then()
+                .statusCode(200)
+                .body(
+                        "username", is("admin"),
+                        "permissions", is(List.of("admin:app"))
+                );
     }
 
 }

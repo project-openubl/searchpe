@@ -79,7 +79,7 @@ public abstract class AbstractBaseTest {
 
     protected RequestSpecification givenAuth(String username) {
         Config config = ConfigProvider.getConfig();
-        Boolean oidcEnabled = config.getValue("quarkus.oidc.enabled", Boolean.class);
+        Boolean oidcEnabled = config.getValue("quarkus.oidc.tenant-enabled", Boolean.class);
         if (oidcEnabled) {
             return given().auth().oauth2(getAccessToken(username));
         } else {

@@ -14,12 +14,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.project.openubl.searchpe;
+package io.github.project.openubl.searchpe.models;
 
-public class EnterpriseProfileManager extends ProfileManager {
+public class FilterBean {
 
-    public EnterpriseProfileManager() {
-        super(DistributionFlavor.enterprise);
+    private String filterText;
+    private String tipoPersona;
+
+    public String getFilterText() {
+        return filterText;
     }
 
+    public void setFilterText(String filterText) {
+        this.filterText = filterText;
+    }
+
+    public String getTipoPersona() {
+        return tipoPersona;
+    }
+
+    public void setTipoPersona(String tipoPersona) {
+        this.tipoPersona = tipoPersona;
+    }
 }

@@ -24,41 +24,17 @@ import java.util.List;
 
 public abstract class ProfileManager implements QuarkusTestProfile {
 
-    enum DistributionFlavor {
-        standalone, enterprise
+    private List<TestResourceEntry> testResources = new ArrayList<>();
+
+    public ProfileManager() {
+        testResources.add(new TestResourceEntry(SunatServer.class));
     }
 
-    protected String configProfile;
-    protected List<TestResourceEntry> testResources = new ArrayList<>();
-
-    public ProfileManager(DistributionFlavor distributionFlavor) {
-        init(distributionFlavor);
-    }
-
-    private void init(DistributionFlavor distributionFlavor) {
-        switch (distributionFlavor) {
-            case standalone:
-                // Profile
-                configProfile = DistributionFlavor.standalone.toString();
-
-                // Test resources
-                testResources.add(new TestResourceEntry(SunatServer.class));
-
-                break;
-            case enterprise:
-                // Profile
-                configProfile = DistributionFlavor.enterprise.toString();
-
-                // Test resources
-                testResources.add(new TestResourceEntry(SunatServer.class));
-
-                break;
-        }
-    }
+    public abstract String getProfile();
 
     @Override
     public String getConfigProfile() {
-        return "test," + configProfile;
+        return "test," + getProfile();
     }
 
     @Override
