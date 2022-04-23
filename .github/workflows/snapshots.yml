@@ -22,14 +22,11 @@ jobs:
           distribution: temurin
           cache: maven
       - name: Maven
-        run: mvn test -Pstandalone -Dtest=DataHelperTest -Dsearchpe.sunat.padronReducidoUrl=http://www2.sunat.gob.pe/padron_reducido_ruc.zip
+        run: mvn test -Dtest=DataHelperTest -Dsearchpe.sunat.padronReducidoUrl=http://www2.sunat.gob.pe/padron_reducido_ruc.zip
 
   build-snapshot-container:
     needs: [ linux-jvm-tests ]
     name: Build Container
-    strategy:
-      matrix:
-        flavor: [ "standalone", "enterprise" ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -46,16 +43,16 @@ jobs:
           -Dquarkus.container-image.build=true \
           -Dquarkus.container-image.registry=quay.io \
           -Dquarkus.container-image.group=projectopenubl \
-          -Dquarkus.container-image.name=searchpe-${{ matrix.flavor }} \
+          -Dquarkus.container-image.name=searchpe \
           -Dquarkus.container-image.tag=latest \
-          -P native,ui,${{ matrix.flavor }}
+          -P native,ui
       - name: Save container image
-        run: docker save -o searchpe-${{ matrix.flavor }}-container-image.tar quay.io/projectopenubl/searchpe-${{ matrix.flavor }}:latest
+        run: docker save -o searchpe-container-image.tar quay.io/projectopenubl/searchpe:latest
       - name: Upload container image
         uses: actions/upload-artifact@v3
         with:
           name: artifacts
-          path: searchpe-${{ matrix.flavor }}-container-image.tar
+          path: searchpe-container-image.tar
 
   snapshots:
     needs: [ build-snapshot-container ]
@@ -78,24 +75,12 @@ jobs:
       - name: Load and config images
         run: |
           # Load images from .tar
-          docker load -i artifacts/searchpe-standalone-container-image.tar
-          docker load -i artifacts/searchpe-enterprise-container-image.tar
+          docker load -i artifacts/searchpe-container-image.tar
           
           # Tag images
-          docker tag quay.io/projectopenubl/searchpe-standalone:latest quay.io/projectopenubl/searchpe:early-access
-          docker tag quay.io/projectopenubl/searchpe-enterprise:latest quay.io/projectopenubl/searchpe-standalone:early-access
-          docker tag quay.io/projectopenubl/searchpe-enterprise:latest quay.io/projectopenubl/searchpe-enterprise:early-access
-          
-          docker tag quay.io/projectopenubl/searchpe-standalone:latest ghcr.io/project-openubl/searchpe/searchpe:early-access
-          docker tag quay.io/projectopenubl/searchpe-enterprise:latest ghcr.io/project-openubl/searchpe/searchpe-standalone:early-access
-          docker tag quay.io/projectopenubl/searchpe-enterprise:latest ghcr.io/project-openubl/searchpe/searchpe-enterprise:early-access
+          docker tag quay.io/projectopenubl/searchpe:latest quay.io/projectopenubl/searchpe:early-access      
+          docker tag quay.io/projectopenubl/searchpe:latest ghcr.io/project-openubl/searchpe/searchpe:early-access
       - name: Push images to registry
         run: |
-          docker push quay.io/projectopenubl/searchpe:early-access        
-          docker push quay.io/projectopenubl/searchpe-standalone:early-access          
-          docker push quay.io/projectopenubl/searchpe-enterprise:early-access
-          
-          docker push ghcr.io/project-openubl/searchpe/searchpe:early-access        
-          docker push ghcr.io/project-openubl/searchpe/searchpe-standalone:early-access
-          docker push ghcr.io/project-openubl/searchpe/searchpe-enterprise:early-access
-    
+          docker push quay.io/projectopenubl/searchpe:early-access          
+          docker push ghcr.io/project-openubl/searchpe/searchpe:early-access

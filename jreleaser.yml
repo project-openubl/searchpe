@@ -13,14 +13,10 @@ project:
     inceptionYear: 2019
 
 distributions:
-  standalone-jvm:
+  jvm:
     artifacts:
       - path: artifacts/searchpe-{{projectVersion}}-jvm.tar.gz
       - path: artifacts/searchpe-{{projectVersion}}-jvm.zip
-  enterprise-jvm:
-    artifacts:
-      - path: artifacts/searchpe-enterprise-{{projectVersion}}-jvm.tar.gz
-      - path: artifacts/searchpe-enterprise-{{projectVersion}}-jvm.zip
 
 release:
   github:
