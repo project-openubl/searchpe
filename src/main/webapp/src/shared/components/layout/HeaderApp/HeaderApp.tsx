@@ -12,7 +12,7 @@ import {
 import { HelpIcon } from "@patternfly/react-icons";
 
 import { AppAboutModalState } from "../AppAboutModalState";
-import { SSOMenu } from "./SSOMenu";
+import { UserDropdown } from "./UserDropdown";
 import { MobileDropdown } from "./MobileDropdown";
 
 import navBrandImage from "images/logo-navbar.svg";
@@ -52,7 +52,7 @@ export const HeaderApp: React.FC = () => {
         >
           <MobileDropdown />
         </PageHeaderToolsItem>
-        <SSOMenu />
+        <UserDropdown />
       </PageHeaderToolsGroup>
       <Avatar src={imgAvatar} alt="Avatar image" />
     </PageHeaderTools>

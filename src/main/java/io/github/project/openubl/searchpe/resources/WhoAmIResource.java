@@ -28,6 +28,8 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.SecurityContext;
 import java.security.Principal;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -46,7 +48,9 @@ public class WhoAmIResource {
     @GET
     @Path("/")
     @Counted(name = "getCurrentUserChecks", description = "How many times the current user data was requested")
-    public BasicUserRepresentation getCurrentUser() {
+    public BasicUserRepresentation getCurrentUser(@Context SecurityContext ctx) {
+        String authenticationScheme = ctx.getAuthenticationScheme();
+
         Principal principal = securityIdentity.getPrincipal();
 
         String username = principal.getName();

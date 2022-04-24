@@ -34,11 +34,11 @@ export const isAuthDisabled = (): boolean => {
   return SEARCHPE_SETTINGS.defaultAuthMethod === "none";
 };
 
-export const isBasicAuthEnabled = (): boolean => {
+export const isBasicDefaultAuth = (): boolean => {
   return SEARCHPE_SETTINGS.defaultAuthMethod === "basic";
 };
 
-export const isOidcAuthEnabled = (): boolean => {
+export const isOidcDefaultAuth = (): boolean => {
   return SEARCHPE_SETTINGS.defaultAuthMethod === "oidc";
 };
 
