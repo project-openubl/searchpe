@@ -33,7 +33,7 @@ services:
       retries: 5
 
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
     environment:
       discovery.type: single-node
     network_mode: "host"
@@ -65,10 +65,10 @@ services:
   searchpe:
     image: quay.io/projectopenubl/searchpe:latest
     environment:
-      QUARKUS_HTTP_PORT: 8080
+      QUARKUS_HTTP_PORT: 8180
       QUARKUS_DATASOURCE_USERNAME: db_username
       QUARKUS_DATASOURCE_PASSWORD: db_password
-      QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgresql:5432/searchpe_db
+      QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://localhost:5432/searchpe_db
       QUARKUS_OIDC_AUTH_SERVER_URL: http://localhost:8080/auth/realms/openubl
       QUARKUS_OIDC_CLIENT_ID: searchpe
       QUARKUS_OIDC_CREDENTIALS_SECRET: secret
@@ -77,7 +77,7 @@ services:
       QUARKUS_HIBERNATE_SEARCH_ORM_ELASTICSEARCH_PROTOCOL: HTTP
       QUARKUS_HIBERNATE_SEARCH_ORM_ELASTICSEARCH_HOSTS: localhost:9200
       QUARKUS_HIBERNATE_SEARCH_ORM_ELASTICSEARCH_VERSION: 7
-      QUARKUS_PROFILE: ""
+      QUARKUS_PROFILE: "prod"
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8080/q/health" ]
       interval: 10s
@@ -87,7 +87,7 @@ services:
     depends_on:
       postgresql:
         condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
       keycloak:
+        condition: service_healthy
+      elasticsearch:
         condition: service_healthy
