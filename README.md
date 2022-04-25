@@ -31,6 +31,30 @@ Inicia la UI en modo desarrollo:
 npm run start --prefix src/main/webapp
 ```
 
+## Desplegar en Minikube
+
+- Instala e inicia una instancia de Minikube
+- Create un namespace `openubl`
+- Create un PVC para la base de datos
+- Despliega Searchpe
+
+```shell
+minikube start
+kubectl create ns openubl
+kubectl create -f src/main/kubernetes/pvc.yml -n openubl
+eval $(minikube -p minikube docker-env)
+mvn clean package \
+-Dquarkus.kubernetes.deploy=true \
+-Dquarkus.kubernetes.namespace=openubl \
+-DskipTests
+```
+
+Expone Searchpe usando:
+
+```shell
+minikube service searchpe -n openubl
+```
+
 ## Links
 
 - [Documentación](https://project-openubl.github.io)
