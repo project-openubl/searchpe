@@ -17,9 +17,12 @@
 package io.github.project.openubl.searchpe.resources;
 
 import io.github.project.openubl.searchpe.AbstractBaseTest;
+import io.github.project.openubl.searchpe.DefaultProfileManager;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.TimeUnit;
@@ -30,12 +33,14 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+@QuarkusTest
+@TestProfile(DefaultProfileManager.class)
 @TestHTTPEndpoint(VersionResource.class)
-public abstract class AbstractVersionResourceTest extends AbstractBaseTest {
+public class VersionResourceTest extends AbstractBaseTest {
 
     @Override
     public Class<?> getTestClass() {
-        return AbstractVersionResourceTest.class;
+        return VersionResourceTest.class;
     }
 
     @Test

@@ -11,7 +11,7 @@ export const ALL_PERMISSIONS: Permission[] = [
   Permission.user_write,
 ];
 
-export type SEARCHPE_AUTH_METHOD = "oidc" | "basic";
+export type SEARCHPE_AUTH_METHOD = "none" | "oidc" | "basic";
 
 interface Settings {
   defaultAuthMethod: SEARCHPE_AUTH_METHOD;
@@ -30,11 +30,15 @@ const defaultSettings: Settings = {
 const SEARCHPE_SETTINGS: Settings =
   (window as any)["SEARCHPE_SETTINGS"] || defaultSettings;
 
-export const isBasicAuthEnabled = (): boolean => {
+export const isAuthDisabled = (): boolean => {
+  return SEARCHPE_SETTINGS.defaultAuthMethod === "none";
+};
+
+export const isBasicDefaultAuth = (): boolean => {
   return SEARCHPE_SETTINGS.defaultAuthMethod === "basic";
 };
 
-export const isOidcAuthEnabled = (): boolean => {
+export const isOidcDefaultAuth = (): boolean => {
   return SEARCHPE_SETTINGS.defaultAuthMethod === "oidc";
 };
 

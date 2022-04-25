@@ -17,7 +17,7 @@
 package io.github.project.openubl.searchpe.resources;
 
 import io.github.project.openubl.searchpe.AbstractBaseTest;
-import io.github.project.openubl.searchpe.EnterpriseProfileManager;
+import io.github.project.openubl.searchpe.BasicProfileManager;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.quarkus.test.junit.QuarkusTest;
@@ -31,12 +31,12 @@ import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @QuarkusTest
-@TestProfile(EnterpriseProfileManager.class)
-public class EnterpriseSearchContribuyenteResourceTest extends AbstractBaseTest {
+@TestProfile(BasicProfileManager.class)
+public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
 
     @Override
     public Class<?> getTestClass() {
-        return EnterpriseSearchContribuyenteResourceTest.class;
+        return ContribuyenteSearchResourceTest.class;
     }
 
     @Test

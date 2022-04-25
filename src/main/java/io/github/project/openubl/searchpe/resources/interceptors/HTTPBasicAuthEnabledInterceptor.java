@@ -16,7 +16,9 @@
  */
 package io.github.project.openubl.searchpe.resources.interceptors;
 
+import io.github.project.openubl.searchpe.managers.FileManager;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jboss.logging.Logger;
 
 import javax.interceptor.AroundInvoke;
 import javax.interceptor.Interceptor;
@@ -27,15 +29,21 @@ import javax.ws.rs.BadRequestException;
 @HTTPBasicAuthEnabled
 public class HTTPBasicAuthEnabledInterceptor {
 
+    private static final Logger LOGGER = Logger.getLogger(FileManager.class);
+
     @ConfigProperty(name = "quarkus.http.auth.basic")
-    Boolean isAuthBasicEnabled;
+    boolean isAuthBasicEnabled;
+
+    @ConfigProperty(name = "searchpe.disable.authorization", defaultValue = "false")
+    boolean disableAuthorization;
 
     @AroundInvoke
     public Object invoke(InvocationContext ctx) throws Exception {
-        if (isAuthBasicEnabled) {
+        if (isAuthBasicEnabled && !disableAuthorization) {
             return ctx.proceed();
         } else {
-            throw new BadRequestException("HTTP Basic auth is disabled, can not proceed");
+            LOGGER.warn("REST endpoint blocked: Authorization or HTTP Basic has been disabled");
+            throw new BadRequestException("HTTP Basic auth is disabled or Auth has been disabled, can not proceed");
         }
     }
 

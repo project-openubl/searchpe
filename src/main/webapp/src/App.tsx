@@ -23,14 +23,14 @@ import NotificationsPortal from "@redhat-cloud-services/frontend-components-noti
 import "@redhat-cloud-services/frontend-components-notifications/index.css";
 
 import DeleteDialog from "./shared/containers/delete-dialog";
-import { useCurrentUserQuery } from "queries/currentUser";
+import { useWhoAmIQuery } from "queries/whoami";
 
 import { ConfirmationContextProvider } from "@project-openubl/lib-ui";
 
 const App: React.FC = () => {
-  const currentUser = useCurrentUserQuery();
+  const whoAmI = useWhoAmIQuery();
 
-  if (currentUser.isError) {
+  if (whoAmI.isError) {
     return (
       <Bullseye>
         <EmptyState variant={EmptyStateVariant.small}>
@@ -67,10 +67,7 @@ const App: React.FC = () => {
 
   return (
     <HashRouter>
-      <ConditionalRender
-        when={currentUser.isLoading}
-        then={<SimplePlaceholder />}
-      >
+      <ConditionalRender when={whoAmI.isLoading} then={<SimplePlaceholder />}>
         <ConfirmationContextProvider>
           <DefaultLayout>
             <AppRoutes />

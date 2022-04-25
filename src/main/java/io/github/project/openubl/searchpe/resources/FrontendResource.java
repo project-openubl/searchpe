@@ -26,7 +26,6 @@ import javax.inject.Inject;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
-import java.util.Objects;
 import java.util.Optional;
 
 @Path("/templates")
@@ -36,8 +35,11 @@ public class FrontendResource {
     @Location("settings.js")
     Template settingsJS;
 
-    @ConfigProperty(name = "quarkus.oidc.enabled")
-    Optional<Boolean> isOidcEnabled;
+    @ConfigProperty(name = "searchpe.disable.authorization")
+    Optional<Boolean> disableAuthorization;
+
+    @ConfigProperty(name = "quarkus.oidc.tenant-enabled")
+    Optional<Boolean> isOidcTenantEnabled;
 
     @ConfigProperty(name = "quarkus.hibernate-search-orm.enabled")
     Optional<Boolean> isESEnabled;
@@ -53,8 +55,17 @@ public class FrontendResource {
     @Path("/settings.js")
     @Produces("text/javascript")
     public TemplateInstance getSettingsJS() {
+        String defaultAuthMethod;
+        if (disableAuthorization.orElse(false)) {
+            defaultAuthMethod = "none";
+        } else if (isOidcTenantEnabled.orElse(false)) {
+            defaultAuthMethod = "oidc";
+        } else {
+            defaultAuthMethod = "basic";
+        }
+
         return settingsJS
-                .data("defaultAuthMethod", isOidcEnabled.isPresent() && isOidcEnabled.get() ? "oidc" : "basic")
+                .data("defaultAuthMethod", defaultAuthMethod)
                 .data("formCookieName", formCookieName.orElse(""))
                 .data("oidcLogoutPath", oidcLogoutPath.orElse(""))
                 .data("isElasticsearchEnabled", isESEnabled.isPresent() && isESEnabled.get());

@@ -14,31 +14,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.project.openubl.searchpe;
+package io.github.project.openubl.searchpe.security;
 
-import io.github.project.openubl.searchpe.resources.config.SunatServer;
-import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.security.spi.runtime.AuthorizationController;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-import java.util.ArrayList;
-import java.util.List;
+import javax.annotation.Priority;
+import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.inject.Alternative;
+import javax.interceptor.Interceptor;
 
-public abstract class ProfileManager implements QuarkusTestProfile {
+@Alternative
+@Priority(Interceptor.Priority.LIBRARY_AFTER)
+@ApplicationScoped
+public class DisabledAuthController extends AuthorizationController {
 
-    private List<TestResourceEntry> testResources = new ArrayList<>();
-
-    public ProfileManager() {
-        testResources.add(new TestResourceEntry(SunatServer.class));
-    }
-
-    public abstract String getProfile();
-
-    @Override
-    public String getConfigProfile() {
-        return "test," + getProfile();
-    }
+    @ConfigProperty(name = "searchpe.disable.authorization", defaultValue = "false")
+    boolean disableAuthorization;
 
     @Override
-    public List<TestResourceEntry> testResources() {
-        return testResources;
+    public boolean isAuthorizationEnabled() {
+        return !disableAuthorization;
     }
+
 }

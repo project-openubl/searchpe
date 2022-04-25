@@ -64,6 +64,7 @@ export class CurrentUserClusterResource extends ClusterResource {
 }
 
 export enum CoreClusterResourceKind {
+  WhoAmI = "whoami",
   Version = "versions",
   Contribuyente = "contribuyentes",
 }
@@ -73,7 +74,6 @@ export enum AdminClusterResourceKind {
 }
 
 export enum CurrentUserClusterResourceKind {
-  WhoAmI = "whoami",
   Credentials = "credentials",
   Profile = "profile",
 }

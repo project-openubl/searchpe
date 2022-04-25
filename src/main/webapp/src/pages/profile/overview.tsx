@@ -29,10 +29,9 @@ import { object, string } from "yup";
 import { AxiosError } from "axios";
 import { useConfirmationContext } from "@project-openubl/lib-ui";
 
-import {
-  useCurrentUserQuery,
-  useUpdateCurrentUserProfileMutation,
-} from "queries/currentUser";
+import { useWhoAmIQuery } from "queries/whoami";
+import { useUpdateCurrentUserProfileMutation } from "queries/currentUser";
+
 import {
   getAxiosErrorMessage,
   getValidatedFromError,
@@ -43,7 +42,7 @@ import { User } from "api/models";
 export const Overview: React.FC = () => {
   const confirmation = useConfirmationContext();
 
-  const currentUser = useCurrentUserQuery();
+  const whoAmI = useWhoAmIQuery();
 
   // Form
 
@@ -59,8 +58,8 @@ export const Overview: React.FC = () => {
     control,
   } = useForm({
     defaultValues: {
-      username: currentUser.data?.username || "",
-      fullName: currentUser.data?.fullName || "",
+      username: whoAmI.data?.username || "",
+      fullName: whoAmI.data?.fullName || "",
     },
     resolver: yupResolver(validationSchema),
     mode: "onChange",
@@ -68,7 +67,7 @@ export const Overview: React.FC = () => {
 
   const onSubmit = (formValues: FieldValues) => {
     const user: User = {
-      ...currentUser.data,
+      ...whoAmI.data,
       username: formValues.username,
       fullName: formValues.fullName,
     };
@@ -197,7 +196,7 @@ export const Overview: React.FC = () => {
                   variant={SelectVariant.typeaheadMulti}
                   aria-label="permissions"
                   onToggle={() => {}}
-                  selections={currentUser.data?.permissions}
+                  selections={whoAmI.data?.permissions}
                   aria-labelledby="permissions"
                   isDisabled={true}
                 >

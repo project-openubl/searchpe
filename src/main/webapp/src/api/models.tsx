@@ -73,6 +73,7 @@ export interface User {
   username: string;
   password?: string;
   permissions?: Permission[];
+  authenticationScheme?: "Basic" | "Bearer";
 }
 
 export interface UserPasswordChange {

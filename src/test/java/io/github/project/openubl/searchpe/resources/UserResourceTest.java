@@ -17,7 +17,8 @@
 package io.github.project.openubl.searchpe.resources;
 
 import io.github.project.openubl.searchpe.AbstractBaseTest;
-import io.github.project.openubl.searchpe.StandaloneProfileManager;
+import io.github.project.openubl.searchpe.BasicProfileManager;
+import io.github.project.openubl.searchpe.DefaultProfileManager;
 import io.github.project.openubl.searchpe.idm.BasicUserRepresentation;
 import io.github.project.openubl.searchpe.security.Permission;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
@@ -33,13 +34,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @QuarkusTest
-@TestProfile(StandaloneProfileManager.class)
+@TestProfile(BasicProfileManager.class)
 @TestHTTPEndpoint(BasicUserResource.class)
-public class StandaloneUserResourceTest extends AbstractBaseTest {
+public class UserResourceTest extends AbstractBaseTest {
 
     @Override
     public Class<?> getTestClass() {
-        return StandaloneUserResourceTest.class;
+        return UserResourceTest.class;
     }
 
     @Test

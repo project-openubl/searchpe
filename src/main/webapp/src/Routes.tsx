@@ -38,7 +38,6 @@ export const AppRoutes = () => {
     {
       Component: Profile,
       path: Paths.profile,
-      hasAny: [],
       hasDescendant: true,
     },
   ];
@@ -51,9 +50,13 @@ export const AppRoutes = () => {
             key={index}
             path={hasDescendant ? `${path}/*` : path}
             element={
-              <ProtectedRoute hasAny={hasAny}>
+              hasAny ? (
+                <ProtectedRoute hasAny={hasAny}>
+                  <Component />
+                </ProtectedRoute>
+              ) : (
                 <Component />
-              </ProtectedRoute>
+              )
             }
           />
         ))}

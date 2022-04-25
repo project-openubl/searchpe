@@ -91,7 +91,7 @@ export const Contribuyentes: React.FC = () => {
     data: modalData,
     open: openModal,
     close: closeModal,
-  } = useModal<Contribuyente>();
+  } = useModal<"view", Contribuyente>();
 
   const [filterText, setFilterText] = useState("");
   const {
@@ -129,7 +129,7 @@ export const Contribuyentes: React.FC = () => {
         extraData: IExtraData
       ) => {
         const row: Contribuyente = getRow(rowData);
-        openModal(row);
+        openModal("view", row);
       },
     },
   ];

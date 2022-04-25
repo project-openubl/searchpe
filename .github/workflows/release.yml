@@ -53,10 +53,6 @@ jobs:
   build-jvm:
     needs: [ version ]
     name: Build JVM
-    strategy:
-      fail-fast: true
-      matrix:
-        flavor: [ "standalone", "enterprise" ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v3
@@ -79,7 +75,7 @@ jobs:
           cache: maven
 
       - name: Build and Create distribution
-        run: mvn -B --file pom.xml package -DskipTests -P ui,distribution-${{ matrix.flavor }}
+        run: mvn -B --file pom.xml package -DskipTests -P ui,distribution
       - name: Upload build artifact
         uses: actions/upload-artifact@v3
         with:
@@ -91,10 +87,6 @@ jobs:
   build-container:
     needs: [ version ]
     name: Build Container
-    strategy:
-      fail-fast: true
-      matrix:
-        flavor: [ "standalone", "enterprise" ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v3
@@ -124,16 +116,16 @@ jobs:
           -Dquarkus.container-image.build=true \
           -Dquarkus.container-image.registry=quay.io \
           -Dquarkus.container-image.group=projectopenubl \
-          -Dquarkus.container-image.name=searchpe-${{ matrix.flavor }} \
+          -Dquarkus.container-image.name=searchpe \
           -Dquarkus.container-image.tag=latest \
-          -P native,ui,${{ matrix.flavor }}
+          -P native,ui
       - name: Save container image
-        run: docker save -o searchpe-${{ matrix.flavor }}-container-image.tar quay.io/projectopenubl/searchpe-${{ matrix.flavor }}:latest
+        run: docker save -o searchpe-container-image.tar quay.io/projectopenubl/searchpe:latest
       - name: Upload container image
         uses: actions/upload-artifact@v3
         with:
           name: artifacts
-          path: searchpe-${{ matrix.flavor }}-container-image.tar
+          path: searchpe-container-image.tar
 
   release:
     needs: [ build-jvm, build-container ]
@@ -171,14 +163,11 @@ jobs:
       - name: Load and config images
         run: |
           # Load images from .tar
-          docker load -i artifacts/searchpe-standalone-container-image.tar
-          docker load -i artifacts/searchpe-enterprise-container-image.tar
+          docker load -i artifacts/searchpe-container-image.tar
 
           # Tag images
-          docker tag quay.io/projectopenubl/searchpe-standalone:latest quay.io/projectopenubl/searchpe:latest
-          docker tag quay.io/projectopenubl/searchpe-standalone:latest quay.io/projectopenubl/searchpe:${{ steps.version.outputs.RELEASE_VERSION }}
-          docker tag quay.io/projectopenubl/searchpe-enterprise:latest quay.io/projectopenubl/searchpe-standalone:${{ steps.version.outputs.RELEASE_VERSION }}
-          docker tag quay.io/projectopenubl/searchpe-enterprise:latest quay.io/projectopenubl/searchpe-enterprise:${{ steps.version.outputs.RELEASE_VERSION }}
+          docker tag quay.io/projectopenubl/searchpe:latest quay.io/projectopenubl/searchpe:latest
+          docker tag quay.io/projectopenubl/searchpe:latest quay.io/projectopenubl/searchpe:${{ steps.version.outputs.RELEASE_VERSION }}
 
       - name: Login to Quay.io
         uses: docker/login-action@v1
@@ -191,12 +180,6 @@ jobs:
         run: |
           docker push quay.io/projectopenubl/searchpe:latest
           docker push quay.io/projectopenubl/searchpe:v${{ steps.version.outputs.RELEASE_VERSION }}
-          
-          docker push quay.io/projectopenubl/searchpe-standalone:latest
-          docker push quay.io/projectopenubl/searchpe-standalone:v${{ steps.version.outputs.RELEASE_VERSION }}
-          
-          docker push quay.io/projectopenubl/searchpe-enterprise:latest
-          docker push quay.io/projectopenubl/searchpe-enterprise:v${{ steps.version.outputs.RELEASE_VERSION }}
 
       - name: Release with JReleaser
         uses: jreleaser/release-action@v1

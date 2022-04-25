@@ -1,10 +1,4 @@
-import {
-  UseQueryResult,
-  useQuery,
-  UseMutationResult,
-  useQueryClient,
-  useMutation,
-} from "react-query";
+import { UseMutationResult, useQueryClient, useMutation } from "react-query";
 
 import {
   CurrentUserClusterResource,
@@ -16,28 +10,12 @@ import { User, UserPasswordChange } from "api/models";
 import { useSearchpeClient } from "./fetchHelpers";
 import { AxiosError } from "axios";
 
-const whoAmIResource = new CurrentUserClusterResource(
-  CurrentUserClusterResourceKind.WhoAmI
-);
 const profileResource = new CurrentUserClusterResource(
   CurrentUserClusterResourceKind.Profile
 );
 const credentialsResource = new CurrentUserClusterResource(
   CurrentUserClusterResourceKind.Credentials
 );
-
-export const useCurrentUserQuery = (): UseQueryResult<User, ApiClientError> => {
-  const client = useSearchpeClient();
-  const result = useQuery<User, ApiClientError>({
-    queryKey: "currentUser",
-    queryFn: async () => {
-      return (await client.get<User>(whoAmIResource, "")).data;
-    },
-    refetchInterval: 60_000,
-    retry: process.env.NODE_ENV === "development" ? false : undefined,
-  });
-  return result;
-};
 
 export const useUpdateCurrentUserProfileMutation = (
   onSuccess: () => void,
@@ -52,7 +30,7 @@ export const useUpdateCurrentUserProfileMutation = (
     {
       onSuccess: () => {
         queryClient.invalidateQueries("users");
-        queryClient.invalidateQueries("currentUser");
+        queryClient.invalidateQueries("whoami");
         onSuccess && onSuccess();
       },
       onError,

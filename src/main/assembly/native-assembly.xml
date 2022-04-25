@@ -51,7 +51,7 @@
             <filtered>false</filtered>
         </fileSet>
         <fileSet>
-            <directory>src/main/distribution/config/enterprise</directory>
+            <directory>src/main/distribution/config</directory>
             <outputDirectory>./config</outputDirectory>
             <filtered>false</filtered>
         </fileSet>

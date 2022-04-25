@@ -16,7 +16,7 @@
  */
 package io.github.project.openubl.searchpe.idm.validators;
 
-import io.github.project.openubl.searchpe.StandaloneProfileManager;
+import io.github.project.openubl.searchpe.DefaultProfileManager;
 import io.github.project.openubl.searchpe.security.Permission;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
@@ -34,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @QuarkusTest
-@TestProfile(StandaloneProfileManager.class)
+@TestProfile(DefaultProfileManager.class)
 public class ValidPermissionValidatorTest {
 
     @Inject

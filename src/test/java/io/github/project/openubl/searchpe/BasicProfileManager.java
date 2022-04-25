@@ -14,14 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.project.openubl.searchpe.resources;
+package io.github.project.openubl.searchpe;
 
-import io.github.project.openubl.searchpe.EnterpriseProfileManager;
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
+public class BasicProfileManager extends ProfileManager {
 
-@QuarkusTest
-@TestProfile(EnterpriseProfileManager.class)
-public class EnterpriseVersionResourceTest extends AbstractVersionResourceTest {
+    @Override
+    public String getProfile() {
+        return "basic";
+    }
 
 }

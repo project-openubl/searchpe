@@ -5,11 +5,7 @@ import { Nav, PageSidebar, NavList } from "@patternfly/react-core";
 import { css } from "@patternfly/react-styles";
 
 import { Paths } from "Paths";
-import {
-  isElasticsearchEnabled,
-  isBasicAuthEnabled,
-  Permission,
-} from "Constants";
+import { isAuthDisabled, Permission } from "Constants";
 import { LayoutTheme } from "../LayoutUtils";
 import { VisibilityByPermission } from "shared/containers";
 
@@ -21,16 +17,14 @@ export const SidebarApp: React.FC = () => {
           <VisibilityByPermission
             hasAny={[Permission.admin, Permission.search]}
           >
-            {isElasticsearchEnabled() && (
-              <NavLink
-                to={Paths.contribuyentes}
-                className={({ isActive }) =>
-                  css("pf-c-nav__link", isActive ? "pf-m-current" : "")
-                }
-              >
-                Buscar
-              </NavLink>
-            )}
+            <NavLink
+              to={Paths.contribuyentes}
+              className={({ isActive }) =>
+                css("pf-c-nav__link", isActive ? "pf-m-current" : "")
+              }
+            >
+              Buscar
+            </NavLink>
             <NavLink
               to={Paths.consultaRuc}
               className={({ isActive }) =>
@@ -52,7 +46,7 @@ export const SidebarApp: React.FC = () => {
               Versiones
             </NavLink>
           </VisibilityByPermission>
-          {isBasicAuthEnabled() && (
+          {!isAuthDisabled() && (
             <VisibilityByPermission
               hasAny={[Permission.admin, Permission.user_write]}
             >

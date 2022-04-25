@@ -1,5 +1,5 @@
-import { Permission } from "Constants";
-import { useCurrentUserQuery } from "queries/currentUser";
+import { isAuthDisabled, Permission } from "Constants";
+import { useWhoAmIQuery } from "queries/whoami";
 
 export interface IArgs {
   hasAny: Permission[];
@@ -10,17 +10,15 @@ export interface IState {
 }
 
 export const usePermission = ({ hasAny }: IArgs): IState => {
-  const currentUser = useCurrentUserQuery();
+  const whoAmI = useWhoAmIQuery();
 
-  const userPermissions = currentUser.data?.permissions || [];
-  const isAllowed =
-    hasAny.length === 0 ||
-    hasAny.some((permission) => {
-      return userPermissions.some((f) => f === permission);
-    });
+  const userPermissions = whoAmI.data?.permissions || [];
+  const isAllowed = hasAny.some((permission) => {
+    return userPermissions.some((f) => f === permission);
+  });
 
   return {
-    isAllowed,
+    isAllowed: isAllowed || isAuthDisabled(),
   };
 };
 
