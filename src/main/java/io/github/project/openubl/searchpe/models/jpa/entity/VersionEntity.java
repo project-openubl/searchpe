@@ -17,13 +17,28 @@
 package io.github.project.openubl.searchpe.models.jpa.entity;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import javax.json.bind.annotation.JsonbDateFormat;
-import javax.persistence.*;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
+import javax.persistence.Table;
+import javax.persistence.Temporal;
+import javax.persistence.TemporalType;
+import javax.persistence.Version;
 import javax.validation.constraints.NotNull;
 import java.util.Date;
 import java.util.Objects;
 
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
 @Table(name = "version")
 public class VersionEntity extends PanacheEntity {
@@ -55,11 +70,11 @@ public class VersionEntity extends PanacheEntity {
     public static VersionEntity generateNew() {
         Date currentTime = new Date();
 
-        return VersionEntity.Builder.aVersionEntity()
-                .withCreatedAt(currentTime)
-                .withUpdatedAt(currentTime)
-                .withStatus(Status.SCHEDULED)
-                .withRecords(0)
+        return VersionEntity.builder()
+                .createdAt(currentTime)
+                .updatedAt(currentTime)
+                .status(Status.SCHEDULED)
+                .records(0)
                 .build();
     }
 
@@ -76,46 +91,4 @@ public class VersionEntity extends PanacheEntity {
         return Objects.hash(id);
     }
 
-    public static final class Builder {
-        public Date createdAt;
-        public Date updatedAt;
-        public Status status;
-        public int records;
-
-        private Builder() {
-        }
-
-        public static Builder aVersionEntity() {
-            return new Builder();
-        }
-
-        public Builder withCreatedAt(Date createdAt) {
-            this.createdAt = createdAt;
-            return this;
-        }
-
-        public Builder withUpdatedAt(Date updatedAt) {
-            this.updatedAt = updatedAt;
-            return this;
-        }
-
-        public Builder withStatus(Status status) {
-            this.status = status;
-            return this;
-        }
-
-        public Builder withRecords(int records) {
-            this.records = records;
-            return this;
-        }
-
-        public VersionEntity build() {
-            VersionEntity versionEntity = new VersionEntity();
-            versionEntity.createdAt = this.createdAt;
-            versionEntity.records = this.records;
-            versionEntity.status = this.status;
-            versionEntity.updatedAt = this.updatedAt;
-            return versionEntity;
-        }
-    }
 }

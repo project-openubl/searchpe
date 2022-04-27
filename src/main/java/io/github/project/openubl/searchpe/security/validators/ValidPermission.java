@@ -14,24 +14,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.project.openubl.searchpe.bootstrap;
+package io.github.project.openubl.searchpe.security.validators;
 
-import io.github.project.openubl.searchpe.resources.BasicUserResource;
-import io.quarkus.runtime.StartupEvent;
-import org.jboss.logging.Logger;
+import javax.validation.Constraint;
+import javax.validation.Payload;
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
-import javax.enterprise.event.Observes;
-import javax.inject.Singleton;
-import javax.transaction.Transactional;
+import static java.lang.annotation.ElementType.FIELD;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
-@Singleton
-public class SearchpeBootstrap {
+@Constraint(validatedBy = ValidPermissionValidator.class)
+@Target(FIELD)
+@Retention(RUNTIME)
+public @interface ValidPermission {
 
-    private static final Logger LOGGER = Logger.getLogger(BasicUserResource.class);
+    String message() default "";
 
-    @Transactional
-    void reindexSearchIndexes(@Observes StartupEvent ev) throws InterruptedException {
-        LOGGER.info("SearchPE started");
-    }
+    Class<?>[] groups() default {};
+
+    Class<? extends Payload>[] payload() default {};
 
 }

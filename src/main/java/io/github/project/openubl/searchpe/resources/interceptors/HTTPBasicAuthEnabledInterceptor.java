@@ -16,7 +16,7 @@
  */
 package io.github.project.openubl.searchpe.resources.interceptors;
 
-import io.github.project.openubl.searchpe.managers.FileManager;
+import io.github.project.openubl.searchpe.services.FileService;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
@@ -29,7 +29,7 @@ import javax.ws.rs.BadRequestException;
 @HTTPBasicAuthEnabled
 public class HTTPBasicAuthEnabledInterceptor {
 
-    private static final Logger LOGGER = Logger.getLogger(FileManager.class);
+    private static final Logger LOGGER = Logger.getLogger(FileService.class);
 
     @ConfigProperty(name = "quarkus.http.auth.basic")
     boolean isAuthBasicEnabled;

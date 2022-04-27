@@ -14,16 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.project.openubl.searchpe.idm;
+package io.github.project.openubl.searchpe.dto;
 
-public class BasicUserPasswordChangeRepresentation {
-    private String newPassword;
+import io.quarkus.runtime.annotations.RegisterForReflection;
+import lombok.Builder;
+import lombok.Data;
 
-    public String getNewPassword() {
-        return newPassword;
-    }
-
-    public void setNewPassword(String newPassword) {
-        this.newPassword = newPassword;
-    }
+@Data
+@Builder
+@RegisterForReflection
+public class ErrorDto {
+    private String message;
 }

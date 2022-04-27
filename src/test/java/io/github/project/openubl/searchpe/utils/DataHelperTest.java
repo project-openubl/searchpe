@@ -17,7 +17,7 @@
 package io.github.project.openubl.searchpe.utils;
 
 import io.github.project.openubl.searchpe.DefaultProfileManager;
-import io.github.project.openubl.searchpe.managers.FileManager;
+import io.github.project.openubl.searchpe.services.FileService;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
@@ -42,16 +42,16 @@ import static org.junit.jupiter.api.Assertions.*;
 public class DataHelperTest {
 
     @Inject
-    FileManager fileManager;
+    FileService fileService;
 
     @Inject
     Validator validator;
 
     @Test
     public void testBuildContribuyenteEntity() throws IOException {
-        File downloadedFile = fileManager.downloadFile();
-        File unzippedFolder = fileManager.unzip(downloadedFile);
-        File txtFile = fileManager.getFirstTxtFileFound(unzippedFolder.listFiles());
+        File downloadedFile = fileService.downloadFile();
+        File unzippedFolder = fileService.unzip(downloadedFile);
+        File txtFile = fileService.getFirstTxtFileFound(unzippedFolder.listFiles());
 
         try (BufferedReader br = new BufferedReader(new FileReader(txtFile))) {
             String line;

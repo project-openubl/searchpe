@@ -16,46 +16,29 @@
  */
 package io.github.project.openubl.searchpe.models;
 
-import java.util.Objects;
+import io.quarkus.runtime.annotations.RegisterForReflection;
+import lombok.Builder;
+import lombok.Data;
 
+@Data
+@Builder
+@RegisterForReflection
 public class PageBean {
-
     private final int offset;
     private final int limit;
 
-    public PageBean(Integer offset, Integer limit) {
-        this.offset = offset;
-        this.limit = limit;
-    }
+    public static PageBean buildWith(Integer offset, Integer limit) {
+        if (offset == null || offset < 0) {
+            offset = 0;
+        }
 
-    public int getOffset() {
-        return offset;
-    }
+        if (limit == null || limit > 1000) {
+            limit = 1000;
+        }
+        if (limit < 0) {
+            limit = 10;
+        }
 
-    public int getLimit() {
-        return limit;
+        return new PageBean(offset, limit);
     }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        PageBean pageBean = (PageBean) o;
-        return Objects.equals(offset, pageBean.offset) &&
-                Objects.equals(limit, pageBean.limit);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(offset, limit);
-    }
-
-    @Override
-    public String toString() {
-        return "PageBean{" +
-                "offset=" + offset +
-                ", limit=" + limit +
-                '}';
-    }
-
 }

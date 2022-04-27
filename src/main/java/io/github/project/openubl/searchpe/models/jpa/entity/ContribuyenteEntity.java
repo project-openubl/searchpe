@@ -18,14 +18,33 @@ package io.github.project.openubl.searchpe.models.jpa.entity;
 
 import io.github.project.openubl.searchpe.models.TipoPersona;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.hibernate.search.engine.backend.types.Sortable;
 import org.hibernate.search.mapper.pojo.bridge.mapping.annotation.IdentifierBridgeRef;
-import org.hibernate.search.mapper.pojo.mapping.definition.annotation.*;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.DocumentId;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.FullTextField;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.GenericField;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.Indexed;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.IndexedEmbedded;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.KeywordField;
 
 import javax.json.bind.annotation.JsonbTransient;
-import javax.persistence.*;
+import javax.persistence.Column;
+import javax.persistence.EmbeddedId;
+import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
+import javax.persistence.Table;
 import javax.validation.constraints.NotNull;
+import java.util.Objects;
 
+@Data
+@Builder(toBuilder = true)
+@NoArgsConstructor
+@AllArgsConstructor
 @Indexed
 @Entity
 @Table(name = "contribuyente")
@@ -91,152 +110,16 @@ public class ContribuyenteEntity extends PanacheEntityBase {
     @Column(name = "kilometro")
     public String kilometro;
 
-    public static ContribuyenteEntity fullClone(ContribuyenteEntity entity) {
-        return ContribuyenteEntity
-                .Builder.aContribuyenteEntity()
-                .withId(new ContribuyenteId(entity.id.versionId, entity.id.numeroDocumento))
-                .withTipoPersona(entity.tipoPersona)
-                .withNombre(entity.nombre)
-                .withEstado(entity.estado)
-                .withCondicionDomicilio(entity.condicionDomicilio)
-                .withUbigeo(entity.ubigeo)
-                .withTipoVia(entity.tipoVia)
-                .withNombreVia(entity.nombreVia)
-                .withCodigoZona(entity.codigoZona)
-                .withTipoZona(entity.tipoZona)
-                .withNumero(entity.numero)
-                .withInterior(entity.interior)
-                .withLote(entity.lote)
-                .withDepartamento(entity.departamento)
-                .withManzana(entity.manzana)
-                .withKilometro(entity.kilometro)
-                .build();
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        VersionEntity that = (VersionEntity) o;
+        return id.equals(that.id);
     }
 
-    public static final class Builder {
-        public ContribuyenteId id;
-        public TipoPersona tipoPersona;
-        public String nombre;
-        public String estado;
-        public String condicionDomicilio;
-        public String ubigeo;
-        public String tipoVia;
-        public String nombreVia;
-        public String codigoZona;
-        public String tipoZona;
-        public String numero;
-        public String interior;
-        public String lote;
-        public String departamento;
-        public String manzana;
-        public String kilometro;
-
-        private Builder() {
-        }
-
-        public static Builder aContribuyenteEntity() {
-            return new Builder();
-        }
-
-        public Builder withId(ContribuyenteId id) {
-            this.id = id;
-            return this;
-        }
-
-        public Builder withTipoPersona(TipoPersona tipoPersona) {
-            this.tipoPersona = tipoPersona;
-            return this;
-        }
-
-        public Builder withNombre(String nombre) {
-            this.nombre = nombre;
-            return this;
-        }
-
-        public Builder withEstado(String estado) {
-            this.estado = estado;
-            return this;
-        }
-
-        public Builder withCondicionDomicilio(String condicionDomicilio) {
-            this.condicionDomicilio = condicionDomicilio;
-            return this;
-        }
-
-        public Builder withUbigeo(String ubigeo) {
-            this.ubigeo = ubigeo;
-            return this;
-        }
-
-        public Builder withTipoVia(String tipoVia) {
-            this.tipoVia = tipoVia;
-            return this;
-        }
-
-        public Builder withNombreVia(String nombreVia) {
-            this.nombreVia = nombreVia;
-            return this;
-        }
-
-        public Builder withCodigoZona(String codigoZona) {
-            this.codigoZona = codigoZona;
-            return this;
-        }
-
-        public Builder withTipoZona(String tipoZona) {
-            this.tipoZona = tipoZona;
-            return this;
-        }
-
-        public Builder withNumero(String numero) {
-            this.numero = numero;
-            return this;
-        }
-
-        public Builder withInterior(String interior) {
-            this.interior = interior;
-            return this;
-        }
-
-        public Builder withLote(String lote) {
-            this.lote = lote;
-            return this;
-        }
-
-        public Builder withDepartamento(String departamento) {
-            this.departamento = departamento;
-            return this;
-        }
-
-        public Builder withManzana(String manzana) {
-            this.manzana = manzana;
-            return this;
-        }
-
-        public Builder withKilometro(String kilometro) {
-            this.kilometro = kilometro;
-            return this;
-        }
-
-        public ContribuyenteEntity build() {
-            ContribuyenteEntity contribuyenteEntity = new ContribuyenteEntity();
-            contribuyenteEntity.manzana = this.manzana;
-            contribuyenteEntity.tipoPersona = this.tipoPersona;
-            contribuyenteEntity.id = this.id;
-            contribuyenteEntity.lote = this.lote;
-            contribuyenteEntity.nombre = this.nombre;
-            contribuyenteEntity.condicionDomicilio = this.condicionDomicilio;
-            contribuyenteEntity.tipoZona = this.tipoZona;
-            contribuyenteEntity.interior = this.interior;
-            contribuyenteEntity.estado = this.estado;
-            contribuyenteEntity.ubigeo = this.ubigeo;
-            contribuyenteEntity.kilometro = this.kilometro;
-            contribuyenteEntity.codigoZona = this.codigoZona;
-            contribuyenteEntity.departamento = this.departamento;
-            contribuyenteEntity.numero = this.numero;
-            contribuyenteEntity.tipoVia = this.tipoVia;
-            contribuyenteEntity.nombreVia = this.nombreVia;
-            return contribuyenteEntity;
-        }
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
     }
 }

@@ -16,10 +16,12 @@
  */
 package io.github.project.openubl.searchpe.resources;
 
-import io.github.project.openubl.searchpe.idm.BasicUserPasswordChangeRepresentation;
-import io.github.project.openubl.searchpe.idm.BasicUserRepresentation;
+import io.github.project.openubl.searchpe.dto.BasicUserDto;
+import io.github.project.openubl.searchpe.dto.BasicUserPasswordChangeDto;
+import io.github.project.openubl.searchpe.mapper.BasicUserMapper;
 import io.github.project.openubl.searchpe.models.jpa.entity.BasicUserEntity;
 import io.github.project.openubl.searchpe.resources.interceptors.HTTPBasicAuthEnabled;
+import io.github.project.openubl.searchpe.services.BasicUserService;
 import io.quarkus.security.Authenticated;
 import io.quarkus.security.identity.SecurityIdentity;
 
@@ -43,12 +45,18 @@ public class CurrentUserResource {
     @Inject
     SecurityIdentity securityIdentity;
 
+    @Inject
+    BasicUserService basicUserService;
+
+    @Inject
+    BasicUserMapper basicUserMapper;
+
     @Transactional
     @Authenticated
     @HTTPBasicAuthEnabled
     @PUT
     @Path("/profile")
-    public Response updateProfile(BasicUserRepresentation rep) {
+    public Response updateProfile(BasicUserDto rep) {
         Principal principal = securityIdentity.getPrincipal();
         String username = principal.getName();
 
@@ -60,8 +68,10 @@ public class CurrentUserResource {
         rep.setPassword(null);
         rep.setPermissions(null);
 
-        BasicUserEntity update = BasicUserEntity.update(user, rep);
-        return Response.accepted(update.toRepresentation()).build();
+        BasicUserEntity entity = basicUserService.update(user, rep);
+        return Response
+                .accepted(basicUserMapper.toDto(entity))
+                .build();
     }
 
     @Transactional
@@ -69,7 +79,7 @@ public class CurrentUserResource {
     @HTTPBasicAuthEnabled
     @POST
     @Path("/credentials")
-    public Response updateCurrentUserCredentials(BasicUserPasswordChangeRepresentation rep) {
+    public Response updateCurrentUserCredentials(BasicUserPasswordChangeDto rep) {
         Principal principal = securityIdentity.getPrincipal();
         String username = principal.getName();
 
@@ -77,7 +87,7 @@ public class CurrentUserResource {
                 .<BasicUserEntity>firstResultOptional()
                 .orElseThrow(IllegalStateException::new);
 
-        BasicUserEntity.changePassword(user, rep);
+        basicUserService.changePassword(user, rep);
         return Response
                 .status(Response.Status.OK)
                 .build();

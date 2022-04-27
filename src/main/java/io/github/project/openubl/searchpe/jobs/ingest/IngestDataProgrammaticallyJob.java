@@ -16,7 +16,7 @@
  */
 package io.github.project.openubl.searchpe.jobs.ingest;
 
-import io.github.project.openubl.searchpe.managers.UpgradeDataManager;
+import io.github.project.openubl.searchpe.services.UpgradeDataService;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
@@ -30,12 +30,12 @@ public class IngestDataProgrammaticallyJob implements Job {
     public static final String VERSION_ID = "versionId";
 
     @Inject
-    UpgradeDataManager dataManager;
+    UpgradeDataService upgradeDataService;
 
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
         String versionId = (String) context.getTrigger().getJobDataMap().get(VERSION_ID);
-        dataManager.upgrade(Long.valueOf(versionId));
+        upgradeDataService.upgrade(Long.valueOf(versionId));
     }
 
 }

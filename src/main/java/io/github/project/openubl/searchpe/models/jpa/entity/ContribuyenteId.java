@@ -16,6 +16,7 @@
  */
 package io.github.project.openubl.searchpe.models.jpa.entity;
 
+import lombok.Builder;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.GenericField;
 
 import javax.persistence.Column;
@@ -25,6 +26,7 @@ import javax.validation.constraints.Size;
 import java.io.Serializable;
 import java.util.Objects;
 
+@Builder
 @Embeddable
 public class ContribuyenteId implements Serializable {
 

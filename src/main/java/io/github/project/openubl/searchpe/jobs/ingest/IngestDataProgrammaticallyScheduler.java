@@ -18,7 +18,14 @@ package io.github.project.openubl.searchpe.jobs.ingest;
 
 import io.github.project.openubl.searchpe.jobs.SearchpeJobs;
 import io.quarkus.runtime.annotations.RegisterForReflection;
-import org.quartz.*;
+import org.quartz.JobBuilder;
+import org.quartz.JobDetail;
+import org.quartz.JobKey;
+import org.quartz.Scheduler;
+import org.quartz.SchedulerException;
+import org.quartz.Trigger;
+import org.quartz.TriggerBuilder;
+import org.quartz.TriggerKey;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;

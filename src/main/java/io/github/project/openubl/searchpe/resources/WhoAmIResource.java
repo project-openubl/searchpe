@@ -16,7 +16,7 @@
  */
 package io.github.project.openubl.searchpe.resources;
 
-import io.github.project.openubl.searchpe.idm.BasicUserRepresentation;
+import io.github.project.openubl.searchpe.dto.BasicUserDto;
 import io.github.project.openubl.searchpe.models.jpa.entity.BasicUserEntity;
 import io.quarkus.security.Authenticated;
 import io.quarkus.security.identity.SecurityIdentity;
@@ -48,7 +48,7 @@ public class WhoAmIResource {
     @GET
     @Path("/")
     @Counted(name = "getCurrentUserChecks", description = "How many times the current user data was requested")
-    public BasicUserRepresentation getCurrentUser(@Context SecurityContext ctx) {
+    public BasicUserDto getCurrentUser(@Context SecurityContext ctx) {
         String authenticationScheme = ctx.getAuthenticationScheme();
 
         Principal principal = securityIdentity.getPrincipal();
@@ -57,7 +57,7 @@ public class WhoAmIResource {
         Set<String> roles = securityIdentity.getRoles();
 
         // Generate result
-        BasicUserRepresentation result = new BasicUserRepresentation();
+        BasicUserDto result = new BasicUserDto();
         result.setUsername(username);
         result.setPermissions(roles.stream().sorted().collect(Collectors.toCollection(LinkedHashSet::new)));
 

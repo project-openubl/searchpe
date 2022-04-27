@@ -16,7 +16,7 @@
  */
 package io.github.project.openubl.searchpe.jobs.ingest;
 
-import io.github.project.openubl.searchpe.managers.UpgradeDataManager;
+import io.github.project.openubl.searchpe.services.UpgradeDataService;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.quartz.Job;
@@ -24,7 +24,12 @@ import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 
 import javax.inject.Inject;
-import javax.transaction.*;
+import javax.transaction.HeuristicMixedException;
+import javax.transaction.HeuristicRollbackException;
+import javax.transaction.NotSupportedException;
+import javax.transaction.RollbackException;
+import javax.transaction.SystemException;
+import javax.transaction.UserTransaction;
 
 @RegisterForReflection
 public class IngestDataCronJob implements Job {
@@ -33,7 +38,7 @@ public class IngestDataCronJob implements Job {
     UserTransaction tx;
 
     @Inject
-    UpgradeDataManager dataManager;
+    UpgradeDataService upgradeDataService;
 
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
@@ -57,7 +62,7 @@ public class IngestDataCronJob implements Job {
             return;
         }
 
-        dataManager.upgrade(versionId);
+        upgradeDataService.upgrade(versionId);
     }
 
 }

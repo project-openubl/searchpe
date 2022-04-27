@@ -16,14 +16,19 @@
  */
 package io.github.project.openubl.searchpe.jobs.clean;
 
-import io.github.project.openubl.searchpe.managers.VersionManager;
+import io.github.project.openubl.searchpe.services.VersionService;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 
 import javax.inject.Inject;
-import javax.transaction.*;
+import javax.transaction.HeuristicMixedException;
+import javax.transaction.HeuristicRollbackException;
+import javax.transaction.NotSupportedException;
+import javax.transaction.RollbackException;
+import javax.transaction.SystemException;
+import javax.transaction.UserTransaction;
 
 @RegisterForReflection
 public class DeleteVersionProgrammaticallyJob implements Job {
@@ -34,7 +39,7 @@ public class DeleteVersionProgrammaticallyJob implements Job {
     UserTransaction tx;
 
     @Inject
-    VersionManager versionManager;
+    VersionService versionService;
 
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
@@ -42,7 +47,7 @@ public class DeleteVersionProgrammaticallyJob implements Job {
 
         try {
             tx.begin();
-            versionManager.deleteVersion(Long.valueOf(versionId));
+            versionService.deleteVersion(Long.valueOf(versionId));
             tx.commit();
         } catch (NotSupportedException | HeuristicRollbackException | HeuristicMixedException | RollbackException | SystemException e) {
             try {

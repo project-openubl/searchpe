@@ -14,29 +14,38 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.project.openubl.searchpe.idm;
+package io.github.project.openubl.searchpe.dto;
 
+import io.github.project.openubl.searchpe.security.validators.ValidPermission;
 import io.quarkus.runtime.annotations.RegisterForReflection;
+import lombok.Data;
 
+import javax.validation.Valid;
+import javax.validation.constraints.NotEmpty;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Pattern;
+import javax.validation.constraints.Size;
+import java.util.Set;
+
+@Data
 @RegisterForReflection
-public class ErrorRepresentation {
+public class BasicUserDto {
 
-    private String message;
+    private Long id;
+    private String fullName;
 
-    public ErrorRepresentation() {
-    }
+    @Pattern(regexp = "^[a-zA-Z0-9._-]{3,}$")
+    @NotNull
+    @Size(min = 3, max = 250)
+    private String username;
 
-    public ErrorRepresentation(String message) {
-        this.message = message;
-    }
+    @NotNull
+    @Size(min = 3, max = 250)
+    private String password;
 
-    public String getMessage() {
-        return message;
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
-    }
-
+    @ValidPermission
+    @Valid
+    @NotEmpty
+    private Set<String> permissions;
 
 }

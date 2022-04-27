@@ -16,11 +16,13 @@
  */
 package io.github.project.openubl.searchpe.resources;
 
-import io.github.project.openubl.searchpe.idm.BasicUserRepresentation;
-import io.github.project.openubl.searchpe.idm.ErrorRepresentation;
+import io.github.project.openubl.searchpe.dto.BasicUserDto;
+import io.github.project.openubl.searchpe.dto.ErrorDto;
+import io.github.project.openubl.searchpe.mapper.BasicUserMapper;
 import io.github.project.openubl.searchpe.models.jpa.entity.BasicUserEntity;
 import io.github.project.openubl.searchpe.resources.interceptors.HTTPBasicAuthEnabled;
 import io.github.project.openubl.searchpe.security.Permission;
+import io.github.project.openubl.searchpe.services.BasicUserService;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.jboss.logging.Logger;
 
@@ -32,7 +34,15 @@ import javax.validation.ConstraintViolation;
 import javax.validation.Valid;
 import javax.validation.Validator;
 import javax.validation.constraints.NotNull;
-import javax.ws.rs.*;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
+import javax.ws.rs.GET;
+import javax.ws.rs.NotFoundException;
+import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
 import javax.ws.rs.core.Response;
 import java.util.List;
 import java.util.Objects;
@@ -52,18 +62,26 @@ public class BasicUserResource {
     @Inject
     Validator validator;
 
+    @Inject
+    BasicUserService basicUserService;
+    @Inject
+    BasicUserMapper basicUserMapper;
+
     @RolesAllowed({Permission.admin, Permission.user_write})
     @HTTPBasicAuthEnabled
     @Operation(summary = "Create user", description = "Creates a new user")
     @POST
     @Path("/")
-    public Response createUser(@NotNull @Valid BasicUserRepresentation rep) {
-        if (BasicUserEntity.find("username", rep.getUsername()).firstResultOptional().isPresent()) {
+    public Response createUser(@NotNull @Valid BasicUserDto dto) {
+        if (BasicUserEntity.find("username", dto.getUsername()).firstResultOptional().isPresent()) {
             return Response.status(Response.Status.CONFLICT)
-                    .entity(new ErrorRepresentation("Username already exists"))
+                    .entity(ErrorDto.builder()
+                            .message("Username already exists")
+                            .build()
+                    )
                     .build();
         }
-        if (!rep.getPermissions()
+        if (!dto.getPermissions()
                 .stream()
                 .allMatch(permission -> Permission.allPermissions
                         .stream()
@@ -71,13 +89,15 @@ public class BasicUserResource {
                 )
         ) {
             return Response.status(Response.Status.CONFLICT)
-                    .entity(new ErrorRepresentation("Invalid permissions"))
+                    .entity(ErrorDto.builder()
+                            .message("Invalid permissions")
+                            .build())
                     .build();
         }
 
-        BasicUserEntity userEntity = BasicUserEntity.add(rep);
+        BasicUserEntity entity = basicUserService.create(dto);
         return Response.status(Response.Status.CREATED)
-                .entity(userEntity.toRepresentation())
+                .entity(basicUserMapper.toDto(entity))
                 .build();
     }
 
@@ -85,9 +105,9 @@ public class BasicUserResource {
     @HTTPBasicAuthEnabled
     @Operation(summary = "Get users", description = "Get users")
     @GET
-    public List<BasicUserRepresentation> getUsers() {
-        return BasicUserEntity.findAll().stream()
-                .map(f -> ((BasicUserEntity) f).toRepresentation())
+    public List<BasicUserDto> getUsers() {
+        return BasicUserEntity.<BasicUserEntity>findAll().stream()
+                .map(entity -> basicUserMapper.toDto(entity))
                 .collect(Collectors.toList());
     }
 
@@ -96,9 +116,9 @@ public class BasicUserResource {
     @Operation(summary = "Get user", description = "Get user")
     @GET
     @Path("/{id}")
-    public BasicUserRepresentation getUser(@PathParam("id") Long id) {
-        BasicUserEntity user = (BasicUserEntity) BasicUserEntity.findByIdOptional(id).orElseThrow(NotFoundException::new);
-        return user.toRepresentation();
+    public BasicUserDto getUser(@PathParam("id") Long id) {
+        BasicUserEntity entity = (BasicUserEntity) BasicUserEntity.findByIdOptional(id).orElseThrow(NotFoundException::new);
+        return basicUserMapper.toDto(entity);
     }
 
     @RolesAllowed({Permission.admin, Permission.user_write})
@@ -106,28 +126,30 @@ public class BasicUserResource {
     @Operation(summary = "Update user", description = "Update username or password. It won't update current role")
     @PUT
     @Path("/{id}")
-    public Response updateUser(@NotNull @PathParam("id") Long id, @NotNull BasicUserRepresentation rep) {
+    public Response updateUser(@NotNull @PathParam("id") Long id, @NotNull BasicUserDto dto) {
         BasicUserEntity user = (BasicUserEntity) BasicUserEntity.findByIdOptional(id).orElseThrow(NotFoundException::new);
 
         // Doing this for making the validator pass
         boolean tempPasswordSet = false;
-        if (rep.getPassword() == null) {
-            rep.setPassword("123456789");
+        if (dto.getPassword() == null) {
+            dto.setPassword("123456789");
             tempPasswordSet = true;
         }
 
-        Set<ConstraintViolation<BasicUserRepresentation>> violations = validator.validate(rep);
+        Set<ConstraintViolation<BasicUserDto>> violations = validator.validate(dto);
         if (!violations.isEmpty()) {
             return Response.status(Response.Status.BAD_REQUEST).entity("The info sent is not valid").build();
         }
 
         // Restore password
         if (tempPasswordSet) {
-            rep.setPassword(null);
+            dto.setPassword(null);
         }
 
-        BasicUserEntity update = BasicUserEntity.update(user, rep);
-        return Response.accepted(update.toRepresentation()).build();
+        BasicUserEntity entity = basicUserService.update(user, dto);
+        return Response
+                .accepted(basicUserMapper.toDto(entity))
+                .build();
     }
 
     @RolesAllowed({Permission.admin, Permission.user_write})

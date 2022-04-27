@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.project.openubl.searchpe.managers;
+package io.github.project.openubl.searchpe.services;
 
 import io.github.project.openubl.searchpe.models.TipoPersona;
 import io.github.project.openubl.searchpe.models.VersionEvent;
@@ -31,7 +31,12 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Event;
 import javax.inject.Inject;
 import javax.persistence.EntityManager;
-import javax.transaction.*;
+import javax.transaction.HeuristicMixedException;
+import javax.transaction.HeuristicRollbackException;
+import javax.transaction.NotSupportedException;
+import javax.transaction.RollbackException;
+import javax.transaction.SystemException;
+import javax.transaction.UserTransaction;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -44,9 +49,9 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @ApplicationScoped
-public class UpgradeDataManager {
+public class UpgradeDataService {
 
-    private static final Logger LOGGER = Logger.getLogger(UpgradeDataManager.class);
+    private static final Logger LOGGER = Logger.getLogger(UpgradeDataService.class);
 
     @ConfigProperty(name = "searchpe.sunat.filter")
     Optional<List<EstadoContribuyente>> sunatFilter;
@@ -55,7 +60,7 @@ public class UpgradeDataManager {
     Integer jdbcBatchSize;
 
     @Inject
-    FileManager fileManager;
+    FileService fileService;
 
     @Inject
     UserTransaction tx;
@@ -83,12 +88,12 @@ public class UpgradeDataManager {
         // Download file
         try {
             downloadingVersionEvent.fire(() -> versionId);
-            downloadedFile = fileManager.downloadFile();
+            downloadedFile = fileService.downloadFile();
 
             unzippingVersionEvent.fire(() -> versionId);
-            unzippedFolder = fileManager.unzip(downloadedFile);
+            unzippedFolder = fileService.unzip(downloadedFile);
 
-            txtFile = fileManager.getFirstTxtFileFound(unzippedFolder.listFiles());
+            txtFile = fileService.getFirstTxtFileFound(unzippedFolder.listFiles());
         } catch (IOException e) {
             LOGGER.error(e);
             return;

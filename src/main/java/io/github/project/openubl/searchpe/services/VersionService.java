@@ -14,25 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.project.openubl.searchpe.idm.validators;
+package io.github.project.openubl.searchpe.services;
 
-import javax.validation.Constraint;
-import javax.validation.Payload;
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
+import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
+import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 
-import static java.lang.annotation.ElementType.FIELD;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
+import javax.enterprise.context.ApplicationScoped;
+import javax.transaction.Transactional;
 
-@Constraint(validatedBy = ValidPermissionValidator.class)
-@Target(FIELD)
-@Retention(RUNTIME)
-public @interface ValidPermission {
+@Transactional
+@ApplicationScoped
+public class VersionService {
 
-    String message() default "";
-
-    Class<?>[] groups() default {};
-
-    Class<? extends Payload>[] payload() default {};
+    public void deleteVersion(Long versionId) {
+        ContribuyenteEntity.delete("id.versionId", versionId);
+        VersionEntity.delete("id", versionId);
+    }
 
 }

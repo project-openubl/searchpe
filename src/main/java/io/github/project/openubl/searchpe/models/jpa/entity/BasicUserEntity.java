@@ -16,9 +16,6 @@
  */
 package io.github.project.openubl.searchpe.models.jpa.entity;
 
-import io.github.project.openubl.searchpe.idm.BasicUserPasswordChangeRepresentation;
-import io.github.project.openubl.searchpe.idm.BasicUserRepresentation;
-import io.quarkus.elytron.security.common.BcryptUtil;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import io.quarkus.security.jpa.Password;
 import io.quarkus.security.jpa.Roles;
@@ -31,9 +28,6 @@ import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 import javax.persistence.Version;
 import javax.validation.constraints.NotNull;
-import java.util.Arrays;
-import java.util.LinkedHashSet;
-import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "basic_user", uniqueConstraints = {@UniqueConstraint(columnNames = {"username"})})
@@ -56,43 +50,5 @@ public class BasicUserEntity extends PanacheEntity {
 
     @Version
     public int version;
-
-    public BasicUserRepresentation toRepresentation() {
-        BasicUserRepresentation result = new BasicUserRepresentation();
-        result.setId(id);
-        result.setFullName(fullName);
-        result.setUsername(username);
-        result.setPermissions(Arrays.stream(permissions.split(",")).sorted().collect(Collectors.toCollection(LinkedHashSet::new)));
-        return result;
-    }
-
-    public static BasicUserEntity add(BasicUserRepresentation rep) {
-        BasicUserEntity user = new BasicUserEntity();
-        user.fullName = rep.getFullName();
-        user.username = rep.getUsername();
-        user.password = BcryptUtil.bcryptHash(rep.getPassword());
-        user.permissions = String.join(",", rep.getPermissions());
-        user.persist();
-        return user;
-    }
-
-    public static BasicUserEntity update(BasicUserEntity user, BasicUserRepresentation rep) {
-        user.fullName = rep.getFullName();
-        user.username = rep.getUsername();
-        if (rep.getPassword() != null) {
-            user.password = BcryptUtil.bcryptHash(rep.getPassword());
-        }
-        if (rep.getPermissions() != null) {
-            user.permissions = String.join(",", rep.getPermissions());
-        }
-        user.persist();
-        return user;
-    }
-
-    public static void changePassword(BasicUserEntity user, BasicUserPasswordChangeRepresentation rep) {
-        user.password = BcryptUtil.bcryptHash(rep.getNewPassword());
-        user.fullName = "carlos";
-        user.persist();
-    }
 
 }

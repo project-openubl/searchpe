@@ -16,7 +16,7 @@
  */
 package io.github.project.openubl.searchpe.jobs.clean;
 
-import io.github.project.openubl.searchpe.managers.VersionManager;
+import io.github.project.openubl.searchpe.services.VersionService;
 import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
@@ -27,7 +27,12 @@ import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 
 import javax.inject.Inject;
-import javax.transaction.*;
+import javax.transaction.HeuristicMixedException;
+import javax.transaction.HeuristicRollbackException;
+import javax.transaction.NotSupportedException;
+import javax.transaction.RollbackException;
+import javax.transaction.SystemException;
+import javax.transaction.UserTransaction;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -40,7 +45,7 @@ public class CleanVersionsCronJob implements Job {
     UserTransaction tx;
 
     @Inject
-    VersionManager versionManager;
+    VersionService versionService;
 
     @Inject
     VersionRepository versionRepository;
@@ -58,7 +63,7 @@ public class CleanVersionsCronJob implements Job {
                     .filter(f -> f.status.equals(Status.COMPLETED) || f.status.equals(Status.ERROR))
                     .filter(f -> activeVersion.map(versionEntity -> !Objects.equals(versionEntity, f)).orElse(true))
                     .peek(f -> logger.info("Deleting VersionEntity:" + f.id))
-                    .forEach(f -> versionManager.deleteVersion(f.id));
+                    .forEach(f -> versionService.deleteVersion(f.id));
 
             tx.commit();
         } catch (NotSupportedException | HeuristicRollbackException | HeuristicMixedException | RollbackException | SystemException e) {

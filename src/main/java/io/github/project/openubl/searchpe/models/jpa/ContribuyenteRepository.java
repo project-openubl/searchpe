@@ -18,7 +18,7 @@ package io.github.project.openubl.searchpe.models.jpa;
 
 import io.github.project.openubl.searchpe.models.FilterBean;
 import io.github.project.openubl.searchpe.models.PageBean;
-import io.github.project.openubl.searchpe.models.PageModel;
+import io.github.project.openubl.searchpe.models.SearchResultBean;
 import io.github.project.openubl.searchpe.models.SortBean;
 import io.github.project.openubl.searchpe.models.TipoPersona;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
@@ -61,7 +61,7 @@ public class ContribuyenteRepository implements PanacheRepositoryBase<Contribuye
         return Optional.empty();
     }
 
-    public PageModel<ContribuyenteEntity> list(VersionEntity version, FilterBean filterBean, PageBean pageBean, List<SortBean> sortBy) {
+    public SearchResultBean<ContribuyenteEntity> list(VersionEntity version, FilterBean filterBean, PageBean pageBean, List<SortBean> sortBy) {
         Sort sort = Sort.by();
         sortBy.forEach(f -> sort.and(f.getFieldName(), f.isAsc() ? Sort.Direction.Ascending : Sort.Direction.Descending));
 
@@ -81,12 +81,15 @@ public class ContribuyenteRepository implements PanacheRepositoryBase<Contribuye
                 .find(queryBuilder.toString(), sort, parameters)
                 .range(pageBean.getOffset(), pageBean.getOffset() + pageBean.getLimit() - 1);
 
-        long count = query.count();
-        List<ContribuyenteEntity> list = query.list();
-        return new PageModel<>(pageBean, count, list);
+        return SearchResultBean.<ContribuyenteEntity>builder()
+                .offset(pageBean.getOffset())
+                .limit(pageBean.getLimit())
+                .totalElements(query.count())
+                .pageElements(query.list())
+                .build();
     }
 
-    public PageModel<ContribuyenteEntity> listES(VersionEntity version, FilterBean filterBean, PageBean pageBean, List<SortBean> sortBy) {
+    public SearchResultBean<ContribuyenteEntity> listES(VersionEntity version, FilterBean filterBean, PageBean pageBean, List<SortBean> sortBy) {
         SearchSession searchSession = getSearchSession().orElseThrow(() -> new IllegalStateException("Could not find a SearchSession available"));
         SearchSort searchSort = null;
         if (!sortBy.isEmpty()) {
@@ -122,6 +125,11 @@ public class ContribuyenteRepository implements PanacheRepositoryBase<Contribuye
         }
         SearchResult<ContribuyenteEntity> searchResult = searchQuery.fetch(pageBean.getOffset(), pageBean.getLimit());
 
-        return new PageModel<>(pageBean, searchResult.total().hitCount(), searchResult.hits());
+        return SearchResultBean.<ContribuyenteEntity>builder()
+                .offset(pageBean.getOffset())
+                .limit(pageBean.getLimit())
+                .totalElements(searchResult.total().hitCount())
+                .pageElements(searchResult.hits())
+                .build();
     }
 }

@@ -14,63 +14,50 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.project.openubl.searchpe.models;
+package io.github.project.openubl.searchpe.dto;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
+import java.util.Collections;
 import java.util.List;
 
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @RegisterForReflection
-public class PageRepresentation<T> {
+public class SearchResultDto<T> {
 
     private Meta meta;
     private List<T> data;
 
-    public Meta getMeta() {
-        return meta;
+    public static <T> SearchResultDto<T> getEmptyResult(int offset, int limit) {
+        SearchResultDto<T> result = new SearchResultDto<>();
+
+        SearchResultDto.Meta meta = new SearchResultDto.Meta();
+        meta.setOffset(offset);
+        meta.setLimit(limit);
+        meta.setCount(0L);
+
+        result.setMeta(meta);
+        result.setData(Collections.emptyList());
+
+        return result;
     }
 
-    public void setMeta(Meta meta) {
-        this.meta = meta;
-    }
-
-    public List<T> getData() {
-        return data;
-    }
-
-    public void setData(List<T> data) {
-        this.data = data;
-    }
-
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     @RegisterForReflection
     public static class Meta {
         private Integer offset;
         private Integer limit;
         private Long count;
-
-        public Long getCount() {
-            return count;
-        }
-
-        public void setCount(Long count) {
-            this.count = count;
-        }
-
-        public Integer getLimit() {
-            return limit;
-        }
-
-        public void setLimit(Integer limit) {
-            this.limit = limit;
-        }
-
-        public Integer getOffset() {
-            return offset;
-        }
-
-        public void setOffset(Integer offset) {
-            this.offset = offset;
-        }
     }
 
 }

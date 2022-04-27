@@ -16,37 +16,25 @@
  */
 package io.github.project.openubl.searchpe.resources;
 
+import io.github.project.openubl.searchpe.dto.SearchResultDto;
+import io.github.project.openubl.searchpe.mapper.SearchResultMapper;
 import io.github.project.openubl.searchpe.models.FilterBean;
 import io.github.project.openubl.searchpe.models.PageBean;
-import io.github.project.openubl.searchpe.models.PageModel;
-import io.github.project.openubl.searchpe.models.PageRepresentation;
+import io.github.project.openubl.searchpe.models.SearchResultBean;
 import io.github.project.openubl.searchpe.models.SortBean;
-import io.github.project.openubl.searchpe.models.TipoPersona;
 import io.github.project.openubl.searchpe.models.jpa.ContribuyenteRepository;
 import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteId;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.security.Permission;
-import io.github.project.openubl.searchpe.utils.EntityToRepresentation;
-import io.github.project.openubl.searchpe.utils.ResourceUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.metrics.annotation.Counted;
 import org.eclipse.microprofile.metrics.annotation.Timed;
 import org.eclipse.microprofile.openapi.annotations.Operation;
-import org.hibernate.search.engine.search.predicate.dsl.BooleanPredicateClausesStep;
-import org.hibernate.search.engine.search.query.SearchResult;
-import org.hibernate.search.engine.search.query.dsl.SearchQueryOptionsStep;
-import org.hibernate.search.engine.search.sort.SearchSort;
-import org.hibernate.search.engine.search.sort.dsl.CompositeSortComponentsStep;
-import org.hibernate.search.engine.search.sort.dsl.SortOrder;
-import org.hibernate.search.mapper.orm.scope.SearchScope;
-import org.hibernate.search.mapper.orm.search.loading.dsl.SearchLoadingOptionsStep;
-import org.hibernate.search.mapper.orm.session.SearchSession;
 
 import javax.annotation.security.RolesAllowed;
 import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
 import javax.validation.constraints.Max;
@@ -57,7 +45,6 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -75,6 +62,9 @@ public class ContribuyenteResource {
     @Inject
     ContribuyenteRepository contribuyenteRepository;
 
+    @Inject
+    SearchResultMapper searchResultMapper;
+
     @RolesAllowed({Permission.admin, Permission.search})
     @Operation(summary = "Search contribuyentes", description = "Get contribuyentes in a page")
     @GET
@@ -82,7 +72,7 @@ public class ContribuyenteResource {
     @Produces("application/json")
     @Counted(name = "searchContribuyenteChecks", description = "How many times the advanced search was used")
     @Timed(name = "searchContribuyenteTimer", description = "How long it took to serve the advanced search")
-    public PageRepresentation<ContribuyenteEntity> getContribuyentes(
+    public SearchResultDto<ContribuyenteEntity> getContribuyentes(
             @QueryParam("filterText") String filterText,
             @QueryParam("tipoContribuyente") String tipoPersona,
             @QueryParam("offset") @DefaultValue("0") @Max(9_000) Integer offset,
@@ -91,34 +81,26 @@ public class ContribuyenteResource {
     ) {
         Optional<VersionEntity> versionOptional = versionRepository.findActive();
         if (versionOptional.isEmpty()) {
-            PageRepresentation<ContribuyenteEntity> result = new PageRepresentation<>();
-
-            PageRepresentation.Meta meta = new PageRepresentation.Meta();
-            meta.setOffset(offset);
-            meta.setLimit(limit);
-            meta.setCount(0L);
-
-            result.setMeta(meta);
-            result.setData(Collections.emptyList());
-
-            return result;
+            return SearchResultDto.getEmptyResult(offset, limit);
         }
+
         VersionEntity version = versionOptional.get();
 
-        PageBean pageBean = ResourceUtils.getPageBean(offset, limit);
-        List<SortBean> sortBeans = ResourceUtils.getSortBeans(sortBy, ContribuyenteRepository.SORT_BY_FIELDS);
+        PageBean pageBean = PageBean.buildWith(offset, limit);
+        List<SortBean> sortBeans = SortBean.buildWith(sortBy, ContribuyenteRepository.SORT_BY_FIELDS);
+        FilterBean filterBean = FilterBean.builder()
+                .filterText(filterText)
+                .tipoPersona(tipoPersona)
+                .build();
 
-        FilterBean filterBean = new FilterBean();
-        filterBean.setFilterText(filterText);
-        filterBean.setTipoPersona(tipoPersona);
-
-        PageModel<ContribuyenteEntity> list;
+        SearchResultBean<ContribuyenteEntity> list;
         if (!isESEnabled.orElse(false)) {
             list = contribuyenteRepository.list(version, filterBean, pageBean, sortBeans);
         } else {
             list = contribuyenteRepository.listES(version, filterBean, pageBean, sortBeans);
         }
-        return EntityToRepresentation.toRepresentation(list, entity -> entity);
+
+        return searchResultMapper.toDto(list, entity -> entity);
     }
 
     @RolesAllowed({Permission.admin, Permission.search})

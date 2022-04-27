@@ -16,10 +16,8 @@
  */
 package io.github.project.openubl.searchpe.security;
 
-import io.github.project.openubl.searchpe.idm.BasicUserRepresentation;
+import io.github.project.openubl.searchpe.dto.BasicUserDto;
 import io.github.project.openubl.searchpe.models.jpa.entity.BasicUserEntity;
-import io.quarkus.qute.Location;
-import io.quarkus.qute.Template;
 import org.jboss.logging.Logger;
 
 import javax.inject.Inject;
@@ -28,7 +26,12 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.transaction.*;
+import javax.transaction.HeuristicMixedException;
+import javax.transaction.HeuristicRollbackException;
+import javax.transaction.NotSupportedException;
+import javax.transaction.RollbackException;
+import javax.transaction.SystemException;
+import javax.transaction.UserTransaction;
 import javax.validation.ConstraintViolation;
 import javax.validation.Validator;
 import java.io.IOException;
@@ -63,13 +66,13 @@ public class SignupServlet extends HttpServlet {
             return;
         }
 
-        BasicUserRepresentation userRepresentation = new BasicUserRepresentation();
+        BasicUserDto userRepresentation = new BasicUserDto();
         userRepresentation.setUsername(username);
         userRepresentation.setPassword(password1);
         userRepresentation.setPermissions(new HashSet<>(List.of(Permission.admin)));
 
         BasicUserEntity userCreated = null;
-        Set<ConstraintViolation<BasicUserRepresentation>> violations = validator.validate(userRepresentation);
+        Set<ConstraintViolation<BasicUserDto>> violations = validator.validate(userRepresentation);
         if (violations.isEmpty()) {
             try {
                 tx.begin();

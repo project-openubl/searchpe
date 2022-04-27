@@ -18,8 +18,7 @@ package io.github.project.openubl.searchpe.resources;
 
 import io.github.project.openubl.searchpe.AbstractBaseTest;
 import io.github.project.openubl.searchpe.BasicProfileManager;
-import io.github.project.openubl.searchpe.DefaultProfileManager;
-import io.github.project.openubl.searchpe.idm.BasicUserRepresentation;
+import io.github.project.openubl.searchpe.dto.BasicUserDto;
 import io.github.project.openubl.searchpe.security.Permission;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
@@ -45,7 +44,7 @@ public class UserResourceTest extends AbstractBaseTest {
 
     @Test
     public void resourceNotAvailableForNotAdmins() {
-        BasicUserRepresentation user = new BasicUserRepresentation();
+        BasicUserDto user = new BasicUserDto();
         user.setFullName("newFullName");
         user.setUsername("newUser");
         user.setPassword("newPassword");
@@ -118,16 +117,16 @@ public class UserResourceTest extends AbstractBaseTest {
 
     @Test
     public void getOneUser() {
-        BasicUserRepresentation[] users = givenAuth("admin")
+        BasicUserDto[] users = givenAuth("admin")
                 .header("Content-Type", "application/json")
                 .when()
                 .get("/")
                 .then()
                 .statusCode(200)
-                .extract().body().as(BasicUserRepresentation[].class);
+                .extract().body().as(BasicUserDto[].class);
 
         assertEquals(2, users.length);
-        BasicUserRepresentation userToGet = users[0];
+        BasicUserDto userToGet = users[0];
 
         givenAuth("admin")
                 .header("Content-Type", "application/json")
@@ -146,18 +145,18 @@ public class UserResourceTest extends AbstractBaseTest {
     @Test
     public void updateUser() {
         // Given
-        BasicUserRepresentation[] users = givenAuth("admin")
+        BasicUserDto[] users = givenAuth("admin")
                 .header("Content-Type", "application/json")
                 .when()
                 .get("/")
                 .then()
                 .statusCode(200)
-                .extract().body().as(BasicUserRepresentation[].class);
+                .extract().body().as(BasicUserDto[].class);
 
-        Optional<BasicUserRepresentation> userToUpdateOptional = Stream.of(users).filter(f -> f.getUsername().equals("alice")).findFirst();
+        Optional<BasicUserDto> userToUpdateOptional = Stream.of(users).filter(f -> f.getUsername().equals("alice")).findFirst();
         assertTrue(userToUpdateOptional.isPresent());
 
-        BasicUserRepresentation userToUpdate = userToUpdateOptional.get();
+        BasicUserDto userToUpdate = userToUpdateOptional.get();
         userToUpdate.setUsername("newUsername");
         userToUpdate.setPassword("newPassword");
 
@@ -188,17 +187,17 @@ public class UserResourceTest extends AbstractBaseTest {
     @Test
     public void deleteUser() {
         // Given
-        BasicUserRepresentation[] users = givenAuth("admin")
+        BasicUserDto[] users = givenAuth("admin")
                 .header("Content-Type", "application/json")
                 .when()
                 .get("/")
                 .then()
                 .statusCode(200)
-                .extract().body().as(BasicUserRepresentation[].class);
+                .extract().body().as(BasicUserDto[].class);
 
-        Optional<BasicUserRepresentation> userToDeleteOptional = Stream.of(users).filter(f -> f.getUsername().equals("alice")).findFirst();
+        Optional<BasicUserDto> userToDeleteOptional = Stream.of(users).filter(f -> f.getUsername().equals("alice")).findFirst();
         assertTrue(userToDeleteOptional.isPresent());
-        BasicUserRepresentation userToDelete = userToDeleteOptional.get();
+        BasicUserDto userToDelete = userToDeleteOptional.get();
 
         // When
         givenAuth("admin")
@@ -244,7 +243,7 @@ public class UserResourceTest extends AbstractBaseTest {
     @Test
     public void createUser() {
         // Given
-        BasicUserRepresentation user = new BasicUserRepresentation();
+        BasicUserDto user = new BasicUserDto();
         user.setFullName("myFullName");
         user.setUsername("myUsername");
         user.setPassword("myPassword");
@@ -269,7 +268,7 @@ public class UserResourceTest extends AbstractBaseTest {
     @Test
     public void createDuplicateUserNotAllowed() {
         // Given
-        BasicUserRepresentation user = new BasicUserRepresentation();
+        BasicUserDto user = new BasicUserDto();
         user.setFullName("myFullName");
         user.setUsername("myUsername");
         user.setPassword("myPassword");

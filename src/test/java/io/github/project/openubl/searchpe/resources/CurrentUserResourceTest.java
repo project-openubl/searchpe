@@ -18,14 +18,11 @@ package io.github.project.openubl.searchpe.resources;
 
 import io.github.project.openubl.searchpe.AbstractBaseTest;
 import io.github.project.openubl.searchpe.BasicProfileManager;
-import io.github.project.openubl.searchpe.DefaultProfileManager;
-import io.github.project.openubl.searchpe.idm.BasicUserPasswordChangeRepresentation;
+import io.github.project.openubl.searchpe.dto.BasicUserPasswordChangeDto;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.is;
@@ -45,7 +42,7 @@ public class CurrentUserResourceTest extends AbstractBaseTest {
 
     @Test
     public void updateCredentials() {
-        BasicUserPasswordChangeRepresentation rep = new BasicUserPasswordChangeRepresentation();
+        BasicUserPasswordChangeDto rep = new BasicUserPasswordChangeDto();
         rep.setNewPassword("newPassword");
 
         givenAuth("alice")

@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.project.openubl.searchpe.managers;
+package io.github.project.openubl.searchpe.services;
 
 import io.github.project.openubl.searchpe.utils.FileHelper;
 import org.apache.commons.io.FileUtils;
@@ -30,9 +30,9 @@ import java.nio.file.Path;
 import java.util.UUID;
 
 @ApplicationScoped
-public class FileManager {
+public class FileService {
 
-    private static final Logger LOGGER = Logger.getLogger(FileManager.class);
+    private static final Logger LOGGER = Logger.getLogger(FileService.class);
 
     @ConfigProperty(name = "searchpe.workspace.directory", defaultValue = "workspace")
     String workingDirectory;

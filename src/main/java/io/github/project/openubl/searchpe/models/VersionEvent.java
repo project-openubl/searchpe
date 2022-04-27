@@ -38,8 +38,8 @@ public interface VersionEvent {
 
     @RegisterForReflection
     class DefaultRecordsDataEvent implements RecordsDataEvent {
-        private Long version;
-        private int records;
+        private final Long version;
+        private final int records;
 
         public DefaultRecordsDataEvent(Long version, int records){
             this.version = version;

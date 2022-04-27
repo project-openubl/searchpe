@@ -16,24 +16,14 @@
  */
 package io.github.project.openubl.searchpe.models;
 
-public class FilterBean {
+import io.quarkus.runtime.annotations.RegisterForReflection;
+import lombok.Builder;
+import lombok.Data;
 
+@Data
+@Builder
+@RegisterForReflection
+public class FilterBean {
     private String filterText;
     private String tipoPersona;
-
-    public String getFilterText() {
-        return filterText;
-    }
-
-    public void setFilterText(String filterText) {
-        this.filterText = filterText;
-    }
-
-    public String getTipoPersona() {
-        return tipoPersona;
-    }
-
-    public void setTipoPersona(String tipoPersona) {
-        this.tipoPersona = tipoPersona;
-    }
 }

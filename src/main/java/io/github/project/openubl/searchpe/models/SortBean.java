@@ -16,49 +16,37 @@
  */
 package io.github.project.openubl.searchpe.models;
 
-import java.util.Objects;
+import io.quarkus.runtime.annotations.RegisterForReflection;
+import lombok.Builder;
+import lombok.Data;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+@Data
+@Builder
+@RegisterForReflection
 public class SortBean {
-
     private final String fieldName;
     private final boolean asc;
 
-    public SortBean(String fieldName, boolean asc) {
-        this.fieldName = fieldName;
-        this.asc = asc;
-    }
-
-    public String getFieldName() {
-        return fieldName;
-    }
-
-    public boolean isAsc() {
-        return asc;
-    }
-
-    public String getQuery() {
-        return fieldName + ":" + (isAsc() ? "asc" : "desc");
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        SortBean sortBean = (SortBean) o;
-        return Objects.equals(fieldName, sortBean.fieldName) &&
-                Objects.equals(asc, sortBean.asc);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(fieldName, asc);
-    }
-
-    @Override
-    public String toString() {
-        return "SortBean{" +
-                "fieldName='" + fieldName + '\'' +
-                ", asc=" + asc +
-                '}';
+    public static List<SortBean> buildWith(List<String> sortBy, String... validFieldNames) {
+        if (sortBy == null) {
+            return Collections.emptyList();
+        }
+        List<String> validFieldNamesList = validFieldNames != null ? Arrays.asList(validFieldNames) : Collections.emptyList();
+        return sortBy.stream()
+                .flatMap(f -> Stream.of(f.split(",")))
+                .map(f -> {
+                    String[] split = f.trim().split(":");
+                    String fieldName = !split[0].isEmpty() ? split[0] : null;
+                    boolean isAsc = split.length <= 1 || split[1].equalsIgnoreCase("asc");
+                    return new SortBean(fieldName, isAsc);
+                })
+                .filter(f -> validFieldNamesList.contains(f.getFieldName()))
+                .collect(Collectors.toList());
     }
 }
