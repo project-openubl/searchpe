@@ -16,17 +16,16 @@
  */
 package io.github.project.openubl.searchpe.models.jpa.entity;
 
-import io.github.project.openubl.searchpe.models.TipoPersona;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import org.hibernate.search.engine.backend.types.Sortable;
 import org.hibernate.search.mapper.pojo.bridge.mapping.annotation.IdentifierBridgeRef;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.DocumentId;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.FullTextField;
-import org.hibernate.search.mapper.pojo.mapping.definition.annotation.GenericField;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.Indexed;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.IndexedEmbedded;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.KeywordField;
@@ -35,35 +34,31 @@ import javax.json.bind.annotation.JsonbTransient;
 import javax.persistence.Column;
 import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
 import javax.persistence.Table;
 import javax.validation.constraints.NotNull;
-import java.util.Objects;
 
 @Data
 @Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @Indexed
 @Entity
 @Table(name = "contribuyente")
 public class ContribuyenteEntity extends PanacheEntityBase {
 
+    @EqualsAndHashCode.Include
     @IndexedEmbedded(name = "embeddedId")
     @DocumentId(identifierBridge = @IdentifierBridgeRef(type = ContribuyenteIdBridge.class))
     @JsonbTransient
     @EmbeddedId
     public ContribuyenteId id;
 
-    @GenericField
-    @Enumerated(EnumType.STRING)
-    @NotNull
-    @Column(name = "tipo_persona")
-    public TipoPersona tipoPersona;
+    @Column(name = "ruc", insertable = false, updatable = false)
+    public String ruc;
 
-    @Column(name = "numero_documento", insertable = false, updatable = false)
-    public String numeroDocumento;
+    @Column(name = "dni")
+    public String dni;
 
     @FullTextField(analyzer = "nombreAnalyser")
     @KeywordField(name = "nombre_sort", sortable = Sortable.YES, normalizer = "nombreSortNormalizer")
@@ -110,16 +105,4 @@ public class ContribuyenteEntity extends PanacheEntityBase {
     @Column(name = "kilometro")
     public String kilometro;
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        VersionEntity that = (VersionEntity) o;
-        return id.equals(that.id);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(id);
-    }
 }

@@ -16,7 +16,10 @@
  */
 package io.github.project.openubl.searchpe.models.jpa.entity;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.GenericField;
 
 import javax.persistence.Column;
@@ -24,9 +27,11 @@ import javax.persistence.Embeddable;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 import java.io.Serializable;
-import java.util.Objects;
 
+@Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @Embeddable
 public class ContribuyenteId implements Serializable {
 
@@ -37,28 +42,7 @@ public class ContribuyenteId implements Serializable {
 
     @Size(min = 11, max = 11)
     @NotNull
-    @Column(name = "numero_documento")
-    public String numeroDocumento;
-
-    public ContribuyenteId() {
-    }
-
-    public ContribuyenteId(Long versionId, String numeroDocumento) {
-        this.versionId = versionId;
-        this.numeroDocumento = numeroDocumento;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        ContribuyenteId that = (ContribuyenteId) o;
-        return versionId.equals(that.versionId) && numeroDocumento.equals(that.numeroDocumento);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(versionId, numeroDocumento);
-    }
+    @Column(name = "ruc")
+    public String ruc;
 
 }

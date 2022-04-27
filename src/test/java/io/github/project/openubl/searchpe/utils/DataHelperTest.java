@@ -17,8 +17,8 @@
 package io.github.project.openubl.searchpe.utils;
 
 import io.github.project.openubl.searchpe.DefaultProfileManager;
-import io.github.project.openubl.searchpe.services.FileService;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
+import io.github.project.openubl.searchpe.services.FileService;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
@@ -31,11 +31,12 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @QuarkusTest
 @TestProfile(DefaultProfileManager.class)
@@ -70,12 +71,10 @@ public class DataHelperTest {
 
                 final String lineToPrint = line;
 
-                Optional<List<ContribuyenteEntity>> contribuyenteOptional = DataHelper.buildContribuyenteEntity(1L, columns);
-                contribuyenteOptional.ifPresent(contribuyenteEntities -> {
-                    for (ContribuyenteEntity contribuyente : contribuyenteEntities) {
-                        Set<ConstraintViolation<ContribuyenteEntity>> violations = validator.validate(contribuyente);
-                        assertTrue(violations.isEmpty(), "Line:" + lineToPrint + "\n columns:" + Arrays.toString(columns));
-                    }
+                Optional<ContribuyenteEntity> contribuyenteOptional = DataHelper.buildContribuyenteEntity(1L, columns);
+                contribuyenteOptional.ifPresent(contribuyente -> {
+                    Set<ConstraintViolation<ContribuyenteEntity>> violations = validator.validate(contribuyente);
+                    assertTrue(violations.isEmpty(), "Line:" + lineToPrint + "\n columns:" + Arrays.toString(columns));
                 });
             }
         }

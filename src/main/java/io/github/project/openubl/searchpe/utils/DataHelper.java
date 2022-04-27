@@ -16,12 +16,9 @@
  */
 package io.github.project.openubl.searchpe.utils;
 
-import io.github.project.openubl.searchpe.models.TipoPersona;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteId;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 
 public class DataHelper {
@@ -48,17 +45,24 @@ public class DataHelper {
         return result;
     }
 
-    public static Optional<List<ContribuyenteEntity>> buildContribuyenteEntity(Long versionId, String[] columns) {
+    public static Optional<ContribuyenteEntity> buildContribuyenteEntity(Long versionId, String[] columns) {
         if (columns[0] == null || columns[1] == null) {
             return Optional.empty();
         }
 
-        List<ContribuyenteEntity> result = new ArrayList<>();
+        String dni = null;
+        if (columns[0].startsWith("10")) {
+            dni = columns[0].substring(2, columns[0].length() - 1);  // Remove first 2 characters and also last character
+        }
 
-        ContribuyenteEntity personaJuridica = ContribuyenteEntity
+        ContribuyenteEntity result = ContribuyenteEntity
                 .builder()
-                .id(new ContribuyenteId(versionId, columns[0]))
-                .tipoPersona(TipoPersona.JURIDICA)
+                .id(ContribuyenteId.builder()
+                        .versionId(versionId)
+                        .ruc(columns[0])
+                        .build()
+                )
+                .dni(dni)
                 .nombre(columns[1])
                 .estado(columns[2])
                 .condicionDomicilio(columns[3])
@@ -74,20 +78,6 @@ public class DataHelper {
                 .manzana(columns[13])
                 .kilometro(columns[14])
                 .build();
-        result.add(personaJuridica);
-
-        if (personaJuridica.id.numeroDocumento.startsWith("10")) {
-            ContribuyenteEntity personaNatural = personaJuridica.toBuilder()
-                    .id(ContribuyenteId.builder()
-                            .versionId(versionId)
-                            .numeroDocumento(personaJuridica.id.numeroDocumento.substring(2, personaJuridica.id.numeroDocumento.length() - 1)) // Remove first 2 characters and also last character
-                            .build()
-                    )
-                    .tipoPersona(TipoPersona.NATURAL)
-                    .build();
-
-            result.add(personaNatural);
-        }
 
         return Optional.of(result);
     }

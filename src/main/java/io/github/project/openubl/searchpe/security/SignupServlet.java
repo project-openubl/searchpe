@@ -18,6 +18,7 @@ package io.github.project.openubl.searchpe.security;
 
 import io.github.project.openubl.searchpe.dto.BasicUserDto;
 import io.github.project.openubl.searchpe.models.jpa.entity.BasicUserEntity;
+import io.github.project.openubl.searchpe.services.BasicUserService;
 import org.jboss.logging.Logger;
 
 import javax.inject.Inject;
@@ -51,6 +52,9 @@ public class SignupServlet extends HttpServlet {
     @Inject
     Validator validator;
 
+    @Inject
+    BasicUserService basicUserService;
+
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String username = req.getParameter("j_username");
@@ -66,20 +70,20 @@ public class SignupServlet extends HttpServlet {
             return;
         }
 
-        BasicUserDto userRepresentation = new BasicUserDto();
-        userRepresentation.setUsername(username);
-        userRepresentation.setPassword(password1);
-        userRepresentation.setPermissions(new HashSet<>(List.of(Permission.admin)));
+        BasicUserDto userDto = new BasicUserDto();
+        userDto.setUsername(username);
+        userDto.setPassword(password1);
+        userDto.setPermissions(new HashSet<>(List.of(Permission.admin)));
 
         BasicUserEntity userCreated = null;
-        Set<ConstraintViolation<BasicUserDto>> violations = validator.validate(userRepresentation);
+        Set<ConstraintViolation<BasicUserDto>> violations = validator.validate(userDto);
         if (violations.isEmpty()) {
             try {
                 tx.begin();
 
                 long currentNumberOfUsers = BasicUserEntity.count();
                 if (currentNumberOfUsers == 0) {
-                    userCreated = BasicUserEntity.add(userRepresentation);
+                    userCreated = basicUserService.create(userDto);
                 }
 
                 tx.commit();

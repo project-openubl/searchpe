@@ -25,5 +25,5 @@ import lombok.Data;
 @RegisterForReflection
 public class FilterBean {
     private String filterText;
-    private String tipoPersona;
+    private TipoPersona tipoPersona;
 }
