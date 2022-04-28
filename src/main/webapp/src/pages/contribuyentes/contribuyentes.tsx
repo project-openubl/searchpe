@@ -11,9 +11,6 @@ import {
   IRow,
   IRowData,
   sortable,
-  Table,
-  TableBody,
-  TableHeader,
 } from "@patternfly/react-table";
 
 import {
@@ -182,20 +179,6 @@ export const Contribuyentes: React.FC = () => {
         </PageSection>
       </ConditionalRender>
       <DetailsModal value={modalData} onClose={closeModal} />
-
-      <Table
-        aria-label="Sortable Table with Custom Toolbar"
-        sortBy={undefined}
-        onSort={(_event, index, direction) => {
-          // setActiveSortIndex(index);
-          // setActiveSortDirection(direction);
-        }}
-        cells={columns}
-        rows={rows}
-      >
-        <TableHeader />
-        <TableBody />
-      </Table>
     </>
   );
 };
