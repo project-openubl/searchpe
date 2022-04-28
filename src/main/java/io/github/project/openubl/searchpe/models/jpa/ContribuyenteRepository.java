@@ -62,16 +62,18 @@ public class ContribuyenteRepository implements PanacheRepositoryBase<Contribuye
     }
 
     public Optional<ContribuyenteEntity> findByRuc(VersionEntity version, String ruc) {
-        Parameters parameters = Parameters.with("versionId", version.id)
+        Parameters parameters = Parameters
+                .with("versionId", version.id)
                 .and("ruc", ruc);
         return VersionEntity.find("From ContribuyenteEntity as c where c.id.versionId = :versionId and c.id.ruc = :ruc", parameters)
                 .singleResultOptional();
     }
 
     public Optional<ContribuyenteEntity> findByDni(VersionEntity version, String dni) {
-        Parameters parameters = Parameters.with("versionId", version.id)
+        Parameters parameters = Parameters
+                .with("versionId", version.id)
                 .and("dni", dni);
-        return VersionEntity.find("From ContribuyenteEntity as c where c.dni = :dni", parameters)
+        return VersionEntity.find("From ContribuyenteEntity as c where c.id.versionId = :versionId and c.dni = :dni", parameters)
                 .singleResultOptional();
     }
 
