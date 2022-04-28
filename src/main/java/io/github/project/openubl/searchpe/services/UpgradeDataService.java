@@ -16,7 +16,6 @@
  */
 package io.github.project.openubl.searchpe.services;
 
-import io.github.project.openubl.searchpe.models.TipoPersona;
 import io.github.project.openubl.searchpe.models.VersionEvent;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.EstadoContribuyente;
@@ -46,7 +45,6 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class UpgradeDataService {
@@ -143,32 +141,23 @@ public class UpgradeDataService {
 
                 String[] columns = DataHelper.readLine(line, 15);
 
-                Optional<List<ContribuyenteEntity>> contribuyentesOptional = DataHelper.buildContribuyenteEntity(versionId, columns);
-                if (contribuyentesOptional.isEmpty()) {
+                Optional<ContribuyenteEntity> contribuyenteOptional = DataHelper.buildContribuyenteEntity(versionId, columns);
+                if (contribuyenteOptional.isEmpty()) {
                     continue;
                 }
-                List<ContribuyenteEntity> contribuyentes = contribuyentesOptional.get();
-
+                ContribuyenteEntity contribuyente = contribuyenteOptional.get();
+                Optional<EstadoContribuyente> estadoContribuyente = EstadoContribuyente.fromString(contribuyente.estado);
                 if (sunatFilter.isPresent()) {
-                    contribuyentes = contribuyentes.stream()
-                            .filter(f -> {
-                                if (f.tipoPersona.equals(TipoPersona.JURIDICA)) {
-                                    Optional<EstadoContribuyente> estadoContribuyente = EstadoContribuyente.fromString(f.estado);
-                                    return estadoContribuyente.isPresent() && sunatFilter.get().contains(estadoContribuyente.get());
-                                } else {
-                                    return true;
-                                }
-                            })
-                            .collect(Collectors.toList());
+                    boolean shouldBeSaved = estadoContribuyente.isPresent() && sunatFilter.get().contains(estadoContribuyente.get());
+                    if (!shouldBeSaved && contribuyente.getDni() == null) {
+                        continue;
+                    }
                 }
 
-                if (contribuyentes.isEmpty()) {
-                    continue;
-                }
-                contribuyentes.forEach(entity -> entityManager.persist(entity));
+                entityManager.persist(contribuyente);
 
-                totalCount = totalCount + contribuyentes.size();
-                batchCount = batchCount + contribuyentes.size();
+                totalCount = totalCount + 1;
+                batchCount = batchCount + 1;
 
                 if (batchCount >= batchSize) {
                     batchCount = 0;
@@ -184,7 +173,8 @@ public class UpgradeDataService {
             }
 
             tx.commit();
-        } catch (NotSupportedException | HeuristicRollbackException | SystemException | RollbackException | HeuristicMixedException e) {
+        } catch (NotSupportedException | HeuristicRollbackException | SystemException | RollbackException |
+                 HeuristicMixedException e) {
             LOGGER.error(e);
             return;
         }
@@ -201,7 +191,8 @@ public class UpgradeDataService {
             VersionEntity.persist(version);
 
             tx.commit();
-        } catch (NotSupportedException | HeuristicRollbackException | HeuristicMixedException | RollbackException | SystemException e) {
+        } catch (NotSupportedException | HeuristicRollbackException | HeuristicMixedException | RollbackException |
+                 SystemException e) {
             try {
                 tx.rollback();
             } catch (SystemException se) {

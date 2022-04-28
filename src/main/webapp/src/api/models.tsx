@@ -10,7 +10,7 @@ export interface SortByQuery {
   orderDirection: "asc" | "desc";
 }
 
-export interface PageRepresentation<T> {
+export interface SearchResult<T> {
   meta: Meta;
   links: Links;
   data: T[];
@@ -46,9 +46,9 @@ export interface Version {
   records: number;
 }
 
-export interface Contribuyente {
-  tipoPersona: TipoContribuyente;
-  numeroDocumento: string;
+export interface Contribuyente {  
+  ruc: string;
+  dni?: string;
   nombre: string;
   estado: string;
   ubigeo: string;
@@ -64,8 +64,6 @@ export interface Contribuyente {
   manzana: string;
   kilometro: string;
 }
-
-export type TipoContribuyente = "NATURAL" | "JURIDICA";
 
 export interface User {
   id?: number;

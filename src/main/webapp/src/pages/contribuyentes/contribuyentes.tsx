@@ -11,6 +11,9 @@ import {
   IRow,
   IRowData,
   sortable,
+  Table,
+  TableBody,
+  TableHeader,
 } from "@patternfly/react-table";
 
 import {
@@ -31,10 +34,10 @@ import { Contribuyente, SortByQuery } from "api/models";
 import { DetailsModal } from "./components/details-modal/details-modal";
 
 const columns: ICell[] = [
-  { title: "Número documento", transforms: [cellWidth(20)] },
+  { title: "RUC", transforms: [cellWidth(20)] },
+  { title: "DNI", transforms: [cellWidth(15)] },
   { title: "Nombre", transforms: [sortable, cellWidth(50)] },
   { title: "Estado", transforms: [cellWidth(15)] },
-  { title: "Tipo persona", transforms: [cellWidth(15)] },
 ];
 
 const toSortByQuery = (sortBy?: {
@@ -47,7 +50,7 @@ const toSortByQuery = (sortBy?: {
 
   let field: string;
   switch (sortBy.index) {
-    case 1:
+    case 2:
       field = "nombre";
       break;
     default:
@@ -67,16 +70,16 @@ const itemsToRow = (items: Contribuyente[]) => {
     [CONTRIBUYENTE_FIELD]: item,
     cells: [
       {
-        title: item.numeroDocumento,
+        title: item.ruc,
+      },
+      {
+        title: item.dni,
       },
       {
         title: item.nombre,
       },
       {
         title: item.estado,
-      },
-      {
-        title: item.tipoPersona,
       },
     ],
   }));
@@ -151,7 +154,9 @@ export const Contribuyentes: React.FC = () => {
             hasTopPagination
             totalCount={contribuyentes.data?.meta.count || 0}
             // Sorting
-            sortBy={currentSortBy}
+            sortBy={
+              currentSortBy || { index: undefined, defaultDirection: "asc" }
+            }
             onSort={onChangeSortBy}
             // Pagination
             currentPage={currentPage}
@@ -177,6 +182,20 @@ export const Contribuyentes: React.FC = () => {
         </PageSection>
       </ConditionalRender>
       <DetailsModal value={modalData} onClose={closeModal} />
+
+      <Table
+        aria-label="Sortable Table with Custom Toolbar"
+        sortBy={undefined}
+        onSort={(_event, index, direction) => {
+          // setActiveSortIndex(index);
+          // setActiveSortDirection(direction);
+        }}
+        cells={columns}
+        rows={rows}
+      >
+        <TableHeader />
+        <TableBody />
+      </Table>
     </>
   );
 };

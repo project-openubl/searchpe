@@ -61,6 +61,22 @@ public class ContribuyenteRepository implements PanacheRepositoryBase<Contribuye
         return Optional.empty();
     }
 
+    public Optional<ContribuyenteEntity> findByRuc(VersionEntity version, String ruc) {
+        Parameters parameters = Parameters
+                .with("versionId", version.id)
+                .and("ruc", ruc);
+        return VersionEntity.find("From ContribuyenteEntity as c where c.id.versionId = :versionId and c.id.ruc = :ruc", parameters)
+                .singleResultOptional();
+    }
+
+    public Optional<ContribuyenteEntity> findByDni(VersionEntity version, String dni) {
+        Parameters parameters = Parameters
+                .with("versionId", version.id)
+                .and("dni", dni);
+        return VersionEntity.find("From ContribuyenteEntity as c where c.id.versionId = :versionId and c.dni = :dni", parameters)
+                .singleResultOptional();
+    }
+
     public SearchResultBean<ContribuyenteEntity> list(VersionEntity version, FilterBean filterBean, PageBean pageBean, List<SortBean> sortBy) {
         Sort sort = Sort.by();
         sortBy.forEach(f -> sort.and(f.getFieldName(), f.isAsc() ? Sort.Direction.Ascending : Sort.Direction.Descending));
@@ -68,13 +84,17 @@ public class ContribuyenteRepository implements PanacheRepositoryBase<Contribuye
         StringBuilder queryBuilder = new StringBuilder("From ContribuyenteEntity as c where c.id.versionId =:versionId");
         Parameters parameters = Parameters.with("versionId", version.id);
 
+        if (filterBean.getTipoPersona() != null) {
+            if (filterBean.getTipoPersona().equals(TipoPersona.JURIDICA)) {
+                queryBuilder.append(" and c.id.ruc is not null");
+            }
+            if (filterBean.getTipoPersona().equals(TipoPersona.NATURAL)) {
+                queryBuilder.append(" and c.dni is not null");
+            }
+        }
         if (filterBean.getFilterText() != null) {
             queryBuilder.append(" and lower(c.nombre) like :filterText");
             parameters.and("filterText", "%" + filterBean.getFilterText().toLowerCase() + "%");
-        }
-        if (filterBean.getTipoPersona() != null) {
-            queryBuilder.append(" and c.tipoPersona = :tipoPersona");
-            parameters.and("tipoPersona", TipoPersona.valueOf(filterBean.getTipoPersona().trim().toUpperCase()));
         }
 
         PanacheQuery<ContribuyenteEntity> query = VersionEntity
@@ -110,12 +130,16 @@ public class ContribuyenteRepository implements PanacheRepositoryBase<Contribuye
                 .where(f -> {
                     BooleanPredicateClausesStep<?> result = f.bool();
                     result = result.must(f.match().field("embeddedId.versionId").matching(version.id));
+                    if (filterBean.getTipoPersona() != null) {
+                        if (filterBean.getTipoPersona().equals(TipoPersona.JURIDICA)) {
+                            result = result.must(f.exists().field("ruc"));
+                        }
+                        if (filterBean.getTipoPersona().equals(TipoPersona.NATURAL)) {
+                            result = result.must(f.exists().field("dni"));
+                        }
+                    }
                     if (filterBean.getFilterText() != null && !filterBean.getFilterText().trim().isEmpty()) {
                         result = result.must(f.match().fields("nombre").matching(filterBean.getFilterText()));
-                    }
-                    if (filterBean.getTipoPersona() != null && !filterBean.getTipoPersona().trim().isEmpty()) {
-                        TipoPersona tipoContribuyente = TipoPersona.valueOf(filterBean.getTipoPersona().trim().toUpperCase());
-                        result = result.must(f.match().field("tipoPersona").matching(tipoContribuyente));
                     }
                     return result;
                 });

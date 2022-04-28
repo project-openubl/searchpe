@@ -1,7 +1,7 @@
 import { UseQueryResult, useQuery } from "react-query";
 
 import { CoreClusterResource, CoreClusterResourceKind } from "api-client";
-import { Contribuyente, PageRepresentation } from "api/models";
+import { Contribuyente, SearchResult } from "api/models";
 
 import { ApiClientError } from "api-client/types";
 import { useSearchpeClient } from "./fetchHelpers";
@@ -44,13 +44,13 @@ export class IContribuyentesParamsBuilder {
 
 export const useContribuyentesQuery = (
   params: IContribuyentesParams
-): UseQueryResult<PageRepresentation<Contribuyente>, ApiClientError> => {
+): UseQueryResult<SearchResult<Contribuyente>, ApiClientError> => {
   const client = useSearchpeClient();
-  const result = useQuery<PageRepresentation<Contribuyente>, ApiClientError>({
+  const result = useQuery<SearchResult<Contribuyente>, ApiClientError>({
     queryKey: ["contribuyentes", params],
-    queryFn: async (): Promise<PageRepresentation<Contribuyente>> => {
+    queryFn: async (): Promise<SearchResult<Contribuyente>> => {
       return (
-        await client.list<PageRepresentation<Contribuyente>>(resource, params)
+        await client.list<SearchResult<Contribuyente>>(resource, params)
       ).data;
     },
     keepPreviousData: true,

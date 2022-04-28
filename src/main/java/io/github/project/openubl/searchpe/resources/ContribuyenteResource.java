@@ -22,10 +22,10 @@ import io.github.project.openubl.searchpe.models.FilterBean;
 import io.github.project.openubl.searchpe.models.PageBean;
 import io.github.project.openubl.searchpe.models.SearchResultBean;
 import io.github.project.openubl.searchpe.models.SortBean;
+import io.github.project.openubl.searchpe.models.TipoPersona;
 import io.github.project.openubl.searchpe.models.jpa.ContribuyenteRepository;
 import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
-import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteId;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.security.Permission;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -45,6 +45,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Response;
 import java.util.List;
 import java.util.Optional;
 
@@ -74,7 +75,7 @@ public class ContribuyenteResource {
     @Timed(name = "searchContribuyenteTimer", description = "How long it took to serve the advanced search")
     public SearchResultDto<ContribuyenteEntity> getContribuyentes(
             @QueryParam("filterText") String filterText,
-            @QueryParam("tipoContribuyente") String tipoPersona,
+            @QueryParam("tipoPersona") String tipoPersona,
             @QueryParam("offset") @DefaultValue("0") @Max(9_000) Integer offset,
             @QueryParam("limit") @DefaultValue("10") @Max(1_000) Integer limit,
             @QueryParam("sort_by") @DefaultValue("name") List<String> sortBy
@@ -90,7 +91,7 @@ public class ContribuyenteResource {
         List<SortBean> sortBeans = SortBean.buildWith(sortBy, ContribuyenteRepository.SORT_BY_FIELDS);
         FilterBean filterBean = FilterBean.builder()
                 .filterText(filterText)
-                .tipoPersona(tipoPersona)
+                .tipoPersona(tipoPersona != null ? TipoPersona.valueOf(tipoPersona.toUpperCase()) : null)
                 .build();
 
         SearchResultBean<ContribuyenteEntity> list;
@@ -110,8 +111,24 @@ public class ContribuyenteResource {
     @Produces("application/json")
     @Counted(name = "getContribuyenteChecks", description = "How many times the endpoint was used")
     @Timed(name = "getContribuyenteTimer", description = "How long it took to serve the data")
-    public ContribuyenteEntity getContribuyente(@PathParam("numeroDocumento") String numeroDocumento) {
+    public Response getContribuyente(@PathParam("numeroDocumento") String numeroDocumento) {
+        Response notFound = Response.status(Response.Status.NOT_FOUND).build();
+
+        if (numeroDocumento == null || numeroDocumento.trim().isEmpty()) {
+            return notFound;
+        }
+
         VersionEntity version = versionRepository.findActive().orElseThrow(NotFoundException::new);
-        return contribuyenteRepository.findByIdOptional(new ContribuyenteId(version.id, numeroDocumento)).orElseThrow(NotFoundException::new);
+        if (numeroDocumento.trim().length() == 11) {
+            return contribuyenteRepository.findByRuc(version, numeroDocumento)
+                    .map(entity -> Response.ok(entity).build())
+                    .orElse(notFound);
+        } if (numeroDocumento.trim().length() == 8) {
+            return contribuyenteRepository.findByDni(version, numeroDocumento)
+                    .map(entity -> Response.ok(entity).build())
+                    .orElse(notFound);
+        } else {
+            return notFound;
+        }
     }
 }

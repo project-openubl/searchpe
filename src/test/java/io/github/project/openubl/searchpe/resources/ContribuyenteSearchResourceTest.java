@@ -74,7 +74,7 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
                 .body(
                         "meta.offset", is(0),
                         "meta.limit", is(10),
-                        "meta.count", is(442),
+                        "meta.count", is(424),
                         "data.size()", is(10)
                 );
     }
@@ -114,15 +114,16 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
                 .body(
                         "meta.offset", is(0),
                         "meta.limit", is(10),
-                        "meta.count", is(2),
-                        "data.size()", is(2),
-                        "data.numeroDocumento", hasItems("45215942", "10452159428"),
-                        "data.nombre", hasItems("GARCIA CHANCO CARLOS AUGUSTO", "GARCIA CHANCO CARLOS AUGUSTO")
+                        "meta.count", is(1),
+                        "data.size()", is(1),
+                        "data[0].ruc", is("10452159428"),
+                        "data[0].dni", is("45215942"),
+                        "data[0].nombre", is("GARCIA CHANCO CARLOS AUGUSTO")
                 );
     }
 
     @Test
-    public void getContribuyentesUsingTipoContribuyenteFilter() {
+    public void getContribuyentesUsingTipoPersonaFilter() {
         // Given
         VersionEntity version = givenAuth("alice")
                 .header("Content-Type", "application/json")
@@ -150,7 +151,7 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
         givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/api/contribuyentes?tipoContribuyente=natural")
+                .get("/api/contribuyentes?tipoPersona=natural")
                 .then()
                 .statusCode(200)
                 .body(
@@ -158,12 +159,12 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
                         "meta.limit", is(10),
                         "meta.count", is(20),
                         "data.size()", is(10),
-                        "data.numeroDocumento", everyItem(matchesPattern("^[0-9]{8}$"))
+                        "data[0].dni", matchesPattern("^[0-9]{8}$")
                 );
     }
 
     @Test
-    public void getContribuyentesUsingFilterTextAndTipoContribuyenteFilter() {
+    public void getContribuyentesUsingFilterTextAndTipoPersonaFilter() {
         // Given
         VersionEntity version = givenAuth("alice")
                 .header("Content-Type", "application/json")
@@ -191,7 +192,7 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
         givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/api/contribuyentes?filterText=carlos&tipoContribuyente=natural")
+                .get("/api/contribuyentes?filterText=carlos&tipoPersona=natural")
                 .then()
                 .statusCode(200)
                 .body(
@@ -199,13 +200,13 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
                         "meta.limit", is(10),
                         "meta.count", is(1),
                         "data.size()", is(1),
-                        "data[0].numeroDocumento", is("45215942"),
+                        "data[0].dni", is("45215942"),
                         "data[0].nombre", is("GARCIA CHANCO CARLOS AUGUSTO")
                 );
         givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/api/contribuyentes?filterText=carlos&tipoContribuyente=juridica")
+                .get("/api/contribuyentes?filterText=carlos&tipoPersona=juridica")
                 .then()
                 .statusCode(200)
                 .body(
@@ -213,7 +214,7 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
                         "meta.limit", is(10),
                         "meta.count", is(1),
                         "data.size()", is(1),
-                        "data[0].numeroDocumento", is("10452159428"),
+                        "data[0].ruc", is("10452159428"),
                         "data[0].nombre", is("GARCIA CHANCO CARLOS AUGUSTO")
                 );
     }

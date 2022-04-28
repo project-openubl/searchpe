@@ -201,7 +201,9 @@ export const Users: React.FC = () => {
             hasBottomPagination
             totalCount={filteredItems.length}
             // Sorting
-            sortBy={currentSortBy}
+            sortBy={
+              currentSortBy || { index: undefined, defaultDirection: "asc" }
+            }
             onSort={onChangeSortBy}
             // Pagination
             currentPage={currentPage}

@@ -38,17 +38,17 @@ public class ContribuyenteResourceTest extends AbstractBaseTest {
     @Test
     public void getContribuyente() {
         // Given
-        String numeroDocumento = "11111111111";
+        String ruc = "11111111111";
 
         // When
         givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
-                .get("/" + numeroDocumento)
+                .get("/" + ruc)
                 .then()
                 .statusCode(200)
                 .body(
-                        "numeroDocumento", is(numeroDocumento),
+                        "ruc", is(ruc),
                         "nombre", is("mi empresa1")
                 );
 
