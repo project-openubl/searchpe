@@ -17,15 +17,18 @@
 package io.github.project.openubl.searchpe.services;
 
 import io.github.project.openubl.searchpe.utils.FileHelper;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 import javax.enterprise.context.ApplicationScoped;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Path;
 import java.util.UUID;
 
@@ -51,20 +54,33 @@ public class FileService {
         Path workingDirectoryPath = workingDirectoryFile.toPath();
 
         if (!workingDirectoryFile.exists()) {
-            workingDirectoryFile.mkdir();
-            LOGGER.infof("Directory %s created", workingDirectoryFile.toString());
+            boolean directoryCreated = workingDirectoryFile.mkdir();
+            if (directoryCreated) {
+                LOGGER.infof("Directory %s created", workingDirectoryFile.toString());
+            }
         }
 
         // Downloading
-        String zipFileName = UUID.randomUUID().toString() + ".zip";
-        File zipFile = workingDirectoryPath.resolve(zipFileName).toFile();
-        URL zipFileURL = new URL(zipURL);
+        URL sourceZipFileURL = new URL(zipURL);
 
-        LOGGER.infof("Downloading %s into %s", zipFileURL.toString(), zipFile);
-        FileUtils.copyURLToFile(zipFileURL, zipFile, connectionTimeout, readTimeout);
+        String targetZipFileName = UUID.randomUUID() + ".zip";
+        File targetZipFile = workingDirectoryPath.resolve(targetZipFileName).toFile();
+
+        LOGGER.infof("Downloading %s into %s", sourceZipFileURL.toString(), targetZipFile);
+        try (
+                FileOutputStream fileOutputStream = new FileOutputStream(targetZipFile);
+                ReadableByteChannel readableByteChannel = Channels.newChannel(sourceZipFileURL.openStream());
+                FileChannel fileChannel = fileOutputStream.getChannel();
+        ) {
+            final long chunkSize = 1024 * 50;
+            long position = 0;
+            while (fileChannel.transferFrom(readableByteChannel, position, chunkSize) > 0) {
+                position += chunkSize;
+            }
+        }
         LOGGER.infof("Download finished successfully");
 
-        return zipFile;
+        return targetZipFile;
     }
 
     public File unzip(File file) throws IOException {

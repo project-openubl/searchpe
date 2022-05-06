@@ -22,6 +22,8 @@ import io.github.project.openubl.searchpe.models.jpa.entity.EstadoContribuyente;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.utils.DataHelper;
+import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.narayana.jta.RunOptions;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
@@ -29,22 +31,19 @@ import org.jboss.logging.Logger;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Event;
 import javax.inject.Inject;
-import javax.persistence.EntityManager;
-import javax.transaction.HeuristicMixedException;
-import javax.transaction.HeuristicRollbackException;
-import javax.transaction.NotSupportedException;
-import javax.transaction.RollbackException;
-import javax.transaction.SystemException;
-import javax.transaction.UserTransaction;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutionException;
 
 @ApplicationScoped
 public class UpgradeDataService {
@@ -61,12 +60,6 @@ public class UpgradeDataService {
     FileService fileService;
 
     @Inject
-    UserTransaction tx;
-
-    @Inject
-    EntityManager entityManager;
-
-    @Inject
     Event<VersionEvent.DownloadingEvent> downloadingVersionEvent;
 
     @Inject
@@ -74,9 +67,6 @@ public class UpgradeDataService {
 
     @Inject
     Event<VersionEvent.ImportingDataEvent> importingVersionEvent;
-
-    @Inject
-    Event<VersionEvent.RecordsDataEvent> recordsEvent;
 
     public void upgrade(Long versionId) {
         File downloadedFile;
@@ -125,13 +115,15 @@ public class UpgradeDataService {
         int totalCount = 0;
         int batchCount = 0;
 
-        try (BufferedReader br = new BufferedReader(new FileReader(file, StandardCharsets.ISO_8859_1))) {
+        List<ContribuyenteEntity> contribuyentes = new ArrayList<>();
+        try (
+                FileReader fileReader = new FileReader(file, StandardCharsets.ISO_8859_1);
+                BufferedReader br = new BufferedReader(fileReader)
+        ) {
             String line;
             boolean skip = true;
 
-            int batchSize = jdbcBatchSize;
-
-            tx.begin();
+            int batchSize = jdbcBatchSize * 10;
 
             while ((line = br.readLine()) != null) {
                 if (skip) {
@@ -154,55 +146,65 @@ public class UpgradeDataService {
                     }
                 }
 
-                entityManager.persist(contribuyente);
+                contribuyentes.add(contribuyente);
 
                 totalCount = totalCount + 1;
                 batchCount = batchCount + 1;
 
+                // Time to save data
                 if (batchCount >= batchSize) {
+                    saveProgress(versionId, contribuyentes).toCompletableFuture().get();
+
+                    // Reset
                     batchCount = 0;
-
-                    entityManager.flush();
-                    entityManager.clear();
-                    tx.commit();
-
-                    recordsEvent.fire(new VersionEvent.DefaultRecordsDataEvent(versionId, totalCount));
-
-                    tx.begin();
+                    contribuyentes.clear();
                 }
             }
-
-            tx.commit();
-        } catch (NotSupportedException | HeuristicRollbackException | SystemException | RollbackException |
-                 HeuristicMixedException e) {
-            LOGGER.error(e);
-            return;
+        } catch (ExecutionException | InterruptedException e) {
+            throw new RuntimeException(e);
         }
 
-
+        // Save remaining data
         try {
-            tx.begin();
+            if (!contribuyentes.isEmpty()) {
+                saveProgress(versionId, contribuyentes).toCompletableFuture().get();
+            }
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+
+        // Save final state of version
+        int records = totalCount;
+        QuarkusTransaction.run(QuarkusTransaction.runOptions()
+                .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
+                .semantic(RunOptions.Semantic.DISALLOW_EXISTING), () -> {
 
             VersionEntity version = VersionEntity.findById(versionId);
             version.status = Status.COMPLETED;
             version.updatedAt = new Date();
-            version.records = totalCount;
-
-            VersionEntity.persist(version);
-
-            tx.commit();
-        } catch (NotSupportedException | HeuristicRollbackException | HeuristicMixedException | RollbackException |
-                 SystemException e) {
-            try {
-                tx.rollback();
-            } catch (SystemException se) {
-                LOGGER.error(se);
-            }
-            return;
-        }
+            version.records = records;
+            version.persist();
+        });
 
         long endTime = Calendar.getInstance().getTimeInMillis();
         LOGGER.infof("Import contribuyentes finished successfully in " + (endTime - startTime) + " milliseconds.");
+    }
+
+    private CompletionStage<Void> saveProgress(Long versionId, List<ContribuyenteEntity> contribuyentes) {
+        return CompletableFuture.runAsync(() -> {
+            QuarkusTransaction.run(QuarkusTransaction.runOptions()
+                    .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
+                    .semantic(RunOptions.Semantic.DISALLOW_EXISTING), () -> {
+                VersionEntity version = VersionEntity.findById(versionId);
+                version.records = version.records + contribuyentes.size();
+                version.updatedAt = new Date();
+                version.persist();
+
+                ContribuyenteEntity.persist(contribuyentes);
+            });
+
+            LOGGER.infof("Chunk processed size=" + contribuyentes.size());
+        });
     }
 
 }
