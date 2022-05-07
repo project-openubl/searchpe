@@ -37,17 +37,11 @@ public class FileService {
 
     private static final Logger LOGGER = Logger.getLogger(FileService.class);
 
-    @ConfigProperty(name = "searchpe.workspace.directory", defaultValue = "workspace")
+    @ConfigProperty(name = "searchpe.workspace.directory")
     String workingDirectory;
 
     @ConfigProperty(name = "searchpe.sunat.padronReducidoUrl")
     String zipURL;
-
-    @ConfigProperty(name = "searchpe.workspace.connectionTimeout", defaultValue = "100000")
-    Integer connectionTimeout;
-
-    @ConfigProperty(name = "searchpe.workspace.readTimeout", defaultValue = "100000")
-    Integer readTimeout;
 
     public File downloadFile() throws IOException {
         File workingDirectoryFile = new File(workingDirectory);

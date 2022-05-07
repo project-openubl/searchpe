@@ -34,7 +34,7 @@ public class HTTPBasicAuthEnabledInterceptor {
     @ConfigProperty(name = "quarkus.http.auth.basic")
     boolean isAuthBasicEnabled;
 
-    @ConfigProperty(name = "searchpe.disable.authorization", defaultValue = "false")
+    @ConfigProperty(name = "searchpe.disable.authorization")
     boolean disableAuthorization;
 
     @AroundInvoke

@@ -53,8 +53,8 @@ public class UpgradeDataService {
     @ConfigProperty(name = "searchpe.sunat.filter")
     Optional<List<EstadoContribuyente>> sunatFilter;
 
-    @ConfigProperty(name = "quarkus.hibernate-orm.jdbc.statement-batch-size", defaultValue = "1000")
-    Integer jdbcBatchSize;
+    @ConfigProperty(name = "searchpe.sunat.chunkSize")
+    int chunkSize;
 
     @Inject
     FileService fileService;
@@ -123,7 +123,7 @@ public class UpgradeDataService {
             String line;
             boolean skip = true;
 
-            int batchSize = jdbcBatchSize * 10;
+            int batchSize = chunkSize;
 
             while ((line = br.readLine()) != null) {
                 if (skip) {
