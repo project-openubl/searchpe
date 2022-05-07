@@ -29,7 +29,7 @@ import javax.interceptor.Interceptor;
 @ApplicationScoped
 public class DisabledAuthController extends AuthorizationController {
 
-    @ConfigProperty(name = "searchpe.disable.authorization", defaultValue = "false")
+    @ConfigProperty(name = "searchpe.disable.authorization")
     boolean disableAuthorization;
 
     @Override
