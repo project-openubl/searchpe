@@ -73,7 +73,10 @@ public class FileHelper {
         }
 
         byte[] buffer = new byte[1024];
-        try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFile))) {
+        try (
+                FileInputStream is = new FileInputStream(zipFile);
+                ZipInputStream zis = new ZipInputStream(is)
+        ) {
             ZipEntry zipEntry = zis.getNextEntry();
             while (zipEntry != null) {
                 File newFile = destinationPath.resolve(zipEntry.getName()).toFile();

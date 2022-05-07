@@ -46,7 +46,7 @@ public class DataHelper {
     }
 
     public static Optional<ContribuyenteEntity> buildContribuyenteEntity(Long versionId, String[] columns) {
-        if (columns[0] == null || columns[1] == null) {
+        if (columns[0] == null || columns[1] == null || !columns[0].matches("^[0-9]{11}")) {
             return Optional.empty();
         }
 
