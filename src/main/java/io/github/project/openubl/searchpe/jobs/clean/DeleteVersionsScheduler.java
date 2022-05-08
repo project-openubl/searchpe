@@ -55,6 +55,15 @@ public class DeleteVersionsScheduler {
     String cronRegex;
 
     public void scheduleProgrammatically(Long versionId) throws SchedulerException {
+        JobDetail programmaticallyJobDetail = JobBuilder
+                .newJob(DeleteVersionsProgrammaticallyJob.class)
+                .withIdentity(programmaticallyJobKey)
+                .storeDurably()
+                .build();
+        if (!quartz.checkExists(programmaticallyJobDetail.getKey())) {
+            quartz.addJob(programmaticallyJobDetail, false);
+        }
+
         Trigger trigger = TriggerBuilder.newTrigger()
                 .forJob(programmaticallyJobKey)
                 .withIdentity(TriggerKey.triggerKey(UUID.randomUUID().toString(), "version"))
@@ -79,18 +88,9 @@ public class DeleteVersionsScheduler {
                     .storeDurably()
                     .build();
 
-            JobDetail programmticallyJobDetail = JobBuilder
-                    .newJob(DeleteVersionsProgrammaticallyJob.class)
-                    .withIdentity(programmaticallyJobKey)
-                    .storeDurably()
-                    .build();
-
             try {
                 if (!quartz.checkExists(cronJobDetail.getKey())) {
                     quartz.addJob(cronJobDetail, false);
-                }
-                if (!quartz.checkExists(programmticallyJobDetail.getKey())) {
-                    quartz.addJob(programmticallyJobDetail, false);
                 }
 
                 Trigger cronTrigger = TriggerBuilder.newTrigger()

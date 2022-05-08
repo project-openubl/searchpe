@@ -55,6 +55,15 @@ public class IngestDataScheduler {
     String cronRegex;
 
     public void scheduleProgrammatically(Long versionId) throws SchedulerException {
+        JobDetail programmaticallyJobDetail = JobBuilder
+                .newJob(IngestDataProgrammaticallyJob.class)
+                .withIdentity(programmaticallyJobKey)
+                .storeDurably()
+                .build();
+        if (!quartz.checkExists(programmaticallyJobDetail.getKey())) {
+            quartz.addJob(programmaticallyJobDetail, false);
+        }
+
         Trigger trigger = TriggerBuilder.newTrigger()
                 .forJob(programmaticallyJobKey)
                 .withIdentity(TriggerKey.triggerKey(UUID.randomUUID().toString(), "version"))
@@ -79,18 +88,10 @@ public class IngestDataScheduler {
                     .withIdentity(cronJobKey)
                     .storeDurably()
                     .build();
-            JobDetail programmaticallyJobDetail = JobBuilder
-                    .newJob(IngestDataProgrammaticallyJob.class)
-                    .withIdentity(programmaticallyJobKey)
-                    .storeDurably()
-                    .build();
 
             try {
                 if (!quartz.checkExists(cronJobDetail.getKey())) {
                     quartz.addJob(cronJobDetail, false);
-                }
-                if (!quartz.checkExists(programmaticallyJobDetail.getKey())) {
-                    quartz.addJob(programmaticallyJobDetail, false);
                 }
 
                 Trigger cronTrigger = TriggerBuilder
