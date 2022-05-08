@@ -35,8 +35,10 @@ export type VersionStatus =
   | "UNZIPPING"
   | "IMPORTING"
   | "ERROR"
+  | "CANCELLED"
   | "COMPLETED"
-  | "DELETING";
+  | "DELETING"
+  | "CANCELLING";
 
 export interface Version {
   id: number;
@@ -46,7 +48,7 @@ export interface Version {
   records: number;
 }
 
-export interface Contribuyente {  
+export interface Contribuyente {
   ruc: string;
   dni?: string;
   nombre: string;

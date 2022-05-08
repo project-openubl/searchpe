@@ -6,6 +6,7 @@ import {
   CompressIcon,
   CheckCircleIcon,
   ErrorCircleOIcon,
+  BanIcon,
 } from "@patternfly/react-icons";
 import { Spinner } from "@patternfly/react-core";
 
@@ -42,9 +43,12 @@ export const mapStateToIcon = (state: VersionStatus) => {
       return <SyncIcon />;
     case "COMPLETED":
       return <CheckCircleIcon color={globalSuccessColor200.value} />;
+    case "CANCELLED":
+      return <BanIcon />;
     case "ERROR":
       return <ErrorCircleOIcon color={globalDangerColor200.value} />;
     case "DELETING":
+    case "CANCELLING":
       return <Spinner size="sm" />;
     default:
       return "Unknown";
@@ -63,10 +67,13 @@ export const mapStateToLabel = (state: VersionStatus) => {
       return "Running";
     case "COMPLETED":
       return "Completed";
+    case "CANCELLED":
+      return "Cancelled";
     case "ERROR":
       return "Failed";
     case "DELETING":
-      return "Deleting";
+    case "CANCELLING":
+      return "Cancelling";
     default:
       return "Unknown";
   }

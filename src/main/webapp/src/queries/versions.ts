@@ -89,3 +89,22 @@ export const useDeleteVersionMutation = (
     }
   );
 };
+
+export const useCancelVersionMutation = (
+  onSuccess?: () => void
+): UseMutationResult<void, ApiClientError, Version> => {
+  const client = useSearchpeClient();
+  const queryClient = useQueryClient();
+  return useMutation<void, ApiClientError, Version>(
+    async (version: Version) => {
+      const newVersion: Version = { ...version, status: "CANCELLING" };
+      await client.put<void>(versionResource, `${version.id}`, newVersion);
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries("versions");
+        onSuccess && onSuccess();
+      },
+    }
+  );
+};

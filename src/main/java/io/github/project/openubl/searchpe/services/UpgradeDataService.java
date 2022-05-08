@@ -44,6 +44,11 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 @ApplicationScoped
 public class UpgradeDataService {
@@ -69,6 +74,58 @@ public class UpgradeDataService {
     Event<VersionEvent.ImportingDataEvent> importingVersionEvent;
 
     public void upgrade(Long versionId) {
+        ScheduledExecutorService executorService = Executors.newScheduledThreadPool(2);
+
+        LOGGER.info("Init version import task");
+        Future<?> importTask = executorService.submit(() -> importTask(versionId, executorService));
+
+        LOGGER.info("Init version import task watcher");
+        executorService.scheduleAtFixedRate(() -> {
+            boolean isVersionBeingCancelled = QuarkusTransaction.call(
+                    QuarkusTransaction.runOptions()
+                            .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
+                            .semantic(RunOptions.Semantic.DISALLOW_EXISTING),
+                    () -> {
+                        VersionEntity watchedVersion = VersionEntity.findById(versionId);
+                        LOGGER.infof("Watch Version %s %s", versionId, watchedVersion.status);
+                        return watchedVersion.status.equals(Status.CANCELLING);
+                    }
+            );
+
+            if (isVersionBeingCancelled) {
+                LOGGER.infof("Found Version %s in CANCELLING state. Shutting down import task", versionId);
+                importTask.cancel(true);
+
+                QuarkusTransaction.run(
+                        QuarkusTransaction.runOptions()
+                                .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
+                                .semantic(RunOptions.Semantic.DISALLOW_EXISTING),
+                        () -> {
+                            VersionEntity watchedVersion = VersionEntity.findById(versionId);
+                            watchedVersion.status = Status.CANCELLED;
+                            watchedVersion.persist();
+                        }
+                );
+
+                LOGGER.infof("Shutting down all import tasks for Version %s", versionId);
+                shutdownExecutorService(executorService);
+            }
+        }, 15, 15, TimeUnit.SECONDS);
+
+        LOGGER.infof("Waiting for all tasks for Version %s to be completed", versionId);
+        try {
+            boolean terminated = executorService.awaitTermination(2, TimeUnit.HOURS);
+            if (terminated) {
+                LOGGER.infof("Executor service for Version %s gracefully terminated", versionId);
+            } else {
+                LOGGER.errorf("Executor service for Version %s could not terminate in the expected time", versionId);
+            }
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void importTask(Long versionId, ExecutorService executorService) {
         File downloadedFile;
         File unzippedFolder;
         File txtFile;
@@ -104,11 +161,18 @@ public class UpgradeDataService {
             FileUtils.deleteDirectory(unzippedFolder);
         } catch (IOException e) {
             LOGGER.error(e);
-            return;
         }
+
+        // Finish
+        LOGGER.infof("Import task finished successfully. Shutting down all import tasks for Version %s", versionId);
+        shutdownExecutorService(executorService);
     }
 
-    public void createContribuyentesFromFile(Long versionId, File file) throws IOException {
+    private void shutdownExecutorService(ExecutorService executorService) {
+        executorService.shutdownNow();
+    }
+
+    private void createContribuyentesFromFile(Long versionId, File file) throws IOException {
         LOGGER.infof("Start importing contribuyentes");
         long startTime = Calendar.getInstance().getTimeInMillis();
 

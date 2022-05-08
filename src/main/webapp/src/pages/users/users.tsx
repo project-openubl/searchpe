@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 
 import { useDispatch } from "react-redux";
-import { deleteDialogActions } from "store/deleteDialog";
 import { alertActions } from "store/alert";
 
 import {
@@ -11,6 +10,7 @@ import {
   SimpleTableWithToolbar,
   SimplePlaceholder,
   ConditionalRender,
+  useConfirmationContext,
 } from "@project-openubl/lib-ui";
 
 import {
@@ -92,6 +92,8 @@ export const filterByText = (filterText: string, item: User) => {
 
 export const Users: React.FC = () => {
   const dispatch = useDispatch();
+  const confirmation = useConfirmationContext();
+
   const [filterText, setFilterText] = useState("");
 
   const usersQuery = useUsersQuery();
@@ -144,29 +146,31 @@ export const Users: React.FC = () => {
         extraData: IExtraData
       ) => {
         const row: User = getRow(rowData);
-        dispatch(
-          deleteDialogActions.openModal({
-            name: `${row.username}`,
-            type: "usuario",
-            onDelete: () => {
-              dispatch(deleteDialogActions.processing());
-              deleteUserMutation
-                .mutateAsync(row)
-                .catch((error) => {
-                  dispatch(
-                    alertActions.addAlert(
-                      "danger",
-                      "Error",
-                      getAxiosErrorMessage(error)
-                    )
-                  );
-                })
-                .finally(() => {
-                  dispatch(deleteDialogActions.closeModal());
-                });
-            },
-          })
-        );
+        confirmation.open({
+          title: "Eliminar usuario",
+          titleIconVariant: "warning",
+          message: `¿Estas seguro de querer eliminar este Usuario? Esta acción eliminará a ${row.username} permanentemente.`,
+          confirmBtnLabel: "Eliminar",
+          cancelBtnLabel: "Cancelar",
+          confirmBtnVariant: ButtonVariant.danger,
+          onConfirm: () => {
+            confirmation.enableProcessing();
+            deleteUserMutation
+              .mutateAsync(row)
+              .catch((error) => {
+                dispatch(
+                  alertActions.addAlert(
+                    "danger",
+                    "Error",
+                    getAxiosErrorMessage(error)
+                  )
+                );
+              })
+              .finally(() => {
+                confirmation.close();
+              });
+          },
+        });
       },
     });
 

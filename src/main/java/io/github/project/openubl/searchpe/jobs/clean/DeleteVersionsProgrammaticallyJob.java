@@ -31,7 +31,7 @@ import javax.transaction.SystemException;
 import javax.transaction.UserTransaction;
 
 @RegisterForReflection
-public class DeleteVersionProgrammaticallyJob implements Job {
+public class DeleteVersionsProgrammaticallyJob implements Job {
 
     public static final String VERSION_ID = "versionId";
 
@@ -43,13 +43,14 @@ public class DeleteVersionProgrammaticallyJob implements Job {
 
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
-        String versionId = (String) context.getTrigger().getJobDataMap().get(VERSION_ID);
+        Long versionId = Long.valueOf((String) context.getTrigger().getJobDataMap().get(VERSION_ID));
 
         try {
             tx.begin();
-            versionService.deleteVersion(Long.valueOf(versionId));
+            versionService.deleteVersion(versionId);
             tx.commit();
-        } catch (NotSupportedException | HeuristicRollbackException | HeuristicMixedException | RollbackException | SystemException e) {
+        } catch (NotSupportedException | HeuristicRollbackException | HeuristicMixedException | RollbackException |
+                 SystemException e) {
             try {
                 tx.rollback();
             } catch (SystemException se) {

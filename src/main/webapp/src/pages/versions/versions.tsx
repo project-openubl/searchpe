@@ -5,6 +5,7 @@ import {
   useTable,
   useTableControls,
   SimpleTableWithToolbar,
+  useConfirmationContext,
 } from "@project-openubl/lib-ui";
 
 import {
@@ -26,6 +27,7 @@ import {
 } from "@patternfly/react-table";
 
 import {
+  useCancelVersionMutation,
   useCreateVersionMutation,
   useDeleteVersionMutation,
   useVersionsQuery,
@@ -37,7 +39,6 @@ import {
 } from "shared/components";
 
 import { useDispatch } from "react-redux";
-import { deleteDialogActions } from "store/deleteDialog";
 import { alertActions } from "store/alert";
 
 import { Version } from "api/models";
@@ -99,10 +100,12 @@ export const filterByText = (filterText: string, item: Version) => {
 
 export const Versions: React.FC = () => {
   const dispatch = useDispatch();
+  const confirmation = useConfirmationContext();
 
   const versions = useVersionsQuery();
   const createVersionMutation = useCreateVersionMutation();
   const deleteVersionMutation = useDeleteVersionMutation();
+  const cancelVersionMutation = useCancelVersionMutation();
 
   const [filterText, setFilterText] = useState("");
 
@@ -126,12 +129,43 @@ export const Versions: React.FC = () => {
 
     const actions: (IAction | ISeparator)[] = [];
 
-    if (row.status !== "COMPLETED" && row.status !== "ERROR") {
-      // actions.push({
-      //   title: "Cancel",
-      //   onClick: (_, rowIndex: number, rowData: IRowData) => {
-      //   },
-      // });
+    if (
+      row.status !== "COMPLETED" &&
+      row.status !== "ERROR" &&
+      row.status !== "CANCELLING" &&
+      row.status !== "CANCELLED"
+    ) {
+      actions.push({
+        title: "Cancel",
+        onClick: (_, rowIndex: number, rowData: IRowData) => {
+          const row: Version = getRow(rowData);
+          confirmation.open({
+            title: "Cancelar Versión",
+            titleIconVariant: "warning",
+            message: `¿Estas seguro de querer cancelar la creación de esta Versión?`,
+            confirmBtnLabel: "Cancelar",
+            cancelBtnLabel: "Cerrar",
+            confirmBtnVariant: ButtonVariant.primary,
+            onConfirm: () => {
+              confirmation.enableProcessing();
+              cancelVersionMutation
+                .mutateAsync(row)
+                .catch((error) => {
+                  dispatch(
+                    alertActions.addAlert(
+                      "danger",
+                      "Error",
+                      getAxiosErrorMessage(error)
+                    )
+                  );
+                })
+                .finally(() => {
+                  confirmation.close();
+                });
+            },
+          });
+        },
+      });
     } else {
       actions.push({
         title: "Delete",
@@ -142,29 +176,31 @@ export const Versions: React.FC = () => {
           extraData: IExtraData
         ) => {
           const row: Version = getRow(rowData);
-          dispatch(
-            deleteDialogActions.openModal({
-              name: `version #${row.id}`,
-              type: "version",
-              onDelete: () => {
-                dispatch(deleteDialogActions.processing());
-                deleteVersionMutation
-                  .mutateAsync(row)
-                  .catch((error) => {
-                    dispatch(
-                      alertActions.addAlert(
-                        "danger",
-                        "Error",
-                        getAxiosErrorMessage(error)
-                      )
-                    );
-                  })
-                  .finally(() => {
-                    dispatch(deleteDialogActions.closeModal());
-                  });
-              },
-            })
-          );
+          confirmation.open({
+            title: "Eliminar Versión",
+            titleIconVariant: "warning",
+            message: `¿Estas seguro de querer eliminar esta Versión? Esta acción eliminará #${row.id} permanentemente.`,
+            confirmBtnLabel: "Eliminar",
+            cancelBtnLabel: "Cancelar",
+            confirmBtnVariant: ButtonVariant.danger,
+            onConfirm: () => {
+              confirmation.enableProcessing();
+              deleteVersionMutation
+                .mutateAsync(row)
+                .catch((error) => {
+                  dispatch(
+                    alertActions.addAlert(
+                      "danger",
+                      "Error",
+                      getAxiosErrorMessage(error)
+                    )
+                  );
+                })
+                .finally(() => {
+                  confirmation.close();
+                });
+            },
+          });
         },
       });
     }
@@ -172,8 +208,12 @@ export const Versions: React.FC = () => {
     return actions;
   };
 
-  const areActionsDisabled = (): boolean => {
-    return false;
+  const areActionsDisabled = (
+    rowData: IRowData,
+    extraData: IExtraData
+  ): boolean => {
+    const row: Version = getRow(rowData);
+    return row.status === "DELETING" || row.status === "CANCELLING";
   };
 
   const rows: IRow[] = itemsToRow(pageItems || []);
