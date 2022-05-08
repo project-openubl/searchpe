@@ -267,7 +267,7 @@ public class UpgradeDataService {
                 ContribuyenteEntity.persist(contribuyentes);
             });
 
-            LOGGER.infof("Chunk processed size=" + contribuyentes.size());
+            LOGGER.debugf("Chunk processed size=" + contribuyentes.size());
         });
     }
 
