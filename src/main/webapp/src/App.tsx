@@ -22,7 +22,6 @@ import { DefaultLayout } from "./shared/components/layout";
 import NotificationsPortal from "@redhat-cloud-services/frontend-components-notifications/NotificationPortal";
 import "@redhat-cloud-services/frontend-components-notifications/index.css";
 
-import DeleteDialog from "./shared/containers/delete-dialog";
 import { useWhoAmIQuery } from "queries/whoami";
 
 import { ConfirmationContextProvider } from "@project-openubl/lib-ui";
@@ -74,7 +73,6 @@ const App: React.FC = () => {
           </DefaultLayout>
         </ConfirmationContextProvider>
         <NotificationsPortal />
-        <DeleteDialog />
       </ConditionalRender>
     </HashRouter>
   );

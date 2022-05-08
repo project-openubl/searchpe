@@ -16,10 +16,10 @@
  */
 package io.github.project.openubl.searchpe.jobs.clean;
 
-import io.github.project.openubl.searchpe.services.VersionService;
 import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
+import io.github.project.openubl.searchpe.services.VersionService;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.jboss.logging.Logger;
 import org.quartz.Job;
@@ -37,9 +37,9 @@ import java.util.Objects;
 import java.util.Optional;
 
 @RegisterForReflection
-public class CleanVersionsCronJob implements Job {
+public class DeleteVersionsCronJob implements Job {
 
-    private static final Logger logger = Logger.getLogger(CleanVersionsCronJob.class);
+    private static final Logger logger = Logger.getLogger(DeleteVersionsCronJob.class);
 
     @Inject
     UserTransaction tx;
@@ -66,7 +66,8 @@ public class CleanVersionsCronJob implements Job {
                     .forEach(f -> versionService.deleteVersion(f.id));
 
             tx.commit();
-        } catch (NotSupportedException | HeuristicRollbackException | HeuristicMixedException | RollbackException | SystemException e) {
+        } catch (NotSupportedException | HeuristicRollbackException | HeuristicMixedException | RollbackException |
+                 SystemException e) {
             try {
                 tx.rollback();
             } catch (SystemException se) {

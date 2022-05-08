@@ -64,6 +64,7 @@ public class BasicUserResource {
 
     @Inject
     BasicUserService basicUserService;
+
     @Inject
     BasicUserMapper basicUserMapper;
 

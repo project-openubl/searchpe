@@ -22,7 +22,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import javax.json.bind.annotation.JsonbDateFormat;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
@@ -43,13 +42,11 @@ import java.util.Objects;
 @Table(name = "version")
 public class VersionEntity extends PanacheEntity {
 
-    @JsonbDateFormat(value = "yyyy-MM-dd'T'HH:mm:ss'Z'")
     @NotNull
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_at")
     public Date createdAt;
 
-    @JsonbDateFormat(value = "yyyy-MM-dd'T'HH:mm:ss'Z'")
     @NotNull
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "updated_at")
@@ -63,6 +60,9 @@ public class VersionEntity extends PanacheEntity {
     @NotNull
     @Column(name = "records")
     public int records;
+
+    @Column(name = "trigger_key")
+    public String triggerKey;
 
     @Version
     public int version;

@@ -16,11 +16,15 @@
  */
 package io.github.project.openubl.searchpe.jobs.ingest;
 
+import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.services.UpgradeDataService;
+import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.narayana.jta.RunOptions;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
+import org.quartz.TriggerKey;
 
 import javax.inject.Inject;
 
@@ -34,8 +38,19 @@ public class IngestDataProgrammaticallyJob implements Job {
 
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
-        String versionId = (String) context.getTrigger().getJobDataMap().get(VERSION_ID);
-        upgradeDataService.upgrade(Long.valueOf(versionId));
+        TriggerKey triggerKey = context.getTrigger().getKey();
+        Long versionId = Long.valueOf((String) context.getTrigger().getJobDataMap().get(VERSION_ID));
+
+        QuarkusTransaction.run(QuarkusTransaction.runOptions()
+                .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
+                .semantic(RunOptions.Semantic.DISALLOW_EXISTING), () -> {
+
+            VersionEntity version = VersionEntity.findById(versionId);
+            version.triggerKey = triggerKey.getName() + "." + triggerKey.getGroup();
+            version.persist();
+        });
+
+        upgradeDataService.upgrade(versionId);
     }
 
 }

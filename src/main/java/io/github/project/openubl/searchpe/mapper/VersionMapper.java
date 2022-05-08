@@ -14,16 +14,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.project.openubl.searchpe.models.jpa.entity;
+package io.github.project.openubl.searchpe.mapper;
 
-public enum Status {
-    SCHEDULED,
-    DOWNLOADING,
-    UNZIPPING,
-    IMPORTING,
-    ERROR,
-    CANCELLED,
-    COMPLETED,
-    DELETING,
-    CANCELLING
+import io.github.project.openubl.searchpe.dto.VersionDto;
+import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
+import org.mapstruct.AfterMapping;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
+
+@Mapper(componentModel = "cdi")
+public interface VersionMapper {
+
+    @Mapping(source = "id", target = "id")
+    VersionDto toDto(VersionEntity entity);
+
+    @AfterMapping
+    default void setId(VersionEntity entity, @MappingTarget VersionDto dto) {
+        dto.setId(entity.id);
+    }
+
 }

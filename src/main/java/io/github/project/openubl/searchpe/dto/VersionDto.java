@@ -14,16 +14,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.project.openubl.searchpe.models.jpa.entity;
+package io.github.project.openubl.searchpe.dto;
 
-public enum Status {
-    SCHEDULED,
-    DOWNLOADING,
-    UNZIPPING,
-    IMPORTING,
-    ERROR,
-    CANCELLED,
-    COMPLETED,
-    DELETING,
-    CANCELLING
+import io.github.project.openubl.searchpe.models.jpa.entity.Status;
+import io.quarkus.runtime.annotations.RegisterForReflection;
+import lombok.Data;
+
+import javax.json.bind.annotation.JsonbDateFormat;
+import java.util.Date;
+
+@Data
+@RegisterForReflection
+public class VersionDto {
+
+    public Long id;
+
+    @JsonbDateFormat(value = "yyyy-MM-dd'T'HH:mm:ss'Z'")
+    public Date createdAt;
+
+    @JsonbDateFormat(value = "yyyy-MM-dd'T'HH:mm:ss'Z'")
+    public Date updatedAt;
+
+    public Status status;
+    public int records;
+
 }

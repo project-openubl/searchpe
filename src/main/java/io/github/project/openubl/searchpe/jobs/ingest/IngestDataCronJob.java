@@ -16,51 +16,38 @@
  */
 package io.github.project.openubl.searchpe.jobs.ingest;
 
-import io.github.project.openubl.searchpe.services.UpgradeDataService;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
+import io.github.project.openubl.searchpe.services.UpgradeDataService;
+import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.narayana.jta.RunOptions;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
+import org.quartz.TriggerKey;
 
 import javax.inject.Inject;
-import javax.transaction.HeuristicMixedException;
-import javax.transaction.HeuristicRollbackException;
-import javax.transaction.NotSupportedException;
-import javax.transaction.RollbackException;
-import javax.transaction.SystemException;
-import javax.transaction.UserTransaction;
 
 @RegisterForReflection
 public class IngestDataCronJob implements Job {
-
-    @Inject
-    UserTransaction tx;
 
     @Inject
     UpgradeDataService upgradeDataService;
 
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
-        Long versionId;
+        TriggerKey triggerKey = context.getTrigger().getKey();
 
-        try {
-            tx.begin();
+        Long versionId = QuarkusTransaction.call(QuarkusTransaction.runOptions()
+                .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
+                .semantic(RunOptions.Semantic.DISALLOW_EXISTING), () -> {
 
             VersionEntity version = VersionEntity.generateNew();
+            version.triggerKey = triggerKey.getName() + "." + triggerKey.getGroup();
             version.persist();
 
-            versionId = version.id;
-
-            tx.commit();
-        } catch (NotSupportedException | HeuristicRollbackException | HeuristicMixedException | RollbackException | SystemException e) {
-            try {
-                tx.rollback();
-            } catch (SystemException se) {
-                throw new IllegalStateException(se);
-            }
-            return;
-        }
+            return version.id;
+        });
 
         upgradeDataService.upgrade(versionId);
     }
