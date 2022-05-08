@@ -110,7 +110,7 @@ public class UpgradeDataService {
                 LOGGER.infof("Shutting down all import tasks for Version %s", versionId);
                 shutdownExecutorService(executorService);
             }
-        }, 5, 10, TimeUnit.SECONDS);
+        }, 15, 15, TimeUnit.SECONDS);
 
         LOGGER.infof("Waiting for all tasks for Version %s to be completed", versionId);
         try {
