@@ -72,6 +72,7 @@ export const mapStateToLabel = (state: VersionStatus) => {
     case "ERROR":
       return "Failed";
     case "DELETING":
+      return "Deleting";
     case "CANCELLING":
       return "Cancelling";
     default:
