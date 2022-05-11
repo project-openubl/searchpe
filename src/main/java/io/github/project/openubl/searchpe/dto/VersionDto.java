@@ -37,5 +37,6 @@ public class VersionDto {
 
     public Status status;
     public int records;
+    public boolean isActive;
 
 }
