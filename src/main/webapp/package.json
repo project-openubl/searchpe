@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "@hookform/resolvers": "^2.8.8",
+    "@patternfly/patternfly": "^4.192.1",
     "@patternfly/react-core": "^4.206.2",
     "@patternfly/react-table": "^4.75.2",
     "@project-openubl/lib-ui": "^1.7.2",
@@ -72,7 +73,7 @@
     "@types/redux-logger": "^3.0.9",
     "@types/yup": "^0.29.13",
     "axios-mock-adapter": "^1.20.0",
-    "cypress": "^9.6.0",
+    "cypress": "^9.6.1",
     "http-proxy-middleware": "^2.0.6",
     "husky": "^7.0.4",
     "lint-staged": "^12.4.0",

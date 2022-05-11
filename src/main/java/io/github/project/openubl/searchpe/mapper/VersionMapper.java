@@ -17,21 +17,31 @@
 package io.github.project.openubl.searchpe.mapper;
 
 import io.github.project.openubl.searchpe.dto.VersionDto;
+import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 
+import javax.inject.Inject;
+import java.util.Optional;
+
 @Mapper(componentModel = "cdi")
-public interface VersionMapper {
+public abstract class VersionMapper {
+
+    @Inject
+    VersionRepository versionRepository;
 
     @Mapping(source = "id", target = "id")
-    VersionDto toDto(VersionEntity entity);
+    public abstract VersionDto toDto(VersionEntity entity);
 
     @AfterMapping
-    default void setId(VersionEntity entity, @MappingTarget VersionDto dto) {
+    public void setId(VersionEntity entity, @MappingTarget VersionDto dto) {
+        Optional<VersionEntity> activeVersion = versionRepository.findActive();
+
         dto.setId(entity.id);
+        dto.setActive(activeVersion.isPresent() && activeVersion.get().id.equals(entity.id));
     }
 
 }

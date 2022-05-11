@@ -46,6 +46,7 @@ export interface Version {
   updatedAt: string;
   status: VersionStatus;
   records: number;
+  active: boolean;
 }
 
 export interface Contribuyente {
