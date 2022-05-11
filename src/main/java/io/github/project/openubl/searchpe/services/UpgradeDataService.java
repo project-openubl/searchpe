@@ -114,7 +114,7 @@ public class UpgradeDataService {
 
         LOGGER.infof("Waiting for all tasks for Version %s to be completed", versionId);
         try {
-            boolean terminated = executorService.awaitTermination(2, TimeUnit.HOURS);
+            boolean terminated = executorService.awaitTermination(6, TimeUnit.HOURS);
             if (terminated) {
                 LOGGER.infof("Executor service for Version %s gracefully terminated", versionId);
             } else {
