@@ -11,6 +11,7 @@ import {
 import {
   Button,
   ButtonVariant,
+  Label,
   PageSection,
   ToolbarGroup,
   ToolbarItem,
@@ -46,9 +47,10 @@ import { formatNumber, getAxiosErrorMessage } from "utils/modelUtils";
 
 const columns: ICell[] = [
   { title: "Id", transforms: [sortable, cellWidth(10)] },
-  { title: "Creado", transforms: [sortable, cellWidth(30)] },
-  { title: "Records", transforms: [cellWidth(30)] },
-  { title: "Estado", transforms: [cellWidth(30)] },
+  { title: "Creado", transforms: [sortable, cellWidth(20)] },
+  { title: "Records", transforms: [cellWidth(20)] },
+  { title: "Labels", transforms: [cellWidth(25)] },
+  { title: "Estado", transforms: [cellWidth(25)] },
 ];
 
 const VERSION_FIELD = "version";
@@ -65,6 +67,13 @@ const itemsToRow = (items: Version[]) => {
       },
       {
         title: formatNumber(item.records, 0),
+      },
+      {
+        title: (
+          <Label color={item.active ? "green" : "grey"}>
+            {item.active ? "Activo" : "Inactivo"}
+          </Label>
+        ),
       },
       {
         title: <VersionStatusIcon value={item.status} />,
@@ -168,7 +177,7 @@ export const Versions: React.FC = () => {
       });
     } else {
       actions.push({
-        title: "Delete",
+        title: "Eliminar",
         onClick: (
           event: React.MouseEvent,
           rowIndex: number,
