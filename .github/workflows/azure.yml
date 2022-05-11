@@ -54,5 +54,5 @@ jobs:
         with:
           inlineScript: |
             az config set extension.use_dynamic_install=yes_without_prompt
-            az containerapp registry set -n searchpe -g openubl --server ghcr.io
+            az containerapp registry set -n searchpe -g openubl --server ghcr.io --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }}
             az containerapp update -n searchpe -g openubl --image ghcr.io/project-openubl/searchpe/searchpe:${{ github.sha }}
