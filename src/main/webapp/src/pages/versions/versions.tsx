@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import Moment from "react-moment";
 
 import {
   useTable,
@@ -44,6 +43,7 @@ import { alertActions } from "store/alert";
 
 import { Version } from "api/models";
 import { formatNumber, getAxiosErrorMessage } from "utils/modelUtils";
+import { fromNow } from "utils/dateUtils";
 
 const columns: ICell[] = [
   { title: "Id", transforms: [sortable, cellWidth(10)] },
@@ -63,7 +63,7 @@ const itemsToRow = (items: Version[]) => {
         title: `#${item.id}`,
       },
       {
-        title: <Moment fromNow>{item.createdAt}</Moment>,
+        title: fromNow(item.createdAt),
       },
       {
         title: formatNumber(item.records, 0),
