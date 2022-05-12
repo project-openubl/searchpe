@@ -1,5 +1,7 @@
 import React, { useState } from "react";
-import { useFormik, FormikProvider, FormikHelpers } from "formik";
+
+import { useForm, Controller, FieldValues, FieldErrors } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
 import { object, string, array } from "yup";
 
 import {
@@ -15,7 +17,7 @@ import {
 import { EditAltIcon } from "@patternfly/react-icons";
 
 import { useCreateUserMutation, useUpdateUserMutation } from "queries/users";
-import { FormikSelectMultiple } from "shared/components";
+import { ControllerSelectMultiple } from "shared/components";
 
 import { User } from "api/models";
 import {
@@ -71,10 +73,7 @@ export const UserForm: React.FC<UserFormProps> = ({
     permissions: array().required().min(1),
   });
 
-  const onSubmit = (
-    formValues: FormValues,
-    formikHelpers: FormikHelpers<FormValues>
-  ) => {
+  const onSubmit = (formValues: FieldValues) => {
     const payload: User = {
       fullName: formValues.fullName.trim(),
       username: formValues.username,
@@ -89,198 +88,210 @@ export const UserForm: React.FC<UserFormProps> = ({
     } else {
       promise = createUserMutation.mutateAsync(payload);
     }
-    promise
+    return promise
       .then((response) => {
-        formikHelpers.setSubmitting(false);
+        reset();
         onSaved(response);
       })
       .catch((error) => {
-        formikHelpers.setSubmitting(false);
         setError(error);
       });
   };
 
-  let formik = useFormik({
-    enableReinitialize: true,
-    initialValues: initialValues,
-    validationSchema: validationSchema,
-    onSubmit: onSubmit,
+  const {
+    handleSubmit,
+    formState: { errors, isSubmitting, isValidating, isValid, isDirty },
+    control,
+    reset,
+  } = useForm({
+    defaultValues: initialValues,
+    resolver: yupResolver(validationSchema),
+    mode: "onChange",
   });
 
-  const onChangeField = (value: string, event: React.FormEvent<any>) => {
-    formik.handleChange(event);
-  };
-
   return (
-    <FormikProvider value={formik}>
-      <Form onSubmit={formik.handleSubmit}>
-        {error && (
-          <Alert
-            variant="danger"
-            isInline
-            title={getAxiosErrorMessage(error)}
-          />
-        )}
+    <Form onSubmit={handleSubmit(onSubmit)}>
+      {error && (
+        <Alert variant="danger" isInline title={getAxiosErrorMessage(error)} />
+      )}
+      <FormGroup
+        label="Nombre"
+        fieldId="fullName"
+        isRequired={false}
+        validated={getValidatedFromError(errors.fullName)}
+        helperTextInvalid={errors.fullName?.message}
+      >
+        <Controller
+          control={control}
+          name="fullName"
+          render={({
+            field: { onChange, onBlur, value, name },
+            fieldState: { isTouched, error },
+          }) => (
+            <TextInput
+              type="text"
+              name={name}
+              aria-label="fullName"
+              aria-describedby="fullName"
+              isRequired={false}
+              onChange={onChange}
+              onBlur={onBlur}
+              value={value}
+              validated={getValidatedFromErrorTouched(error, isTouched)}
+            />
+          )}
+        />
+      </FormGroup>
+      <FormGroup
+        label="Permisos"
+        fieldId="permissions"
+        isRequired={true}
+        validated={getValidatedFromError(errors.permissions)}
+        helperTextInvalid={(errors.permissions as FieldErrors)?.message}
+      >
+        <ControllerSelectMultiple
+          fieldConfig={{ name: "permissions", control: control }}
+          selectConfig={{
+            variant: "checkbox",
+            "aria-label": "permissions",
+            "aria-describedby": "permissions",
+            placeholderText: "Permisos asignados",
+          }}
+          options={ALL_PERMISSIONS}
+          isEqual={(a, b) => a === b}
+        />
+      </FormGroup>
+      <FormGroup
+        label="Usuario"
+        fieldId="username"
+        isRequired={true}
+        validated={getValidatedFromError(errors.username)}
+        helperTextInvalid={errors.username?.message}
+      >
+        <Controller
+          control={control}
+          name="username"
+          render={({
+            field: { onChange, onBlur, value, name },
+            fieldState: { isTouched, error },
+          }) => (
+            <TextInput
+              type="text"
+              name={name}
+              aria-label="username"
+              aria-describedby="username"
+              isRequired={true}
+              onChange={onChange}
+              onBlur={onBlur}
+              value={value}
+              validated={getValidatedFromErrorTouched(error, isTouched)}
+              autoComplete="off"
+            />
+          )}
+        />
+      </FormGroup>
+      {user ? (
         <FormGroup
-          label="Nombre"
-          fieldId="fullName"
-          isRequired={false}
-          validated={getValidatedFromError(formik.errors.fullName)}
-          helperTextInvalid={formik.errors.fullName}
+          label="Contraseña"
+          fieldId="password"
+          isRequired={isEditingPassword}
+          validated={
+            isEditingPassword
+              ? getValidatedFromError(errors.password)
+              : "default"
+          }
+          helperTextInvalid={isEditingPassword ? errors.password?.message : ""}
         >
-          <TextInput
-            type="text"
-            name="fullName"
-            aria-label="fullName"
-            aria-describedby="fullName"
-            isRequired={false}
-            onChange={onChangeField}
-            onBlur={formik.handleBlur}
-            value={formik.values.fullName}
-            validated={getValidatedFromErrorTouched(
-              formik.errors.fullName,
-              formik.touched.fullName
+          <Controller
+            control={control}
+            name="password"
+            render={({
+              field: { onChange, onBlur, value, name },
+              fieldState: { isTouched, error },
+            }) => (
+              <InputGroup>
+                <TextInput
+                  type="password"
+                  name={name}
+                  aria-label="password"
+                  aria-describedby="password"
+                  isRequired={isEditingPassword}
+                  onChange={onChange}
+                  onBlur={onBlur}
+                  value={isEditingPassword ? value : "******"}
+                  validated={
+                    isEditingPassword
+                      ? getValidatedFromErrorTouched(error, isTouched)
+                      : "default"
+                  }
+                  isDisabled={!isEditingPassword}
+                />
+                <Button
+                  variant="control"
+                  aria-label="change-password"
+                  onClick={() => {
+                    setIsEditingPassword((current) => {
+                      onChange("");
+                      return !current;
+                    });
+                  }}
+                >
+                  <EditAltIcon />
+                </Button>
+              </InputGroup>
             )}
           />
         </FormGroup>
+      ) : (
         <FormGroup
-          label="Permisos"
-          fieldId="permissions"
+          label="Contraseña"
+          fieldId="password"
           isRequired={true}
-          validated={getValidatedFromError(formik.errors.permissions)}
-          helperTextInvalid={formik.errors.permissions}
+          validated={getValidatedFromError(errors.password)}
+          helperTextInvalid={errors.password?.message}
         >
-          <FormikSelectMultiple
-            fieldConfig={{ name: "permissions" }}
-            selectConfig={{
-              variant: "checkbox",
-              "aria-label": "permissions",
-              "aria-describedby": "permissions",
-              placeholderText: "Permisos asignados",
-            }}
-            options={ALL_PERMISSIONS}
-            isEqual={(a, b) => a === b}
-          />
-        </FormGroup>
-        <FormGroup
-          label="Usuario"
-          fieldId="username"
-          isRequired={true}
-          validated={getValidatedFromError(formik.errors.username)}
-          helperTextInvalid={formik.errors.username}
-        >
-          <TextInput
-            type="text"
-            name="username"
-            aria-label="username"
-            aria-describedby="username"
-            isRequired={true}
-            onChange={onChangeField}
-            onBlur={formik.handleBlur}
-            value={formik.values.username}
-            validated={getValidatedFromErrorTouched(
-              formik.errors.username,
-              formik.touched.username
-            )}
-            autoComplete="off"
-          />
-        </FormGroup>
-        {user ? (
-          <FormGroup
-            label="Contraseña"
-            fieldId="password"
-            isRequired={isEditingPassword}
-            validated={
-              isEditingPassword
-                ? getValidatedFromError(formik.errors.password)
-                : "default"
-            }
-            helperTextInvalid={isEditingPassword ? formik.errors.password : ""}
-          >
-            <InputGroup>
+          <Controller
+            control={control}
+            name="password"
+            render={({
+              field: { onChange, onBlur, value, name },
+              fieldState: { isTouched, error },
+            }) => (
               <TextInput
                 type="password"
-                name="password"
+                name={name}
                 aria-label="password"
                 aria-describedby="password"
-                isRequired={isEditingPassword}
-                onChange={onChangeField}
-                onBlur={formik.handleBlur}
-                value={isEditingPassword ? formik.values.password : "******"}
-                validated={
-                  isEditingPassword
-                    ? getValidatedFromErrorTouched(
-                        formik.errors.password,
-                        formik.touched.password
-                      )
-                    : "default"
-                }
-                isDisabled={!isEditingPassword}
+                isRequired={true}
+                onChange={onChange}
+                onBlur={onBlur}
+                value={value}
+                validated={getValidatedFromErrorTouched(error, isTouched)}
               />
-              <Button
-                variant="control"
-                aria-label="change-password"
-                onClick={() => {
-                  setIsEditingPassword((current) => {
-                    formik.setFieldValue("password", "");
-                    return !current;
-                  });
-                }}
-              >
-                <EditAltIcon />
-              </Button>
-            </InputGroup>
-          </FormGroup>
-        ) : (
-          <FormGroup
-            label="Contraseña"
-            fieldId="password"
-            isRequired={true}
-            validated={getValidatedFromError(formik.errors.password)}
-            helperTextInvalid={formik.errors.password}
-          >
-            <TextInput
-              type="password"
-              name="password"
-              aria-label="password"
-              aria-describedby="password"
-              isRequired={true}
-              onChange={onChangeField}
-              onBlur={formik.handleBlur}
-              value={formik.values.password}
-              validated={getValidatedFromErrorTouched(
-                formik.errors.password,
-                formik.touched.password
-              )}
-            />
-          </FormGroup>
-        )}
+            )}
+          />
+        </FormGroup>
+      )}
 
-        <ActionGroup>
-          <Button
-            type="submit"
-            aria-label="submit"
-            variant={ButtonVariant.primary}
-            isDisabled={
-              !formik.isValid ||
-              !formik.dirty ||
-              formik.isSubmitting ||
-              formik.isValidating
-            }
-          >
-            {!user ? "Crear" : "Guardar"}
-          </Button>
-          <Button
-            type="button"
-            aria-label="cancel"
-            variant={ButtonVariant.link}
-            isDisabled={formik.isSubmitting || formik.isValidating}
-            onClick={onCancel}
-          >
-            Cancelar
-          </Button>
-        </ActionGroup>
-      </Form>
-    </FormikProvider>
+      <ActionGroup>
+        <Button
+          type="submit"
+          aria-label="submit"
+          variant={ButtonVariant.primary}
+          isDisabled={!isValid || !isDirty || isSubmitting || isValidating}
+        >
+          {!user ? "Crear" : "Guardar"}
+        </Button>
+        <Button
+          type="button"
+          aria-label="cancel"
+          variant={ButtonVariant.link}
+          isDisabled={isSubmitting || isValidating}
+          onClick={onCancel}
+        >
+          Cancelar
+        </Button>
+      </ActionGroup>
+    </Form>
   );
 };

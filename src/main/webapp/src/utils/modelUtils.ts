@@ -21,7 +21,7 @@ export const formatNumber = (value: number, fractionDigits = 2) => {
   });
 };
 
-// Formik
+// Form
 
 export const getValidatedFromError = (
   error: any

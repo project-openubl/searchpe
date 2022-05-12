@@ -1,4 +1,4 @@
-import { FieldHookConfig, useField } from "formik";
+import { useController, UseControllerProps } from "react-hook-form";
 import { SelectOptionObject } from "@patternfly/react-core";
 
 import {
@@ -9,8 +9,8 @@ import {
 
 type OptionLike = string | SelectOptionObject | OptionWithValue;
 
-export interface IFormikSelectMultipleProps {
-  fieldConfig: FieldHookConfig<OptionLike[]>;
+export interface IControllerSelectMultipleProps {
+  fieldConfig: UseControllerProps<any>;
   selectConfig: Omit<
     ISimpleSelectProps,
     "value" | "options" | "onChange" | "onClear"
@@ -19,13 +19,13 @@ export interface IFormikSelectMultipleProps {
   isEqual?: (a: OptionLike, b: OptionLike) => boolean;
 }
 
-export const FormikSelectMultiple = ({
+export const ControllerSelectMultiple = ({
   fieldConfig,
   selectConfig,
   options,
   isEqual = (a, b) => a === b,
-}: IFormikSelectMultipleProps) => {
-  const [field, , helpers] = useField(fieldConfig);
+}: IControllerSelectMultipleProps) => {
+  const { field } = useController(fieldConfig);
 
   return (
     <SimpleSelect
@@ -63,9 +63,9 @@ export const FormikSelectMultiple = ({
           nextValue = [...currentValue, selectionValue];
         }
 
-        helpers.setValue(nextValue);
+        field.onChange(nextValue);
       }}
-      onClear={() => helpers.setValue([])}
+      onClear={() => field.onChange([])}
       {...selectConfig}
     />
   );
