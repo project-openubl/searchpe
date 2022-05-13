@@ -32,6 +32,8 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.metrics.annotation.Counted;
 import org.eclipse.microprofile.metrics.annotation.Timed;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.jboss.resteasy.reactive.RestResponse;
+import org.jboss.resteasy.reactive.RestResponse.ResponseBuilder;
 
 import javax.annotation.security.RolesAllowed;
 import javax.enterprise.context.ApplicationScoped;
@@ -45,7 +47,6 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Response;
 import java.util.List;
 import java.util.Optional;
 
@@ -111,8 +112,8 @@ public class ContribuyenteResource {
     @Produces("application/json")
     @Counted(name = "getContribuyenteChecks", description = "How many times the endpoint was used")
     @Timed(name = "getContribuyenteTimer", description = "How long it took to serve the data")
-    public Response getContribuyente(@PathParam("numeroDocumento") String numeroDocumento) {
-        Response notFound = Response.status(Response.Status.NOT_FOUND).build();
+    public RestResponse<ContribuyenteEntity> getContribuyente(@PathParam("numeroDocumento") String numeroDocumento) {
+        RestResponse<ContribuyenteEntity> notFound = ResponseBuilder.<ContribuyenteEntity>notFound().build();
 
         if (numeroDocumento == null || numeroDocumento.trim().isEmpty()) {
             return notFound;
@@ -121,11 +122,11 @@ public class ContribuyenteResource {
         VersionEntity version = versionRepository.findActive().orElseThrow(NotFoundException::new);
         if (numeroDocumento.trim().length() == 11) {
             return contribuyenteRepository.findByRuc(version, numeroDocumento)
-                    .map(entity -> Response.ok(entity).build())
+                    .map(entity -> ResponseBuilder.ok(entity).build())
                     .orElse(notFound);
         } if (numeroDocumento.trim().length() == 8) {
             return contribuyenteRepository.findByDni(version, numeroDocumento)
-                    .map(entity -> Response.ok(entity).build())
+                    .map(entity -> ResponseBuilder.ok(entity).build())
                     .orElse(notFound);
         } else {
             return notFound;
