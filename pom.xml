@@ -346,6 +346,7 @@
                                 <exclude>**/src/main/docker/**</exclude>
                                 <exclude>**/src/main/kubernetes/**</exclude>
                                 <exclude>**/src/main/webapp/**</exclude>
+                                <exclude>**/src/jreleaser/templates/**</exclude>
                                 <exclude>workspace/**</exclude>
                                 <exclude>.github/**</exclude>
                                 <exclude>.mvn/**</exclude>
