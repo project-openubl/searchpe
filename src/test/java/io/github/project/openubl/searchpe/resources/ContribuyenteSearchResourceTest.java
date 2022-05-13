@@ -18,8 +18,8 @@ package io.github.project.openubl.searchpe.resources;
 
 import io.github.project.openubl.searchpe.AbstractBaseTest;
 import io.github.project.openubl.searchpe.BasicProfileManager;
+import io.github.project.openubl.searchpe.dto.VersionDto;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
-import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
@@ -44,25 +44,25 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
     @Test
     public void getContribuyentes() {
         // Given
-        VersionEntity version = givenAuth("alice")
+        VersionDto version = givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
                 .post("/api/versions")
                 .then()
                 .statusCode(200)
                 .body(notNullValue())
-                .extract().body().as(VersionEntity.class);
+                .extract().body().as(VersionDto.class);
 
         assertNotNull(version);
 
         await().atMost(3, TimeUnit.MINUTES)
                 .until(() -> {
-                    VersionEntity watchedVersion = givenAuth("alice")
+                    VersionDto watchedVersion = givenAuth("alice")
                             .header("Content-Type", "application/json")
                             .when()
                             .get("/api/versions/" + version.id)
                             .then()
-                            .extract().body().as(VersionEntity.class);
+                            .extract().body().as(VersionDto.class);
                     return watchedVersion.status == Status.COMPLETED;
                 });
 
@@ -84,25 +84,25 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
     @Test
     public void getContribuyentesUsingTextFilter() {
         // Given
-        VersionEntity version = givenAuth("alice")
+        VersionDto version = givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
                 .post("/api/versions")
                 .then()
                 .statusCode(200)
                 .body(notNullValue())
-                .extract().body().as(VersionEntity.class);
+                .extract().body().as(VersionDto.class);
 
         assertNotNull(version);
 
         await().atMost(3, TimeUnit.MINUTES)
                 .until(() -> {
-                    VersionEntity watchedVersion = givenAuth("alice")
+                    VersionDto watchedVersion = givenAuth("alice")
                             .header("Content-Type", "application/json")
                             .when()
                             .get("/api/versions/" + version.id)
                             .then()
-                            .extract().body().as(VersionEntity.class);
+                            .extract().body().as(VersionDto.class);
                     return watchedVersion.status == Status.COMPLETED;
                 });
 
@@ -127,25 +127,25 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
     @Test
     public void getContribuyentesUsingTipoPersonaFilter() {
         // Given
-        VersionEntity version = givenAuth("alice")
+        VersionDto version = givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
                 .post("/api/versions")
                 .then()
                 .statusCode(200)
                 .body(notNullValue())
-                .extract().body().as(VersionEntity.class);
+                .extract().body().as(VersionDto.class);
 
         assertNotNull(version);
 
         await().atMost(3, TimeUnit.MINUTES)
                 .until(() -> {
-                    VersionEntity watchedVersion = givenAuth("alice")
+                    VersionDto watchedVersion = givenAuth("alice")
                             .header("Content-Type", "application/json")
                             .when()
                             .get("/api/versions/" + version.id)
                             .then()
-                            .extract().body().as(VersionEntity.class);
+                            .extract().body().as(VersionDto.class);
                     return watchedVersion.status == Status.COMPLETED;
                 });
 
@@ -168,25 +168,25 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
     @Test
     public void getContribuyentesUsingFilterTextAndTipoPersonaFilter() {
         // Given
-        VersionEntity version = givenAuth("alice")
+        VersionDto version = givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
                 .post("/api/versions")
                 .then()
                 .statusCode(200)
                 .body(notNullValue())
-                .extract().body().as(VersionEntity.class);
+                .extract().body().as(VersionDto.class);
 
         assertNotNull(version);
 
         await().atMost(3, TimeUnit.MINUTES)
                 .until(() -> {
-                    VersionEntity watchedVersion = givenAuth("alice")
+                    VersionDto watchedVersion = givenAuth("alice")
                             .header("Content-Type", "application/json")
                             .when()
                             .get("/api/versions/" + version.id)
                             .then()
-                            .extract().body().as(VersionEntity.class);
+                            .extract().body().as(VersionDto.class);
                     return watchedVersion.status == Status.COMPLETED;
                 });
 

@@ -18,8 +18,8 @@ package io.github.project.openubl.searchpe.resources;
 
 import io.github.project.openubl.searchpe.AbstractBaseTest;
 import io.github.project.openubl.searchpe.DefaultProfileManager;
+import io.github.project.openubl.searchpe.dto.VersionDto;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
-import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
@@ -163,14 +163,14 @@ public class VersionResourceTest extends AbstractBaseTest {
         // Given
 
         // When
-        VersionEntity version = givenAuth("alice")
+        VersionDto version = givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
                 .post("/")
                 .then()
                 .statusCode(200)
                 .body(notNullValue())
-                .extract().body().as(VersionEntity.class);
+                .extract().body().as(VersionDto.class);
 
         assertNotNull(version);
 
@@ -178,12 +178,12 @@ public class VersionResourceTest extends AbstractBaseTest {
         await()
                 .atMost(3, TimeUnit.MINUTES)
                 .until(() -> {
-                    VersionEntity watchedVersion = givenAuth("alice")
+                    VersionDto watchedVersion = givenAuth("alice")
                             .header("Content-Type", "application/json")
                             .when()
                             .get("/" + version.id)
                             .then()
-                            .extract().body().as(VersionEntity.class);
+                            .extract().body().as(VersionDto.class);
                     return watchedVersion.status == Status.COMPLETED;
                 });
 
