@@ -354,7 +354,7 @@
                     </licenseSets>
                     <properties>
                         <owner>Project OpenUBL</owner>
-                        <email>projectopenubl+subscribe@googlegroups.com</email>
+                        <email>projectopenubl@googlegroups.com</email>
                     </properties>
                 </configuration>
                 <executions>
