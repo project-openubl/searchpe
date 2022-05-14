@@ -191,7 +191,7 @@ jobs:
           docker push quay.io/projectopenubl/searchpe:v${{ steps.version.outputs.RELEASE_VERSION }}
 
       - name: JReleaser - release
-        uses: jreleaser/release-action@v1
+        uses: jreleaser/release-action@v2
         env:
           JRELEASER_GITHUB_TOKEN: ${{ secrets.JRELEASER_GITHUB_TOKEN }}
           JRELEASER_PROJECT_VERSION: ${{ steps.version.outputs.RELEASE_VERSION }}
