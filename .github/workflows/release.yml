@@ -190,7 +190,7 @@ jobs:
           docker push quay.io/projectopenubl/searchpe:latest
           docker push quay.io/projectopenubl/searchpe:v${{ steps.version.outputs.RELEASE_VERSION }}
 
-      - name: Release with JReleaser
+      - name: JReleaser - release
         uses: jreleaser/release-action@v1
         env:
           JRELEASER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -204,6 +204,14 @@ jobs:
           JRELEASER_SLACK_WEBHOOK: ${{ secrets.JRELEASER_SLACK_WEBHOOK }}
           JRELEASER_MAIL_PASSWORD: ${{ secrets.JRELEASER_MAIL_PASSWORD }}
           JRELEASER_ARTICLE_: ${{ secrets.JRELEASER_ARTICLE_TOKEN }}
+      - name: JReleaser - generate log
+        shell: bash
+        run: tar -czvf jreleaser-log.tgz out/
+      - name: JReleaser - upload log
+        uses: actions/upload-artifact@v3
+        with:
+          name: jreleaser-log
+          path: 'jreleaser-log.tgz'
 
       - name: Set next version
         env:
