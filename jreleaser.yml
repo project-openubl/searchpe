@@ -60,6 +60,7 @@ announce:
     repository:
       owner: project-openubl
       name: website
+      branch: master
     files:
       - path: 'release.md'
         transform: 'blog/{{#f_now}}YYYY-MM-dd{{/f_now}}/{{projectName}}-{{#f_dash}}{{projectVersion}}{{/f_dash}}-released.md'
