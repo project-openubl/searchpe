@@ -44,7 +44,7 @@ announce:
   mail:
     active: RELEASE
     mimeType: TEXT
-    transport: SMTPS
+    transport: smtp
     port: 587
     auth: true
     host: smtp.gmail.com
@@ -61,6 +61,7 @@ announce:
       owner: project-openubl
       name: website
       branch: master
+      username: carlosthe19916
     files:
       - path: 'release.md'
         transform: 'blog/{{#f_now}}YYYY-MM-dd{{/f_now}}/{{projectName}}-{{#f_dash}}{{projectVersion}}{{/f_dash}}-released.md'
