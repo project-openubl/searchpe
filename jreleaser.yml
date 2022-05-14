@@ -44,6 +44,7 @@ announce:
   mail:
     active: RELEASE
     mimeType: TEXT
+    transport: SMTPS
     port: 587
     auth: true
     host: smtp.gmail.com
