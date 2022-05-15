@@ -20,6 +20,8 @@ import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.services.VersionService;
+import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.narayana.jta.RunOptions;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.jboss.logging.Logger;
 import org.quartz.Job;
@@ -27,11 +29,6 @@ import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 
 import javax.inject.Inject;
-import javax.transaction.HeuristicMixedException;
-import javax.transaction.HeuristicRollbackException;
-import javax.transaction.NotSupportedException;
-import javax.transaction.RollbackException;
-import javax.transaction.SystemException;
 import javax.transaction.UserTransaction;
 import java.util.Objects;
 import java.util.Optional;
@@ -54,26 +51,20 @@ public class DeleteVersionsCronJob implements Job {
     public void execute(JobExecutionContext context) throws JobExecutionException {
         logger.error("Starting cleaning of unused VersionEntities Cron");
 
-        try {
-            tx.begin();
+        QuarkusTransaction.run(
+                QuarkusTransaction.runOptions()
+                        .timeout(5 * 60)
+                        .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
+                        .semantic(RunOptions.Semantic.DISALLOW_EXISTING),
+                () -> {
+                    Optional<VersionEntity> activeVersion = versionRepository.findActive();
 
-            Optional<VersionEntity> activeVersion = versionRepository.findActive();
-
-            versionRepository.listAll().stream()
-                    .filter(f -> f.status.equals(Status.COMPLETED) || f.status.equals(Status.ERROR))
-                    .filter(f -> activeVersion.map(versionEntity -> !Objects.equals(versionEntity, f)).orElse(true))
-                    .peek(f -> logger.info("Deleting VersionEntity:" + f.id))
-                    .forEach(f -> versionService.deleteVersion(f.id));
-
-            tx.commit();
-        } catch (NotSupportedException | HeuristicRollbackException | HeuristicMixedException | RollbackException |
-                 SystemException e) {
-            try {
-                tx.rollback();
-            } catch (SystemException se) {
-                throw new IllegalStateException(se);
-            }
-            return;
-        }
+                    versionRepository.listAll().stream()
+                            .filter(f -> f.status.equals(Status.COMPLETED) || f.status.equals(Status.ERROR))
+                            .filter(f -> activeVersion.map(versionEntity -> !Objects.equals(versionEntity, f)).orElse(true))
+                            .peek(f -> logger.info("Deleting VersionEntity:" + f.id))
+                            .forEach(f -> versionService.deleteVersion(f.id));
+                }
+        );
     }
 }
