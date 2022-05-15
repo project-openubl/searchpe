@@ -239,9 +239,6 @@ public class VersionResource {
                     quartz.unscheduleJob(triggerKey);
                 }
 
-
-                List<JobExecutionContext> currentlyExecutingJobs = quartz.getCurrentlyExecutingJobs();
-
                 Optional<JobExecutionContext> currentExecutingJob = quartz.getCurrentlyExecutingJobs().stream()
                         .filter(jobExecutionContext -> jobExecutionContext.getTrigger().getKey().equals(triggerKey))
                         .findFirst();
