@@ -92,7 +92,7 @@ public class ContribuyenteRepository implements PanacheRepositoryBase<Contribuye
                 queryBuilder.append(" and c.dni is not null");
             }
         }
-        if (filterBean.getFilterText() != null) {
+        if (filterBean.getFilterText() != null && !filterBean.getFilterText().isBlank()) {
             queryBuilder.append(" and lower(c.nombre) like :filterText");
             parameters.and("filterText", "%" + filterBean.getFilterText().toLowerCase() + "%");
         }

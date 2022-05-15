@@ -22,3 +22,7 @@ column version_id type int8;
 alter table if exists CONTRIBUYENTE rename column numero_documento to ruc;
 alter table if exists CONTRIBUYENTE add column dni varchar (8) null;
 alter table if exists CONTRIBUYENTE drop tipo_persona;
+
+create index contribuyente_version_fkey on public.contribuyente (version_id);
+create index contribuyente_dni_index on public.contribuyente (version_id, dni);
+create index contribuyente_nombre_index on public.contribuyente (version_id, nombre);

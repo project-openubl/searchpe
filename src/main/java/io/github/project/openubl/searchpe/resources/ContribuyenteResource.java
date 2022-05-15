@@ -79,7 +79,7 @@ public class ContribuyenteResource {
             @QueryParam("tipoPersona") String tipoPersona,
             @QueryParam("offset") @DefaultValue("0") @Max(9_000) Integer offset,
             @QueryParam("limit") @DefaultValue("10") @Max(1_000) Integer limit,
-            @QueryParam("sort_by") List<String> sortBy
+            @QueryParam("sort_by") @DefaultValue("name") List<String> sortBy
     ) {
         Optional<VersionEntity> versionOptional = versionRepository.findActive();
         if (versionOptional.isEmpty()) {
