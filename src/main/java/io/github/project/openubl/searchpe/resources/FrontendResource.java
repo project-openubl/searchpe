@@ -50,6 +50,9 @@ public class FrontendResource {
     @ConfigProperty(name = "quarkus.oidc.logout.path")
     Optional<String> oidcLogoutPath;
 
+    @ConfigProperty(name = "quarkus.application.version")
+    Optional<String> applicationVersion;
+
     @Authenticated
     @GET
     @Path("/settings.js")
@@ -68,7 +71,8 @@ public class FrontendResource {
                 .data("defaultAuthMethod", defaultAuthMethod)
                 .data("formCookieName", formCookieName.orElse(""))
                 .data("oidcLogoutPath", oidcLogoutPath.orElse(""))
-                .data("isElasticsearchEnabled", isESEnabled.isPresent() && isESEnabled.get());
+                .data("isElasticsearchEnabled", isESEnabled.isPresent() && isESEnabled.get())
+                .data("applicationVersion", applicationVersion.orElse(""));
     }
 
 }
