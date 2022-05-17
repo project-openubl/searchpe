@@ -35,7 +35,8 @@ public class DataHelper {
                 } else {
                     result[i] = value
                             .replaceAll("�", "Ñ")
-                            .replaceAll("\\?", "Ñ");
+                            .replaceAll("\\?", "Ñ")
+                            .replaceAll("\"", "");
                 }
             } else {
                 result[i] = null;

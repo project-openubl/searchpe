@@ -25,41 +25,73 @@ import io.github.project.openubl.searchpe.utils.DataHelper;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.narayana.jta.RunOptions;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
+import org.postgresql.copy.CopyManager;
+import org.postgresql.core.BaseConnection;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Event;
 import javax.inject.Inject;
+import javax.sql.DataSource;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.sql.Connection;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutionException;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 @ApplicationScoped
 public class UpgradeDataService {
 
     private static final Logger LOGGER = Logger.getLogger(UpgradeDataService.class);
 
+    private static final String COLUMNS = new StringBuilder()
+            .append("version_id").append(",")
+            .append("ruc").append(",")
+            .append("dni").append(",")
+            .append("nombre").append(",")
+            .append("estado").append(",")
+            .append("condicion_domicilio").append(",")
+            .append("ubigeo").append(",")
+            .append("tipo_via").append(",")
+            .append("nombre_via").append(",")
+            .append("codigo_zona").append(",")
+            .append("tipo_zona").append(",")
+            .append("numero").append(",")
+            .append("interior").append(",")
+            .append("lote").append(",")
+            .append("departamento").append(",")
+            .append("manzana").append(",")
+            .append("kilometro")
+            .toString();
+
+    private static final String CSV_HEADER = COLUMNS + System.lineSeparator();
+
     @ConfigProperty(name = "searchpe.sunat.filter")
     Optional<List<EstadoContribuyente>> sunatFilter;
 
     @ConfigProperty(name = "searchpe.sunat.chunkSize")
     int chunkSize;
+
+    @Inject
+    DataSource dataSource;
 
     @Inject
     FileService fileService;
@@ -129,6 +161,7 @@ public class UpgradeDataService {
         File downloadedFile;
         File unzippedFolder;
         File txtFile;
+        File csvFolder;
 
         // Download file
         try {
@@ -147,7 +180,8 @@ public class UpgradeDataService {
         // Persist data
         try {
             importingVersionEvent.fire(() -> versionId);
-            createContribuyentesFromFile(versionId, txtFile);
+            csvFolder = createCSVFromFile(versionId, txtFile);
+            createContribuyentesFromFile(versionId, csvFolder);
         } catch (IOException e) {
             LOGGER.error(e);
             return;
@@ -172,21 +206,27 @@ public class UpgradeDataService {
         executorService.shutdownNow();
     }
 
-    private void createContribuyentesFromFile(Long versionId, File file) throws IOException {
-        LOGGER.infof("Start importing contribuyentes");
+    private File createCSVFromFile(Long versionId, File file) throws IOException {
+        LOGGER.infof("Start creating CSV");
         long startTime = Calendar.getInstance().getTimeInMillis();
 
         int totalCount = 0;
         int batchCount = 0;
 
-        List<ContribuyenteEntity> contribuyentes = new ArrayList<>();
+        Path csvPath = file.getParentFile().toPath().resolve(UUID.randomUUID() + ".csv");
+        File csvFile = csvPath.toFile();
+        csvFile.createNewFile();
+        FileWriter csvFileWriter = new FileWriter(csvFile, StandardCharsets.ISO_8859_1);
+        csvFileWriter.write(CSV_HEADER);
+
+        String row;
+
         try (
                 FileReader fileReader = new FileReader(file, StandardCharsets.ISO_8859_1);
                 BufferedReader br = new BufferedReader(fileReader)
         ) {
             String line;
             boolean skip = true;
-
             int batchSize = chunkSize;
 
             while ((line = br.readLine()) != null) {
@@ -210,35 +250,98 @@ public class UpgradeDataService {
                     }
                 }
 
-                contribuyentes.add(contribuyente);
+                row = new StringBuilder()
+                        .append("\"").append(contribuyente.getId().getVersionId()).append("\"").append(",")
+                        .append("\"").append(Objects.toString(contribuyente.getId().getRuc(), "")).append("\"").append(",")
+                        .append("\"").append(Objects.toString(contribuyente.getDni(), "")).append("\"").append(",")
+                        .append("\"").append(Objects.toString(contribuyente.getNombre(), "")).append("\"").append(",")
+                        .append("\"").append(Objects.toString(contribuyente.getEstado(), "")).append("\"").append(",")
+                        .append("\"").append(Objects.toString(contribuyente.getCondicionDomicilio(), "")).append("\"").append(",")
+                        .append("\"").append(Objects.toString(contribuyente.getUbigeo(), "")).append("\"").append(",")
+                        .append("\"").append(Objects.toString(contribuyente.getTipoVia(), "")).append("\"").append(",")
+                        .append("\"").append(Objects.toString(contribuyente.getNombreVia(), "")).append("\"").append(",")
+                        .append("\"").append(Objects.toString(contribuyente.getCodigoZona(), "")).append("\"").append(",")
+                        .append("\"").append(Objects.toString(contribuyente.getTipoZona(), "")).append("\"").append(",")
+                        .append("\"").append(Objects.toString(contribuyente.getNumero(), "")).append("\"").append(",")
+                        .append("\"").append(Objects.toString(contribuyente.getInterior(), "")).append("\"").append(",")
+                        .append("\"").append(Objects.toString(contribuyente.getLote(), "")).append("\"").append(",")
+                        .append("\"").append(Objects.toString(contribuyente.getDepartamento(), "")).append("\"").append(",")
+                        .append("\"").append(Objects.toString(contribuyente.getManzana(), "")).append("\"").append(",")
+                        .append("\"").append(Objects.toString(contribuyente.getKilometro(), "")).append("\"")
+                        .append(System.lineSeparator())
+                        .toString();
+                csvFileWriter.write(row);
 
                 totalCount = totalCount + 1;
                 batchCount = batchCount + 1;
 
                 // Time to save data
                 if (batchCount >= batchSize) {
-                    saveProgress(versionId, contribuyentes).toCompletableFuture().get();
+                    csvFileWriter.close();
 
                     // Reset
                     batchCount = 0;
-                    contribuyentes.clear();
+
+                    // Create new chunk file
+                    csvPath = file.getParentFile().toPath().resolve(UUID.randomUUID() + ".csv");
+                    csvFile = csvPath.toFile();
+                    csvFile.createNewFile();
+                    csvFileWriter = new FileWriter(csvFile, StandardCharsets.ISO_8859_1);
+                    csvFileWriter.write(CSV_HEADER);
                 }
             }
-        } catch (ExecutionException | InterruptedException e) {
-            throw new RuntimeException(e);
         }
 
-        // Save remaining data
-        try {
-            if (!contribuyentes.isEmpty()) {
-                saveProgress(versionId, contribuyentes).toCompletableFuture().get();
-            }
-        } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
+        csvFileWriter.close();
+
+        long endTime = Calendar.getInstance().getTimeInMillis();
+        LOGGER.infof("CSV files created in " + (endTime - startTime) + " milliseconds.");
+
+        return csvFile.getParentFile();
+    }
+
+    private void createContribuyentesFromFile(Long versionId, File file) throws IOException {
+        LOGGER.infof("Start importing contribuyentes");
+        long startTime = Calendar.getInstance().getTimeInMillis();
+
+        Long records;
+        try (Stream<Path> paths = Files.walk(file.toPath())) {
+            records = paths
+                    .filter(path -> {
+                        String fileName = path.toFile().getName();
+                        String extension = FilenameUtils.getExtension(fileName);
+                        return extension.equalsIgnoreCase("csv");
+                    })
+                    .map(path -> {
+                        long rowsInserted;
+
+                        try (
+                                FileReader fileReader = new FileReader(path.toFile());
+                                BufferedReader bufferedReader = new BufferedReader(fileReader);
+
+                                Connection connection = dataSource.getConnection()
+                        ) {
+                            BaseConnection baseConnection = connection.unwrap(BaseConnection.class);
+                            CopyManager copyManager = new CopyManager(baseConnection);
+
+                            String sql = "COPY contribuyente (" + COLUMNS + ") FROM STDIN (FORMAT csv, HEADER true, DELIMITER ',')";
+                            rowsInserted = copyManager.copyIn(sql, bufferedReader);
+
+                            LOGGER.infof("%d row(s) inserted", rowsInserted);
+                        } catch (IOException e) {
+                            LOGGER.error(e);
+                            throw new RuntimeException(e);
+                        } catch (Throwable e) {
+                            LOGGER.error(e);
+                            throw new IllegalStateException(e);
+                        }
+
+                        return rowsInserted;
+                    })
+                    .reduce(0L, Long::sum);
         }
 
         // Save final state of version
-        int records = totalCount;
         QuarkusTransaction.run(QuarkusTransaction.runOptions()
                 .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
                 .semantic(RunOptions.Semantic.DISALLOW_EXISTING), () -> {
@@ -246,29 +349,12 @@ public class UpgradeDataService {
             VersionEntity version = VersionEntity.findById(versionId);
             version.status = Status.COMPLETED;
             version.updatedAt = new Date();
-            version.records = records;
+            version.records = records.intValue();
             version.persist();
         });
 
         long endTime = Calendar.getInstance().getTimeInMillis();
         LOGGER.infof("Import contribuyentes finished successfully in " + (endTime - startTime) + " milliseconds.");
-    }
-
-    private CompletionStage<Void> saveProgress(Long versionId, List<ContribuyenteEntity> contribuyentes) {
-        return CompletableFuture.runAsync(() -> {
-            QuarkusTransaction.run(QuarkusTransaction.runOptions()
-                    .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
-                    .semantic(RunOptions.Semantic.DISALLOW_EXISTING), () -> {
-                VersionEntity version = VersionEntity.findById(versionId);
-                version.records = version.records + contribuyentes.size();
-                version.updatedAt = new Date();
-                version.persist();
-
-                ContribuyenteEntity.persist(contribuyentes);
-            });
-
-            LOGGER.debugf("Chunk processed size=" + contribuyentes.size());
-        });
     }
 
 }
