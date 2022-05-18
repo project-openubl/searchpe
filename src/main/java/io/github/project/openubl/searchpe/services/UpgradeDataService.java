@@ -44,12 +44,16 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -180,8 +184,10 @@ public class UpgradeDataService {
         // Persist data
         try {
             importingVersionEvent.fire(() -> versionId);
+//            createContribuyentesFromTxtFile(versionId, txtFile);
+
             csvFolder = createCSVFromFile(versionId, txtFile);
-            createContribuyentesFromFile(versionId, csvFolder);
+            createContribuyentesFromCSVFiles(versionId, csvFolder);
         } catch (IOException e) {
             LOGGER.error(e);
             return;
@@ -204,6 +210,105 @@ public class UpgradeDataService {
 
     private void shutdownExecutorService(ExecutorService executorService) {
         executorService.shutdownNow();
+    }
+
+    private void createContribuyentesFromTxtFile(Long versionId, File txtFile) throws IOException {
+        LOGGER.infof("Start importing contribuyentes");
+        long startTime = Calendar.getInstance().getTimeInMillis();
+
+        int totalCount = 0;
+        int batchCount = 0;
+
+        List<ContribuyenteEntity> contribuyentes = new ArrayList<>();
+        try (
+                FileReader fileReader = new FileReader(txtFile, StandardCharsets.ISO_8859_1);
+                BufferedReader br = new BufferedReader(fileReader)
+        ) {
+            String line;
+            boolean skip = true;
+
+            int batchSize = chunkSize;
+
+            while ((line = br.readLine()) != null) {
+                if (skip) {
+                    skip = false;
+                    continue;
+                }
+
+                String[] columns = DataHelper.readLine(line, 15);
+
+                Optional<ContribuyenteEntity> contribuyenteOptional = DataHelper.buildContribuyenteEntity(versionId, columns);
+                if (contribuyenteOptional.isEmpty()) {
+                    continue;
+                }
+                ContribuyenteEntity contribuyente = contribuyenteOptional.get();
+                Optional<EstadoContribuyente> estadoContribuyente = EstadoContribuyente.fromString(contribuyente.estado);
+                if (sunatFilter.isPresent()) {
+                    boolean shouldBeSaved = estadoContribuyente.isPresent() && sunatFilter.get().contains(estadoContribuyente.get());
+                    if (!shouldBeSaved && contribuyente.getDni() == null) {
+                        continue;
+                    }
+                }
+
+                contribuyentes.add(contribuyente);
+
+                totalCount = totalCount + 1;
+                batchCount = batchCount + 1;
+
+                // Time to save data
+                if (batchCount >= batchSize) {
+                    saveProgress(versionId, contribuyentes).toCompletableFuture().get();
+
+                    // Reset
+                    batchCount = 0;
+                    contribuyentes.clear();
+                }
+            }
+        } catch (ExecutionException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        // Save remaining data
+        try {
+            if (!contribuyentes.isEmpty()) {
+                saveProgress(versionId, contribuyentes).toCompletableFuture().get();
+            }
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+
+        // Save final state of version
+        int records = totalCount;
+        QuarkusTransaction.run(QuarkusTransaction.runOptions()
+                .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
+                .semantic(RunOptions.Semantic.DISALLOW_EXISTING), () -> {
+
+            VersionEntity version = VersionEntity.findById(versionId);
+            version.status = Status.COMPLETED;
+            version.updatedAt = new Date();
+            version.records = records;
+            version.persist();
+        });
+
+        long endTime = Calendar.getInstance().getTimeInMillis();
+        LOGGER.infof("Import contribuyentes finished successfully in " + (endTime - startTime) + " milliseconds.");
+    }
+
+    private CompletionStage<Void> saveProgress(Long versionId, List<ContribuyenteEntity> contribuyentes) {
+        return CompletableFuture.runAsync(() -> {
+            QuarkusTransaction.run(QuarkusTransaction.runOptions()
+                    .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
+                    .semantic(RunOptions.Semantic.DISALLOW_EXISTING), () -> {
+                VersionEntity version = VersionEntity.findById(versionId);
+                version.records = version.records + contribuyentes.size();
+                version.updatedAt = new Date();
+                version.persist();
+
+                ContribuyenteEntity.persist(contribuyentes);
+            });
+
+            LOGGER.debugf("Chunk processed size=" + contribuyentes.size());
+        });
     }
 
     private File createCSVFromFile(Long versionId, File file) throws IOException {
@@ -300,7 +405,7 @@ public class UpgradeDataService {
         return csvFile.getParentFile();
     }
 
-    private void createContribuyentesFromFile(Long versionId, File file) throws IOException {
+    private void createContribuyentesFromCSVFiles(Long versionId, File file) throws IOException {
         LOGGER.infof("Start importing contribuyentes");
         long startTime = Calendar.getInstance().getTimeInMillis();
 
@@ -328,6 +433,7 @@ public class UpgradeDataService {
                             rowsInserted = copyManager.copyIn(sql, bufferedReader);
 
                             LOGGER.infof("%d row(s) inserted", rowsInserted);
+                            saveProgress(versionId, rowsInserted);
                         } catch (IOException e) {
                             LOGGER.error(e);
                             throw new RuntimeException(e);
@@ -357,4 +463,16 @@ public class UpgradeDataService {
         LOGGER.infof("Import contribuyentes finished successfully in " + (endTime - startTime) + " milliseconds.");
     }
 
+    private void saveProgress(Long versionId, Long rowsInserted) {
+        QuarkusTransaction.run(QuarkusTransaction.runOptions()
+                .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
+                .semantic(RunOptions.Semantic.DISALLOW_EXISTING), () -> {
+            VersionEntity version = VersionEntity.findById(versionId);
+            version.records = version.records + rowsInserted.intValue();
+            version.updatedAt = new Date();
+            version.persist();
+        });
+
+        LOGGER.debugf("Chunk processed size=" + rowsInserted);
+    }
 }
