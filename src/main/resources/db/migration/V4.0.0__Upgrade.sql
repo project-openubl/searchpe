@@ -16,31 +16,30 @@ alter table BASIC_USER
         column version type int4;
 
 -- Contribuyente
+drop sequence if exists hibernate_sequence_version;
+create sequence hibernate_sequence_version start 1 increment 1;
+
 drop table if exists CONTRIBUYENTE;
 create table CONTRIBUYENTE
 (
-    version_id          int8         NOT NULL,
-    ruc                 VARCHAR(11)  NOT NULL,
-    dni                 VARCHAR(8)   NULL,
-    nombre              VARCHAR(150) NOT NULL,
-    estado              VARCHAR(30),
-    condicion_domicilio VARCHAR(30),
-    ubigeo              VARCHAR(6),
-    tipo_via            VARCHAR(30),
-    nombre_via          VARCHAR(100),
-    codigo_zona         VARCHAR(30),
-    tipo_zona           VARCHAR(30),
-    numero              VARCHAR(30),
-    interior            VARCHAR(30),
-    lote                VARCHAR(30),
-    departamento        VARCHAR(30),
-    manzana             VARCHAR(30),
-    kilometro           VARCHAR(30)
---     PRIMARY KEY (version_id, ruc)
-) PARTITION BY HASH (version_id);
-
--- alter table CONTRIBUYENTE
---     add constraint fk_contribuyente_version foreign key (version_id) references VERSION;
+    version_id          int8         not null,
+    ruc                 varchar(11)  not null,
+    dni                 varchar(8)   null,
+    nombre              varchar(150) not null,
+    estado              varchar(30),
+    condicion_domicilio varchar(30),
+    ubigeo              varchar(6),
+    tipo_via            varchar(30),
+    nombre_via          varchar(100),
+    codigo_zona         varchar(30),
+    tipo_zona           varchar(30),
+    numero              varchar(30),
+    interior            varchar(30),
+    lote                varchar(30),
+    departamento        varchar(30),
+    manzana             varchar(30),
+    kilometro           varchar(30)
+) partition by hash (version_id);
 
 create index contribuyente_ruc_index on contribuyente using hash (ruc);
 create index contribuyente_dni_index on contribuyente using hash (dni);

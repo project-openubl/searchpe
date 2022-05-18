@@ -64,17 +64,17 @@ public class ContribuyenteRepository implements PanacheRepositoryBase<Contribuye
 
     public Optional<ContribuyenteEntity> findByRuc(VersionEntity version, String ruc) {
         Parameters parameters = Parameters
-                .with("ruc", ruc)
-                .and("versionId", version.id);
-        return VersionEntity.find("From ContribuyenteEntity as c where c.id.ruc = :ruc and c.id.versionId = :versionId", parameters)
+                .with("versionId", version.id)
+                .and("ruc", ruc);
+        return VersionEntity.find("From ContribuyenteEntity as c where c.id.versionId = :versionId and c.id.ruc = :ruc", parameters)
                 .singleResultOptional();
     }
 
     public Optional<ContribuyenteEntity> findByDni(VersionEntity version, String dni) {
         Parameters parameters = Parameters
-                .with("dni", dni)
-                .and("versionId", version.id);
-        return VersionEntity.find("From ContribuyenteEntity as c where c.dni = :dni and c.id.versionId = :versionId", parameters)
+                .with("versionId", version.id)
+                .and("dni", dni);
+        return VersionEntity.find("From ContribuyenteEntity as c where c.id.versionId = :versionId and c.dni = :dni", parameters)
                 .singleResultOptional();
     }
 
@@ -85,25 +85,25 @@ public class ContribuyenteRepository implements PanacheRepositoryBase<Contribuye
         StringBuilder queryBuilder = new StringBuilder("From ContribuyenteEntity as c where ");
         Parameters parameters = Parameters.with("versionId", version.id);
 
-        List<String> queryChunk = new ArrayList<>();
+        List<String> queryConditions = new ArrayList<>();
 
         if (filterBean.getTipoPersona() != null) {
             if (filterBean.getTipoPersona().equals(TipoPersona.JURIDICA)) {
-                queryChunk.add("c.id.ruc is not null");
+                queryConditions.add("c.id.ruc is not null");
             }
             if (filterBean.getTipoPersona().equals(TipoPersona.NATURAL)) {
-                queryChunk.add("c.dni is not null");
+                queryConditions.add("c.dni is not null");
             }
         }
 
-        queryChunk.add("c.id.versionId = :versionId");
+        queryConditions.add("c.id.versionId = :versionId");
 
         if (filterBean.getFilterText() != null && !filterBean.getFilterText().isBlank()) {
-            queryChunk.add("lower(c.nombre) like :filterText");
+            queryConditions.add("lower(c.nombre) like :filterText");
             parameters.and("filterText", "%" + filterBean.getFilterText().toLowerCase() + "%");
         }
 
-        queryBuilder.append(String.join(" and ", queryChunk));
+        queryBuilder.append(String.join(" and ", queryConditions));
 
         PanacheQuery<ContribuyenteEntity> query = VersionEntity
                 .find(queryBuilder.toString(), sort, parameters)

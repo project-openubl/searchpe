@@ -124,8 +124,7 @@ public class ContribuyenteResource {
             return contribuyenteRepository.findByRuc(version, numeroDocumento)
                     .map(entity -> ResponseBuilder.ok(entity).build())
                     .orElse(notFound);
-        }
-        if (numeroDocumento.trim().length() == 8) {
+        } if (numeroDocumento.trim().length() == 8) {
             return contribuyenteRepository.findByDni(version, numeroDocumento)
                     .map(entity -> ResponseBuilder.ok(entity).build())
                     .orElse(notFound);
