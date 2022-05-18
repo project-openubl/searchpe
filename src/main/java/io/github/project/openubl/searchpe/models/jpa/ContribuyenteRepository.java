@@ -42,6 +42,7 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -63,17 +64,17 @@ public class ContribuyenteRepository implements PanacheRepositoryBase<Contribuye
 
     public Optional<ContribuyenteEntity> findByRuc(VersionEntity version, String ruc) {
         Parameters parameters = Parameters
-                .with("versionId", version.id)
-                .and("ruc", ruc);
-        return VersionEntity.find("From ContribuyenteEntity as c where c.id.versionId = :versionId and c.id.ruc = :ruc", parameters)
+                .with("ruc", ruc)
+                .and("versionId", version.id);
+        return VersionEntity.find("From ContribuyenteEntity as c where c.id.ruc = :ruc and c.id.versionId = :versionId", parameters)
                 .singleResultOptional();
     }
 
     public Optional<ContribuyenteEntity> findByDni(VersionEntity version, String dni) {
         Parameters parameters = Parameters
-                .with("versionId", version.id)
-                .and("dni", dni);
-        return VersionEntity.find("From ContribuyenteEntity as c where c.id.versionId = :versionId and c.dni = :dni", parameters)
+                .with("dni", dni)
+                .and("versionId", version.id);
+        return VersionEntity.find("From ContribuyenteEntity as c where c.dni = :dni and c.id.versionId = :versionId", parameters)
                 .singleResultOptional();
     }
 
@@ -81,21 +82,28 @@ public class ContribuyenteRepository implements PanacheRepositoryBase<Contribuye
         Sort sort = Sort.by();
         sortBy.forEach(f -> sort.and(f.getFieldName(), f.isAsc() ? Sort.Direction.Ascending : Sort.Direction.Descending));
 
-        StringBuilder queryBuilder = new StringBuilder("From ContribuyenteEntity as c where c.id.versionId =:versionId");
+        StringBuilder queryBuilder = new StringBuilder("From ContribuyenteEntity as c where ");
         Parameters parameters = Parameters.with("versionId", version.id);
+
+        List<String> queryChunk = new ArrayList<>();
 
         if (filterBean.getTipoPersona() != null) {
             if (filterBean.getTipoPersona().equals(TipoPersona.JURIDICA)) {
-                queryBuilder.append(" and c.id.ruc is not null");
+                queryChunk.add("c.id.ruc is not null");
             }
             if (filterBean.getTipoPersona().equals(TipoPersona.NATURAL)) {
-                queryBuilder.append(" and c.dni is not null");
+                queryChunk.add("c.dni is not null");
             }
         }
+
+        queryChunk.add("c.id.versionId = :versionId");
+
         if (filterBean.getFilterText() != null && !filterBean.getFilterText().isBlank()) {
-            queryBuilder.append(" and lower(c.nombre) like :filterText");
+            queryChunk.add("lower(c.nombre) like :filterText");
             parameters.and("filterText", "%" + filterBean.getFilterText().toLowerCase() + "%");
         }
+
+        queryBuilder.append(String.join(" and ", queryChunk));
 
         PanacheQuery<ContribuyenteEntity> query = VersionEntity
                 .find(queryBuilder.toString(), sort, parameters)
