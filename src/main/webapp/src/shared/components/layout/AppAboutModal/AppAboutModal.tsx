@@ -8,6 +8,8 @@ import {
   Stack,
   StackItem,
   TextContent,
+  TextList,
+  TextListItem,
 } from "@patternfly/react-core";
 import {
   GithubIcon,
@@ -17,6 +19,7 @@ import {
 } from "@patternfly/react-icons";
 
 import brandImage from "images/logo.svg";
+import { getApplicationVersion } from "Constants";
 
 export interface AppAboutModalProps {
   isOpen: boolean;
@@ -31,7 +34,7 @@ export const AppAboutModal: React.FC<AppAboutModalProps> = ({
     <AboutModal
       isOpen={isOpen}
       onClose={onClose}
-      trademark={`COPYRIGHT © ${new Date().getFullYear()}`}
+      trademark={`COPYRIGHT © 2021`}
       brandImageSrc={brandImage}
       brandImageAlt="Logo"
       productName="Searchpe"
@@ -39,7 +42,6 @@ export const AppAboutModal: React.FC<AppAboutModalProps> = ({
       <Stack hasGutter>
         <StackItem>
           <TextContent className="pf-u-py-xl">
-            <h2>About</h2>
             <p>
               <a
                 href="https://project-openubl.github.io/"
@@ -51,6 +53,12 @@ export const AppAboutModal: React.FC<AppAboutModalProps> = ({
               es un producto de Project OpenUBL que te permite consumir los
               datos expuestos por la SUNAT a travéz del 'padrón reducido'.
             </p>
+            <TextList component="dl">
+              <TextListItem component="dt">Version</TextListItem>
+              <TextListItem component="dd">
+                {getApplicationVersion()}
+              </TextListItem>
+            </TextList>
           </TextContent>
         </StackItem>
         <StackItem>
