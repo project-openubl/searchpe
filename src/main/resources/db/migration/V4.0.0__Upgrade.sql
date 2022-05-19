@@ -42,7 +42,6 @@ create table CONTRIBUYENTE
 ) partition by hash (version_id);
 
 create index contribuyente_ruc_index on contribuyente using hash (ruc);
-create index contribuyente_dni_index on contribuyente using hash (dni);
 
 create table CONTRIBUYENTE_1 partition of CONTRIBUYENTE for values with (modulus 3, remainder 0);
 create table CONTRIBUYENTE_2 partition of CONTRIBUYENTE for values with (modulus 3, remainder 1);

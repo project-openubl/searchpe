@@ -25,7 +25,6 @@ import io.github.project.openubl.searchpe.utils.DataHelper;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.narayana.jta.RunOptions;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.FilenameUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 import org.postgresql.copy.CopyManager;
@@ -41,7 +40,6 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.util.ArrayList;
@@ -59,7 +57,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Stream;
 
 @ApplicationScoped
 public class UpgradeDataService {
@@ -110,43 +107,13 @@ public class UpgradeDataService {
     Event<VersionEvent.ImportingDataEvent> importingVersionEvent;
 
     public void upgrade(Long versionId) {
-        ScheduledExecutorService executorService = Executors.newScheduledThreadPool(2);
+        ScheduledExecutorService executorService = Executors.newScheduledThreadPool(5);
 
-        LOGGER.info("Init version import task");
-        Future<?> importTask = executorService.submit(() -> importTask(versionId, executorService));
+        LOGGER.info("Init import task");
+        Future<?> importTask = executorService.submit(() -> initImport(versionId, executorService));
 
-        LOGGER.info("Init version import task watcher");
-        executorService.scheduleAtFixedRate(() -> {
-            boolean isVersionBeingCancelled = QuarkusTransaction.call(
-                    QuarkusTransaction.runOptions()
-                            .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
-                            .semantic(RunOptions.Semantic.DISALLOW_EXISTING),
-                    () -> {
-                        VersionEntity watchedVersion = VersionEntity.findById(versionId);
-                        LOGGER.infof("Watch Version %s %s", versionId, watchedVersion.status);
-                        return watchedVersion.status.equals(Status.CANCELLING);
-                    }
-            );
-
-            if (isVersionBeingCancelled) {
-                LOGGER.infof("Found Version %s in CANCELLING state. Shutting down import task", versionId);
-                importTask.cancel(true);
-
-                QuarkusTransaction.run(
-                        QuarkusTransaction.runOptions()
-                                .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
-                                .semantic(RunOptions.Semantic.DISALLOW_EXISTING),
-                        () -> {
-                            VersionEntity watchedVersion = VersionEntity.findById(versionId);
-                            watchedVersion.status = Status.CANCELLED;
-                            watchedVersion.persist();
-                        }
-                );
-
-                LOGGER.infof("Shutting down all import tasks for Version %s", versionId);
-                shutdownExecutorService(executorService);
-            }
-        }, 15, 15, TimeUnit.SECONDS);
+        LOGGER.info("Init import task :: watcher");
+        executorService.scheduleAtFixedRate(() -> watchVersionStatus(versionId, executorService, importTask), 15, 15, TimeUnit.SECONDS);
 
         LOGGER.infof("Waiting for all tasks for Version %s to be completed", versionId);
         try {
@@ -161,20 +128,53 @@ public class UpgradeDataService {
         }
     }
 
-    private void importTask(Long versionId, ExecutorService executorService) {
-        File downloadedFile;
+    private void watchVersionStatus(Long versionId, ExecutorService executorService, Future<?> importTask) {
+        boolean isVersionBeingCancelled = QuarkusTransaction.call(
+                QuarkusTransaction.runOptions()
+                        .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
+                        .semantic(RunOptions.Semantic.DISALLOW_EXISTING),
+                () -> {
+                    VersionEntity watchedVersion = VersionEntity.findById(versionId);
+                    LOGGER.infof("Watch Version %s %s", versionId, watchedVersion.status);
+                    return watchedVersion.status.equals(Status.CANCELLING);
+                }
+        );
+
+        if (isVersionBeingCancelled) {
+            LOGGER.infof("Found Version %s in CANCELLING state. Shutting down import task", versionId);
+            importTask.cancel(true);
+
+            QuarkusTransaction.run(
+                    QuarkusTransaction.runOptions()
+                            .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
+                            .semantic(RunOptions.Semantic.DISALLOW_EXISTING),
+                    () -> {
+                        VersionEntity watchedVersion = VersionEntity.findById(versionId);
+                        watchedVersion.status = Status.CANCELLED;
+                        watchedVersion.persist();
+                    }
+            );
+
+            LOGGER.infof("Shutting down all import tasks for Version %s", versionId);
+            shutdownExecutorService(executorService);
+        }
+    }
+
+    private void initImport(Long versionId, ExecutorService executorService) {
+        File zipFile;
         File unzippedFolder;
         File txtFile;
-        File csvFolder;
 
-        // Download file
         try {
+            // Download file
             downloadingVersionEvent.fire(() -> versionId);
-            downloadedFile = fileService.downloadFile();
+            zipFile = fileService.downloadFile();
 
+            // Unzip file
             unzippingVersionEvent.fire(() -> versionId);
-            unzippedFolder = fileService.unzip(downloadedFile);
+            unzippedFolder = fileService.unzip(zipFile);
 
+            // Find .txt file
             txtFile = fileService.getFirstTxtFileFound(unzippedFolder.listFiles());
         } catch (IOException e) {
             LOGGER.error(e);
@@ -186,8 +186,7 @@ public class UpgradeDataService {
             importingVersionEvent.fire(() -> versionId);
 //            createContribuyentesFromTxtFile(versionId, txtFile);
 
-            csvFolder = createCSVFromFile(versionId, txtFile);
-            createContribuyentesFromCSVFiles(versionId, csvFolder);
+            processTxtFile(versionId, txtFile, executorService);
         } catch (IOException e) {
             LOGGER.error(e);
             return;
@@ -195,9 +194,10 @@ public class UpgradeDataService {
 
         // Clear folders
         try {
-            LOGGER.infof("Deleting directory %s", downloadedFile.toString());
+            LOGGER.infof("Deleting directory %s", zipFile.toString());
             LOGGER.infof("Deleting directory %s", unzippedFolder.toString());
-            downloadedFile.delete();
+            zipFile.delete();
+            txtFile.delete();
             FileUtils.deleteDirectory(unzippedFolder);
         } catch (IOException e) {
             LOGGER.error(e);
@@ -311,14 +311,11 @@ public class UpgradeDataService {
         });
     }
 
-    private File createCSVFromFile(Long versionId, File file) throws IOException {
-        LOGGER.infof("Start creating CSV");
-        long startTime = Calendar.getInstance().getTimeInMillis();
-
+    private void processTxtFile(Long versionId, File txtFile, ExecutorService executorService) throws IOException {
         int totalCount = 0;
         int batchCount = 0;
 
-        Path csvPath = file.getParentFile().toPath().resolve(UUID.randomUUID() + ".csv");
+        Path csvPath = txtFile.getParentFile().toPath().resolve(UUID.randomUUID() + ".csv");
         File csvFile = csvPath.toFile();
         csvFile.createNewFile();
         FileWriter csvFileWriter = new FileWriter(csvFile, StandardCharsets.ISO_8859_1);
@@ -327,7 +324,7 @@ public class UpgradeDataService {
         String row;
 
         try (
-                FileReader fileReader = new FileReader(file, StandardCharsets.ISO_8859_1);
+                FileReader fileReader = new FileReader(txtFile, StandardCharsets.ISO_8859_1);
                 BufferedReader br = new BufferedReader(fileReader)
         ) {
             String line;
@@ -383,12 +380,14 @@ public class UpgradeDataService {
                 // Time to save data
                 if (batchCount >= batchSize) {
                     csvFileWriter.close();
+                    File csvFileToImport = csvFile;
+                    executorService.submit(() -> importCSVFile(versionId, csvFileToImport));
 
                     // Reset
                     batchCount = 0;
 
                     // Create new chunk file
-                    csvPath = file.getParentFile().toPath().resolve(UUID.randomUUID() + ".csv");
+                    csvPath = txtFile.getParentFile().toPath().resolve(UUID.randomUUID() + ".csv");
                     csvFile = csvPath.toFile();
                     csvFile.createNewFile();
                     csvFileWriter = new FileWriter(csvFile, StandardCharsets.ISO_8859_1);
@@ -398,81 +397,56 @@ public class UpgradeDataService {
         }
 
         csvFileWriter.close();
-
-        long endTime = Calendar.getInstance().getTimeInMillis();
-        LOGGER.infof("CSV files created in " + (endTime - startTime) + " milliseconds.");
-
-        return csvFile.getParentFile();
-    }
-
-    private void createContribuyentesFromCSVFiles(Long versionId, File file) throws IOException {
-        LOGGER.infof("Start importing contribuyentes");
-        long startTime = Calendar.getInstance().getTimeInMillis();
-
-        Long records;
-        try (Stream<Path> paths = Files.walk(file.toPath())) {
-            records = paths
-                    .filter(path -> {
-                        String fileName = path.toFile().getName();
-                        String extension = FilenameUtils.getExtension(fileName);
-                        return extension.equalsIgnoreCase("csv");
-                    })
-                    .map(path -> {
-                        long rowsInserted;
-
-                        try (
-                                FileReader fileReader = new FileReader(path.toFile());
-                                BufferedReader bufferedReader = new BufferedReader(fileReader);
-
-                                Connection connection = dataSource.getConnection()
-                        ) {
-                            BaseConnection baseConnection = connection.unwrap(BaseConnection.class);
-                            CopyManager copyManager = new CopyManager(baseConnection);
-
-                            String sql = "COPY contribuyente (" + COLUMNS + ") FROM STDIN (FORMAT csv, HEADER true, DELIMITER ',')";
-                            rowsInserted = copyManager.copyIn(sql, bufferedReader);
-
-                            LOGGER.infof("%d row(s) inserted", rowsInserted);
-                            saveProgress(versionId, rowsInserted);
-                        } catch (IOException e) {
-                            LOGGER.error(e);
-                            throw new RuntimeException(e);
-                        } catch (Throwable e) {
-                            LOGGER.error(e);
-                            throw new IllegalStateException(e);
-                        }
-
-                        return rowsInserted;
-                    })
-                    .reduce(0L, Long::sum);
-        }
+        File fileToImport = csvFile;
+        executorService.submit(() -> importCSVFile(versionId, fileToImport));
 
         // Save final state of version
-        QuarkusTransaction.run(QuarkusTransaction.runOptions()
-                .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
-                .semantic(RunOptions.Semantic.DISALLOW_EXISTING), () -> {
-
-            VersionEntity version = VersionEntity.findById(versionId);
-            version.status = Status.COMPLETED;
-            version.updatedAt = new Date();
-            version.records = records.intValue();
-            version.persist();
-        });
-
-        long endTime = Calendar.getInstance().getTimeInMillis();
-        LOGGER.infof("Import contribuyentes finished successfully in " + (endTime - startTime) + " milliseconds.");
+        int records = totalCount;
+        QuarkusTransaction.run(
+                QuarkusTransaction.runOptions()
+                        .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
+                        .semantic(RunOptions.Semantic.DISALLOW_EXISTING),
+                () -> {
+                    VersionEntity version = VersionEntity.findById(versionId);
+                    version.status = Status.COMPLETED;
+                    version.updatedAt = new Date();
+                    version.records = records;
+                    version.persist();
+                }
+        );
     }
 
-    private void saveProgress(Long versionId, Long rowsInserted) {
-        QuarkusTransaction.run(QuarkusTransaction.runOptions()
-                .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
-                .semantic(RunOptions.Semantic.DISALLOW_EXISTING), () -> {
-            VersionEntity version = VersionEntity.findById(versionId);
-            version.records = version.records + rowsInserted.intValue();
-            version.updatedAt = new Date();
-            version.persist();
-        });
+    private void importCSVFile(Long versionId, File csvFile) {
+        Long rowsInserted;
+        try (
+                FileReader fileReader = new FileReader(csvFile);
+                BufferedReader bufferedReader = new BufferedReader(fileReader);
 
-        LOGGER.debugf("Chunk processed size=" + rowsInserted);
+                Connection connection = dataSource.getConnection()
+        ) {
+            BaseConnection baseConnection = connection.unwrap(BaseConnection.class);
+            CopyManager copyManager = new CopyManager(baseConnection);
+
+            String sql = "COPY contribuyente (" + COLUMNS + ") FROM STDIN (FORMAT csv, HEADER true, DELIMITER ',')";
+            rowsInserted = copyManager.copyIn(sql, bufferedReader);
+
+            QuarkusTransaction.run(QuarkusTransaction.runOptions()
+                    .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
+                    .semantic(RunOptions.Semantic.DISALLOW_EXISTING), () -> {
+                VersionEntity version = VersionEntity.findById(versionId);
+                version.records = version.records + rowsInserted.intValue();
+                version.updatedAt = new Date();
+                version.persist();
+            });
+        } catch (IOException e) {
+            LOGGER.error(e);
+            throw new RuntimeException(e);
+        } catch (Throwable e) {
+            LOGGER.error(e);
+            throw new IllegalStateException(e);
+        }
+
+        csvFile.delete();
     }
+
 }

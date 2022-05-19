@@ -45,6 +45,8 @@ import javax.transaction.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Transactional
 @ApplicationScoped
@@ -73,9 +75,11 @@ public class ContribuyenteRepository implements PanacheRepositoryBase<Contribuye
     public Optional<ContribuyenteEntity> findByDni(VersionEntity version, String dni) {
         Parameters parameters = Parameters
                 .with("versionId", version.id)
-                .and("dni", dni);
-        return VersionEntity.find("From ContribuyenteEntity as c where c.id.versionId = :versionId and c.dni = :dni", parameters)
-                .singleResultOptional();
+                .and("ruc", IntStream.range(1, 10).mapToObj(operand -> "10" + dni + operand).collect(Collectors.toList()));
+        return VersionEntity.find("From ContribuyenteEntity as c where c.id.versionId = :versionId and ruc in :ruc", parameters)
+                .<ContribuyenteEntity>list()
+                .stream().filter(contribuyente -> contribuyente.getDni().equals(dni))
+                .findFirst();
     }
 
     public SearchResultBean<ContribuyenteEntity> list(VersionEntity version, FilterBean filterBean, PageBean pageBean, List<SortBean> sortBy) {
