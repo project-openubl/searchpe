@@ -60,10 +60,10 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
                     VersionDto watchedVersion = givenAuth("alice")
                             .header("Content-Type", "application/json")
                             .when()
-                            .get("/api/versions/" + version.id)
+                            .get("/api/versions/" + version.getId())
                             .then()
                             .extract().body().as(VersionDto.class);
-                    return watchedVersion.status == Status.COMPLETED;
+                    return watchedVersion.getStatus() == Status.COMPLETED;
                 });
 
         // Then
@@ -100,10 +100,10 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
                     VersionDto watchedVersion = givenAuth("alice")
                             .header("Content-Type", "application/json")
                             .when()
-                            .get("/api/versions/" + version.id)
+                            .get("/api/versions/" + version.getId())
                             .then()
                             .extract().body().as(VersionDto.class);
-                    return watchedVersion.status == Status.COMPLETED;
+                    return watchedVersion.getStatus() == Status.COMPLETED;
                 });
 
         // Then
@@ -143,10 +143,10 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
                     VersionDto watchedVersion = givenAuth("alice")
                             .header("Content-Type", "application/json")
                             .when()
-                            .get("/api/versions/" + version.id)
+                            .get("/api/versions/" + version.getId())
                             .then()
                             .extract().body().as(VersionDto.class);
-                    return watchedVersion.status == Status.COMPLETED;
+                    return watchedVersion.getStatus() == Status.COMPLETED;
                 });
 
         // Then
@@ -184,10 +184,10 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
                     VersionDto watchedVersion = givenAuth("alice")
                             .header("Content-Type", "application/json")
                             .when()
-                            .get("/api/versions/" + version.id)
+                            .get("/api/versions/" + version.getId())
                             .then()
                             .extract().body().as(VersionDto.class);
-                    return watchedVersion.status == Status.COMPLETED;
+                    return watchedVersion.getStatus() == Status.COMPLETED;
                 });
 
         // Then

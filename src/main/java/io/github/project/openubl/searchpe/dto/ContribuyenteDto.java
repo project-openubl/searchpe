@@ -16,27 +16,28 @@
  */
 package io.github.project.openubl.searchpe.dto;
 
-import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import lombok.Data;
 
-import javax.json.bind.annotation.JsonbDateFormat;
-import java.util.Date;
-
 @Data
 @RegisterForReflection
-public class VersionDto {
+public class ContribuyenteDto {
+    private Long versionId;
+    private String ruc;
+    private String nombre;
+    private String estado;
+    private String condicionDomicilio;
+    private String ubigeo;
+    public String tipoVia;
+    public String nombreVia;
+    public String codigoZona;
+    public String tipoZona;
+    public String numero;
+    public String interior;
+    public String lote;
+    public String departamento;
+    public String manzana;
+    public String kilometro;
 
-    private Long id;
-
-    @JsonbDateFormat(value = "yyyy-MM-dd'T'HH:mm:ss'Z'")
-    private Date createdAt;
-
-    @JsonbDateFormat(value = "yyyy-MM-dd'T'HH:mm:ss'Z'")
-    private Date updatedAt;
-
-    private Status status;
-    private int records;
-    private boolean isActive;
-
+    private String dni;
 }

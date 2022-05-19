@@ -24,6 +24,7 @@ import io.github.project.openubl.searchpe.models.TipoPersona;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteId;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
+import io.github.project.openubl.searchpe.utils.DataHelper;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import io.quarkus.panache.common.Parameters;
@@ -78,7 +79,10 @@ public class ContribuyenteRepository implements PanacheRepositoryBase<Contribuye
                 .and("ruc", IntStream.range(1, 10).mapToObj(operand -> "10" + dni + operand).collect(Collectors.toList()));
         return VersionEntity.find("From ContribuyenteEntity as c where c.id.versionId = :versionId and ruc in :ruc", parameters)
                 .<ContribuyenteEntity>list()
-                .stream().filter(contribuyente -> contribuyente.getDni().equals(dni))
+                .stream().filter(contribuyente -> {
+                    Optional<String> dniFromRuc = DataHelper.getDniFromRuc(contribuyente.getRuc());
+                    return dniFromRuc.isPresent() && dniFromRuc.get().equals(dni);
+                })
                 .findFirst();
     }
 

@@ -16,7 +16,9 @@
  */
 package io.github.project.openubl.searchpe.resources;
 
+import io.github.project.openubl.searchpe.dto.ContribuyenteDto;
 import io.github.project.openubl.searchpe.dto.SearchResultDto;
+import io.github.project.openubl.searchpe.mapper.ContribuyenteMapper;
 import io.github.project.openubl.searchpe.mapper.SearchResultMapper;
 import io.github.project.openubl.searchpe.models.FilterBean;
 import io.github.project.openubl.searchpe.models.PageBean;
@@ -67,6 +69,9 @@ public class ContribuyenteResource {
     @Inject
     SearchResultMapper searchResultMapper;
 
+    @Inject
+    ContribuyenteMapper contribuyenteMapper;
+
     @RolesAllowed({Permission.admin, Permission.search})
     @Operation(summary = "Search contribuyentes", description = "Get contribuyentes in a page")
     @GET
@@ -74,7 +79,7 @@ public class ContribuyenteResource {
     @Produces("application/json")
     @Counted(name = "searchContribuyenteChecks", description = "How many times the advanced search was used")
     @Timed(name = "searchContribuyenteTimer", description = "How long it took to serve the advanced search")
-    public SearchResultDto<ContribuyenteEntity> getContribuyentes(
+    public SearchResultDto<ContribuyenteDto> getContribuyentes(
             @QueryParam("filterText") String filterText,
             @QueryParam("tipoPersona") String tipoPersona,
             @QueryParam("offset") @DefaultValue("0") @Max(9_000) Integer offset,
@@ -102,7 +107,7 @@ public class ContribuyenteResource {
             list = contribuyenteRepository.listES(version, filterBean, pageBean, sortBeans);
         }
 
-        return searchResultMapper.toDto(list, entity -> entity);
+        return searchResultMapper.toDto(list, entity -> contribuyenteMapper.toDto(entity));
     }
 
     @RolesAllowed({Permission.admin, Permission.search})
@@ -112,8 +117,8 @@ public class ContribuyenteResource {
     @Produces("application/json")
     @Counted(name = "getContribuyenteChecks", description = "How many times the endpoint was used")
     @Timed(name = "getContribuyenteTimer", description = "How long it took to serve the data")
-    public RestResponse<ContribuyenteEntity> getContribuyente(@PathParam("numeroDocumento") String numeroDocumento) {
-        RestResponse<ContribuyenteEntity> notFound = ResponseBuilder.<ContribuyenteEntity>notFound().build();
+    public RestResponse<ContribuyenteDto> getContribuyente(@PathParam("numeroDocumento") String numeroDocumento) {
+        RestResponse<ContribuyenteDto> notFound = ResponseBuilder.<ContribuyenteDto>notFound().build();
 
         if (numeroDocumento == null || numeroDocumento.trim().isEmpty()) {
             return notFound;
@@ -122,11 +127,13 @@ public class ContribuyenteResource {
         VersionEntity version = versionRepository.findActive().orElseThrow(NotFoundException::new);
         if (numeroDocumento.trim().length() == 11) {
             return contribuyenteRepository.findByRuc(version, numeroDocumento)
-                    .map(entity -> ResponseBuilder.ok(entity).build())
+                    .map(entity -> contribuyenteMapper.toDto(entity))
+                    .map(dto -> ResponseBuilder.ok(dto).build())
                     .orElse(notFound);
         } if (numeroDocumento.trim().length() == 8) {
             return contribuyenteRepository.findByDni(version, numeroDocumento)
-                    .map(entity -> ResponseBuilder.ok(entity).build())
+                    .map(entity -> contribuyenteMapper.toDto(entity))
+                    .map(dto -> ResponseBuilder.ok(dto).build())
                     .orElse(notFound);
         } else {
             return notFound;

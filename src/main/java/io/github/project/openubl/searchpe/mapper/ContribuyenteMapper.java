@@ -14,29 +14,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.project.openubl.searchpe.dto;
+package io.github.project.openubl.searchpe.mapper;
 
-import io.github.project.openubl.searchpe.models.jpa.entity.Status;
-import io.quarkus.runtime.annotations.RegisterForReflection;
-import lombok.Data;
+import io.github.project.openubl.searchpe.dto.ContribuyenteDto;
+import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
+import io.github.project.openubl.searchpe.utils.DataHelper;
+import org.mapstruct.AfterMapping;
+import org.mapstruct.Mapper;
+import org.mapstruct.MappingTarget;
 
-import javax.json.bind.annotation.JsonbDateFormat;
-import java.util.Date;
+@Mapper(componentModel = "cdi")
+public interface ContribuyenteMapper {
 
-@Data
-@RegisterForReflection
-public class VersionDto {
+    ContribuyenteDto toDto(ContribuyenteEntity entity);
 
-    private Long id;
-
-    @JsonbDateFormat(value = "yyyy-MM-dd'T'HH:mm:ss'Z'")
-    private Date createdAt;
-
-    @JsonbDateFormat(value = "yyyy-MM-dd'T'HH:mm:ss'Z'")
-    private Date updatedAt;
-
-    private Status status;
-    private int records;
-    private boolean isActive;
+    @AfterMapping
+    default void setDni(ContribuyenteEntity entity, @MappingTarget ContribuyenteDto dto) {
+        dto.setDni(DataHelper.getDniFromRuc(entity.getRuc()).orElse(null));
+    }
 
 }

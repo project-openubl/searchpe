@@ -58,6 +58,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import static io.github.project.openubl.searchpe.utils.DataHelper.getDniFromRuc;
+
 @ApplicationScoped
 public class UpgradeDataService {
 
@@ -66,7 +68,6 @@ public class UpgradeDataService {
     private static final String COLUMNS = new StringBuilder()
             .append("version_id").append(",")
             .append("ruc").append(",")
-            .append("dni").append(",")
             .append("nombre").append(",")
             .append("estado").append(",")
             .append("condicion_domicilio").append(",")
@@ -245,7 +246,7 @@ public class UpgradeDataService {
                 Optional<EstadoContribuyente> estadoContribuyente = EstadoContribuyente.fromString(contribuyente.estado);
                 if (sunatFilter.isPresent()) {
                     boolean shouldBeSaved = estadoContribuyente.isPresent() && sunatFilter.get().contains(estadoContribuyente.get());
-                    if (!shouldBeSaved && contribuyente.getDni() == null) {
+                    if (!shouldBeSaved && getDniFromRuc(contribuyente.getId().getRuc()).isEmpty()) {
                         continue;
                     }
                 }
@@ -347,7 +348,7 @@ public class UpgradeDataService {
                 Optional<EstadoContribuyente> estadoContribuyente = EstadoContribuyente.fromString(contribuyente.estado);
                 if (sunatFilter.isPresent()) {
                     boolean shouldBeSaved = estadoContribuyente.isPresent() && sunatFilter.get().contains(estadoContribuyente.get());
-                    if (!shouldBeSaved && contribuyente.getDni() == null) {
+                    if (!shouldBeSaved && getDniFromRuc(contribuyente.getId().getRuc()).isEmpty()) {
                         continue;
                     }
                 }
@@ -355,7 +356,6 @@ public class UpgradeDataService {
                 row = new StringBuilder()
                         .append("\"").append(contribuyente.getId().getVersionId()).append("\"").append(",")
                         .append("\"").append(Objects.toString(contribuyente.getId().getRuc(), "")).append("\"").append(",")
-                        .append("\"").append(Objects.toString(contribuyente.getDni(), "")).append("\"").append(",")
                         .append("\"").append(Objects.toString(contribuyente.getNombre(), "")).append("\"").append(",")
                         .append("\"").append(Objects.toString(contribuyente.getEstado(), "")).append("\"").append(",")
                         .append("\"").append(Objects.toString(contribuyente.getCondicionDomicilio(), "")).append("\"").append(",")

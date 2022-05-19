@@ -57,9 +57,6 @@ public class ContribuyenteEntity extends PanacheEntityBase {
     @Column(name = "ruc", insertable = false, updatable = false)
     public String ruc;
 
-    @Column(name = "dni")
-    public String dni;
-
     @FullTextField(analyzer = "nombreAnalyser")
     @KeywordField(name = "nombre_sort", sortable = Sortable.YES, normalizer = "nombreSortNormalizer")
     @NotNull
