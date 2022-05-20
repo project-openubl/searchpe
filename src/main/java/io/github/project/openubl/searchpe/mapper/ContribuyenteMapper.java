@@ -18,19 +18,11 @@ package io.github.project.openubl.searchpe.mapper;
 
 import io.github.project.openubl.searchpe.dto.ContribuyenteDto;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
-import io.github.project.openubl.searchpe.utils.DataHelper;
-import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
-import org.mapstruct.MappingTarget;
 
 @Mapper(componentModel = "cdi")
 public interface ContribuyenteMapper {
 
     ContribuyenteDto toDto(ContribuyenteEntity entity);
-
-    @AfterMapping
-    default void setDni(ContribuyenteEntity entity, @MappingTarget ContribuyenteDto dto) {
-        dto.setDni(DataHelper.getDniFromRuc(entity.getRuc()).orElse(null));
-    }
 
 }

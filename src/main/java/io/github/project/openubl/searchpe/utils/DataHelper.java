@@ -58,6 +58,7 @@ public class DataHelper {
                         .ruc(columns[0])
                         .build()
                 )
+                .dni(getDniFromRuc(columns[0]).orElse(null))
                 .nombre(columns[1])
                 .estado(columns[2])
                 .condicionDomicilio(columns[3])

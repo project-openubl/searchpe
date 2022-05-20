@@ -18,7 +18,6 @@ package io.github.project.openubl.searchpe.security.validators;
 
 import io.github.project.openubl.searchpe.DefaultProfileManager;
 import io.github.project.openubl.searchpe.security.Permission;
-import io.github.project.openubl.searchpe.security.validators.ValidPermission;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;

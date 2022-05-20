@@ -24,6 +24,7 @@ create table CONTRIBUYENTE
 (
     version_id          int8         not null,
     ruc                 varchar(11)  not null,
+    dni                 varchar(8)   null,
     nombre              varchar(150) not null,
     estado              varchar(30),
     condicion_domicilio varchar(30),

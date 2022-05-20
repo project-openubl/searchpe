@@ -130,7 +130,8 @@ public class ContribuyenteResource {
                     .map(entity -> contribuyenteMapper.toDto(entity))
                     .map(dto -> ResponseBuilder.ok(dto).build())
                     .orElse(notFound);
-        } if (numeroDocumento.trim().length() == 8) {
+        }
+        if (numeroDocumento.trim().length() == 8) {
             return contribuyenteRepository.findByDni(version, numeroDocumento)
                     .map(entity -> contribuyenteMapper.toDto(entity))
                     .map(dto -> ResponseBuilder.ok(dto).build())

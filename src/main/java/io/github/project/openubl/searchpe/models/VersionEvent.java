@@ -33,6 +33,7 @@ public interface VersionEvent {
 
     interface RecordsDataEvent {
         Long getVersion();
+
         int getRecords();
     }
 
@@ -41,10 +42,11 @@ public interface VersionEvent {
         private final Long version;
         private final int records;
 
-        public DefaultRecordsDataEvent(Long version, int records){
+        public DefaultRecordsDataEvent(Long version, int records) {
             this.version = version;
             this.records = records;
         }
+
         @Override
         public Long getVersion() {
             return version;

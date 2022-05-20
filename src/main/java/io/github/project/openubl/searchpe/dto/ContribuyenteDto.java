@@ -24,6 +24,7 @@ import lombok.Data;
 public class ContribuyenteDto {
     private Long versionId;
     private String ruc;
+    private String dni;
     private String nombre;
     private String estado;
     private String condicionDomicilio;
@@ -38,6 +39,4 @@ public class ContribuyenteDto {
     public String departamento;
     public String manzana;
     public String kilometro;
-
-    private String dni;
 }
