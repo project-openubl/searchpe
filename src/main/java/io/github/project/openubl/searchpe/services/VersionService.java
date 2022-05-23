@@ -88,9 +88,9 @@ public class VersionService {
     private static final String CSV_HEADER = TABLE_COLUMNS + System.lineSeparator();
 
     private static final String CREATE_PARTITION_SQL = "create table CONTRIBUYENTE_VERSION_%1$s partition of CONTRIBUYENTE for values from (%1$s) TO (%2$s)";
-    private static final String DELETE_PARTITION_SQL = "drop table CONTRIBUYENTE_VERSION_%1$s";
+    private static final String DELETE_PARTITION_SQL = "drop table if exists CONTRIBUYENTE_VERSION_%1$s";
     private static final String CREATE_INDEX_SQL = "create index ix_contribuyente_ruc_version_%1$s on CONTRIBUYENTE using hash (ruc) where version_id=%1$s";
-    private static final String DELETE_INDEX_SQL = "drop index ix_contribuyente_ruc_version_%1$s";
+    private static final String DELETE_INDEX_SQL = "drop index if exists ix_contribuyente_ruc_version_%1$s";
     private static final String SELECT_INDEX_WATCH_SQL = "select count(*) from pg_stat_progress_create_index";
 
     @ConfigProperty(name = "searchpe.sunat.filter")

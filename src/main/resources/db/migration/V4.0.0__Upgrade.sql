@@ -39,11 +39,4 @@ create table CONTRIBUYENTE
     departamento        varchar(30),
     manzana             varchar(30),
     kilometro           varchar(30)
--- ) partition by hash (version_id);
 ) partition by range (version_id);
-
--- create index if not exists contribuyente_ruc_index on contribuyente using hash (ruc);
-
--- create table CONTRIBUYENTE_1 partition of CONTRIBUYENTE for values with (modulus 3, remainder 0);
--- create table CONTRIBUYENTE_2 partition of CONTRIBUYENTE for values with (modulus 3, remainder 1);
--- create table CONTRIBUYENTE_3 partition of CONTRIBUYENTE for values with (modulus 3, remainder 2);

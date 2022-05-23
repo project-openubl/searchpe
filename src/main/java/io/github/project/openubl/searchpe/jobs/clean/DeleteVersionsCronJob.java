@@ -53,7 +53,6 @@ public class DeleteVersionsCronJob implements Job {
 
         QuarkusTransaction.run(
                 QuarkusTransaction.runOptions()
-                        .timeout(5 * 60)
                         .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
                         .semantic(RunOptions.Semantic.DISALLOW_EXISTING),
                 () -> {
