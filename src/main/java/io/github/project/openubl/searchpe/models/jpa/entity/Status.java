@@ -21,6 +21,7 @@ public enum Status {
     DOWNLOADING,
     UNZIPPING,
     IMPORTING,
+    INDEXING,
     ERROR,
     CANCELLED,
     COMPLETED,

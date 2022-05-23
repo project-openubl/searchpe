@@ -34,6 +34,7 @@ export type VersionStatus =
   | "DOWNLOADING"
   | "UNZIPPING"
   | "IMPORTING"
+  | "INDEXING"
   | "ERROR"
   | "CANCELLED"
   | "COMPLETED"
