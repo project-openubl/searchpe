@@ -30,7 +30,6 @@ import org.hibernate.search.mapper.pojo.mapping.definition.annotation.Indexed;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.IndexedEmbedded;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.KeywordField;
 
-import javax.json.bind.annotation.JsonbTransient;
 import javax.persistence.Column;
 import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
@@ -50,7 +49,6 @@ public class ContribuyenteEntity extends PanacheEntityBase {
     @EqualsAndHashCode.Include
     @IndexedEmbedded(name = "embeddedId")
     @DocumentId(identifierBridge = @IdentifierBridgeRef(type = ContribuyenteIdBridge.class))
-    @JsonbTransient
     @EmbeddedId
     public ContribuyenteId id;
 
