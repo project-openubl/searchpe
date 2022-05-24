@@ -30,7 +30,6 @@ import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.security.Permission;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.metrics.annotation.Counted;
 import org.eclipse.microprofile.metrics.annotation.Timed;
 import org.eclipse.microprofile.openapi.annotations.Operation;
@@ -56,9 +55,6 @@ import java.util.Optional;
 @ApplicationScoped
 @Path("/contribuyentes")
 public class ContribuyenteResource {
-
-    @ConfigProperty(name = "quarkus.hibernate-search-orm.enabled")
-    Optional<Boolean> isESEnabled;
 
     @Inject
     VersionRepository versionRepository;
@@ -100,12 +96,8 @@ public class ContribuyenteResource {
                 .tipoPersona(tipoPersona != null ? TipoPersona.valueOf(tipoPersona.toUpperCase()) : null)
                 .build();
 
-        SearchResultBean<ContribuyenteEntity> list;
-        if (!isESEnabled.orElse(false)) {
-            list = contribuyenteRepository.list(version, filterBean, pageBean, sortBeans);
-        } else {
-            list = contribuyenteRepository.listES(version, filterBean, pageBean, sortBeans);
-        }
+        SearchResultBean<ContribuyenteEntity> list = contribuyenteRepository.list(version, filterBean, pageBean, sortBeans);
+        ;
 
         return searchResultMapper.toDto(list, entity -> contribuyenteMapper.toDto(entity));
     }

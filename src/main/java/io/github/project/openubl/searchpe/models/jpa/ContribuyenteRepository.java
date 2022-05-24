@@ -29,19 +29,8 @@ import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import io.quarkus.panache.common.Parameters;
 import io.quarkus.panache.common.Sort;
-import org.hibernate.search.engine.search.predicate.dsl.BooleanPredicateClausesStep;
-import org.hibernate.search.engine.search.query.SearchResult;
-import org.hibernate.search.engine.search.query.dsl.SearchQueryOptionsStep;
-import org.hibernate.search.engine.search.sort.SearchSort;
-import org.hibernate.search.engine.search.sort.dsl.CompositeSortComponentsStep;
-import org.hibernate.search.engine.search.sort.dsl.SortOrder;
-import org.hibernate.search.mapper.orm.scope.SearchScope;
-import org.hibernate.search.mapper.orm.search.loading.dsl.SearchLoadingOptionsStep;
-import org.hibernate.search.mapper.orm.session.SearchSession;
 
 import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.inject.Instance;
-import javax.inject.Inject;
 import javax.transaction.Transactional;
 import java.util.ArrayList;
 import java.util.List;
@@ -54,16 +43,6 @@ import java.util.stream.IntStream;
 public class ContribuyenteRepository implements PanacheRepositoryBase<ContribuyenteEntity, ContribuyenteId> {
 
     public static final String[] SORT_BY_FIELDS = {"nombre"};
-
-    @Inject
-    Instance<SearchSession> searchSession;
-
-    private Optional<SearchSession> getSearchSession() {
-        for (SearchSession session : searchSession) {
-            return Optional.of(session);
-        }
-        return Optional.empty();
-    }
 
     public Optional<ContribuyenteEntity> findByRuc(VersionEntity version, String ruc) {
         Parameters parameters = Parameters
@@ -125,51 +104,4 @@ public class ContribuyenteRepository implements PanacheRepositoryBase<Contribuye
                 .build();
     }
 
-    public SearchResultBean<ContribuyenteEntity> listES(VersionEntity version, FilterBean filterBean, PageBean pageBean, List<SortBean> sortBy) {
-        SearchSession searchSession = getSearchSession().orElseThrow(() -> new IllegalStateException("Could not find a SearchSession available"));
-        SearchSort searchSort = null;
-        if (!sortBy.isEmpty()) {
-            SearchScope<ContribuyenteEntity> searchScope = searchSession.scope(ContribuyenteEntity.class);
-
-            CompositeSortComponentsStep<?> compositeSortComponents = searchScope.sort().composite();
-            sortBy.stream()
-                    .map(f -> searchScope.sort()
-                            .field(f.getFieldName() + "_sort")
-                            .order(f.isAsc() ? SortOrder.ASC : SortOrder.DESC)
-                            .toSort())
-                    .forEach(compositeSortComponents::add);
-
-            searchSort = compositeSortComponents.toSort();
-        }
-
-        SearchQueryOptionsStep<?, ContribuyenteEntity, SearchLoadingOptionsStep, ?, ?> searchQuery = searchSession.search(ContribuyenteEntity.class)
-                .where(f -> {
-                    BooleanPredicateClausesStep<?> result = f.bool();
-                    result = result.must(f.match().field("embeddedId.versionId").matching(version.id));
-                    if (filterBean.getTipoPersona() != null) {
-                        if (filterBean.getTipoPersona().equals(TipoPersona.JURIDICA)) {
-                            result = result.must(f.exists().field("ruc"));
-                        }
-                        if (filterBean.getTipoPersona().equals(TipoPersona.NATURAL)) {
-                            result = result.must(f.exists().field("dni"));
-                        }
-                    }
-                    if (filterBean.getFilterText() != null && !filterBean.getFilterText().trim().isEmpty()) {
-                        result = result.must(f.match().fields("nombre").matching(filterBean.getFilterText()));
-                    }
-                    return result;
-                });
-
-        if (searchSort != null) {
-            searchQuery = searchQuery.sort(searchSort);
-        }
-        SearchResult<ContribuyenteEntity> searchResult = searchQuery.fetch(pageBean.getOffset(), pageBean.getLimit());
-
-        return SearchResultBean.<ContribuyenteEntity>builder()
-                .offset(pageBean.getOffset())
-                .limit(pageBean.getLimit())
-                .totalElements(searchResult.total().hitCount())
-                .pageElements(searchResult.hits())
-                .build();
-    }
 }

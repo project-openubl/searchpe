@@ -17,7 +17,6 @@ interface Settings {
   defaultAuthMethod: SEARCHPE_AUTH_METHOD;
   formCookieName: string;
   oidcLogoutPath: string;
-  isElasticsearchEnabled: boolean;
   applicationVersion: string;
 }
 
@@ -25,7 +24,6 @@ const defaultSettings: Settings = {
   defaultAuthMethod: "basic",
   formCookieName: "searchpe-credential",
   oidcLogoutPath: "/logout",
-  isElasticsearchEnabled: false,
   applicationVersion: "",
 };
 
@@ -50,10 +48,6 @@ export const getAuthFormCookieName = (): string => {
 
 export const getOidcLogoutPath = (): string => {
   return SEARCHPE_SETTINGS.oidcLogoutPath;
-};
-
-export const isElasticsearchEnabled = (): boolean => {
-  return SEARCHPE_SETTINGS.isElasticsearchEnabled;
 };
 
 export const getApplicationVersion = () => {

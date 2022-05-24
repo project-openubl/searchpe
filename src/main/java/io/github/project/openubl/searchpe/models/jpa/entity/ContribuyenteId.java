@@ -20,7 +20,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.search.mapper.pojo.mapping.definition.annotation.GenericField;
 
 import javax.persistence.Column;
 import javax.persistence.Embeddable;
@@ -35,7 +34,6 @@ import java.io.Serializable;
 @Embeddable
 public class ContribuyenteId implements Serializable {
 
-    @GenericField(name = "versionId")
     @Column(name = "version_id")
     @NotNull
     public Long versionId;
