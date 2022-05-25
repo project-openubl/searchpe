@@ -16,9 +16,6 @@ alter table BASIC_USER
         column version type int4;
 
 -- Contribuyente
-drop sequence if exists hibernate_sequence_version;
-create sequence hibernate_sequence_version start 1 increment 1;
-
 drop table if exists CONTRIBUYENTE;
 create table CONTRIBUYENTE
 (
