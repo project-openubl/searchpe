@@ -38,6 +38,9 @@ public class FrontendResource {
     @ConfigProperty(name = "searchpe.disable.authorization")
     Optional<Boolean> disableAuthorization;
 
+    @ConfigProperty(name = "searchpe.allow.advancedSearch")
+    Optional<Boolean> allowAdvancedSearch;
+
     @ConfigProperty(name = "quarkus.oidc.tenant-enabled")
     Optional<Boolean> isOidcTenantEnabled;
 
@@ -68,6 +71,7 @@ public class FrontendResource {
                 .data("defaultAuthMethod", defaultAuthMethod)
                 .data("formCookieName", formCookieName.orElse(""))
                 .data("oidcLogoutPath", oidcLogoutPath.orElse(""))
+                .data("isAdvancedSearchEnabled", allowAdvancedSearch.orElse(false))
                 .data("applicationVersion", applicationVersion.orElse(""));
     }
 

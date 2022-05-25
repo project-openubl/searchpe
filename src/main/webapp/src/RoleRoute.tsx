@@ -13,16 +13,16 @@ import { WarningTriangleIcon } from "@patternfly/react-icons";
 import { usePermission } from "shared/hooks";
 import { Permission } from "Constants";
 
-export interface IProtectedRouteProps {
-  hasAny: Permission[];
+export interface IRoleRouteProps {
+  hasAny?: Permission[];
   children: React.ReactElement;
 }
 
-export const ProtectedRoute: React.FC<IProtectedRouteProps> = ({
+export const RoleRoute: React.FC<IRoleRouteProps> = ({
   hasAny,
   children,
 }) => {
-  const { isAllowed } = usePermission({ hasAny });
+  const { isAllowed } = usePermission({ hasAny: hasAny || [] });
 
   const notAuthorizedState = (
     <Bullseye>
@@ -36,5 +36,5 @@ export const ProtectedRoute: React.FC<IProtectedRouteProps> = ({
     </Bullseye>
   );
 
-  return !isAllowed ? notAuthorizedState : children;
+  return !isAllowed  ? notAuthorizedState : children;
 };

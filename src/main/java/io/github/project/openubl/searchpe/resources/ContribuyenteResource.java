@@ -29,6 +29,7 @@ import io.github.project.openubl.searchpe.models.jpa.ContribuyenteRepository;
 import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
+import io.github.project.openubl.searchpe.resources.interceptors.AllowAdvancedSearch;
 import io.github.project.openubl.searchpe.security.Permission;
 import org.eclipse.microprofile.metrics.annotation.Counted;
 import org.eclipse.microprofile.metrics.annotation.Timed;
@@ -68,6 +69,7 @@ public class ContribuyenteResource {
     @Inject
     ContribuyenteMapper contribuyenteMapper;
 
+    @AllowAdvancedSearch
     @RolesAllowed({Permission.admin, Permission.search})
     @Operation(summary = "Search contribuyentes", description = "Get contribuyentes in a page")
     @GET
@@ -97,7 +99,6 @@ public class ContribuyenteResource {
                 .build();
 
         SearchResultBean<ContribuyenteEntity> list = contribuyenteRepository.list(version, filterBean, pageBean, sortBeans);
-        ;
 
         return searchResultMapper.toDto(list, entity -> contribuyenteMapper.toDto(entity));
     }
