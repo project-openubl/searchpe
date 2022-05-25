@@ -5,7 +5,7 @@
   "dependencies": {
     "@hookform/resolvers": "^2.8.8",
     "@patternfly/patternfly": "^4.194.4",
-    "@patternfly/react-core": "^4.206.2",
+    "@patternfly/react-core": "^4.214.1",
     "@patternfly/react-table": "^4.75.2",
     "@project-openubl/lib-ui": "^1.7.2",
     "@redhat-cloud-services/frontend-components-notifications": "^3.2.5",
