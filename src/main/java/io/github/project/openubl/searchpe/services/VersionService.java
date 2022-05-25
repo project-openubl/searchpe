@@ -99,6 +99,9 @@ public class VersionService {
     @ConfigProperty(name = "searchpe.sunat.chunkSize")
     int chunkSize;
 
+    @ConfigProperty(name = "searchpe.sunat.watchDelay")
+    int watchDelay;
+
     @Inject
     DataSource dataSource;
 
@@ -137,7 +140,7 @@ public class VersionService {
         Future<?> importTask = executorService.submit(() -> initImport(versionId, executorService));
 
         LOGGER.info("Init import task :: watcher");
-        executorService.scheduleAtFixedRate(() -> watchVersionStatus(versionId, executorService, importTask), 15, 15, TimeUnit.SECONDS);
+        executorService.scheduleAtFixedRate(() -> watchVersionStatus(versionId, executorService, importTask), 15, watchDelay, TimeUnit.SECONDS);
 
         LOGGER.infof("Waiting for all tasks for Version %s to be completed", versionId);
         try {
@@ -263,7 +266,7 @@ public class VersionService {
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
                 }
-            }, 15, TimeUnit.SECONDS);
+            }, watchDelay, TimeUnit.SECONDS);
 
             try {
                 waitIndexProcessing = schedule.get() > 0;
