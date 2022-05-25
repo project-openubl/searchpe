@@ -18,10 +18,7 @@ export interface IRoleRouteProps {
   children: React.ReactElement;
 }
 
-export const RoleRoute: React.FC<IRoleRouteProps> = ({
-  hasAny,
-  children,
-}) => {
+export const RoleRoute: React.FC<IRoleRouteProps> = ({ hasAny, children }) => {
   const { isAllowed } = usePermission({ hasAny: hasAny || [] });
 
   const notAuthorizedState = (
@@ -36,5 +33,5 @@ export const RoleRoute: React.FC<IRoleRouteProps> = ({
     </Bullseye>
   );
 
-  return !isAllowed  ? notAuthorizedState : children;
+  return !isAllowed && hasAny ? notAuthorizedState : children;
 };
