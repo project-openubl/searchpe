@@ -14,29 +14,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.project.openubl.searchpe.dto;
+package io.github.project.openubl.searchpe;
 
-import io.github.project.openubl.searchpe.models.jpa.entity.Status;
-import io.quarkus.runtime.annotations.RegisterForReflection;
-import lombok.Data;
+import java.util.HashMap;
+import java.util.Map;
 
-import javax.json.bind.annotation.JsonbDateFormat;
-import java.util.Date;
+public class AdvancedSearchEnabledManager extends ProfileManager {
 
-@Data
-@RegisterForReflection
-public class VersionDto {
+    @Override
+    public String getProfile() {
+        return "basic";
+    }
 
-    private Long id;
-
-    @JsonbDateFormat(value = "yyyy-MM-dd'T'HH:mm:ss'Z'")
-    private Date createdAt;
-
-    @JsonbDateFormat(value = "yyyy-MM-dd'T'HH:mm:ss'Z'")
-    private Date updatedAt;
-
-    private Status status;
-    private int records;
-    private boolean isActive;
-
+    @Override
+    public Map<String, String> getConfigOverrides() {
+        return new HashMap<>(){{
+            put("searchpe.allow.advancedSearch", "true");
+        }};
+    }
 }

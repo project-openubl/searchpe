@@ -181,10 +181,10 @@ public class VersionResourceTest extends AbstractBaseTest {
                     VersionDto watchedVersion = givenAuth("alice")
                             .header("Content-Type", "application/json")
                             .when()
-                            .get("/" + version.id)
+                            .get("/" + version.getId())
                             .then()
                             .extract().body().as(VersionDto.class);
-                    return watchedVersion.status == Status.COMPLETED;
+                    return watchedVersion.getStatus() == Status.COMPLETED;
                 });
 
         givenAuth("alice")
@@ -195,7 +195,7 @@ public class VersionResourceTest extends AbstractBaseTest {
                 .statusCode(200)
                 .body(
                         "size()", is(1),
-                        "[0].id", is(version.id.intValue()),
+                        "[0].id", is(version.getId().intValue()),
                         "[0].status", is("COMPLETED")
                 );
     }

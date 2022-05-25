@@ -2,6 +2,6 @@ window["SEARCHPE_SETTINGS"] = {
     defaultAuthMethod: "{defaultAuthMethod}",
     formCookieName: "{formCookieName}",
     oidcLogoutPath: "{oidcLogoutPath}",
-    isElasticsearchEnabled: {isElasticsearchEnabled},
+    isAdvancedSearchEnabled: {isAdvancedSearchEnabled},
     applicationVersion: "{applicationVersion}"
 };

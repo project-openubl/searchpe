@@ -19,8 +19,6 @@ package io.github.project.openubl.searchpe.services;
 import io.github.project.openubl.searchpe.dto.BasicUserDto;
 import io.github.project.openubl.searchpe.dto.BasicUserPasswordChangeDto;
 import io.github.project.openubl.searchpe.models.jpa.entity.BasicUserEntity;
-import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
-import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.quarkus.elytron.security.common.BcryptUtil;
 
 import javax.enterprise.context.ApplicationScoped;

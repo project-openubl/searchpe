@@ -25,24 +25,21 @@ import javax.interceptor.InvocationContext;
 import javax.ws.rs.BadRequestException;
 
 @Interceptor
-@HTTPBasicAuthEnabled
-public class HTTPBasicAuthEnabledInterceptor {
+@AllowAdvancedSearch
+public class AllowAdvancedSearchInterceptor {
 
-    private static final Logger LOGGER = Logger.getLogger(HTTPBasicAuthEnabledInterceptor.class);
+    private static final Logger LOGGER = Logger.getLogger(AllowAdvancedSearchInterceptor.class);
 
-    @ConfigProperty(name = "quarkus.http.auth.basic")
-    boolean isAuthBasicEnabled;
-
-    @ConfigProperty(name = "searchpe.disable.authorization")
-    boolean disableAuthorization;
+    @ConfigProperty(name = "searchpe.allow.advancedSearch")
+    boolean allowAdvancedSearch;
 
     @AroundInvoke
     public Object invoke(InvocationContext ctx) throws Exception {
-        if (isAuthBasicEnabled && !disableAuthorization) {
+        if (allowAdvancedSearch) {
             return ctx.proceed();
         } else {
-            LOGGER.warn("REST endpoint blocked: Authorization or HTTP Basic has been disabled");
-            throw new BadRequestException("HTTP Basic auth is disabled or Auth has been disabled, can not proceed");
+            LOGGER.warn("REST endpoint blocked: you can not perform advanced search");
+            throw new BadRequestException("Advanced search has been disabled, can not proceed");
         }
     }
 

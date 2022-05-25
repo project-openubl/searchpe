@@ -87,7 +87,8 @@ public class SignupServlet extends HttpServlet {
                 }
 
                 tx.commit();
-            } catch (NotSupportedException | HeuristicRollbackException | HeuristicMixedException | RollbackException | SystemException e) {
+            } catch (NotSupportedException | HeuristicRollbackException | HeuristicMixedException | RollbackException |
+                     SystemException e) {
                 try {
                     tx.rollback();
                 } catch (SystemException se) {

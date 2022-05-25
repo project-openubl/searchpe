@@ -47,9 +47,9 @@ public class KeycloakServer implements QuarkusTestResourceLifecycleManager {
         Integer port = keycloak.getMappedPort(CONTAINER_PORT);
 
         return new HashMap<>() {{
-                put("quarkus.oidc.client-id", "searchpe");
-                put("quarkus.oidc.credentials.secret", "secret");
-                put("quarkus.oidc.auth-server-url", "http://" + host + ":" + port + "/auth/realms/openubl");
+            put("quarkus.oidc.client-id", "searchpe");
+            put("quarkus.oidc.credentials.secret", "secret");
+            put("quarkus.oidc.auth-server-url", "http://" + host + ":" + port + "/auth/realms/openubl");
         }};
     }
 

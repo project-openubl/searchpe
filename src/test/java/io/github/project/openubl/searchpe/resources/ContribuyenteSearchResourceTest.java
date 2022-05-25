@@ -17,7 +17,7 @@
 package io.github.project.openubl.searchpe.resources;
 
 import io.github.project.openubl.searchpe.AbstractBaseTest;
-import io.github.project.openubl.searchpe.BasicProfileManager;
+import io.github.project.openubl.searchpe.AdvancedSearchEnabledManager;
 import io.github.project.openubl.searchpe.dto.VersionDto;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.quarkus.test.junit.QuarkusTest;
@@ -33,7 +33,7 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @QuarkusTest
-@TestProfile(BasicProfileManager.class)
+@TestProfile(AdvancedSearchEnabledManager.class)
 public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
 
     @Override
@@ -60,10 +60,10 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
                     VersionDto watchedVersion = givenAuth("alice")
                             .header("Content-Type", "application/json")
                             .when()
-                            .get("/api/versions/" + version.id)
+                            .get("/api/versions/" + version.getId())
                             .then()
                             .extract().body().as(VersionDto.class);
-                    return watchedVersion.status == Status.COMPLETED;
+                    return watchedVersion.getStatus() == Status.COMPLETED;
                 });
 
         // Then
@@ -100,10 +100,10 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
                     VersionDto watchedVersion = givenAuth("alice")
                             .header("Content-Type", "application/json")
                             .when()
-                            .get("/api/versions/" + version.id)
+                            .get("/api/versions/" + version.getId())
                             .then()
                             .extract().body().as(VersionDto.class);
-                    return watchedVersion.status == Status.COMPLETED;
+                    return watchedVersion.getStatus() == Status.COMPLETED;
                 });
 
         // Then
@@ -143,10 +143,10 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
                     VersionDto watchedVersion = givenAuth("alice")
                             .header("Content-Type", "application/json")
                             .when()
-                            .get("/api/versions/" + version.id)
+                            .get("/api/versions/" + version.getId())
                             .then()
                             .extract().body().as(VersionDto.class);
-                    return watchedVersion.status == Status.COMPLETED;
+                    return watchedVersion.getStatus() == Status.COMPLETED;
                 });
 
         // Then
@@ -184,10 +184,10 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
                     VersionDto watchedVersion = givenAuth("alice")
                             .header("Content-Type", "application/json")
                             .when()
-                            .get("/api/versions/" + version.id)
+                            .get("/api/versions/" + version.getId())
                             .then()
                             .extract().body().as(VersionDto.class);
-                    return watchedVersion.status == Status.COMPLETED;
+                    return watchedVersion.getStatus() == Status.COMPLETED;
                 });
 
         // Then

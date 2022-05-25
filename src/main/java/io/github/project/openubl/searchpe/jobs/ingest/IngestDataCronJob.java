@@ -17,7 +17,7 @@
 package io.github.project.openubl.searchpe.jobs.ingest;
 
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
-import io.github.project.openubl.searchpe.services.UpgradeDataService;
+import io.github.project.openubl.searchpe.services.VersionService;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.narayana.jta.RunOptions;
 import io.quarkus.runtime.annotations.RegisterForReflection;
@@ -32,7 +32,7 @@ import javax.inject.Inject;
 public class IngestDataCronJob implements Job {
 
     @Inject
-    UpgradeDataService upgradeDataService;
+    VersionService versionService;
 
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
@@ -49,7 +49,7 @@ public class IngestDataCronJob implements Job {
             return version.id;
         });
 
-        upgradeDataService.upgrade(versionId);
+        versionService.importPadronReducidoIntoVersion(versionId);
     }
 
 }

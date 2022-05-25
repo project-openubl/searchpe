@@ -22,15 +22,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import org.hibernate.search.engine.backend.types.Sortable;
-import org.hibernate.search.mapper.pojo.bridge.mapping.annotation.IdentifierBridgeRef;
-import org.hibernate.search.mapper.pojo.mapping.definition.annotation.DocumentId;
-import org.hibernate.search.mapper.pojo.mapping.definition.annotation.FullTextField;
-import org.hibernate.search.mapper.pojo.mapping.definition.annotation.Indexed;
-import org.hibernate.search.mapper.pojo.mapping.definition.annotation.IndexedEmbedded;
-import org.hibernate.search.mapper.pojo.mapping.definition.annotation.KeywordField;
 
-import javax.json.bind.annotation.JsonbTransient;
 import javax.persistence.Column;
 import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
@@ -42,15 +34,11 @@ import javax.validation.constraints.NotNull;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
-@Indexed
 @Entity
 @Table(name = "contribuyente")
 public class ContribuyenteEntity extends PanacheEntityBase {
 
     @EqualsAndHashCode.Include
-    @IndexedEmbedded(name = "embeddedId")
-    @DocumentId(identifierBridge = @IdentifierBridgeRef(type = ContribuyenteIdBridge.class))
-    @JsonbTransient
     @EmbeddedId
     public ContribuyenteId id;
 
@@ -60,8 +48,6 @@ public class ContribuyenteEntity extends PanacheEntityBase {
     @Column(name = "dni")
     public String dni;
 
-    @FullTextField(analyzer = "nombreAnalyser")
-    @KeywordField(name = "nombre_sort", sortable = Sortable.YES, normalizer = "nombreSortNormalizer")
     @NotNull
     @Column(name = "nombre")
     public String nombre;

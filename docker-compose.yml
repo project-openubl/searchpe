@@ -19,7 +19,7 @@ version: "3"
 
 services:
   postgresql:
-    image: postgres:13.1
+    image: postgres:13.6
     ports:
       - 5432:5432
     environment:
@@ -28,17 +28,6 @@ services:
       POSTGRES_PASSWORD: db_password
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U db_username -d searchpe_db" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
-    environment:
-      discovery.type: single-node
-    network_mode: "host"
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9200" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -72,11 +61,6 @@ services:
       QUARKUS_OIDC_AUTH_SERVER_URL: http://localhost:8080/auth/realms/openubl
       QUARKUS_OIDC_CLIENT_ID: searchpe
       QUARKUS_OIDC_CREDENTIALS_SECRET: secret
-      QUARKUS_HIBERNATE_SEARCH_ORM_ELASTICSEARCH_USERNAME: any
-      QUARKUS_HIBERNATE_SEARCH_ORM_ELASTICSEARCH_PASSWORD: any
-      QUARKUS_HIBERNATE_SEARCH_ORM_ELASTICSEARCH_PROTOCOL: HTTP
-      QUARKUS_HIBERNATE_SEARCH_ORM_ELASTICSEARCH_HOSTS: localhost:9200
-      QUARKUS_HIBERNATE_SEARCH_ORM_ELASTICSEARCH_VERSION: 7
       QUARKUS_PROFILE: "prod"
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8080/q/health" ]
@@ -88,6 +72,4 @@ services:
       postgresql:
         condition: service_healthy
       keycloak:
-        condition: service_healthy
-      elasticsearch:
         condition: service_healthy

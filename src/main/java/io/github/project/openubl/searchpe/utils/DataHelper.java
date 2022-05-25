@@ -35,7 +35,8 @@ public class DataHelper {
                 } else {
                     result[i] = value
                             .replaceAll("�", "Ñ")
-                            .replaceAll("\\?", "Ñ");
+                            .replaceAll("\\?", "Ñ")
+                            .replaceAll("\"", "");
                 }
             } else {
                 result[i] = null;
@@ -50,11 +51,6 @@ public class DataHelper {
             return Optional.empty();
         }
 
-        String dni = null;
-        if (columns[0].startsWith("10")) {
-            dni = columns[0].substring(2, columns[0].length() - 1);  // Remove first 2 characters and also last character
-        }
-
         ContribuyenteEntity result = ContribuyenteEntity
                 .builder()
                 .id(ContribuyenteId.builder()
@@ -62,7 +58,7 @@ public class DataHelper {
                         .ruc(columns[0])
                         .build()
                 )
-                .dni(dni)
+                .dni(getDniFromRuc(columns[0]).orElse(null))
                 .nombre(columns[1])
                 .estado(columns[2])
                 .condicionDomicilio(columns[3])
@@ -80,5 +76,13 @@ public class DataHelper {
                 .build();
 
         return Optional.of(result);
+    }
+
+    public static Optional<String> getDniFromRuc(String ruc) {
+        String dni = null;
+        if (ruc.startsWith("10")) {
+            dni = ruc.substring(2, ruc.length() - 1);
+        }
+        return Optional.ofNullable(dni);
     }
 }

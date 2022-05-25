@@ -16,7 +16,9 @@
  */
 package io.github.project.openubl.searchpe.resources;
 
+import io.github.project.openubl.searchpe.dto.ContribuyenteDto;
 import io.github.project.openubl.searchpe.dto.SearchResultDto;
+import io.github.project.openubl.searchpe.mapper.ContribuyenteMapper;
 import io.github.project.openubl.searchpe.mapper.SearchResultMapper;
 import io.github.project.openubl.searchpe.models.FilterBean;
 import io.github.project.openubl.searchpe.models.PageBean;
@@ -27,8 +29,8 @@ import io.github.project.openubl.searchpe.models.jpa.ContribuyenteRepository;
 import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
+import io.github.project.openubl.searchpe.resources.interceptors.AllowAdvancedSearch;
 import io.github.project.openubl.searchpe.security.Permission;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.metrics.annotation.Counted;
 import org.eclipse.microprofile.metrics.annotation.Timed;
 import org.eclipse.microprofile.openapi.annotations.Operation;
@@ -55,9 +57,6 @@ import java.util.Optional;
 @Path("/contribuyentes")
 public class ContribuyenteResource {
 
-    @ConfigProperty(name = "quarkus.hibernate-search-orm.enabled")
-    Optional<Boolean> isESEnabled;
-
     @Inject
     VersionRepository versionRepository;
 
@@ -67,6 +66,10 @@ public class ContribuyenteResource {
     @Inject
     SearchResultMapper searchResultMapper;
 
+    @Inject
+    ContribuyenteMapper contribuyenteMapper;
+
+    @AllowAdvancedSearch
     @RolesAllowed({Permission.admin, Permission.search})
     @Operation(summary = "Search contribuyentes", description = "Get contribuyentes in a page")
     @GET
@@ -74,7 +77,7 @@ public class ContribuyenteResource {
     @Produces("application/json")
     @Counted(name = "searchContribuyenteChecks", description = "How many times the advanced search was used")
     @Timed(name = "searchContribuyenteTimer", description = "How long it took to serve the advanced search")
-    public SearchResultDto<ContribuyenteEntity> getContribuyentes(
+    public SearchResultDto<ContribuyenteDto> getContribuyentes(
             @QueryParam("filterText") String filterText,
             @QueryParam("tipoPersona") String tipoPersona,
             @QueryParam("offset") @DefaultValue("0") @Max(9_000) Integer offset,
@@ -95,14 +98,9 @@ public class ContribuyenteResource {
                 .tipoPersona(tipoPersona != null ? TipoPersona.valueOf(tipoPersona.toUpperCase()) : null)
                 .build();
 
-        SearchResultBean<ContribuyenteEntity> list;
-        if (!isESEnabled.orElse(false)) {
-            list = contribuyenteRepository.list(version, filterBean, pageBean, sortBeans);
-        } else {
-            list = contribuyenteRepository.listES(version, filterBean, pageBean, sortBeans);
-        }
+        SearchResultBean<ContribuyenteEntity> list = contribuyenteRepository.list(version, filterBean, pageBean, sortBeans);
 
-        return searchResultMapper.toDto(list, entity -> entity);
+        return searchResultMapper.toDto(list, entity -> contribuyenteMapper.toDto(entity));
     }
 
     @RolesAllowed({Permission.admin, Permission.search})
@@ -112,8 +110,8 @@ public class ContribuyenteResource {
     @Produces("application/json")
     @Counted(name = "getContribuyenteChecks", description = "How many times the endpoint was used")
     @Timed(name = "getContribuyenteTimer", description = "How long it took to serve the data")
-    public RestResponse<ContribuyenteEntity> getContribuyente(@PathParam("numeroDocumento") String numeroDocumento) {
-        RestResponse<ContribuyenteEntity> notFound = ResponseBuilder.<ContribuyenteEntity>notFound().build();
+    public RestResponse<ContribuyenteDto> getContribuyente(@PathParam("numeroDocumento") String numeroDocumento) {
+        RestResponse<ContribuyenteDto> notFound = ResponseBuilder.<ContribuyenteDto>notFound().build();
 
         if (numeroDocumento == null || numeroDocumento.trim().isEmpty()) {
             return notFound;
@@ -122,11 +120,14 @@ public class ContribuyenteResource {
         VersionEntity version = versionRepository.findActive().orElseThrow(NotFoundException::new);
         if (numeroDocumento.trim().length() == 11) {
             return contribuyenteRepository.findByRuc(version, numeroDocumento)
-                    .map(entity -> ResponseBuilder.ok(entity).build())
+                    .map(entity -> contribuyenteMapper.toDto(entity))
+                    .map(dto -> ResponseBuilder.ok(dto).build())
                     .orElse(notFound);
-        } if (numeroDocumento.trim().length() == 8) {
+        }
+        if (numeroDocumento.trim().length() == 8) {
             return contribuyenteRepository.findByDni(version, numeroDocumento)
-                    .map(entity -> ResponseBuilder.ok(entity).build())
+                    .map(entity -> contribuyenteMapper.toDto(entity))
+                    .map(dto -> ResponseBuilder.ok(dto).build())
                     .orElse(notFound);
         } else {
             return notFound;
