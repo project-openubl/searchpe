@@ -145,7 +145,7 @@ export const Versions: React.FC = () => {
       row.status !== "CANCELLED"
     ) {
       actions.push({
-        title: "Cancel",
+        title: "Cancelar",
         onClick: (_, rowIndex: number, rowData: IRowData) => {
           const row: Version = getRow(rowData);
           confirmation.open({
