@@ -1,4 +1,20 @@
 ---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: searchpe-db
+  labels:
+    app.kubernetes.io/name: searchpe-db
+    app.kubernetes.io/component: database
+    app.kubernetes.io/instance: searchpe-db
+    app.kubernetes.io/part-of: openubl-searchpe
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
 kind: Service
 apiVersion: v1
 metadata:
@@ -104,3 +120,14 @@ spec:
       maxSurge: 25%
   revisionHistoryLimit: 10
   progressDeadlineSeconds: 600
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: searchpe
+spec:
+  template:
+    spec:
+      volumes:
+        - name: workspace
+          emptyDir: { }
