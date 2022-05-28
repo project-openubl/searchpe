@@ -371,6 +371,7 @@
                                 <exclude>**/src/main/resources/**</exclude>
                                 <exclude>**/src/main/docker/**</exclude>
                                 <exclude>**/src/main/kubernetes/**</exclude>
+                                <exclude>**/src/main/helm/**</exclude>
                                 <exclude>**/src/main/webapp/**</exclude>
                                 <exclude>**/src/jreleaser/templates/**</exclude>
                                 <exclude>workspace/**</exclude>
