@@ -212,7 +212,7 @@ jobs:
           name: jreleaser-log
           path: 'jreleaser-log.tgz'
 
-      - uses: azure/setup-helm@v2
+      - uses: azure/setup-helm@v1
       - name: Helm
         run: |
           mvn process-resources

@@ -71,7 +71,7 @@ jobs:
           java-version: 11
           distribution: temurin
           cache: maven
-      - uses: azure/setup-helm@v2
+      - uses: azure/setup-helm@v1
       - name: Helm
         run: |
           mvn process-resources
