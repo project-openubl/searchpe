@@ -1,0 +1,57 @@
+---
+replicaCount: 1
+
+image:
+  repository: quay.io/projectopenubl/searchpe
+  pullPolicy: IfNotPresent
+  tag: "${project.version}"
+
+db:
+  password: db_password
+  username: db_username
+  jdbc_url: jdbc:postgresql://searchpe-db:5432/searchpe_db
+oidc:
+  credentials_secret: secret
+  client_id: searchpe
+  auth_server_url: http://localhost:8080/auth/realms/openubl
+
+nameOverride: ""
+fullnameOverride: ""
+
+podAnnotations: { }
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: false
+  annotations: { }
+  hosts:
+    - host: chart-example.local
+      paths: [ ]
+  tls: [ ]
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 64Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: { }
+
+tolerations: [ ]
+
+affinity: { }
+
+openshift:
+  enabled: false

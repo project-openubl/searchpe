@@ -1,0 +1,25 @@
+metadata:
+  annotations:
+    app.openshift.io/connects-to: "[{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"name\":\"searchpe-db\"}]"
+    app.openshift.io/vcs-ref: master
+    app.openshift.io/vcs-uri: https://github.com/project-openubl/searchpe.git
+  labels:
+    app.openshift.io/runtime: quarkus
+spec:
+  template:
+    spec:
+      containers:
+        - env:
+            - name: a
+              value: b
+          envFrom:
+            - secretRef:
+                name: searchpe
+                optional: false
+          volumeMounts:
+            - mountPath: /opt/workspace
+              name: workspace
+              readOnly: false
+      volumes:
+        - emptyDir: { }
+          name: workspace

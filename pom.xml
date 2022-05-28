@@ -25,6 +25,7 @@
     <groupId>io.github.project-openubl</groupId>
     <artifactId>searchpe</artifactId>
     <version>4.0.0-SNAPSHOT</version>
+    <description>Searchpe procesa y almacena el Padrón reducido RUC de la SUNAT y lo expone para su consumo a travéz de su UI y servicios REST</description>
 
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
@@ -318,6 +319,33 @@
                         <maven.home>${maven.home}</maven.home>
                     </systemPropertyVariables>
                 </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.2.0</version>
+                <goals>
+                    <goal>resources</goal>
+                </goals>
+                <executions>
+                    <execution>
+                        <id>copy-resources-helm</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${build.directory}/helm/</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>src/main/helm/</directory>
+                                    <filtering>true</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
 
             <!-- License information -->
