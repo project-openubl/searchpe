@@ -4,16 +4,7 @@ replicaCount: 1
 image:
   repository: quay.io/projectopenubl/searchpe
   pullPolicy: IfNotPresent
-  tag: "${project.version}"
-
-db:
-  password: db_password
-  username: db_username
-  jdbc_url: jdbc:postgresql://searchpe-db:5432/searchpe_db
-oidc:
-  credentials_secret: secret
-  client_id: searchpe
-  auth_server_url: http://localhost:8080/auth/realms/openubl
+  tag: "${helm.image.tag}"
 
 nameOverride: ""
 fullnameOverride: ""
@@ -52,6 +43,16 @@ nodeSelector: { }
 tolerations: [ ]
 
 affinity: { }
+
+database:
+  hostname:
+  port: 5432
+  database: searchpe_db
+  username: db_username
+  password: db_password
+
+# Additional environment variables for Searchpe mapped from Secret or ConfigMap
+extraEnvFrom: ""
 
 openshift:
   enabled: false

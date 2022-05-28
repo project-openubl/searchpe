@@ -52,6 +52,8 @@
 
         <lombok.version>1.18.24</lombok.version>
         <mapstruct.version>1.4.2.Final</mapstruct.version>
+
+        <helm.image.tag>${project.version}</helm.image.tag>
     </properties>
 
     <url>https://project-openubl.github.io/</url>
