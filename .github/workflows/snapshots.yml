@@ -96,11 +96,10 @@ jobs:
           java-version: 11
           distribution: temurin
           cache: maven
-      - name: Maven
-        run: mvn process-resources -Dhelm.image.tag=early-access
       - uses: azure/setup-helm@v2
       - name: Helm
         run: |
+          mvn process-resources -Dhelm.image.tag=early-access
           helm plugin install https://github.com/chartmuseum/helm-push
           helm repo add --username ${{ secrets.GITLAB_REGISTRY_USERNAME }} --password ${{ secrets.GITLAB_REGISTRY_TOKEN }} chartmuseum-gitlab https://gitlab.com/api/v4/projects/project-openubl%2Fsearchpe/packages/helm/snapshot
           helm cm-push target/helm chartmuseum-gitlab
