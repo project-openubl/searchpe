@@ -41,12 +41,9 @@ npm run start --prefix src/main/webapp
 ```shell
 minikube start
 kubectl create ns openubl
-kubectl create -f src/main/kubernetes/pvc.yml -n openubl
+kubectl create -f src/main/kubernetes/minikube-pvc.yml -n openubl
 eval $(minikube -p minikube docker-env)
-mvn clean package \
--Dquarkus.kubernetes.deploy=true \
--Dquarkus.kubernetes.namespace=openubl \
--DskipTests
+mvn clean package -Dquarkus.kubernetes.deploy=true -Dquarkus.kubernetes.namespace=openubl -DskipTests
 ```
 
 Expone Searchpe usando:

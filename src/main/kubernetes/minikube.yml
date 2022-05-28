@@ -1,19 +1,24 @@
 ---
-kind: PersistentVolumeClaim
+kind: Secret
 apiVersion: v1
 metadata:
   name: searchpe-db
-  labels:
-    app.kubernetes.io/name: searchpe-db
-    app.kubernetes.io/component: database
-    app.kubernetes.io/instance: searchpe-db
-    app.kubernetes.io/part-of: openubl-searchpe
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 10Gi
+stringData:
+  USERNAME: username
+  PASSWORD: password
+  DATABASE: searchpe
+  JDBC_URL: jdbc:postgresql://searchpe-db:5432/searchpe
+type: Opaque
+---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: searchpe-oidc
+stringData:
+  QUARKUS_OIDC_AUTH_SERVER_URL: http://keycloak/auth/realms/openubl
+  QUARKUS_OIDC_CLIENT_ID: searchpe
+  QUARKUS_OIDC_CREDENTIALS_SECRET: secret
+type: Opaque
 ---
 kind: Service
 apiVersion: v1
@@ -66,11 +71,20 @@ spec:
               protocol: TCP
           env:
             - name: POSTGRES_USER
-              value: "db_username"
+              valueFrom:
+                secretKeyRef:
+                  key: USERNAME
+                  name: searchpe-db
             - name: POSTGRES_PASSWORD
-              value: "db_password"
+              valueFrom:
+                secretKeyRef:
+                  key: PASSWORD
+                  name: searchpe-db
             - name: POSTGRES_DB
-              value: "searchpe_db"
+              valueFrom:
+                secretKeyRef:
+                  key: DATABASE
+                  name: searchpe-db
           resources:
             limits:
               cpu: 500m
@@ -120,14 +134,3 @@ spec:
       maxSurge: 25%
   revisionHistoryLimit: 10
   progressDeadlineSeconds: 600
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: searchpe
-spec:
-  template:
-    spec:
-      volumes:
-        - name: workspace
-          emptyDir: { }

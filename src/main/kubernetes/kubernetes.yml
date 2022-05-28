@@ -165,6 +165,12 @@ metadata:
 spec:
   template:
     spec:
+      containers:
+        - name: searchpe
+          volumeMounts:
+            - mountPath: /opt/workspace
+              name: workspace
+              readOnly: false
       volumes:
         - name: workspace
           emptyDir: { }

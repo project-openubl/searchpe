@@ -1,0 +1,16 @@
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: searchpe-db
+  labels:
+    app.kubernetes.io/name: searchpe-db
+    app.kubernetes.io/component: database
+    app.kubernetes.io/instance: searchpe-db
+    app.kubernetes.io/part-of: openubl-searchpe
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
