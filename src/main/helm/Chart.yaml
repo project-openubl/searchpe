@@ -1,0 +1,16 @@
+---
+apiVersion: v2
+type: application
+name: searchpe
+description: ${project.description}
+version: ${project.version}
+appVersion: ${project.version}
+home: ${project.url}
+icon: https://raw.githubusercontent.com/project-openubl/searchpe/master/src/main/resources/META-INF/branding/logo.png
+sources:
+  - ${project.scm.url}
+keywords:
+  - searchpe
+  - openubl
+  - sunat
+

@@ -54,9 +54,9 @@ jobs:
           name: artifacts
           path: searchpe-container-image.tar
 
-  snapshots:
+  snapshots-container:
     needs: [ build-snapshot-container ]
-    name: Snaphots
+    name: Snapshot container
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v3
@@ -84,3 +84,22 @@ jobs:
         run: |
           docker push quay.io/projectopenubl/searchpe:early-access          
           docker push ghcr.io/project-openubl/searchpe/searchpe:early-access
+
+  snapshots-helm:
+    needs: [ linux-jvm-tests ]
+    name: Snapshot helm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-java@v3
+        with:
+          java-version: 11
+          distribution: temurin
+          cache: maven
+      - uses: azure/setup-helm@v1
+      - name: Helm
+        run: |
+          mvn process-resources -Dhelm.image.tag=early-access
+          helm plugin install https://github.com/chartmuseum/helm-push
+          helm repo add --username ${{ secrets.GITLAB_REGISTRY_USERNAME }} --password ${{ secrets.GITLAB_REGISTRY_TOKEN }} chartmuseum-gitlab https://gitlab.com/api/v4/projects/project-openubl%2Fsearchpe/packages/helm/snapshot
+          helm cm-push target/helm chartmuseum-gitlab

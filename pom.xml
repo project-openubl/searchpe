@@ -25,6 +25,7 @@
     <groupId>io.github.project-openubl</groupId>
     <artifactId>searchpe</artifactId>
     <version>4.0.0-SNAPSHOT</version>
+    <description>Searchpe procesa y almacena el Padrón reducido RUC de la SUNAT y lo expone para su consumo a travéz de su UI y servicios REST</description>
 
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
@@ -51,6 +52,8 @@
 
         <lombok.version>1.18.24</lombok.version>
         <mapstruct.version>1.4.2.Final</mapstruct.version>
+
+        <helm.image.tag>${project.version}</helm.image.tag>
     </properties>
 
     <url>https://project-openubl.github.io/</url>
@@ -324,6 +327,33 @@
                 </configuration>
             </plugin>
 
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.2.0</version>
+                <goals>
+                    <goal>resources</goal>
+                </goals>
+                <executions>
+                    <execution>
+                        <id>copy-resources-helm</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/helm/</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>src/main/helm/</directory>
+                                    <filtering>true</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
             <!-- License information -->
             <!--mvn license:format-->
             <plugin>
@@ -341,6 +371,7 @@
                                 <exclude>**/src/main/resources/**</exclude>
                                 <exclude>**/src/main/docker/**</exclude>
                                 <exclude>**/src/main/kubernetes/**</exclude>
+                                <exclude>**/src/main/helm/**</exclude>
                                 <exclude>**/src/main/webapp/**</exclude>
                                 <exclude>**/src/jreleaser/templates/**</exclude>
                                 <exclude>workspace/**</exclude>

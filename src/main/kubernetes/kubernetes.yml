@@ -1,3 +1,4 @@
+---
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
@@ -13,6 +14,27 @@ spec:
   resources:
     requests:
       storage: 1Gi
+---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: searchpe-db
+stringData:
+  USERNAME: username
+  PASSWORD: password
+  DATABASE: searchpe
+  JDBC_URL: jdbc:postgresql://searchpe-db:5432/searchpe
+type: Opaque
+---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: searchpe-oidc
+stringData:
+  QUARKUS_OIDC_AUTH_SERVER_URL: http://keycloak/auth/realms/openubl
+  QUARKUS_OIDC_CLIENT_ID: searchpe
+  QUARKUS_OIDC_CREDENTIALS_SECRET: secret
+type: Opaque
 ---
 kind: Service
 apiVersion: v1
@@ -39,6 +61,7 @@ apiVersion: apps/v1
 metadata:
   name: searchpe-db
   labels:
+    app.openshift.io/runtime: postgresql
     app.kubernetes.io/name: searchpe-db
     app.kubernetes.io/component: database
     app.kubernetes.io/instance: searchpe-db
@@ -65,12 +88,27 @@ spec:
               protocol: TCP
           env:
             - name: POSTGRES_USER
-              value: "db_username"
+              valueFrom:
+                secretKeyRef:
+                  key: USERNAME
+                  name: searchpe-db
             - name: POSTGRES_PASSWORD
-              value: "db_password"
+              valueFrom:
+                secretKeyRef:
+                  key: PASSWORD
+                  name: searchpe-db
             - name: POSTGRES_DB
-              value: "searchpe_db"
-          resources: { }
+              valueFrom:
+                secretKeyRef:
+                  key: DATABASE
+                  name: searchpe-db
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 250m
+              memory: 64Mi
           livenessProbe:
             exec:
               command:
@@ -114,93 +152,25 @@ spec:
   revisionHistoryLimit: 10
   progressDeadlineSeconds: 600
 ---
-kind: Service
-apiVersion: v1
-metadata:
-  name: searchpe
-  labels:
-    app.kubernetes.io/name: searchpe
-    app.kubernetes.io/component: rest
-    app.kubernetes.io/instance: searchpe
-    app.kubernetes.io/part-of: openubl-searchpe
-spec:
-  ports:
-    - name: tcp
-      protocol: TCP
-      port: 8080
-      targetPort: 8080
-  selector:
-    app.kubernetes.io/name: searchpe
-  type: ClusterIP
-  sessionAffinity: None
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  annotations:
-    prometheus.io/port: "8080"
-    prometheus.io/scheme: http
-    prometheus.io/scrape: "true"
-    prometheus.io/path: /q/metrics
-  labels:
-    app.kubernetes.io/component: rest
-    app.kubernetes.io/name: searchpe
-    app.kubernetes.io/part-of: openubl-searchpe
   name: searchpe
+  labels:
+    app.openshift.io/runtime: quarkus
+  annotations:
+    app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"searchpe-db"}]'
+    app.openshift.io/vcs-ref: master
+    app.openshift.io/vcs-uri: 'https://github.com/project-openubl/searchpe.git'
 spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: searchpe
-      app.kubernetes.io/part-of: openubl-searchpe
   template:
-    metadata:
-      annotations:
-        prometheus.io/port: "8080"
-        prometheus.io/scheme: http
-        prometheus.io/scrape: "true"
-        prometheus.io/path: /q/metrics
-      labels:
-        app.kubernetes.io/component: rest
-        app.kubernetes.io/name: searchpe
-        app.kubernetes.io/part-of: openubl-searchpe
     spec:
       containers:
         - name: searchpe
-          image: quay.io/projectopenubl/searchpe
-          imagePullPolicy: Always
-          env:
-            - name: KUBERNETES_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-            - name: QUARKUS_DATASOURCE_USERNAME
-              value: "db_username"
-            - name: QUARKUS_DATASOURCE_PASSWORD
-              value: "db_password"
-            - name: QUARKUS_DATASOURCE_JDBC_URL
-              value: "jdbc:postgresql://searchpe-db:5432/searchpe_db"
-          livenessProbe:
-            failureThreshold: 3
-            httpGet:
-              path: /q/health/live
-              port: 8080
-              scheme: HTTP
-            initialDelaySeconds: 0
-            periodSeconds: 5
-            successThreshold: 1
-            timeoutSeconds: 10
-          ports:
-            - containerPort: 8080
-              name: http
-              protocol: TCP
-          readinessProbe:
-            failureThreshold: 3
-            httpGet:
-              path: /q/health/ready
-              port: 8080
-              scheme: HTTP
-            initialDelaySeconds: 0
-            periodSeconds: 5
-            successThreshold: 1
-            timeoutSeconds: 10
+          volumeMounts:
+            - mountPath: /opt/workspace
+              name: workspace
+              readOnly: false
+      volumes:
+        - name: workspace
+          emptyDir: { }
