@@ -342,7 +342,7 @@
                             <goal>copy-resources</goal>
                         </goals>
                         <configuration>
-                            <outputDirectory>${build.directory}/helm/</outputDirectory>
+                            <outputDirectory>${project.build.directory}/helm/</outputDirectory>
                             <resources>
                                 <resource>
                                     <directory>src/main/helm/</directory>
