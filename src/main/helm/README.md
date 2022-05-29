@@ -3,7 +3,7 @@
 ## TL;DR
 
 ```
-helm repo add openubl https://gitlab.com/api/v4/projects/36554180/packages/helm/snapshot
+helm repo add openubl https://gitlab.com/api/v4/projects/36554180/packages/helm/stable
 helm install my-release openubl/searchpe
 ```
 
@@ -17,7 +17,7 @@ helm install my-release openubl/searchpe
 To install the chart with the release name `my-release`:
 
 ```
-helm repo add bitnami https://gitlab.com/api/v4/projects/36554180/packages/helm/snapshot
+helm repo add bitnami https://gitlab.com/api/v4/projects/36554180/packages/helm/stable
 helm install my-release openubl/searchpe
 ```
 
