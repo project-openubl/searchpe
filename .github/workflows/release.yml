@@ -217,8 +217,8 @@ jobs:
         run: |
           mvn process-resources
           helm plugin install https://github.com/chartmuseum/helm-push
-          helm repo add --username ${{ secrets.GITLAB_REGISTRY_USERNAME }} --password ${{ secrets.GITLAB_REGISTRY_TOKEN }} chartmuseum-gitlab https://gitlab.com/api/v4/projects/36554180/packages/helm/stable
-          helm cm-push target/helm chartmuseum-gitlab
+          helm repo add --username ${{ secrets.GITLAB_REGISTRY_USERNAME }} --password ${{ secrets.GITLAB_REGISTRY_TOKEN }} openubl https://gitlab.com/api/v4/projects/36554180/packages/helm/stable
+          helm cm-push --force target/helm openubl
 
       - name: Set next version
         env:
