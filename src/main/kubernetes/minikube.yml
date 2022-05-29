@@ -65,7 +65,7 @@ spec:
             claimName: searchpe-db
       containers:
         - name: postgres
-          image: postgres:13.6
+          image: postgres:13.7
           ports:
             - containerPort: 5432
               protocol: TCP
