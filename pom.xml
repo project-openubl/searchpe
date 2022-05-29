@@ -24,7 +24,7 @@
 
     <groupId>io.github.project-openubl</groupId>
     <artifactId>searchpe</artifactId>
-    <version>4.0.0.Beta9</version>
+    <version>4.0.0-Beta9</version>
     <description>Searchpe procesa y almacena el Padrón reducido RUC de la SUNAT y lo expone para su consumo a travéz de su UI y servicios REST</description>
 
     <properties>
