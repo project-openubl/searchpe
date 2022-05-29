@@ -185,7 +185,7 @@ jobs:
           
           # Tag images
           docker tag quay.io/projectopenubl/searchpe:latest quay.io/projectopenubl/searchpe:latest
-          docker tag quay.io/projectopenubl/searchpe:latest quay.io/projectopenubl/searchpe:v$majorVersion
+          docker tag quay.io/projectopenubl/searchpe:latest quay.io/projectopenubl/searchpe:v$major
           docker tag quay.io/projectopenubl/searchpe:latest quay.io/projectopenubl/searchpe:v${{ steps.version.outputs.RELEASE_VERSION }}
           
           # Push images
