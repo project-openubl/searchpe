@@ -348,6 +348,12 @@
                                     <directory>src/main/helm/</directory>
                                     <filtering>true</filtering>
                                 </resource>
+                                <resource>
+                                    <directory>${project.basedir}</directory>
+                                    <includes>
+                                        <include>LICENSE</include>
+                                    </includes>
+                                </resource>
                             </resources>
                         </configuration>
                     </execution>
