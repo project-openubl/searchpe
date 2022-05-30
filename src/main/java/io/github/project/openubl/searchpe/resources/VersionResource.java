@@ -233,19 +233,24 @@ public class VersionResource {
             }
 
             try {
-                String[] versionTriggeredKey = version.triggerKey.split("\\.");
-                TriggerKey triggerKey = TriggerKey.triggerKey(versionTriggeredKey[0], versionTriggeredKey[1]);
-                if (quartz.checkExists(triggerKey)) {
-                    quartz.unscheduleJob(triggerKey);
-                }
+                if (version.triggerKey != null) {
+                    String[] versionTriggeredKey = version.triggerKey.split("\\.");
+                    TriggerKey triggerKey = TriggerKey.triggerKey(versionTriggeredKey[0], versionTriggeredKey[1]);
+                    if (quartz.checkExists(triggerKey)) {
+                        quartz.unscheduleJob(triggerKey);
+                    }
 
-                Optional<JobExecutionContext> currentExecutingJob = quartz.getCurrentlyExecutingJobs().stream()
-                        .filter(jobExecutionContext -> jobExecutionContext.getTrigger().getKey().equals(triggerKey))
-                        .findFirst();
-                if (currentExecutingJob.isPresent()) {
-                    version.status = Status.CANCELLING;
+                    Optional<JobExecutionContext> currentExecutingJob = quartz.getCurrentlyExecutingJobs().stream()
+                            .filter(jobExecutionContext -> jobExecutionContext.getTrigger().getKey().equals(triggerKey))
+                            .findFirst();
+
+                    if (currentExecutingJob.isPresent()) {
+                        version.status = Status.CANCELLING;
+                    } else {
+                        version.status = Status.CANCELLED;
+                    }
                 } else {
-                    version.status = Status.CANCELLED;
+                    version.status = Status.CANCELLING;
                 }
             } catch (SchedulerException e) {
                 throw new RuntimeException(e);

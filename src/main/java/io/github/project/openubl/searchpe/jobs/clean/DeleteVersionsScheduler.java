@@ -16,9 +16,12 @@
  */
 package io.github.project.openubl.searchpe.jobs.clean;
 
+import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
+import io.github.project.openubl.searchpe.models.jpa.entity.Status;
+import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
+import io.github.project.openubl.searchpe.services.VersionService;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.narayana.jta.RunOptions;
-import io.quarkus.runtime.StartupEvent;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import io.quarkus.scheduler.Scheduled;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -33,11 +36,10 @@ import org.quartz.TriggerBuilder;
 import org.quartz.TriggerKey;
 
 import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.event.Observes;
 import javax.inject.Inject;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
-
-import static org.quartz.CronScheduleBuilder.cronSchedule;
 
 @ApplicationScoped
 @RegisterForReflection
@@ -45,7 +47,6 @@ public class DeleteVersionsScheduler {
 
     private static final Logger logger = Logger.getLogger(DeleteVersionsScheduler.class);
 
-    JobKey cronJobKey = JobKey.jobKey(DeleteVersionsCronJob.class.getName(), "version");
     JobKey programmaticallyJobKey = JobKey.jobKey(DeleteVersionsProgrammaticallyJob.class.getName(), "version");
 
     @Inject
@@ -53,6 +54,12 @@ public class DeleteVersionsScheduler {
 
     @ConfigProperty(name = "searchpe.scheduled.cron-clean")
     String cronRegex;
+
+    @Inject
+    VersionService versionService;
+
+    @Inject
+    VersionRepository versionRepository;
 
     public void scheduleProgrammatically(Long versionId) throws SchedulerException {
         JobDetail programmaticallyJobDetail = JobBuilder
@@ -74,37 +81,24 @@ public class DeleteVersionsScheduler {
         quartz.scheduleJob(trigger);
     }
 
-    @Scheduled(cron = "0 15 10 15 * ?")
+    @Scheduled(cron = "{searchpe.scheduled.cron-clean}")
     protected void schedule() {
+        logger.error("Starting cleaning of unused VersionEntities Cron");
+
+        QuarkusTransaction.run(
+                QuarkusTransaction.runOptions()
+                        .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
+                        .semantic(RunOptions.Semantic.DISALLOW_EXISTING),
+                () -> {
+                    Optional<VersionEntity> activeVersion = versionRepository.findActive();
+
+                    versionRepository.listAll().stream()
+                            .filter(f -> f.status.equals(Status.COMPLETED) || f.status.equals(Status.ERROR))
+                            .filter(f -> activeVersion.map(versionEntity -> !Objects.equals(versionEntity, f)).orElse(true))
+                            .peek(f -> logger.info("Deleting VersionEntity:" + f.id))
+                            .forEach(f -> versionService.deleteVersion(f.id));
+                }
+        );
     }
 
-    protected void initJobs(@Observes StartupEvent ev) {
-        QuarkusTransaction.run(QuarkusTransaction.runOptions()
-                .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
-                .semantic(RunOptions.Semantic.DISALLOW_EXISTING), () -> {
-
-            JobDetail cronJobDetail = JobBuilder.newJob(DeleteVersionsCronJob.class)
-                    .withIdentity(cronJobKey)
-                    .storeDurably()
-                    .build();
-
-            try {
-                if (!quartz.checkExists(cronJobDetail.getKey())) {
-                    quartz.addJob(cronJobDetail, false);
-                }
-
-                Trigger cronTrigger = TriggerBuilder.newTrigger()
-                        .forJob(cronJobKey)
-                        .withIdentity(TriggerKey.triggerKey("deleteIngest", "version"))
-                        .withSchedule(cronSchedule(cronRegex))
-                        .build();
-                if (!quartz.checkExists(cronTrigger.getKey())) {
-                    quartz.scheduleJob(cronTrigger);
-                }
-            } catch (SchedulerException e) {
-                logger.error(e);
-                throw new RuntimeException(e);
-            }
-        });
-    }
 }
