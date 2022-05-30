@@ -95,7 +95,7 @@ public class DeleteVersionsScheduler {
 
                 Trigger cronTrigger = TriggerBuilder.newTrigger()
                         .forJob(cronJobKey)
-                        .withIdentity(TriggerKey.triggerKey(UUID.randomUUID().toString(), "version"))
+                        .withIdentity(TriggerKey.triggerKey("deleteIngest", "version"))
                         .withSchedule(cronSchedule(cronRegex))
                         .build();
                 if (!quartz.checkExists(cronTrigger.getKey())) {
