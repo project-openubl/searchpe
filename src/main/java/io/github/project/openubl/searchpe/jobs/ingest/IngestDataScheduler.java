@@ -16,10 +16,9 @@
  */
 package io.github.project.openubl.searchpe.jobs.ingest;
 
-import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
-import io.github.project.openubl.searchpe.services.VersionService;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.narayana.jta.RunOptions;
+import io.quarkus.runtime.StartupEvent;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import io.quarkus.scheduler.Scheduled;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -34,8 +33,11 @@ import org.quartz.TriggerBuilder;
 import org.quartz.TriggerKey;
 
 import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 import java.util.UUID;
+
+import static org.quartz.CronScheduleBuilder.cronSchedule;
 
 @ApplicationScoped
 @RegisterForReflection
@@ -43,6 +45,7 @@ public class IngestDataScheduler {
 
     private static final Logger logger = Logger.getLogger(IngestDataScheduler.class);
 
+    JobKey cronJobKey = JobKey.jobKey(IngestDataCronJob.class.getName(), "version");
     JobKey programmaticallyJobKey = JobKey.jobKey(IngestDataProgrammaticallyJob.class.getName(), "version");
 
     @Inject
@@ -50,9 +53,6 @@ public class IngestDataScheduler {
 
     @ConfigProperty(name = "searchpe.scheduled.cron")
     String cronRegex;
-
-    @Inject
-    VersionService versionService;
 
     public void scheduleProgrammatically(Long versionId) throws SchedulerException {
         JobDetail programmaticallyJobDetail = JobBuilder
@@ -74,19 +74,40 @@ public class IngestDataScheduler {
         quartz.scheduleJob(trigger);
     }
 
-    @Scheduled(cron = "{searchpe.scheduled.cron}")
+    @Scheduled(cron = "0 15 10 15 * ?")
     protected void schedule() {
-        Long versionId = QuarkusTransaction.call(QuarkusTransaction.runOptions()
+    }
+
+    protected void initJobs(@Observes StartupEvent ev) {
+        QuarkusTransaction.run(QuarkusTransaction.runOptions()
                 .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
                 .semantic(RunOptions.Semantic.DISALLOW_EXISTING), () -> {
 
-            VersionEntity version = VersionEntity.generateNew();
-            version.persist();
+            JobDetail cronJobDetail = JobBuilder
+                    .newJob(IngestDataCronJob.class)
+                    .withIdentity(cronJobKey)
+                    .storeDurably()
+                    .build();
 
-            return version.id;
+            try {
+                if (!quartz.checkExists(cronJobDetail.getKey())) {
+                    quartz.addJob(cronJobDetail, false);
+                }
+
+                Trigger cronTrigger = TriggerBuilder
+                        .newTrigger()
+                        .forJob(cronJobKey)
+                        .withIdentity(TriggerKey.triggerKey(IngestDataScheduler.class.getName(), "version"))
+                        .withSchedule(cronSchedule(cronRegex))
+                        .build();
+                if (!quartz.checkExists(cronTrigger.getKey())) {
+                    quartz.scheduleJob(cronTrigger);
+                }
+            } catch (SchedulerException e) {
+                logger.error(e);
+                throw new RuntimeException(e);
+            }
         });
-
-        versionService.importPadronReducidoIntoVersion(versionId);
     }
 
 }
