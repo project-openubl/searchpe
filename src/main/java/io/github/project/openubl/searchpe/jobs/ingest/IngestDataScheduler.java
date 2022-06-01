@@ -97,7 +97,7 @@ public class IngestDataScheduler {
                 Trigger cronTrigger = TriggerBuilder
                         .newTrigger()
                         .forJob(cronJobKey)
-                        .withIdentity(TriggerKey.triggerKey(UUID.randomUUID().toString(), "version"))
+                        .withIdentity(TriggerKey.triggerKey(IngestDataScheduler.class.getName(), "version"))
                         .withSchedule(cronSchedule(cronRegex))
                         .build();
                 if (!quartz.checkExists(cronTrigger.getKey())) {
