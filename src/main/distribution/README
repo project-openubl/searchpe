@@ -2,7 +2,7 @@
 Searchpe requiere de una base de datos para poder funcionar. Puedes iniciar PostgreSQL con el método de tu preferencia.
 Usa el siguiente comand Docker para un inicio rápido:
 
-docker run -p 5432:5432 -e POSTGRES_DB=searchpe_db -e POSTGRES_USER=db_username -e POSTGRES_PASSWORD=db_password postgres:13.1
+docker run -p 5432:5432 -e POSTGRES_DB=searchpe_db -e POSTGRES_USER=db_username -e POSTGRES_PASSWORD=db_password postgres:13.6
 
 ## Configuración
 Searchpe está hecho en Quarkus. Todas las opciones de configuración descritas en https://quarkus.io/guides/config-reference
