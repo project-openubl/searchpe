@@ -235,9 +235,6 @@ public class VersionResource {
             try {
                 String[] versionTriggeredKey = version.triggerKey.split("\\.");
                 TriggerKey triggerKey = TriggerKey.triggerKey(versionTriggeredKey[0], versionTriggeredKey[1]);
-                if (quartz.checkExists(triggerKey)) {
-                    quartz.unscheduleJob(triggerKey);
-                }
 
                 Optional<JobExecutionContext> currentExecutingJob = quartz.getCurrentlyExecutingJobs().stream()
                         .filter(jobExecutionContext -> jobExecutionContext.getTrigger().getKey().equals(triggerKey))
