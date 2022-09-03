@@ -53,9 +53,11 @@ jobs:
           JRELEASER_MAIL_PASSWORD: ${{ secrets.JRELEASER_MAIL_PASSWORD }}
           JRELEASER_ARTICLE_GITHUB_TOKEN: ${{ secrets.GH_PAT }}
       - name: JReleaser - generate log
+        if: always()
         shell: bash
         run: tar -czvf jreleaser-log.tgz out/
       - name: JReleaser - upload log
+        if: always()
         uses: actions/upload-artifact@v3
         with:
           name: jreleaser-log
