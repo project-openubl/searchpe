@@ -25,7 +25,8 @@ jobs:
           distribution: temurin
           cache: maven
       - name: Set release version
-        id: version
+        env:
+          RELEASE_VERSION: ${{ github.event.inputs.version }}
         run: |
           mvn -B versions:set versions:commit -DnewVersion=$RELEASE_VERSION
           git config --global user.email "project.openubl.preview.bot@gmail.com"
