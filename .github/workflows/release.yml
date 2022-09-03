@@ -25,48 +25,20 @@ jobs:
       - name: Set release version
         id: version
         run: |
-          RELEASE_VERSION=${{ github.event.inputs.version }}
-          NEXT_VERSION=${{ github.event.inputs.next }}
-          PLAIN_VERSION=`echo ${RELEASE_VERSION} | awk 'match($0, /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)/) { print substr($0, RSTART, RLENGTH); }'`
-          COMPUTED_NEXT_VERSION="${PLAIN_VERSION}-SNAPSHOT"
-          if [ -z $NEXT_VERSION ]
-          then
-            NEXT_VERSION=$COMPUTED_NEXT_VERSION
-          fi
-          ./mvnw -B versions:set versions:commit -DnewVersion=$RELEASE_VERSION
+          mvn -B versions:set versions:commit -DnewVersion=$RELEASE_VERSION
           git config --global user.email "project.openubl.preview.bot@gmail.com"
           git config --global user.name "Project-Openubl Bot"
           git commit --allow-empty -a -m "🏁 Releasing version $RELEASE_VERSION"
-          git push origin HEAD:master
-          git rev-parse HEAD > HEAD
-          echo $RELEASE_VERSION > RELEASE_VERSION
-          echo $PLAIN_VERSION > PLAIN_VERSION
-          echo $NEXT_VERSION > NEXT_VERSION
-      - name: Upload version files
-        uses: actions/upload-artifact@v3
-        with:
-          name: artifacts
-          path: |
-            HEAD
-            *_VERSION
+          git push origin HEAD:master        
 
   build-jvm:
     needs: [ version ]
     name: Build JVM
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v3
-        with:
-          name: artifacts
-          path: artifacts
-      - name: Read HEAD ref
-        id: head
-        uses: juliangruber/read-file-action@v1
-        with:
-          path: artifacts/HEAD
       - uses: actions/checkout@v3
         with:
-          ref: ${{ steps.head.outputs.content }}
+          ref: ${{ github.event.inputs.version }}
 
       - uses: actions/setup-java@v3
         with:
@@ -89,18 +61,9 @@ jobs:
     name: Build Container
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v3
-        with:
-          name: artifacts
-          path: artifacts
-      - name: Read HEAD ref
-        id: head
-        uses: juliangruber/read-file-action@v1
-        with:
-          path: artifacts/HEAD
       - uses: actions/checkout@v3
         with:
-          ref: ${{ steps.head.outputs.content }}
+          ref: ${{ github.event.inputs.version }}
 
       - uses: actions/setup-java@v3
         with:
@@ -131,28 +94,9 @@ jobs:
     needs: [ build-jvm, build-container ]
     runs-on: ubuntu-latest
     steps:
-      - name: Download all build artifacts
-        uses: actions/download-artifact@v3
-      - name: Read HEAD ref
-        id: head
-        uses: juliangruber/read-file-action@v1
-        with:
-          path: artifacts/HEAD
-      - name: Read versions
-        id: version
-        run: |
-          RELEASE_VERSION=`cat artifacts/RELEASE_VERSION`
-          PLAIN_VERSION=`cat artifacts/PLAIN_VERSION`
-          NEXT_VERSION=`cat artifacts/NEXT_VERSION`
-          echo "RELEASE_VERSION = $RELEASE_VERSION"
-          echo "PLAIN_VERSION   = $PLAIN_VERSION"
-          echo "NEXT_VERSION    = $NEXT_VERSION"
-          echo "::set-output name=RELEASE_VERSION::$RELEASE_VERSION"
-          echo "::set-output name=PLAIN_VERSION::$PLAIN_VERSION"
-          echo "::set-output name=NEXT_VERSION::$NEXT_VERSION"
       - uses: actions/checkout@v3
         with:
-          ref: ${{ steps.head.outputs.content }}
+          ref: ${{ github.event.inputs.version }}
           fetch-depth: 0
 
       # Create the openapi.yaml files
@@ -181,12 +125,12 @@ jobs:
           docker load -i artifacts/searchpe-container-image.tar
 
           # Identify major version
-          major=$(echo "${{ steps.version.outputs.RELEASE_VERSION }}" | cut -d. -f1)
+          major=$(echo "${{ github.event.inputs.version }}" | cut -d. -f1)
           
           # Tag images
           docker tag quay.io/projectopenubl/searchpe:latest quay.io/projectopenubl/searchpe:latest
           docker tag quay.io/projectopenubl/searchpe:latest quay.io/projectopenubl/searchpe:v$major
-          docker tag quay.io/projectopenubl/searchpe:latest quay.io/projectopenubl/searchpe:v${{ steps.version.outputs.RELEASE_VERSION }}
+          docker tag quay.io/projectopenubl/searchpe:latest quay.io/projectopenubl/searchpe:v${{ github.event.inputs.version }}
           
           # Push images
           docker image push --all-tags quay.io/projectopenubl/searchpe
@@ -225,9 +169,9 @@ jobs:
 
       - name: Set next version
         env:
-          NEXT_VERSION: ${{ steps.version.outputs.NEXT_VERSION }}
+          NEXT_VERSION: ${{ github.event.inputs.next }}
         run: |
-          ./mvnw -B versions:set versions:commit -DnewVersion=$NEXT_VERSION
+          mvn -B versions:set versions:commit -DnewVersion=$NEXT_VERSION
           git config --global user.email "project.openubl.preview.bot@gmail.com"
           git config --global user.name "Project-Openubl Bot"
           git commit -a -m "⬆️  Next version $NEXT_VERSION"
