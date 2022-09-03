@@ -16,6 +16,12 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
+      - name: Login to Quay.io
+        uses: docker/login-action@v2
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAYIO_USERNAME }}
+          password: ${{ secrets.QUAYIO_PASSWORD }}
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
@@ -34,7 +40,38 @@ jobs:
           git commit --allow-empty -a -m "🏁 Releasing version $RELEASE_VERSION"
           git push origin HEAD:master     
 
-      - name: Build with Maven
+      - name: Release container images
+        run: |
+          mvn -U -B package -DskipTests \
+          -Dquarkus.native.container-build=true \
+          -Dquarkus.container-image.push=false \
+          -Dquarkus.container-image.build=true \
+          -Dquarkus.container-image.registry=quay.io \
+          -Dquarkus.container-image.group=projectopenubl \
+          -Dquarkus.container-image.name=searchpe \
+          -Dquarkus.container-image.tag=latest \
+          -P native,ui
+          
+          # Identify major version
+          major=$(echo "${{ github.event.inputs.version }}" | cut -d. -f1)
+
+          # Tag images
+          docker tag quay.io/projectopenubl/searchpe:latest quay.io/projectopenubl/searchpe:latest
+          docker tag quay.io/projectopenubl/searchpe:latest quay.io/projectopenubl/searchpe:v$major
+          docker tag quay.io/projectopenubl/searchpe:latest quay.io/projectopenubl/searchpe:v${{ github.event.inputs.version }}
+
+          # Push images
+          docker image push --all-tags quay.io/projectopenubl/searchpe
+
+      - uses: azure/setup-helm@v1
+      - name: Release Helm
+        run: |
+          mvn process-resources
+          helm plugin install https://github.com/chartmuseum/helm-push
+          helm repo add --username ${{ secrets.GITLAB_REGISTRY_USERNAME }} --password ${{ secrets.GITLAB_REGISTRY_TOKEN }} openubl https://gitlab.com/api/v4/projects/36554180/packages/helm/stable
+          helm cm-push --force target/helm openubl
+
+      - name: Build distribution
         run: mvn package -DskipTests -P ui,distribution
 
       - name: JReleaser - release
@@ -73,68 +110,3 @@ jobs:
           git commit -a -m "⬆️  Next version $NEXT_VERSION"
           git push origin HEAD:master
 
-  releaser-containers:
-    needs: [ release ]
-    name: Release containers
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.inputs.version }}
-      - uses: actions/setup-java@v3
-        with:
-          java-version: 11
-          distribution: temurin
-          cache: maven
-
-      - name: Build container image
-        run: |
-          mvn -U -B package -DskipTests \
-          -Dquarkus.native.container-build=true \
-          -Dquarkus.container-image.push=false \
-          -Dquarkus.container-image.build=true \
-          -Dquarkus.container-image.registry=quay.io \
-          -Dquarkus.container-image.group=projectopenubl \
-          -Dquarkus.container-image.name=searchpe \
-          -Dquarkus.container-image.tag=latest \
-          -P native,ui
-      - name: Login to Quay.io
-        uses: docker/login-action@v2
-        with:
-          registry: quay.io
-          username: ${{ secrets.QUAYIO_USERNAME }}
-          password: ${{ secrets.QUAYIO_PASSWORD }}
-      - name: Push images to registry
-        run: |          
-          # Identify major version
-          major=$(echo "${{ github.event.inputs.version }}" | cut -d. -f1)
-
-          # Tag images
-          docker tag quay.io/projectopenubl/searchpe:latest quay.io/projectopenubl/searchpe:latest
-          docker tag quay.io/projectopenubl/searchpe:latest quay.io/projectopenubl/searchpe:v$major
-          docker tag quay.io/projectopenubl/searchpe:latest quay.io/projectopenubl/searchpe:v${{ github.event.inputs.version }}
-
-          # Push images
-          docker image push --all-tags quay.io/projectopenubl/searchpe
-
-  release-helm:
-    needs: [ release ]
-    name: Release Helm
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.inputs.version }}
-      - uses: actions/setup-java@v3
-        with:
-          java-version: 11
-          distribution: temurin
-          cache: maven
-
-      - uses: azure/setup-helm@v1
-      - name: Helm
-        run: |
-          mvn process-resources
-          helm plugin install https://github.com/chartmuseum/helm-push
-          helm repo add --username ${{ secrets.GITLAB_REGISTRY_USERNAME }} --password ${{ secrets.GITLAB_REGISTRY_TOKEN }} openubl https://gitlab.com/api/v4/projects/36554180/packages/helm/stable
-          helm cm-push --force target/helm openubl
