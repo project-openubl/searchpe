@@ -63,7 +63,7 @@ jobs:
           # Push images
           docker image push --all-tags quay.io/projectopenubl/searchpe
 
-      - uses: azure/setup-helm@v1
+      - uses: azure/setup-helm@v3
       - name: Release Helm
         run: |
           mvn process-resources
