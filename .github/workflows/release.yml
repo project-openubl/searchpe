@@ -5,9 +5,11 @@ on:
     inputs:
       version:
         description: "Release version"
+        default: "E.g. 4.0.0"
         required: true
       next:
         description: "Next version"
+        default: "E.g. 5.0.0-SNAPSHOT"
         required: false
 
 jobs:
