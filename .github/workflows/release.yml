@@ -139,7 +139,7 @@ jobs:
         uses: jreleaser/release-action@v2
         env:
           JRELEASER_GITHUB_TOKEN: ${{ secrets.GH_PAT }}
-          JRELEASER_PROJECT_VERSION: ${{ steps.version.outputs.RELEASE_VERSION }}
+          JRELEASER_PROJECT_VERSION: ${{ github.event.inputs.version }}
           JRELEASER_PRERELEASE_PATTERN: .*(?:Alpha|alpha|Beta|beta)[0-9]
           JRELEASER_ZULIP_API_KEY: ${{ secrets.JRELEASER_ZULIP_API_KEY }}
           JRELEASER_TWITTER_CONSUMER_KEY: ${{ secrets.JRELEASER_TWITTER_CONSUMER_KEY }}
