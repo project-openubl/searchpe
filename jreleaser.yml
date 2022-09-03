@@ -15,8 +15,8 @@ project:
 distributions:
   jvm:
     artifacts:
-      - path: artifacts/searchpe-{{projectVersion}}.tar.gz
-      - path: artifacts/searchpe-{{projectVersion}}.zip
+      - path: target/distributions/searchpe-{{projectVersion}}.tar.gz
+      - path: target/distributions/searchpe-{{projectVersion}}.zip
 
 release:
   github:

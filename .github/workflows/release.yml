@@ -89,7 +89,7 @@ jobs:
 
       - name: Build container image
         run: |
-          mvn -U -B package --file pom.xml -DskipTests \
+          mvn -U -B package -DskipTests \
           -Dquarkus.native.container-build=true \
           -Dquarkus.container-image.push=false \
           -Dquarkus.container-image.build=true \
@@ -105,10 +105,7 @@ jobs:
           username: ${{ secrets.QUAYIO_USERNAME }}
           password: ${{ secrets.QUAYIO_PASSWORD }}
       - name: Push images to registry
-        run: |
-          # Load images from .tar
-          docker load -i artifacts/searchpe-container-image.tar
-
+        run: |          
           # Identify major version
           major=$(echo "${{ github.event.inputs.version }}" | cut -d. -f1)
 
