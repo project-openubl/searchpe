@@ -71,6 +71,7 @@ public abstract class AbstractBaseTest {
         }
 
         return Flyway.configure()
+                .cleanDisabled(false)
                 .dataSource(jdbUrl, username, password)
                 .connectRetries(120)
                 .locations(locations.toArray(String[]::new))
