@@ -243,12 +243,6 @@
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>postgresql</artifactId>
-            <version>${testcontainers.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
             <artifactId>mockserver</artifactId>
             <version>${testcontainers.version}</version>
             <scope>test</scope>
@@ -268,14 +262,6 @@
     </dependencies>
 
     <build>
-        <extensions>
-            <extension>
-                <groupId>kr.motd.maven</groupId>
-                <artifactId>os-maven-plugin</artifactId>
-                <version>1.7.0</version>
-            </extension>
-        </extensions>
-
         <plugins>
             <plugin>
                 <groupId>${quarkus.platform.group-id}</groupId>
@@ -435,18 +421,6 @@
             </build>
             <properties>
                 <quarkus.package.type>native</quarkus.package.type>
-            </properties>
-        </profile>
-
-        <profile>
-            <id>windows</id>
-            <activation>
-                <os>
-                    <family>windows</family>
-                </os>
-            </activation>
-            <properties>
-                <executable-suffix>.exe</executable-suffix>
             </properties>
         </profile>
 
