@@ -194,8 +194,9 @@ jobs:
       - name: JReleaser - release
         uses: jreleaser/release-action@v2
         env:
-          JRELEASER_GITHUB_TOKEN: ${{ secrets.JRELEASER_GITHUB_TOKEN }}
+          JRELEASER_GITHUB_TOKEN: ${{ secrets.GH_PAT }}
           JRELEASER_PROJECT_VERSION: ${{ steps.version.outputs.RELEASE_VERSION }}
+          JRELEASER_PRERELEASE_PATTERN: .*(?:Alpha|alpha|Beta|beta)[0-9]
           JRELEASER_ZULIP_API_KEY: ${{ secrets.JRELEASER_ZULIP_API_KEY }}
           JRELEASER_TWITTER_CONSUMER_KEY: ${{ secrets.JRELEASER_TWITTER_CONSUMER_KEY }}
           JRELEASER_TWITTER_CONSUMER_SECRET: ${{ secrets.JRELEASER_TWITTER_CONSUMER_SECRET }}
@@ -204,6 +205,7 @@ jobs:
           JRELEASER_SLACK_TOKEN: ${{ secrets.JRELEASER_SLACK_TOKEN }}
           JRELEASER_SLACK_WEBHOOK: ${{ secrets.JRELEASER_SLACK_WEBHOOK }}
           JRELEASER_MAIL_PASSWORD: ${{ secrets.JRELEASER_MAIL_PASSWORD }}
+          JRELEASER_ARTICLE_GITHUB_TOKEN: ${{ secrets.GH_PAT }}
       - name: JReleaser - generate log
         shell: bash
         run: tar -czvf jreleaser-log.tgz out/
