@@ -14,7 +14,7 @@
     "@testing-library/react-hooks": "^8.0.0",
     "@testing-library/user-event": "^13.5.0",
     "@types/jest": "^27.4.1",
-    "@types/node": "^16.11.27",
+    "@types/node": "^16.11.59",
     "@types/react": "^17.0.39",
     "@types/react-dom": "^17.0.11",
     "axios": "0.21.4",
