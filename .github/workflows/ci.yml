@@ -57,9 +57,6 @@ jobs:
       - name: Test
         working-directory: src/main/webapp
         run: npm run test -- --coverage --watchAll=false
-  #      - uses: codecov/codecov-action@v3
-  #        with:
-  #          flags: unitests
 
   helm-tests:
     name: Helm Tests
