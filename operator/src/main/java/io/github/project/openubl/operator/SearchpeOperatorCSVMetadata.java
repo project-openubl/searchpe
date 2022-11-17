@@ -18,7 +18,6 @@ package io.github.project.openubl.operator;
 
 import io.quarkiverse.operatorsdk.bundle.runtime.CSVMetadata;
 import io.quarkiverse.operatorsdk.bundle.runtime.SharedCSVMetadata;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 @CSVMetadata(
 //        name = "searchpe-operator.v${RELEASE_VERSION}",
@@ -112,11 +111,4 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
         maintainers = {@CSVMetadata.Maintainer(name = "OpenUbl", email = "projectopenubl+subscribe@googlegroups.com")}
 )
 public class SearchpeOperatorCSVMetadata implements SharedCSVMetadata {
-
-    @ConfigProperty(name = "quarkus.application.version")
-    String applicationVersion;
-
-    public String getVersion() {
-        return applicationVersion;
-    }
 }
