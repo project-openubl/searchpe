@@ -17,7 +17,6 @@
 package io.github.project.openubl.operator;
 
 import java.util.Map;
-import java.util.function.Function;
 
 public class Constants {
     public static final String CRDS_GROUP = "searchpe.openubl.io";

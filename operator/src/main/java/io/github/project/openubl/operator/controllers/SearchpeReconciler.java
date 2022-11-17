@@ -20,7 +20,7 @@ import io.fabric8.kubernetes.api.model.networking.v1.Ingress;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.github.project.openubl.operator.Config;
 import io.github.project.openubl.operator.Constants;
-import io.github.project.openubl.operator.cdrs.v2alpha1.searchpe.Searchpe;
+import io.github.project.openubl.operator.cdrs.v2alpha1.Searchpe;
 import io.github.project.openubl.operator.cdrs.v2alpha1.SearchpeDeployment;
 import io.github.project.openubl.operator.cdrs.v2alpha1.SearchpeIngress;
 import io.github.project.openubl.operator.cdrs.v2alpha1.SearchpeSecretBasicAuth;

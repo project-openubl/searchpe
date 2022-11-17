@@ -25,7 +25,7 @@ import io.fabric8.kubernetes.api.model.VolumeBuilder;
 import io.fabric8.kubernetes.api.model.VolumeMount;
 import io.fabric8.kubernetes.api.model.VolumeMountBuilder;
 import io.github.project.openubl.operator.Constants;
-import io.github.project.openubl.operator.cdrs.v2alpha1.searchpe.Searchpe;
+import io.github.project.openubl.operator.cdrs.v2alpha1.Searchpe;
 import io.github.project.openubl.operator.cdrs.v2alpha1.SearchpeSecretBasicAuth;
 import io.github.project.openubl.operator.cdrs.v2alpha1.SearchpeService;
 import io.github.project.openubl.operator.cdrs.v2alpha1.SearchpeSpec;
