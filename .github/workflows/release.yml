@@ -50,7 +50,8 @@ jobs:
           -Dquarkus.container-image.group=projectopenubl \
           -Dquarkus.container-image.name=searchpe \
           -Dquarkus.container-image.tag=latest \
-          -P native,ui
+          -P native,ui \
+          -f application
           
           # Identify major version
           major=$(echo "${{ github.event.inputs.version }}" | cut -d. -f1)
@@ -69,10 +70,10 @@ jobs:
           mvn process-resources
           helm plugin install https://github.com/chartmuseum/helm-push
           helm repo add --username ${{ secrets.GITLAB_REGISTRY_USERNAME }} --password ${{ secrets.GITLAB_REGISTRY_TOKEN }} openubl https://gitlab.com/api/v4/projects/36554180/packages/helm/stable
-          helm cm-push --force target/helm openubl
+          helm cm-push --force application/target/helm openubl
 
       - name: Build distribution
-        run: mvn package -DskipTests -P ui,distribution
+        run: mvn package -DskipTests -P ui,distribution -f application
 
       - name: JReleaser - release
         uses: jreleaser/release-action@v2
