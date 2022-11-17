@@ -15,8 +15,8 @@ project:
 distributions:
   jvm:
     artifacts:
-      - path: target/distributions/searchpe-{{projectVersion}}.tar.gz
-      - path: target/distributions/searchpe-{{projectVersion}}.zip
+      - path: application/target/distributions/searchpe-{{projectVersion}}.tar.gz
+      - path: application/target/distributions/searchpe-{{projectVersion}}.zip
 
 release:
   github:
@@ -61,6 +61,7 @@ announce:
       name: website
       branch: master
       username: carlosthe19916
+    templateDirectory: jreleaser/templates/article
     files:
       - path: 'release.md'
         transform: 'blog/{{#f_now}}YYYY-MM-dd{{/f_now}}/{{projectName}}-{{#f_dash}}{{projectVersion}}{{/f_dash}}-released.md'
