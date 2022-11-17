@@ -24,9 +24,9 @@ jobs:
       - name: Maven
         run: mvn test -f application -Dtest=DataHelperTest -Dsearchpe.sunat.padronReducidoUrl=http://www2.sunat.gob.pe/padron_reducido_ruc.zip
 
-  build-snapshot-container:
+  application-container:
     needs: [ linux-jvm-tests ]
-    name: Build Container
+    name: Application container
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -55,9 +55,39 @@ jobs:
           name: artifacts
           path: searchpe-container-image.tar
 
-  snapshots-container:
-    needs: [ build-snapshot-container ]
-    name: Snapshot container
+  operator-container:
+    name: Operator container
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-java@v3
+        with:
+          java-version: 17
+          distribution: temurin
+          cache: maven
+      - name: Build container image
+        run: |
+          mvn -U -B package --file pom.xml -DskipTests \
+          -Dquarkus.native.container-build=true \
+          -Dquarkus.container-image.push=false \
+          -Dquarkus.container-image.build=true \
+          -Dquarkus.container-image.registry=quay.io \
+          -Dquarkus.container-image.group=projectopenubl \
+          -Dquarkus.container-image.name=searchpe \
+          -Dquarkus.container-image.tag=latest \
+          -P native \
+          -f operator
+      - name: Save container image
+        run: docker save -o searchpe-container-image.tar quay.io/projectopenubl/searchpe-operator:latest
+      - name: Upload container image
+        uses: actions/upload-artifact@v3
+        with:
+          name: artifacts
+          path: searchpe-operator-container-image.tar
+
+  publish-container:
+    needs: [ application-container, operator-container ]
+    name: Publish container
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v3
@@ -77,11 +107,19 @@ jobs:
         run: |
           # Load images from .tar
           docker load -i artifacts/searchpe-container-image.tar
+          docker load -i artifacts/searchpe-operator-container-image.tar
           
           # Tag images
-          docker tag quay.io/projectopenubl/searchpe:latest quay.io/projectopenubl/searchpe:early-access      
-          docker tag quay.io/projectopenubl/searchpe:latest ghcr.io/project-openubl/searchpe/searchpe:early-access
+          docker tag quay.io/projectopenubl/searchpe:latest quay.io/projectopenubl/searchpe:nightly
+          docker tag quay.io/projectopenubl/searchpe:latest ghcr.io/project-openubl/searchpe/searchpe:nightly
+          
+          docker tag quay.io/projectopenubl/searchpe-operator:latest quay.io/projectopenubl/searchpe-operator:nightly
+          docker tag quay.io/projectopenubl/searchpe-operator:latest ghcr.io/project-openubl/searchpe/searchpe-operator:nightly
+
       - name: Push images to registry
         run: |
-          docker push quay.io/projectopenubl/searchpe:early-access          
-          docker push ghcr.io/project-openubl/searchpe/searchpe:early-access
+          docker push quay.io/projectopenubl/searchpe:nightly
+          docker push ghcr.io/project-openubl/searchpe/searchpe:nightly
+          
+          docker push quay.io/projectopenubl/searchpe-operator:nightly
+          docker push ghcr.io/project-openubl/searchpe/searchpe-operator:nightly
