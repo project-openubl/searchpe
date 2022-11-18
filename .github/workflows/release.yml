@@ -11,6 +11,11 @@ on:
         description: "Next version"
         default: "E.g. 5.0.0-SNAPSHOT"
         required: false
+      skip_publish_operator:
+        description: Whether or not skip the publication of the operator
+        type: boolean
+        default: false
+        required: false
 
 jobs:
   prepare:
@@ -37,6 +42,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          ref: master
       - uses: actions/setup-java@v3
         with:
           java-version: 17
@@ -77,6 +84,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          ref: master
       - uses: actions/setup-java@v3
         with:
           java-version: 17
@@ -100,6 +109,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          ref: master
       - uses: actions/setup-java@v3
         with:
           java-version: 17
@@ -133,11 +144,13 @@ jobs:
           docker image push --all-tags quay.io/projectopenubl/searchpe-operator
 
   publish-operator:
+    if: ${{ github.event.inputs.skip_publish_operator != true }}
     needs: [ operator ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
+          ref: master
           path: searchpe
       - uses: actions/setup-java@v3
         with:
@@ -169,7 +182,7 @@ jobs:
           repository_upstream_owner: k8s-operatorhub
           repository_upstream_name: community-operators
           repository_default_branch: main
-          GITHUB_PAT: ${{ secrets.GH_PAT }}
+          github_pat: ${{ secrets.GH_PAT }}
 
   release:
     needs: [ application, helm, publish-operator ]
@@ -177,6 +190,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
+          ref: master
           fetch-depth: 0
       - uses: actions/setup-java@v3
         with:

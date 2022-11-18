@@ -426,7 +426,7 @@
                                 <configuration combine.self="append">
                                     <attach>false</attach>
                                     <appendAssemblyId>false</appendAssemblyId>
-                                    <finalName>${project.artifactId}-${project.version}</finalName>
+                                    <finalName>searchpe-${project.version}</finalName>
                                     <outputDirectory>${project.build.directory}/distributions</outputDirectory>
                                     <workDirectory>${project.build.directory}/assembly/work</workDirectory>
                                     <skipAssembly>false</skipAssembly>
