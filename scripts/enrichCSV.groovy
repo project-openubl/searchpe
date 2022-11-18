@@ -28,6 +28,8 @@ yaml.metadata.name = 'searchpe-operator.v' + version
 yaml.spec.annotations.containerImage = 'quay.io/projectopenubl/searchpe-operator:v' + version
 yaml.spec.install.spec.deployments[0].spec.template.spec.containers[0].image = 'quay.io/projectopenubl/searchpe-operator:v' + version
 yaml.spec.version = version
+yaml.spec.customresourcedefinitions.owned[0].displayName = 'Searchpe'
+yaml.spec.customresourcedefinitions.owned[0].description = 'Searchpe'
 
 // Workaround for moving annotations since OperatorHub.io complains about it
 yaml.metadata.annotations = yaml.spec.annotations
@@ -37,5 +39,6 @@ DumperOptions options = new DumperOptions();
 options.indent = 2
 options.defaultFlowStyle = DumperOptions.FlowStyle.BLOCK
 options.defaultScalarStyle = DumperOptions.ScalarStyle.PLAIN
+options.prettyFlow = true
 
 new Yaml(options).dump(yaml, new FileWriter(file))

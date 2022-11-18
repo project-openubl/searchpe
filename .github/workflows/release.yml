@@ -134,6 +134,7 @@ jobs:
           -Dquarkus.container-image.tag=latest \
           -Dquarkus.operator-sdk.bundle.package-name=searchpe-operator \
           -Dquarkus.operator-sdk.bundle.channels=alpha \
+          -Doperator.searchpe.image=quay.io/projectopenubl/searchpe:v${{ github.event.inputs.version }} \
           -P native \
           -f operator
 
@@ -144,7 +145,7 @@ jobs:
           docker image push --all-tags quay.io/projectopenubl/searchpe-operator
 
   publish-operator:
-    if: ${{ github.event.inputs.skip_publish_operator != true }}
+    if: ${{ github.event.inputs.skip_publish_operator == false }}
     needs: [ operator ]
     runs-on: ubuntu-latest
     steps:
@@ -163,6 +164,7 @@ jobs:
           sudo apt-get install -y groovy
 
           mvn package -DskipTests \
+          -Doperator.searchpe.image=quay.io/projectopenubl/searchpe:v${{ github.event.inputs.version }} \
           -Dquarkus.operator-sdk.bundle.package-name=searchpe-operator \
           -Dquarkus.operator-sdk.bundle.channels=alpha \
           -f operator
