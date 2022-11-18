@@ -161,7 +161,7 @@ jobs:
         uses: project-openubl/.github/actions/pull-request-operator@master
         with:
           operator_name: searchpe-operator
-          operator_version: { { github.event.inputs.version } }
+          operator_version: ${{ github.event.inputs.version }}
           operator_bundle_directory: searchpe/operator/target/bundle/searchpe-operator
           pr_body_template_url: https://raw.githubusercontent.com/project-openubl/community-operators/main/docs/pull_request_template.md
           repository_origin_owner: project-openubl
