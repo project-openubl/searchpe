@@ -29,9 +29,9 @@ jobs:
           cache: maven
       - name: Set release version ${{ github.event.inputs.version }}
         run: |
-          mvn -B versions:set versions:commit -DnewVersion=$RELEASE_VERSION
+          mvn -B versions:set versions:commit -DnewVersion=$NEW_VERSION
         env:
-          RELEASE_VERSION: ${{ github.event.inputs.version }}
+          NEW_VERSION: ${{ github.event.inputs.version }}
       - name: Commit and Push
         uses: project-openubl/.github/actions/commit@master
         with:
@@ -228,6 +228,11 @@ jobs:
           name: jreleaser-log
           path: 'jreleaser-log.tgz'
 
+      - name: Set version ${{ github.event.inputs.next }}
+        run: |
+          mvn -B versions:set versions:commit -DnewVersion=$NEW_VERSION
+        env:
+          NEW_VERSION: ${{ github.event.inputs.next }}
       - name: Commit and Push
         uses: project-openubl/.github/actions/commit@master
         with:
