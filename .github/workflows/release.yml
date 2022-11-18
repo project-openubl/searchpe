@@ -29,9 +29,9 @@ jobs:
           cache: maven
       - name: Set release version ${{ github.event.inputs.version }}
         run: |
-          mvn -B versions:set versions:commit -DnewVersion=$RELEASE_VERSION
+          mvn -B versions:set versions:commit -DnewVersion=$NEW_VERSION
         env:
-          RELEASE_VERSION: ${{ github.event.inputs.version }}
+          NEW_VERSION: ${{ github.event.inputs.version }}
       - name: Commit and Push
         uses: project-openubl/.github/actions/commit@master
         with:
@@ -134,6 +134,7 @@ jobs:
           -Dquarkus.container-image.tag=latest \
           -Dquarkus.operator-sdk.bundle.package-name=searchpe-operator \
           -Dquarkus.operator-sdk.bundle.channels=alpha \
+          -Doperator.searchpe.image=quay.io/projectopenubl/searchpe:v${{ github.event.inputs.version }} \
           -P native \
           -f operator
 
@@ -144,7 +145,7 @@ jobs:
           docker image push --all-tags quay.io/projectopenubl/searchpe-operator
 
   publish-operator:
-    if: ${{ github.event.inputs.skip_publish_operator != true }}
+    if: ${{ github.event.inputs.skip_publish_operator == false }}
     needs: [ operator ]
     runs-on: ubuntu-latest
     steps:
@@ -163,6 +164,7 @@ jobs:
           sudo apt-get install -y groovy
 
           mvn package -DskipTests \
+          -Doperator.searchpe.image=quay.io/projectopenubl/searchpe:v${{ github.event.inputs.version }} \
           -Dquarkus.operator-sdk.bundle.package-name=searchpe-operator \
           -Dquarkus.operator-sdk.bundle.channels=alpha \
           -f operator
@@ -226,6 +228,11 @@ jobs:
           name: jreleaser-log
           path: 'jreleaser-log.tgz'
 
+      - name: Set version ${{ github.event.inputs.next }}
+        run: |
+          mvn -B versions:set versions:commit -DnewVersion=$NEW_VERSION
+        env:
+          NEW_VERSION: ${{ github.event.inputs.next }}
       - name: Commit and Push
         uses: project-openubl/.github/actions/commit@master
         with:

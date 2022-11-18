@@ -28,20 +28,27 @@ import io.quarkiverse.operatorsdk.bundle.runtime.SharedCSVMetadata;
                 categories = "Application Runtime",
                 capabilities = "Basic Install",
                 almExamples = """
-                        kind: "Searchpe"
-                        apiVersion: "searchpe.openubl.io/v1alpha1"
-                        metadata:
-                          name: searchpe
-                        spec:
-                          db:
-                            usernameSecret:
-                              name: postgresql-pguser-foo
-                              key: user
-                            passwordSecret:
-                              name: postgresql-pguser-foo
-                              key: password
-                            url: jdbc:postgresql://postgresql-primary.default.svc:5432/searchpedb
-                        """
+                [{
+                  "kind": "Searchpe",
+                  "apiVersion": "searchpe.openubl.io/v1alpha1",
+                  "metadata": {
+                    "name": "searchpe"
+                  },
+                  "spec": {
+                    "db": {
+                      "usernameSecret": {
+                        "name": "postgresql-pguser-foo",
+                        "key": "user"
+                      },
+                      "passwordSecret": {
+                        "name": "postgresql-pguser-foo",
+                        "key": "password"
+                      },
+                      "url": "jdbc:postgresql://postgresql-primary.default.svc:5432/searchpedb"
+                    }
+                  }
+                }]
+                """
         ),
         permissionRules = {
                 @CSVMetadata.PermissionRule(
