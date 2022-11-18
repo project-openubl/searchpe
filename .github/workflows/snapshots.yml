@@ -73,7 +73,7 @@ jobs:
           -Dquarkus.container-image.build=true \
           -Dquarkus.container-image.registry=quay.io \
           -Dquarkus.container-image.group=projectopenubl \
-          -Dquarkus.container-image.name=searchpe \
+          -Dquarkus.container-image.name=searchpe-operator \
           -Dquarkus.container-image.tag=latest \
           -P native \
           -f operator
