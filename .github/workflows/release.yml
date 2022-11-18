@@ -132,8 +132,47 @@ jobs:
           # Push images
           docker image push --all-tags quay.io/projectopenubl/searchpe-operator
 
+  publish-operator:
+    needs: [ operator ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          path: searchpe
+      - uses: actions/setup-java@v3
+        with:
+          java-version: 17
+          distribution: temurin
+          cache: maven
+      - name: Prepare files
+        working-directory: searchpe
+        run: |
+          sudo apt-get install -y groovy
+
+          mvn package -DskipTests \
+          -Dquarkus.operator-sdk.bundle.package-name=searchpe-operator \
+          -Dquarkus.operator-sdk.bundle.channels=alpha \
+          -f operator
+
+          groovy scripts/enrichCSV.groovy \
+          operator/target/bundle/searchpe-operator/manifests/searchpe-operator.clusterserviceversion.yaml \
+          ${{ github.event.inputs.version }}
+      - name: Create PR community-operators
+        uses: project-openubl/.github/actions/pull-request-operator@master
+        with:
+          operator_name: searchpe-operator
+          operator_version: { { github.event.inputs.version } }
+          operator_bundle_directory: searchpe/operator/target/bundle/searchpe-operator
+          pr_body_template_url: https://raw.githubusercontent.com/project-openubl/community-operators/main/docs/pull_request_template.md
+          repository_origin_owner: project-openubl
+          repository_origin_name: community-operators
+          repository_upstream_owner: k8s-operatorhub
+          repository_upstream_name: community-operators
+          repository_default_branch: main
+          GITHUB_PAT: ${{ secrets.GH_PAT }}
+
   release:
-    needs: [ application, helm, operator ]
+    needs: [ application, helm, publish-operator ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -177,43 +216,3 @@ jobs:
         uses: project-openubl/.github/actions/commit@master
         with:
           commit_message: "⬆️ Next version ${{ github.event.inputs.next }}"
-
-  publish-operator:
-    needs: [ release ]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.inputs.version }}
-          path: searchpe
-      - uses: actions/setup-java@v3
-        with:
-          java-version: 17
-          distribution: temurin
-          cache: maven
-      - name: Prepare files
-        working-directory: searchpe
-        run: |
-          sudo apt-get install -y groovy
-          
-          mvn package -DskipTests \
-          -Dquarkus.operator-sdk.bundle.package-name=searchpe-operator \
-          -Dquarkus.operator-sdk.bundle.channels=alpha \
-          -f operator
-          
-          groovy scripts/enrichCSV.groovy \
-          operator/target/bundle/searchpe-operator/manifests/searchpe-operator.clusterserviceversion.yaml \
-          ${{ github.event.inputs.version }}
-      - name: Create PR community-operators
-        uses: project-openubl/.github/actions/pull-request-operator@master
-        with:
-          operator_name: searchpe-operator
-          operator_version: {{ github.event.inputs.version }}
-          operator_bundle_directory: searchpe/operator/target/bundle/searchpe-operator
-          pr_body_template_url: https://raw.githubusercontent.com/project-openubl/community-operators/main/docs/pull_request_template.md
-          repository_origin_owner: project-openubl
-          repository_origin_name: community-operators
-          repository_upstream_owner: k8s-operatorhub
-          repository_upstream_name: community-operators
-          repository_default_branch: main
-          GITHUB_PAT: ${{ secrets.GH_PAT }}
