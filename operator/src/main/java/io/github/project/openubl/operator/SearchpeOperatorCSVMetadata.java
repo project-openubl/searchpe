@@ -23,7 +23,7 @@ import io.quarkiverse.operatorsdk.bundle.runtime.SharedCSVMetadata;
 //        name = "searchpe-operator.v${RELEASE_VERSION}",
 //        version = "${RELEASE_VERSION}",
         annotations = @CSVMetadata.Annotations(
-                containerImage = "projectopenubl/searchpe-operator/${RELEASE_VERSION}",
+                containerImage = "projectopenubl/searchpe-operator:${RELEASE_VERSION}",
                 repository = "https://github.com/project-openubl/searchpe",
                 categories = "Application Runtime",
                 capabilities = "Basic Install",
