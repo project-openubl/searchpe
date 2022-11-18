@@ -78,7 +78,7 @@ jobs:
           -P native \
           -f operator
       - name: Save container image
-        run: docker save -o searchpe-container-image.tar quay.io/projectopenubl/searchpe-operator:latest
+        run: docker save -o searchpe-operator-container-image.tar quay.io/projectopenubl/searchpe-operator:latest
       - name: Upload container image
         uses: actions/upload-artifact@v3
         with:
