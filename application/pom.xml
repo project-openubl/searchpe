@@ -32,7 +32,7 @@
     <description>Searchpe REST application</description>
 
     <properties>
-        <quarkus.platform.version>2.14.1.Final</quarkus.platform.version>
+        <quarkus.platform.version>2.14.3.Final</quarkus.platform.version>
         <helm.image.tag>${project.version}</helm.image.tag>
     </properties>
 
