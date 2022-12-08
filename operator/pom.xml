@@ -31,9 +31,7 @@
     <artifactId>searchpe-operator</artifactId>
 
     <properties>
-        <quarkus.platform.version>2.13.4.Final</quarkus.platform.version>
-        <quarkus-sdk.version>4.0.5</quarkus-sdk.version>
-
+        <quarkus-sdk.version>5.0.0.Beta2</quarkus-sdk.version>
         <skipITs>true</skipITs>
     </properties>
 
