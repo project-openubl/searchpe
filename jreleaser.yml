@@ -61,7 +61,6 @@ announce:
       name: website
       branch: master
       username: carlosthe19916
-    templateDirectory: jreleaser/templates/article
     files:
       - path: 'release.md'
         transform: 'blog/{{#f_now}}YYYY-MM-dd{{/f_now}}/{{projectName}}-{{#f_dash}}{{projectVersion}}{{/f_dash}}-released.md'
