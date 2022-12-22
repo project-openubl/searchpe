@@ -46,7 +46,7 @@ jobs:
           -Dquarkus.container-image.name=searchpe \
           -Dquarkus.container-image.tag=latest \
           -P native,ui \
-          -f application
+          -pl application
       - name: Save container image
         run: docker save -o searchpe-container-image.tar quay.io/projectopenubl/searchpe:latest
       - name: Upload container image
@@ -76,7 +76,7 @@ jobs:
           -Dquarkus.container-image.name=searchpe-operator \
           -Dquarkus.container-image.tag=latest \
           -P native \
-          -f operator
+          -pl operator
       - name: Save container image
         run: docker save -o searchpe-operator-container-image.tar quay.io/projectopenubl/searchpe-operator:latest
       - name: Upload container image
