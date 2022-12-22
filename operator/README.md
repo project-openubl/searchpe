@@ -92,17 +92,17 @@ mvn clean package \
 -Dquarkus.container-image.registry=quay.io \
 -Dquarkus.container-image.group=projectopenubl \
 -Dquarkus.container-image.name=searchpe-operator \
--Dquarkus.container-image.tag=nightly \
 -Dquarkus.operator-sdk.bundle.package-name=searchpe-operator \
 -Dquarkus.operator-sdk.bundle.channels=alpha \
+-Dquarkus.application.version=test \
 -P native
-podman push quay.io/projectopenubl/searchpe-operator:nightly
+podman push quay.io/$USER/searchpe-operator:nightly
 ```
 
 Create bundle:
 
 ```shell
-BUNDLE_IMAGE=quay.io/$USER/searchpe-operator-bundle:nightly
+BUNDLE_IMAGE=quay.io/$USER/searchpe-operator-bundle:test
 podman build -t $BUNDLE_IMAGE -f target/bundle/searchpe-operator/bundle.Dockerfile target/bundle/searchpe-operator
 podman push $BUNDLE_IMAGE
 ```
