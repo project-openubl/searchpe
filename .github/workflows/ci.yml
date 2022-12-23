@@ -202,7 +202,7 @@ jobs:
           
           echo "End point ready: $external_ip"
           export endpoint=$(minikube ip);
-          echo "{CYPRESS_BASE_URL}={https://$endpoint}" >> $GITHUB_ENV
+          echo "CYPRESS_BASE_URL=https://$endpoint" >> $GITHUB_ENV
       - name: Cypress run
         uses: cypress-io/github-action@v5
         with:
