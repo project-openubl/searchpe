@@ -208,11 +208,21 @@ jobs:
         with:
           working-directory: application/src/main/webapp
           record: false
-          config: pageLoadTimeout=100000
           browser: ${{ matrix.browser }}
-          spec: cypress/**/*.test.ts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-artifact@v1
+        if: failure()
+        working-directory: application/src/main/webapp
+        with:
+          name: container-screenshots-${{ matrix.os }}-${{ matrix.browser }}
+          path: cypress/screenshots
+      - uses: actions/upload-artifact@v1
+        if: always()
+        working-directory: application/src/main/webapp
+        with:
+          name: container-videos-${{ matrix.os }}-${{ matrix.browser }}
+          path: cypress/videos
 
 #  helm-tests:
 #    name: Helm Tests
