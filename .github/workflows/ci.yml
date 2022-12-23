@@ -158,7 +158,7 @@ jobs:
           
           # Create catalog
           CATALOG_IMAGE=quay.io/projectopenubl/searchpe-operator-catalog:test
-          opm index add --bundles $BUNDLE_IMAGE --tag $CATALOG_IMAGE --build-tool docker
+          opm index add --bundles $BUNDLE_IMAGE --tag $CATALOG_IMAGE --build-tool docker --permissive
           
           docker save -o searchpe-bundle-container-image.tar $BUNDLE_IMAGE
           docker save -o searchpe-catalog-container-image.tar $BUNDLE_IMAGE
