@@ -78,7 +78,16 @@ jobs:
     strategy:
       matrix:
         k8s-version: [ v1.25.5 ]
+        browser: [ chrome ]
     steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - name: Npm install
+        working-directory: application/src/main/webapp
+        run: |
+          npm install
       - name: Setup Minikube
         uses: manusa/actions-setup-minikube@v2.7.2
         with:
@@ -193,7 +202,17 @@ jobs:
           
           echo "End point ready: $external_ip"
           export endpoint=$(minikube ip);
-          echo "{CYPRESS_searchpeUrl}={https://$endpoint}" >> $GITHUB_ENV
+          echo "{CYPRESS_BASE_URL}={https://$endpoint}" >> $GITHUB_ENV
+      - name: Cypress run
+        uses: cypress-io/github-action@v5
+        with:
+          working-directory: application/src/main/webapp
+          record: false
+          config: pageLoadTimeout=100000
+          browser: ${{ matrix.browser }}
+          spec: cypress/**/*.test.ts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 #  helm-tests:
 #    name: Helm Tests
