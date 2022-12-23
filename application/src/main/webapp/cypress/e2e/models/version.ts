@@ -14,7 +14,7 @@ export class VersionsPage {
   create(): void {
     this.openPage();
 
-    cy.get("button[aria-label='New version']").click();
+    cy.get("button[aria-label='new-version']").click();
 
     cy.wait("@postVersion");
     cy.wait("@getVersions");

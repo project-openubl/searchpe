@@ -59,7 +59,7 @@ jobs:
         run: npm run test -- --coverage --watchAll=false
 
   ui-e2e-tests:
-    name: E2E Tests
+    name: UI E2E Tests
     runs-on: ubuntu-latest
     strategy:
       matrix:

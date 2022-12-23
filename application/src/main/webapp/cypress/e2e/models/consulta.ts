@@ -9,10 +9,6 @@ export class ConsultaPage {
     cy.visit("#/");
   }
 
-  // protected fillForm(formValue: IFormValue): void {
-  //   cy.get("input[name='name']").clear().type(formValue.name);
-  // }
-
   consultar(numeroDocumento: string): void {
     this.openPage();
 

@@ -277,7 +277,7 @@ export const Versions: React.FC = () => {
               <ToolbarItem>
                 <Button
                   type="button"
-                  aria-label="New version"
+                  aria-label="new-version"
                   variant={ButtonVariant.primary}
                   onClick={onNewVersion}
                 >
