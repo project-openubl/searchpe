@@ -58,6 +58,120 @@ jobs:
         working-directory: application/src/main/webapp
         run: npm run test -- --coverage --watchAll=false
 
+  ui-cypress-tests:
+    name: Cypress Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        k8s-version: [ v1.26.0 ]
+    steps:
+      - name: Setup Minikube
+        uses: manusa/actions-setup-minikube@v2
+        with:
+          minikube version: v1.28.0
+          kubernetes version: ${{ matrix.k8s-version }}
+          start args: "--addons=ingress"
+      - name: Configure Minikube
+        run: |
+          # Enable ingress
+          minikube addons enable ingress
+          
+          # Install OLM
+          curl -sL https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.22.0/install.sh | bash -s v0.22.0
+      - name: Install Operators
+        run: |
+          kubectl create -f https://operatorhub.io/install/postgresql.yaml
+          kubectl create -f https://operatorhub.io/install/searchpe-operator.yaml
+          
+          PHASE=""
+          while [[ "$PHASE" != "Succeeded" ]] do
+            echo "Waiting for postgresql csv..."
+            PHASE=$(kubectl get csv -n operators -o jsonpath="{$.items[*].status.phase}")
+            echo $PHASE
+            sleep 10;
+          done
+          echo "Postgresql operator installed"
+          
+          PHASE=""
+          while [[ "$PHASE" != "Succeeded Succeeded" ]] do
+            echo "Waiting for searchpe csv..."
+            PHASE=$(kubectl get csv -n my-searchpe-operator -o jsonpath="{$.items[*].status.phase}")
+            echo $PHASE
+            sleep 10;
+          done
+          echo "Searchpe operator installed"
+      - name: Install DB
+        run: |
+          cat << EOF | kubectl -n my-searchpe-operator apply -f -
+          apiVersion: postgres-operator.crunchydata.com/v1beta1
+          kind: PostgresCluster
+          metadata:
+            name: postgresql
+          spec:
+            postgresVersion: 14
+            instances:
+              - name: pg-1
+                replicas: 1
+                dataVolumeClaimSpec:
+                  accessModes:
+                    - ReadWriteOnce
+                  resources:
+                    requests:
+                      storage: 1Gi
+            backups:
+              pgbackrest:
+                repos:
+                  - name: repo1
+                    volume:
+                      volumeClaimSpec:
+                        accessModes:
+                          - ReadWriteOnce
+                        resources:
+                          requests:
+                            storage: 1Gi
+            users:
+              - name: foo
+                databases:
+                  - searchpedb
+                options: "SUPERUSER"
+          EOF
+      - name: Wait for DB
+        run: |
+          kubectl wait pods -l "postgres-operator.crunchydata.com/data"="pgbackrest" -n my-searchpe-operator --for condition=Ready --timeout=-1s
+          kubectl wait pods -l "postgres-operator.crunchydata.com/data"="postgres" -n my-searchpe-operator --for condition=Ready --timeout=-1s
+      - name: Install Searchpe
+        run: |
+          cat << EOF | kubectl -n my-searchpe-operator apply -f -
+          kind: "Searchpe"
+          apiVersion: "searchpe.openubl.io/v1alpha1"
+          metadata:
+            name: searchpe
+          spec:
+            db:
+              usernameSecret:
+                name: postgresql-pguser-foo
+                key: user
+              passwordSecret:
+                name: postgresql-pguser-foo
+                key: password
+              url: jdbc:postgresql://postgresql-primary.my-searchpe-operator.svc:5432/searchpedb
+          EOF
+      - name: Wait for Searchpe
+        run: |
+          kubectl wait pods --selector "app.kubernetes.io/name"="searchpe" -n my-searchpe-operator --for condition=Ready --timeout=-1s
+          
+          external_ip=""
+          while [[ -z $external_ip ]] do
+            echo "Waiting for end point..."
+            external_ip=$(kubectl get ingress searchpe-searchpe-ingress --template="{{range.status.loadBalancer.ingress}}{{.ip}}{{end}}" -n my-searchpe-operator);
+            echo $external_ip;
+            sleep 10;
+          done
+          
+          echo "End point ready:" && echo $external_ip;
+          export endpoint=$(minikube ip);
+          echo "{CYPRESS_searchpeUrl}={https://$endpoint}" >> $GITHUB_ENV
+
 #  helm-tests:
 #    name: Helm Tests
 #    runs-on: ubuntu-latest
