@@ -17,6 +17,7 @@
 @Grab('org.yaml:snakeyaml:1.33')
 import org.yaml.snakeyaml.*
 import groovy.yaml.*
+import java.time.LocalDate
 
 def file = new File(this.args[0])
 def version = this.args[1]
@@ -26,6 +27,8 @@ def yaml = new Yaml().load(fileReader)
 
 yaml.metadata.name = 'searchpe-operator.v' + version
 yaml.spec.annotations.containerImage = 'quay.io/projectopenubl/searchpe-operator:v' + version
+yaml.spec.annotations.description = 'Searchpe is an enterprise solution for managing natural and legal entities in your organization. Valid for Peru.'
+yaml.spec.annotations.createdAt = LocalDate.now().toString()
 yaml.spec.install.spec.deployments[0].spec.template.spec.containers[0].image = 'quay.io/projectopenubl/searchpe-operator:v' + version
 yaml.spec.version = version
 yaml.spec.customresourcedefinitions.owned[0].displayName = 'Searchpe'
