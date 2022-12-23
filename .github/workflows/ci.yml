@@ -161,7 +161,7 @@ jobs:
           opm index add --bundles $BUNDLE_IMAGE --tag $CATALOG_IMAGE --build-tool docker --permissive
           
           docker save -o searchpe-bundle-container-image.tar $BUNDLE_IMAGE
-          docker save -o searchpe-catalog-container-image.tar $BUNDLE_IMAGE
+          docker save -o searchpe-catalog-container-image.tar $CATALOG_IMAGE
       - name: Upload container image
         uses: actions/upload-artifact@v3
         with:
