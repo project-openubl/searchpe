@@ -120,7 +120,7 @@ jobs:
           path: searchpe-operator-container-image.tar
 
   ui-e2e-tests:
-    need:needs: [ application-container, operator-container ]
+    needs: [ application-container, operator-container ]
     name: UI E2E Tests
     runs-on: ubuntu-latest
     strategy:
