@@ -140,7 +140,6 @@ jobs:
           -Dquarkus.operator-sdk.bundle.package-name=searchpe-operator \
           -Dquarkus.operator-sdk.bundle.channels=alpha \
           -Dquarkus.application.version=test \
-          -P native \
           -pl operator
       - name: Create bundle image
         working-directory: operator
