@@ -100,9 +100,8 @@ jobs:
           PHASE=""
           while [ "$PHASE" != "Succeeded" ]
           do
-            echo "Waiting for postgresql csv..."
             PHASE=$(kubectl get csv -n operators -o jsonpath="{$.items[*].status.phase}")
-            echo $PHASE
+            echo "Waiting for postgresql csv. Current phase=$PHASE"
             sleep 10;
           done
           echo "Postgresql operator installed"
@@ -110,9 +109,8 @@ jobs:
           PHASE=""
           while [ "$PHASE" != "Succeeded Succeeded" ]
           do
-            echo "Waiting for searchpe csv..."
             PHASE=$(kubectl get csv -n my-searchpe-operator -o jsonpath="{$.items[*].status.phase}")
-            echo $PHASE
+            echo "Waiting for searchpe csv. Current phase=$PHASE"            
             sleep 10;
           done
           echo "Searchpe operator installed"
@@ -153,6 +151,8 @@ jobs:
           EOF
       - name: Wait for DB
         run: |
+          sleep 300s
+          
           kubectl wait pods -l "postgres-operator.crunchydata.com/data"="pgbackrest" -n my-searchpe-operator --for condition=Ready --timeout=-1s
           kubectl wait pods -l "postgres-operator.crunchydata.com/data"="postgres" -n my-searchpe-operator --for condition=Ready --timeout=-1s
       - name: Install Searchpe
