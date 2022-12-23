@@ -151,7 +151,14 @@ jobs:
           EOF
       - name: Wait for DB
         run: |
-          sleep 300s
+          POD_COUNT=0
+          while [ $POD_COUNT < 5 ]
+          do
+            POD_COUNT=$(kubectl get pods -n my-searchpe-operator -o name | wc -l)
+            echo "Waiting for pods to exists. Current count=$POD_COUNT"
+            sleep 10;
+          done
+          echo "Resources exists, now wait for them to be ready"
           
           kubectl wait pods -l "postgres-operator.crunchydata.com/data"="pgbackrest" -n my-searchpe-operator --for condition=Ready --timeout=-1s
           kubectl wait pods -l "postgres-operator.crunchydata.com/data"="postgres" -n my-searchpe-operator --for condition=Ready --timeout=-1s
@@ -177,14 +184,14 @@ jobs:
           kubectl wait pods --selector "app.kubernetes.io/name"="searchpe" -n my-searchpe-operator --for condition=Ready --timeout=-1s
           
           external_ip=""
-          while [[ -z $external_ip ]] do
-            echo "Waiting for end point..."
+          while [[ -z $external_ip ]]
+          do
             external_ip=$(kubectl get ingress searchpe-searchpe-ingress --template="{{range.status.loadBalancer.ingress}}{{.ip}}{{end}}" -n my-searchpe-operator);
-            echo $external_ip;
+            echo "Waiting for end point...current=$external_ip"
             sleep 10;
           done
           
-          echo "End point ready:" && echo $external_ip;
+          echo "End point ready: $external_ip"
           export endpoint=$(minikube ip);
           echo "{CYPRESS_searchpeUrl}={https://$endpoint}" >> $GITHUB_ENV
 
