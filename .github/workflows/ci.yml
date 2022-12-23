@@ -245,6 +245,8 @@ jobs:
           EOF
       - name: Wait for Searchpe
         run: |
+          sleep 20;
+          
           kubectl wait pods --selector "app.kubernetes.io/name"="searchpe" -n my-searchpe-operator --for condition=Ready --timeout=-1s
           
           external_ip=""
