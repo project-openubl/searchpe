@@ -186,8 +186,7 @@ jobs:
           minikube version: v1.28.0
           kubernetes version: ${{ matrix.k8s-version }}
           start args: "--addons=ingress"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          github token: ${{ secrets.GITHUB_TOKEN }}
       - name: Configure Minikube
         run: |
           # Enable ingress
