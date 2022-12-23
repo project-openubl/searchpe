@@ -152,7 +152,7 @@ jobs:
       - name: Wait for DB
         run: |
           POD_COUNT=0
-          while [ $POD_COUNT -l 5 ]
+          while [ $POD_COUNT -l 4 ]
           do
             POD_COUNT=$(kubectl get pods -n my-searchpe-operator -o name | wc -l)
             echo "Waiting for pods to exists. Current count=$POD_COUNT"
