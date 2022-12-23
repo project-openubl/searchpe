@@ -150,16 +150,16 @@ jobs:
           -Dquarkus.application.version=test \
           -pl operator
       - name: Create bundle image
-        working-directory: operator
         run: |
-          # Create bundle
+          # Bundle
           BUNDLE_IMAGE=quay.io/projectopenubl/searchpe-operator-bundle:test
-          docker build -t $BUNDLE_IMAGE -f target/bundle/searchpe-operator/bundle.Dockerfile target/bundle/searchpe-operator
+          docker build -t $BUNDLE_IMAGE -f operator/target/bundle/searchpe-operator/bundle.Dockerfile operator/target/bundle/searchpe-operator
           
-          # Create catalog
+          # Catalog
           CATALOG_IMAGE=quay.io/projectopenubl/searchpe-operator-catalog:test
           opm index add --bundles $BUNDLE_IMAGE --tag $CATALOG_IMAGE --build-tool docker --permissive
-          
+
+          # Save container images
           docker save -o searchpe-bundle-container-image.tar $BUNDLE_IMAGE
           docker save -o searchpe-catalog-container-image.tar $CATALOG_IMAGE
       - name: Upload container image
@@ -167,8 +167,8 @@ jobs:
         with:
           name: artifacts
           path: |
-            operator/searchpe-bundle-container-image.tar
-            operator/searchpe-catalog-container-image.tar
+            searchpe-bundle-container-image.tar
+            searchpe-catalog-container-image.tar
 
   ui-e2e-tests:
     needs: [ application-container, operator-container, catalog-container ]
