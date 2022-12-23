@@ -61,9 +61,23 @@ jobs:
   ui-cypress-tests:
     name: Cypress Tests
     runs-on: ubuntu-latest
+    services:
+      searchpe-db:
+        image: postgres:13.7
+        ports:
+          - 5433:5432
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: controls_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     strategy:
       matrix:
-        k8s-version: [ v1.26.0 ]
+        k8s-version: [ v1.25.5 ]
     steps:
       - name: Setup Minikube
         uses: manusa/actions-setup-minikube@v2.7.2
