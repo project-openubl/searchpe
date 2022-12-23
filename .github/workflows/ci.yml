@@ -118,8 +118,52 @@ jobs:
           name: artifacts
           path: searchpe-operator-container-image.tar
 
+  catalog-container:
+    name: Catalog container
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-java@v3
+        with:
+          java-version: 17
+          distribution: temurin
+          cache: maven
+      - name: Build container image
+        run: |
+          mvn -U -B package --file pom.xml -DskipTests \
+          -Dquarkus.native.container-build=false \
+          -Dquarkus.container-image.push=false \
+          -Dquarkus.container-image.build=false \
+          -Dquarkus.container-image.registry=quay.io \
+          -Dquarkus.container-image.group=projectopenubl \
+          -Dquarkus.container-image.name=searchpe-operator \
+          -Dquarkus.operator-sdk.bundle.package-name=searchpe-operator \
+          -Dquarkus.operator-sdk.bundle.channels=alpha \
+          -Dquarkus.application.version=test \
+          -P native \
+          -pl operator
+      - name: Create bundle image
+        run: |
+          # Create bundle
+          BUNDLE_IMAGE=quay.io/projectopenubl/searchpe-operator-bundle:test
+          docker build -t $BUNDLE_IMAGE -f target/bundle/searchpe-operator/bundle.Dockerfile target/bundle/searchpe-operator
+          
+          # Create catalog
+          CATALOG_IMAGE=quay.io/projectopenubl/searchpe-operator-catalog:test
+          opm index add --bundles $BUNDLE_IMAGE --tag $CATALOG_IMAGE --build-tool docker
+          
+          docker save -o searchpe-bundle-container-image.tar $BUNDLE_IMAGE
+          docker save -o searchpe-catalog-container-image.tar $BUNDLE_IMAGE
+      - name: Upload container image
+        uses: actions/upload-artifact@v3
+        with:
+          name: artifacts
+          path: |
+            searchpe-bundle-container-image.tar
+            searchpe-catalog-container-image.tar
+
   ui-e2e-tests:
-    needs: [ application-container, operator-container ]
+    needs: [ application-container, operator-container, catalog-container ]
     name: UI E2E Tests
     runs-on: ubuntu-latest
     strategy:
@@ -142,6 +186,8 @@ jobs:
           minikube version: v1.28.0
           kubernetes version: ${{ matrix.k8s-version }}
           start args: "--addons=ingress"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Configure Minikube
         run: |
           # Enable ingress
