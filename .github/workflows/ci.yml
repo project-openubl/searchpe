@@ -81,7 +81,7 @@ jobs:
           -P native,ui \
           -pl application
       - name: Save container image
-        run: docker save -o searchpe-container-image.tar quay.io/projectopenubl/searchpe:test
+        run: docker save -o searchpe-application-container-image.tar quay.io/projectopenubl/searchpe:test
       - name: Upload container image
         uses: actions/upload-artifact@v3
         with:
