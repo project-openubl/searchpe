@@ -98,7 +98,8 @@ jobs:
           kubectl create -f https://operatorhub.io/install/searchpe-operator.yaml
           
           PHASE=""
-          while [[ "$PHASE" != "Succeeded" ]] do
+          while [ "$PHASE" != "Succeeded" ]
+          do
             echo "Waiting for postgresql csv..."
             PHASE=$(kubectl get csv -n operators -o jsonpath="{$.items[*].status.phase}")
             echo $PHASE
@@ -107,7 +108,8 @@ jobs:
           echo "Postgresql operator installed"
           
           PHASE=""
-          while [[ "$PHASE" != "Succeeded Succeeded" ]] do
+          while [ "$PHASE" != "Succeeded Succeeded" ]
+          do
             echo "Waiting for searchpe csv..."
             PHASE=$(kubectl get csv -n my-searchpe-operator -o jsonpath="{$.items[*].status.phase}")
             echo $PHASE
