@@ -185,11 +185,6 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 16
-      - name: config docker
-        run: |
-          sudo bash -c 'echo "{\"insecure-registries\": [\"localhost:5005\"]}" >> /etc/docker/daemon.json'
-          sudo systemctl daemon-reload
-          sudo systemctl restart docker
       - uses: actions/download-artifact@v3
       - name: Load and config images
         run: |
@@ -197,13 +192,19 @@ jobs:
           docker load -i artifacts/searchpe-operator-container-image.tar
           docker load -i artifacts/searchpe-bundle-container-image.tar
           docker load -i artifacts/searchpe-catalog-container-image.tar
+#      - name: Setup Minikube
+#        uses: manusa/actions-setup-minikube@v2.7.2
+#        with:
+#          minikube version: v1.28.0
+#          kubernetes version: ${{ matrix.k8s-version }}
+#          start args: "--addons=ingress"
+#          github token: ${{ secrets.GITHUB_TOKEN }}
       - name: Setup Minikube
-        uses: manusa/actions-setup-minikube@v2.7.2
+        uses: medyagh/setup-minikube@latest
         with:
-          minikube version: v1.28.0
-          kubernetes version: ${{ matrix.k8s-version }}
-          start args: "--addons=ingress"
-          github token: ${{ secrets.GITHUB_TOKEN }}
+          minikube-version: v1.28.0
+          kubernetes-version: ${{ matrix.k8s-version }}
+          addons: registry,ingress
       - name: Configure Minikube
         run: |          
           # Enable ingress
@@ -219,9 +220,11 @@ jobs:
           minikube image load quay.io/projectopenubl/searchpe-operator-catalog:test
       - name: Configure registry
         run: |
+          eval $(minikube -p minikube docker-env)
+          
           docker pull registry:2
           docker run -d -p 5005:5005 --restart=always --name registry registry:2
-          sleep 30                    
+          sleep 10
           
           docker tag quay.io/projectopenubl/searchpe-operator-bundle:test localhost:5005/searchpe-operator-bundle:test
           docker tag quay.io/projectopenubl/searchpe-operator-catalog:test localhost:5005/searchpe-operator-catalog:test
