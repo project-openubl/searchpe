@@ -187,7 +187,7 @@ jobs:
           node-version: 16
       - name: config docker
         run: |
-          echo '{"insecure-registries" : [ "localhost:5005" ]}' > /etc/docker/daemon.json
+          sudo echo '{"insecure-registries" : [ "localhost:5005" ]}' > /etc/docker/daemon.json
           sudo systemctl daemon-reload
           sudo systemctl restart docker
       - uses: actions/download-artifact@v3
