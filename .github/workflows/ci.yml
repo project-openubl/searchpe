@@ -214,7 +214,6 @@ jobs:
           minikube image load quay.io/projectopenubl/searchpe-operator-catalog:test
       - name: Configure registry
         run: |
-          # eval $(minikube podman-env)
           docker pull registry:2
           docker run -d -p 5005:5005 --restart=always --name registry registry:2
           sleep 30
@@ -226,8 +225,8 @@ jobs:
           
           docker images
           
-          docker push localhost:5000/searchpe-operator-bundle:test
-          docker push localhost:5000/searchpe-operator-catalog:test
+          docker push localhost:5005/searchpe-operator-bundle:test
+          docker push localhost:5005/searchpe-operator-catalog:test
       - name: Install Searchpe operator
         run: |
           # Create custom catalog         
