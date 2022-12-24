@@ -208,6 +208,7 @@ jobs:
         run: |          
           # Enable ingress
           minikube addons enable ingress
+          minikube addons enable registry
           
           # Install OLM
           curl -sL https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.22.0/install.sh | bash -s v0.22.0
