@@ -1,0 +1,10 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: searchpe-subscription
+  namespace: openubl
+spec:
+  channel: alpha
+  name: searchpe
+  source: searchpe-catalog-source
+  sourceNamespace: operators

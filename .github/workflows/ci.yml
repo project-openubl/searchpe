@@ -148,6 +148,9 @@ jobs:
           -Dquarkus.operator-sdk.bundle.package-name=searchpe-operator \
           -Dquarkus.operator-sdk.bundle.channels=alpha \
           -Dquarkus.application.version=test \
+          -Dquarkus.kubernetes.image-pull-policy=if-not-present \
+          -Dquarkus.kubernetes.env.vars.operator-searchpe-image=quay.io/projectopenubl/searchpe:test \
+          -Dquarkus.kubernetes.env.vars.operator-searchpe-image-pull-policy=IfNotPresent \
           -pl operator
       - name: Create bundle image
         run: |
@@ -196,71 +199,60 @@ jobs:
           start args: "--addons=ingress"
           github token: ${{ secrets.GITHUB_TOKEN }}
       - name: Configure Minikube
-        run: |
+        run: |          
           # Enable ingress
           minikube addons enable ingress
           
           # Install OLM
           curl -sL https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.22.0/install.sh | bash -s v0.22.0
-      - name: Install Operators
+          
+          # Load images
+          minikube image load quay.io/projectopenubl/searchpe:test
+          minikube image load quay.io/projectopenubl/searchpe-operator:test
+          minikube image load quay.io/projectopenubl/searchpe-operator-bundle:test
+          minikube image load quay.io/projectopenubl/searchpe-operator-catalog:test
+      - name: Configure registry
+        run: |
+          eval $(minikube docker-env)
+          docker run -d -p 5005:5005 --restart=always --name registry registry:2
+          
+          docker tag quay.io/projectopenubl/searchpe-operator-bundle:test localhost:5000/searchpe-operator-bundle:test
+          docker tag quay.io/projectopenubl/searchpe-operator-catalog:test localhost:5000/searchpe-operator-catalog:test
+          
+          docker push localhost:5000/searchpe-operator-bundle:test
+          docker push localhost:5000/searchpe-operator-catalog:test
+      - name: Install Searchpe operator
+        run: |
+          # Create custom catalog         
+          kubectl apply -f scripts/catalog.yaml
+          sleep 10
+          
+          # Check
+          kubectl get pods -n operators --selector=olm.catalogSource=searchpe-catalog-source
+          
+          # Create subscription
+          kubectl apply -f scripts/subscription.yaml
+          sleep 10
+          
+          # Verify subscription
+          kubectl get csv -n operators
+      - name: Install Postgresql Operator
         run: |
           kubectl create -f https://operatorhub.io/install/postgresql.yaml
-          kubectl create -f https://operatorhub.io/install/searchpe-operator.yaml
-          
-          PHASE=""
-          while [ "$PHASE" != "Succeeded" ]
-          do
-            PHASE=$(kubectl get csv -n operators -o jsonpath="{$.items[*].status.phase}")
-            echo "Waiting for postgresql csv. Current phase=$PHASE"
-            sleep 10;
-          done
-          echo "Postgresql operator installed"
-          
-          PHASE=""
-          while [ "$PHASE" != "Succeeded Succeeded" ]
-          do
-            PHASE=$(kubectl get csv -n my-searchpe-operator -o jsonpath="{$.items[*].status.phase}")
-            echo "Waiting for searchpe csv. Current phase=$PHASE"            
-            sleep 10;
-          done
-          echo "Searchpe operator installed"
+          sleep 60
+#          PHASE=""
+#          while [ "$PHASE" != "Succeeded" ]
+#          do
+#            PHASE=$(kubectl get csv -n operators -o jsonpath="{$.items[*].status.phase}")
+#            echo "Waiting for postgresql csv. Current phase=$PHASE"
+#            sleep 10;
+#          done
+#          echo "Postgresql operator installed"
       - name: Install DB
         run: |
-          cat << EOF | kubectl -n my-searchpe-operator apply -f -
-          apiVersion: postgres-operator.crunchydata.com/v1beta1
-          kind: PostgresCluster
-          metadata:
-            name: postgresql
-          spec:
-            postgresVersion: 14
-            instances:
-              - name: pg-1
-                replicas: 1
-                dataVolumeClaimSpec:
-                  accessModes:
-                    - ReadWriteOnce
-                  resources:
-                    requests:
-                      storage: 1Gi
-            backups:
-              pgbackrest:
-                repos:
-                  - name: repo1
-                    volume:
-                      volumeClaimSpec:
-                        accessModes:
-                          - ReadWriteOnce
-                        resources:
-                          requests:
-                            storage: 1Gi
-            users:
-              - name: foo
-                databases:
-                  - searchpedb
-                options: "SUPERUSER"
-          EOF
-      - name: Wait for DB
-        run: |
+          kubectl create ns openubl          
+          kubectl -n openubl apply -f scripts/postgres-cluster.yaml
+          
           POD_COUNT=0
           while [ $POD_COUNT -le 3 ]
           do
@@ -269,39 +261,16 @@ jobs:
             sleep 10;
           done
           echo "Resources exists, now wait for them to be ready"
-          
+
           kubectl wait pods -l "postgres-operator.crunchydata.com/data"="pgbackrest" -n my-searchpe-operator --for condition=Ready --timeout=-1s
           kubectl wait pods -l "postgres-operator.crunchydata.com/data"="postgres" -n my-searchpe-operator --for condition=Ready --timeout=-1s
-      - name: Load custom operator
-        run: |
-          minikube image load quay.io/projectopenubl/searchpe:test
-          minikube image load quay.io/projectopenubl/searchpe-operator:test
       - name: Install Searchpe
         run: |
-          cat << EOF | kubectl -n my-searchpe-operator apply -f -
-          kind: "Searchpe"
-          apiVersion: "searchpe.openubl.io/v1alpha1"
-          metadata:
-            name: searchpe
-          spec:
-            image: quay.io/projectopenubl/searchpe:test
-            sunat:
-              padronReducidoUrl: https://raw.githubusercontent.com/project-openubl/searchpe/master/application/src/test/resources/padron_reducido_ruc.zip
-            db:
-              usernameSecret:
-                name: postgresql-pguser-foo
-                key: user
-              passwordSecret:
-                name: postgresql-pguser-foo
-                key: password
-              url: jdbc:postgresql://postgresql-primary.my-searchpe-operator.svc:5432/searchpedb
-          EOF
-      - name: Wait for Searchpe
-        run: |
+          kubectl -n openubl apply -f scripts/searchpe.yaml
           sleep 20;
           
           kubectl wait pods --selector "app.kubernetes.io/name"="searchpe" -n my-searchpe-operator --for condition=Ready --timeout=-1s
-          
+
           external_ip=""
           while [[ -z $external_ip ]]
           do
@@ -309,7 +278,7 @@ jobs:
             echo "Waiting for end point...current=$external_ip"
             sleep 10;
           done
-          
+
           echo "End point ready: $external_ip"
           export endpoint=$(minikube ip);
           echo "CYPRESS_BASE_URL=https://$endpoint" >> $GITHUB_ENV
