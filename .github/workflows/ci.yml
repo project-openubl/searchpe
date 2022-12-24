@@ -220,8 +220,8 @@ jobs:
           
           docker ps
           
-          docker tag quay.io/projectopenubl/searchpe-operator-bundle:test localhost:5000/searchpe-operator-bundle:test
-          docker tag quay.io/projectopenubl/searchpe-operator-catalog:test localhost:5000/searchpe-operator-catalog:test
+          docker tag quay.io/projectopenubl/searchpe-operator-bundle:test localhost:5005/searchpe-operator-bundle:test
+          docker tag quay.io/projectopenubl/searchpe-operator-catalog:test localhost:5005/searchpe-operator-catalog:test
           
           docker images
           
