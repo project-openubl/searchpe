@@ -185,6 +185,11 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 16
+      - name: config docker
+        run: |
+          cat '{"insecure-registries" : [ "localhost:5005" ]}' > /etc/docker/daemon.json
+          sudo systemctl daemon-reload
+          sudo systemctl restart docker
       - uses: actions/download-artifact@v3
       - name: Load and config images
         run: |
@@ -216,15 +221,11 @@ jobs:
         run: |
           docker pull registry:2
           docker run -d -p 5005:5005 --restart=always --name registry registry:2
-          sleep 30
-          
-          docker ps
+          sleep 30                    
           
           docker tag quay.io/projectopenubl/searchpe-operator-bundle:test localhost:5005/searchpe-operator-bundle:test
           docker tag quay.io/projectopenubl/searchpe-operator-catalog:test localhost:5005/searchpe-operator-catalog:test
-          
-          docker images
-          
+                    
           docker push localhost:5005/searchpe-operator-bundle:test
           docker push localhost:5005/searchpe-operator-catalog:test
       - name: Install Searchpe operator
