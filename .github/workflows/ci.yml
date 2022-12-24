@@ -187,6 +187,7 @@ jobs:
           node-version: 16
       - name: config docker
         run: |
+          sudo cp certs/domain.crt /usr/local/share/ca-certificates/myregistrydomain.com.crt
           sudo echo '{"insecure-registries" : [ "localhost:5005" ]}' > /etc/docker/daemon.json
           sudo systemctl daemon-reload
           sudo systemctl restart docker
