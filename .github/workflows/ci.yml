@@ -204,7 +204,6 @@ jobs:
         with:
           minikube-version: v1.28.0
           kubernetes-version: ${{ matrix.k8s-version }}
-          addons: registry,ingress
       - name: Configure Minikube
         run: |          
           # Enable ingress
