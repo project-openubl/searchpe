@@ -3,7 +3,6 @@ apiVersion: "searchpe.openubl.io/v1alpha1"
 metadata:
   name: searchpe
 spec:
-  image: quay.io/projectopenubl/searchpe:test
   sunat:
     padronReducidoUrl: https://raw.githubusercontent.com/project-openubl/searchpe/master/application/src/test/resources/padron_reducido_ruc.zip
   db:
@@ -13,4 +12,4 @@ spec:
     passwordSecret:
       name: postgresql-pguser-foo
       key: password
-    url: jdbc:postgresql://postgresql-primary.my-searchpe-operator.svc:5432/searchpedb
+    url: jdbc:postgresql://postgresql-primary.openubl.svc:5432/searchpedb
