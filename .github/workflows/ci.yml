@@ -223,12 +223,8 @@ jobs:
       - name: Configure Minikube
         run: |
           # Install OLM
-          operator-sdk olm install
-          operator-sdk olm status
-          
-          kubectl apply -f https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.22.0/crds.yaml
-          kubectl apply -f https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.22.0/olm.yaml
-          
+          curl -sL https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.22.0/install.sh | bash -s v0.22.0
+                    
           # Load images
           minikube image load localhost:5000/searchpe:0.0.0
           minikube image load localhost:5000/searchpe-operator:0.0.0
