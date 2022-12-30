@@ -232,10 +232,15 @@ jobs:
           minikube image load localhost:5000/searchpe-operator-catalog:0.0.0
           
           # Push images to internal registry
-          minikube ssh docker push localhost:5000/searchpe:0.0.0
-          minikube ssh docker push localhost:5000/searchpe-operator:0.0.0
-          minikube ssh docker push localhost:5000/searchpe-operator-bundle:0.0.0
-          minikube ssh docker push localhost:5000/searchpe-operator-catalog:0.0.0
+          # minikube ssh docker push localhost:5000/searchpe:0.0.0
+          # minikube ssh docker push localhost:5000/searchpe-operator:0.0.0
+          # minikube ssh docker push localhost:5000/searchpe-operator-bundle:0.0.0
+          # minikube ssh docker push localhost:5000/searchpe-operator-catalog:0.0.0
+          
+          docker push localhost:5000/searchpe:0.0.0
+          docker push localhost:5000/searchpe-operator:0.0.0
+          docker push localhost:5000/searchpe-operator-bundle:0.0.0
+          docker push localhost:5000/searchpe-operator-catalog:0.0.0
       - name: Install Searchpe operator
         run: |
           kubectl create ns openubl
