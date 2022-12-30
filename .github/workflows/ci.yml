@@ -78,7 +78,7 @@ jobs:
           -Dquarkus.container-image.group="" \
           -Dquarkus.container-image.name=searchpe \
           -Dquarkus.container-image.tag=0.0.0 \
-          -P ui,native \
+          -P native,ui \
           -pl application
       - name: Save container image
         run: docker save -o searchpe-application-container-image.tar localhost:5000/searchpe:0.0.0
