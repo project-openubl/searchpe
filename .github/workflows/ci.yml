@@ -127,7 +127,7 @@ jobs:
           java-version: 17
           distribution: temurin
           cache: maven
-      - name: Install OLM CLIs
+      - name: Setup OLM CLIs
         run: |
           export ARCH=$(case $(uname -m) in x86_64) echo -n amd64 ;; aarch64) echo -n arm64 ;; *) echo -n $(uname -m) ;; esac)
           export OS=$(uname | awk '{print tolower($0)}')
@@ -141,6 +141,9 @@ jobs:
           export OPERATOR_SDK_DL_URL=https://github.com/operator-framework/operator-registry/releases/download/v1.26.2
           curl -LO ${OPERATOR_SDK_DL_URL}/${OS}-${ARCH}-opm
           chmod +x ${OS}-${ARCH}-opm && sudo mv ${OS}-${ARCH}-opm /usr/local/bin/opm
+      - name: Setup other tools
+        run: |
+          sudo apt-get install -y groovy
       - name: Build container image
         run: |
           mvn -U -B package --file pom.xml -DskipTests \
