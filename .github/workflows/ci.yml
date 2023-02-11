@@ -22,7 +22,7 @@ jobs:
           distribution: temurin
           cache: maven
       - name: Maven
-        run: mvn -B verify -P sonar
+        run: mvn -B verify -P coverage,sonar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
