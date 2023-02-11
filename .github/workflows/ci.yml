@@ -22,7 +22,7 @@ jobs:
           distribution: temurin
           cache: maven
       - name: Maven
-        run: mvn test
+        run: mvn verify
 
   native-tests:
     name: Native Tests
