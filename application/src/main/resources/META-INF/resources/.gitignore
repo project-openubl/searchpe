@@ -1,9 +1,6 @@
-# Ignore everything in this directory
-*
-# Except
-!.gitignore
-!assets
-!login.html
-!login-error.html
-!signup.html
-!signup-error.html
+static/
+*.json
+*.png
+*.txt
+index.html
+favicon.ico
