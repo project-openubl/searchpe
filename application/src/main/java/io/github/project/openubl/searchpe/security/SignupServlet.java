@@ -56,52 +56,55 @@ public class SignupServlet extends HttpServlet {
     BasicUserService basicUserService;
 
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         String username = req.getParameter("j_username");
         String password1 = req.getParameter("j_password1");
         String password2 = req.getParameter("j_password2");
 
-        if (Objects.isNull(username) ||
-                Objects.isNull(password1) ||
-                Objects.isNull(password2) ||
-                !Objects.equals(password1, password2)
-        ) {
-            resp.sendRedirect("signup-error.html");
-            return;
-        }
+        try {
+            if (Objects.isNull(username) ||
+                    Objects.isNull(password1) ||
+                    Objects.isNull(password2) ||
+                    !Objects.equals(password1, password2)
+            ) {
+                resp.sendRedirect("signup-error.html");
+                return;
+            }
 
-        BasicUserDto userDto = new BasicUserDto();
-        userDto.setUsername(username);
-        userDto.setPassword(password1);
-        userDto.setPermissions(new HashSet<>(List.of(Permission.admin)));
+            BasicUserDto userDto = new BasicUserDto();
+            userDto.setUsername(username);
+            userDto.setPassword(password1);
+            userDto.setPermissions(new HashSet<>(List.of(Permission.admin)));
 
-        BasicUserEntity userCreated = null;
-        Set<ConstraintViolation<BasicUserDto>> violations = validator.validate(userDto);
-        if (violations.isEmpty()) {
-            try {
-                tx.begin();
-
-                long currentNumberOfUsers = BasicUserEntity.count();
-                if (currentNumberOfUsers == 0) {
-                    userCreated = basicUserService.create(userDto);
-                }
-
-                tx.commit();
-            } catch (NotSupportedException | HeuristicRollbackException | HeuristicMixedException | RollbackException |
-                     SystemException e) {
+            BasicUserEntity userCreated = null;
+            Set<ConstraintViolation<BasicUserDto>> violations = validator.validate(userDto);
+            if (violations.isEmpty()) {
                 try {
-                    tx.rollback();
-                } catch (SystemException se) {
-                    LOGGER.error(se);
+                    tx.begin();
+
+                    long currentNumberOfUsers = BasicUserEntity.count();
+                    if (currentNumberOfUsers == 0) {
+                        userCreated = basicUserService.create(userDto);
+                    }
+
+                    tx.commit();
+                } catch (NotSupportedException | HeuristicRollbackException | HeuristicMixedException |
+                         RollbackException | SystemException e) {
+                    try {
+                        tx.rollback();
+                    } catch (SystemException se) {
+                        LOGGER.error(se);
+                    }
                 }
             }
-        }
 
-        if (userCreated != null) {
-            resp.sendRedirect("login.html");
-        } else {
-            resp.sendRedirect("signup-error.html");
+            if (userCreated != null) {
+                resp.sendRedirect("login.html");
+            } else {
+                resp.sendRedirect("signup-error.html");
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
         }
-
     }
 }
