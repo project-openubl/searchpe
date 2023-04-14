@@ -1,1 +1,6 @@
 static/
+*.json
+*.png
+*.txt
+index.html
+favicon.ico
