@@ -29,12 +29,16 @@ import java.io.IOException;
 public class AuthSwitchServlet extends HttpServlet {
 
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        long currentNumberOfUsers = BasicUserEntity.count();
-        if (currentNumberOfUsers > 0) {
-            resp.sendRedirect("login.html");
-        } else {
-            resp.sendRedirect("signup.html");
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
+        try {
+            long currentNumberOfUsers = BasicUserEntity.count();
+            if (currentNumberOfUsers > 0) {
+                resp.sendRedirect("login.html");
+            } else {
+                resp.sendRedirect("signup.html");
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
         }
     }
 
