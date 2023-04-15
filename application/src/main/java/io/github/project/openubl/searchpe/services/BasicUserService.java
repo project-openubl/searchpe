@@ -21,8 +21,8 @@ import io.github.project.openubl.searchpe.dto.BasicUserPasswordChangeDto;
 import io.github.project.openubl.searchpe.models.jpa.entity.BasicUserEntity;
 import io.quarkus.elytron.security.common.BcryptUtil;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.transaction.Transactional;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.transaction.Transactional;
 
 @Transactional
 @ApplicationScoped

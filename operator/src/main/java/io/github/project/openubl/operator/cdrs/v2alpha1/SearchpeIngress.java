@@ -20,6 +20,7 @@ import io.fabric8.kubernetes.api.model.GenericKubernetesResource;
 import io.fabric8.kubernetes.api.model.LoadBalancerIngress;
 import io.fabric8.kubernetes.api.model.networking.v1.Ingress;
 import io.fabric8.kubernetes.api.model.networking.v1.IngressBuilder;
+import io.fabric8.kubernetes.api.model.networking.v1.IngressLoadBalancerIngress;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.dsl.base.CustomResourceDefinitionContext;
@@ -159,7 +160,7 @@ public class SearchpeIngress extends CRUDKubernetesDependentResource<Ingress, Se
     public static Optional<String> getExposedURL(Searchpe cr, Ingress ingress) {
         final var status = ingress.getStatus();
         final var ingresses = status.getLoadBalancer().getIngress();
-        Optional<LoadBalancerIngress> ing = ingresses.isEmpty() ? Optional.empty() : Optional.of(ingresses.get(0));
+        Optional<IngressLoadBalancerIngress> ing = ingresses.isEmpty() ? Optional.empty() : Optional.of(ingresses.get(0));
 
         final var protocol = SearchpeService.isTlsConfigured(cr) ? "https" : "http";
         return ing.map(i -> protocol + "://" + (i.getHostname() != null ? i.getHostname() : i.getIp()));

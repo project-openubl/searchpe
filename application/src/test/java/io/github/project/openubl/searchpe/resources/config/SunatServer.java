@@ -29,8 +29,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static java.util.jar.Attributes.Name.CONTENT_TYPE;
-import static javax.ws.rs.core.HttpHeaders.CACHE_CONTROL;
-import static javax.ws.rs.core.HttpHeaders.CONTENT_DISPOSITION;
+import static jakarta.ws.rs.core.HttpHeaders.CACHE_CONTROL;
+import static jakarta.ws.rs.core.HttpHeaders.CONTENT_DISPOSITION;
 import static org.mockserver.model.BinaryBody.binary;
 import static org.mockserver.model.Header.header;
 import static org.mockserver.model.HttpRequest.request;

@@ -26,7 +26,7 @@ import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.quartz.TriggerKey;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 @RegisterForReflection
 public class IngestDataProgrammaticallyJob implements Job {
