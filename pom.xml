@@ -24,7 +24,7 @@
 
     <groupId>io.github.project-openubl</groupId>
     <artifactId>searchpe-parent</artifactId>
-    <version>4.1.1</version>
+    <version>4.1.2-SNAPSHOT</version>
     <description>Procesa y almacena el Padrón reducido RUC de la SUNAT y lo expone para su consumo a travéz de su UI y servicios REST</description>
     <packaging>pom</packaging>
 
