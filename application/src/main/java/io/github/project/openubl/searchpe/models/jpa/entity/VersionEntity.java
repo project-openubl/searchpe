@@ -16,21 +16,23 @@
  */
 package io.github.project.openubl.searchpe.models.jpa.entity;
 
-import io.quarkus.hibernate.orm.panache.PanacheEntity;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
+import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
 import jakarta.persistence.Version;
 import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.util.Date;
 import java.util.Objects;
 
@@ -40,7 +42,11 @@ import java.util.Objects;
 @AllArgsConstructor
 @Entity
 @Table(name = "version")
-public class VersionEntity extends PanacheEntity {
+public class VersionEntity extends PanacheEntityBase {
+
+    @Id
+    @GeneratedValue(generator = "version_sequence")
+    public Long id;
 
     @NotNull
     @Temporal(TemporalType.TIMESTAMP)
