@@ -17,15 +17,16 @@
 package io.github.project.openubl.operator.cdrs.v2alpha1;
 
 import io.fabric8.kubernetes.api.model.GenericKubernetesResource;
-import io.fabric8.kubernetes.api.model.LoadBalancerIngress;
 import io.fabric8.kubernetes.api.model.networking.v1.Ingress;
 import io.fabric8.kubernetes.api.model.networking.v1.IngressBuilder;
+import io.fabric8.kubernetes.api.model.networking.v1.IngressLoadBalancerIngress;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.dsl.base.CustomResourceDefinitionContext;
 import io.github.project.openubl.operator.Constants;
 import io.github.project.openubl.operator.utils.CRDUtils;
 import io.javaoperatorsdk.operator.api.reconciler.Context;
+import io.javaoperatorsdk.operator.api.reconciler.dependent.DependentResource;
 import io.javaoperatorsdk.operator.processing.dependent.kubernetes.CRUDKubernetesDependentResource;
 import io.javaoperatorsdk.operator.processing.dependent.workflow.Condition;
 import io.quarkus.logging.Log;
@@ -49,7 +50,7 @@ public class SearchpeIngress extends CRUDKubernetesDependentResource<Ingress, Se
     }
 
     @Override
-    public boolean isMet(Searchpe cr, Ingress ingress, Context<Searchpe> context) {
+    public boolean isMet(DependentResource<Ingress, Searchpe> dependentResource, Searchpe cr, Context<Searchpe> context) {
         boolean isIngressEnabled = CRDUtils.getValueFromSubSpec(cr.getSpec().getIngressSpec(), SearchpeSpec.IngressSpec::isEnabled)
                 .orElse(false);
 
@@ -159,9 +160,10 @@ public class SearchpeIngress extends CRUDKubernetesDependentResource<Ingress, Se
     public static Optional<String> getExposedURL(Searchpe cr, Ingress ingress) {
         final var status = ingress.getStatus();
         final var ingresses = status.getLoadBalancer().getIngress();
-        Optional<LoadBalancerIngress> ing = ingresses.isEmpty() ? Optional.empty() : Optional.of(ingresses.get(0));
+        Optional<IngressLoadBalancerIngress> ing = ingresses.isEmpty() ? Optional.empty() : Optional.of(ingresses.get(0));
 
         final var protocol = SearchpeService.isTlsConfigured(cr) ? "https" : "http";
         return ing.map(i -> protocol + "://" + (i.getHostname() != null ? i.getHostname() : i.getIp()));
     }
+
 }

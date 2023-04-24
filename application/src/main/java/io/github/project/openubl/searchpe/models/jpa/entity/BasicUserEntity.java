@@ -16,23 +16,28 @@
  */
 package io.github.project.openubl.searchpe.models.jpa.entity;
 
-import io.quarkus.hibernate.orm.panache.PanacheEntity;
+import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import io.quarkus.security.jpa.Password;
 import io.quarkus.security.jpa.Roles;
 import io.quarkus.security.jpa.UserDefinition;
 import io.quarkus.security.jpa.Username;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Table;
-import javax.persistence.UniqueConstraint;
-import javax.persistence.Version;
-import javax.validation.constraints.NotNull;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import jakarta.persistence.Version;
+import jakarta.validation.constraints.NotNull;
 
 @Entity
 @Table(name = "basic_user", uniqueConstraints = {@UniqueConstraint(columnNames = {"username"})})
 @UserDefinition
-public class BasicUserEntity extends PanacheEntity {
+public class BasicUserEntity extends PanacheEntityBase {
+
+    @Id
+    @GeneratedValue(generator = "basic_user_sequence")
+    public Long id;
 
     @Column(name = "full_name")
     public String fullName;

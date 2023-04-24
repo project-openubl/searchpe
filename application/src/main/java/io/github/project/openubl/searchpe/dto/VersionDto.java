@@ -20,7 +20,7 @@ import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import lombok.Data;
 
-import javax.json.bind.annotation.JsonbDateFormat;
+import jakarta.json.bind.annotation.JsonbDateFormat;
 import java.util.Date;
 
 @Data

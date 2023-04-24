@@ -19,7 +19,7 @@ package io.github.project.openubl.searchpe.mapper;
 import io.github.project.openubl.searchpe.dto.SearchResultDto;
 import io.github.project.openubl.searchpe.models.SearchResultBean;
 
-import javax.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.ApplicationScoped;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
