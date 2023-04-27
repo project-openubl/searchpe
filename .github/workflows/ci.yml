@@ -9,6 +9,7 @@ on:
   pull_request:
     paths-ignore:
       - "README.md"
+  merge_group: { }
 
 jobs:
   jvm-tests:
@@ -216,7 +217,7 @@ jobs:
         run: |
           # Install OLM
           curl -sL https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.22.0/install.sh | bash -s v0.22.0
-                    
+          
           # Load images
           minikube image load localhost:5000/searchpe:0.0.0
           minikube image load localhost:5000/searchpe-operator:0.0.0
