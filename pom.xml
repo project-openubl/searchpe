@@ -37,7 +37,7 @@
 
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus</quarkus.platform.group-id>
-        <quarkus.platform.version>3.0.0.Final</quarkus.platform.version>
+        <quarkus.platform.version>3.0.1.Final</quarkus.platform.version>
 
         <maven.compiler.parameters>true</maven.compiler.parameters>
         <surefire-plugin.version>3.0.0</surefire-plugin.version>
@@ -50,7 +50,7 @@
         <license.dir>${basedir}</license.dir>
 
         <lombok.version>1.18.26</lombok.version>
-        <mapstruct.version>1.5.4.Final</mapstruct.version>
+        <mapstruct.version>1.5.5.Final</mapstruct.version>
     </properties>
 
     <url>https://project-openubl.github.io/</url>
@@ -139,7 +139,7 @@
                     <plugin>
                         <groupId>org.jacoco</groupId>
                         <artifactId>jacoco-maven-plugin</artifactId>
-                        <version>0.8.9</version>
+                        <version>0.8.10</version>
                         <executions>
                             <execution>
                                 <id>prepare-agent</id>
