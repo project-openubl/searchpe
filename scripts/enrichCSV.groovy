@@ -38,6 +38,12 @@ yaml.spec.customresourcedefinitions.owned[0].description = 'Searchpe'
 yaml.metadata.annotations = yaml.spec.annotations
 yaml.spec.annotations = ""
 
+// Adding cluster permissions to be able to fetch host domain
+yaml.spec.install.spec.clusterPermissions.rules[0][1] = [:]
+yaml.spec.install.spec.clusterPermissions.rules[0][1].apiGroups = ['config.openshift.io']
+yaml.spec.install.spec.clusterPermissions.rules[0][1].resources = ['ingresses']
+yaml.spec.install.spec.clusterPermissions.rules[0][1].verbs = ['get', 'list']
+
 DumperOptions options = new DumperOptions();
 options.indent = 2
 options.defaultFlowStyle = DumperOptions.FlowStyle.BLOCK

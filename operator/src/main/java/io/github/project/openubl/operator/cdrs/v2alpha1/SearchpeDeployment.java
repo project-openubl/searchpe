@@ -37,9 +37,14 @@ import io.github.project.openubl.operator.Config;
 import io.github.project.openubl.operator.Constants;
 import io.github.project.openubl.operator.ValueOrSecret;
 import io.github.project.openubl.operator.controllers.SearchpeDistConfigurator;
+import io.github.project.openubl.operator.utils.CRDUtils;
 import io.javaoperatorsdk.operator.api.reconciler.Context;
+import io.javaoperatorsdk.operator.api.reconciler.dependent.DependentResource;
 import io.javaoperatorsdk.operator.processing.dependent.Matcher;
 import io.javaoperatorsdk.operator.processing.dependent.kubernetes.CRUDKubernetesDependentResource;
+import io.javaoperatorsdk.operator.processing.dependent.workflow.Condition;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,7 +53,12 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class SearchpeDeployment extends CRUDKubernetesDependentResource<Deployment, Searchpe> implements Matcher<Deployment, Searchpe> {
+@ApplicationScoped
+public class SearchpeDeployment extends CRUDKubernetesDependentResource<Deployment, Searchpe>
+        implements Matcher<Deployment, Searchpe>, Condition<Deployment, Searchpe> {
+
+    @Inject
+    Config config;
 
     public SearchpeDeployment() {
         super(Deployment.class);
@@ -74,26 +84,38 @@ public class SearchpeDeployment extends CRUDKubernetesDependentResource<Deployme
         );
     }
 
+    @Override
+    public boolean isMet(DependentResource<Deployment, Searchpe> dependentResource, Searchpe primary, Context<Searchpe> context) {
+        return context.getSecondaryResource(Deployment.class)
+                .map(deployment -> {
+                    final var status = deployment.getStatus();
+                    if (status != null) {
+                        final var readyReplicas = status.getReadyReplicas();
+                        return readyReplicas != null && readyReplicas >= 1;
+                    }
+                    return false;
+                })
+                .orElse(false);
+    }
+
     @SuppressWarnings("unchecked")
     private Deployment newDeployment(Searchpe cr, Context<Searchpe> context, SearchpeDistConfigurator distConfigurator) {
         final var contextLabels = (Map<String, String>) context.managedDependentResourceContext()
                 .getMandatory(Constants.CONTEXT_LABELS_KEY, Map.class);
 
-        Deployment deployment = new DeploymentBuilder()
+        return new DeploymentBuilder()
                 .withNewMetadata()
-                .withName(cr.getMetadata().getName() + Constants.DEPLOYMENT_SUFFIX)
-                .withNamespace(cr.getMetadata().getNamespace())
-                .withLabels(contextLabels)
+                    .withName(getDeploymentName(cr))
+                    .withNamespace(cr.getMetadata().getNamespace())
+                    .withLabels(contextLabels)
+                    .withOwnerReferences(CRDUtils.getOwnerReference(cr))
                 .endMetadata()
                 .withSpec(getDeploymentSpec(cr, context, distConfigurator))
                 .build();
-        return deployment;
     }
 
     @SuppressWarnings("unchecked")
     private DeploymentSpec getDeploymentSpec(Searchpe cr, Context<Searchpe> context, SearchpeDistConfigurator distConfigurator) {
-        final var config = (Config) context.managedDependentResourceContext()
-                .getMandatory(Constants.CONTEXT_CONFIG_KEY, Config.class);
         final var contextLabels = (Map<String, String>) context.managedDependentResourceContext()
                 .getMandatory(Constants.CONTEXT_LABELS_KEY, Map.class);
 
@@ -213,5 +235,9 @@ public class SearchpeDeployment extends CRUDKubernetesDependentResource<Deployme
                 .collect(Collectors.toList());
 
         return envVars;
+    }
+
+    public static String getDeploymentName(Searchpe cr) {
+        return cr.getMetadata().getName() + Constants.DEPLOYMENT_SUFFIX;
     }
 }

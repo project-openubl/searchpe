@@ -19,15 +19,18 @@ package io.github.project.openubl.operator.cdrs.v2alpha1;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.SecretBuilder;
 import io.github.project.openubl.operator.Constants;
+import io.github.project.openubl.operator.utils.CRDUtils;
 import io.javaoperatorsdk.operator.api.reconciler.Context;
 import io.javaoperatorsdk.operator.processing.dependent.Creator;
 import io.javaoperatorsdk.operator.processing.dependent.Matcher;
 import io.javaoperatorsdk.operator.processing.dependent.kubernetes.CRUDKubernetesDependentResource;
+import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.Base64;
 import java.util.Map;
 import java.util.UUID;
 
+@ApplicationScoped
 public class SearchpeSecretBasicAuth extends CRUDKubernetesDependentResource<Secret, Searchpe> implements Creator<Secret, Searchpe> {
 
     public SearchpeSecretBasicAuth() {
@@ -54,9 +57,10 @@ public class SearchpeSecretBasicAuth extends CRUDKubernetesDependentResource<Sec
 
         Secret secret = new SecretBuilder()
                 .withNewMetadata()
-                .withName(getSecretName(cr))
-                .withNamespace(cr.getMetadata().getNamespace())
-                .withLabels(labels)
+                    .withName(getSecretName(cr))
+                    .withNamespace(cr.getMetadata().getNamespace())
+                    .withLabels(labels)
+                    .withOwnerReferences(CRDUtils.getOwnerReference(cr))
                 .endMetadata()
                 .withData(Map.of(
                         Constants.BASIC_AUTH_SECRET_ENCRYPTIONKEY, encryptionKey

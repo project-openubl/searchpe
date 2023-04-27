@@ -39,12 +39,15 @@ import java.util.Map;
 
 import static io.javaoperatorsdk.operator.api.reconciler.Constants.WATCH_CURRENT_NAMESPACE;
 
-@ControllerConfiguration(namespaces = WATCH_CURRENT_NAMESPACE, name = "searchpe", dependents = {
-        @Dependent(name = "secret", type = SearchpeSecretBasicAuth.class),
-        @Dependent(name = "deployment", type = SearchpeDeployment.class),
-        @Dependent(name = "service", type = SearchpeService.class),
-        @Dependent(name = "ingress", type = SearchpeIngress.class, readyPostcondition = SearchpeIngress.class, dependsOn = "service")
-})
+@ControllerConfiguration(namespaces = WATCH_CURRENT_NAMESPACE,
+        name = "searchpe",
+        dependents = {
+                @Dependent(name = "secret", type = SearchpeSecretBasicAuth.class),
+                @Dependent(name = "deployment", type = SearchpeDeployment.class),
+                @Dependent(name = "service", type = SearchpeService.class),
+                @Dependent(name = "ingress", type = SearchpeIngress.class)
+        }
+)
 public class SearchpeReconciler implements Reconciler<Searchpe>, ContextInitializer<Searchpe> {
 
     private static final Logger logger = Logger.getLogger(SearchpeReconciler.class);
@@ -58,12 +61,12 @@ public class SearchpeReconciler implements Reconciler<Searchpe>, ContextInitiali
     @Override
     public void initContext(Searchpe cr, Context<Searchpe> context) {
         final var labels = Map.of(
+                "app.kubernetes.io/managed-by", "windup-operator",
                 "app.kubernetes.io/name", cr.getMetadata().getName(),
+                "app.kubernetes.io/part-of", cr.getMetadata().getName(),
                 "openubl-operator/cluster", Constants.SEARCHPE_NAME
         );
         context.managedDependentResourceContext().put(Constants.CONTEXT_LABELS_KEY, labels);
-        context.managedDependentResourceContext().put(Constants.CONTEXT_CONFIG_KEY, config);
-        context.managedDependentResourceContext().put(Constants.CONTEXT_K8S_CLIENT_KEY, k8sClient);
     }
 
     @SuppressWarnings("unchecked")

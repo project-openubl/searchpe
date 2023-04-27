@@ -23,8 +23,6 @@ public class Constants {
     public static final String CRDS_VERSION = "v1alpha1";
 
     public static final String CONTEXT_LABELS_KEY = "labels";
-    public static final String CONTEXT_CONFIG_KEY = "config";
-    public static final String CONTEXT_K8S_CLIENT_KEY = "k8sClient";
 
     public static final String SEARCHPE_NAME = "searchpe";
 
