@@ -41,15 +41,12 @@ jobs:
   ui-tests:
     name: UI Tests
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [ 16 ]
     steps:
       - uses: actions/checkout@v3
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Use Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 16
       - name: Build
         working-directory: application/src/main/webapp
         run: |
@@ -190,10 +187,6 @@ jobs:
     needs: [ application-container, operator-container, catalog-container ]
     name: UI E2E Tests
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        k8s-version: [ v1.25.3 ]
-        browser: [ chrome ]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
@@ -210,7 +203,7 @@ jobs:
         uses: manusa/actions-setup-minikube@v2.7.2
         with:
           minikube version: v1.28.0
-          kubernetes version: ${{ matrix.k8s-version }}
+          kubernetes version: v1.25.3
           start args: --insecure-registry "10.0.0.0/24" --addons=registry,ingress
           github token: ${{ secrets.GITHUB_TOKEN }}
       - name: Configure Minikube
@@ -288,18 +281,18 @@ jobs:
         with:
           working-directory: application/src/main/webapp
           record: false
-          browser: ${{ matrix.browser }}
+          browser: chrome
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v3
         if: failure()
         with:
-          name: container-screenshots-${{ matrix.os }}-${{ matrix.browser }}
+          name: container-screenshots
           path: application/src/main/webapp/cypress/screenshots
       - uses: actions/upload-artifact@v3
         if: always()
         with:
-          name: container-videos-${{ matrix.os }}-${{ matrix.browser }}
+          name: container-videos
           path: application/src/main/webapp/cypress/videos
 
 #  helm-tests:
