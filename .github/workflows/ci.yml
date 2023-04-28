@@ -299,13 +299,13 @@ jobs:
           }
           
           # Verify Searchpe
-          verify_deployment searchpe-searchpe-deployment -1s        
+          verify_deployment test-app-searchpe-deployment -1s        
 
           # Verify Ingress
           external_ip=""
           while [[ -z $external_ip ]]
           do
-            external_ip=$(kubectl get ingress searchpe-searchpe-ingress --template="{{range.status.loadBalancer.ingress}}{{.ip}}{{end}}" -n openubl);
+            external_ip=$(kubectl get ingress test-app-searchpe-ingress --template="{{range.status.loadBalancer.ingress}}{{.ip}}{{end}}" -n openubl);
             echo "Waiting for end point...current=$external_ip"
             sleep 10;
           done
