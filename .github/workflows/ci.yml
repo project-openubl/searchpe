@@ -132,7 +132,7 @@ jobs:
           export OS=$(uname | awk '{print tolower($0)}')
           
           # Opm
-          export OPERATOR_SDK_DL_URL=https://github.com/operator-framework/operator-registry/releases/download/v1.26.2
+          export OPERATOR_SDK_DL_URL=https://github.com/operator-framework/operator-registry/releases/download/v1.26.5
           curl -LO ${OPERATOR_SDK_DL_URL}/${OS}-${ARCH}-opm
           chmod +x ${OS}-${ARCH}-opm && sudo mv ${OS}-${ARCH}-opm /usr/local/bin/opm
       - name: Setup other tools
@@ -189,10 +189,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - uses: actions/download-artifact@v3
+      - uses: actions/setup-java@v3
+        with:
+          java-version: 17
+          distribution: temurin
+          cache: maven
+      - name: Maven package
+        run: |
+          mvn package -DskipTests
       - uses: actions/setup-node@v3
         with:
           node-version: 16
-      - uses: actions/download-artifact@v3
       - name: Load and config images
         run: |
           docker load -i artifacts/searchpe-application-container-image.tar
@@ -222,16 +230,28 @@ jobs:
           docker push localhost:5000/searchpe-operator:0.0.0
           docker push localhost:5000/searchpe-operator-bundle:0.0.0
           docker push localhost:5000/searchpe-operator-catalog:0.0.0
-      - name: Install Searchpe operator
+      - name: Install operator
         run: |
           kubectl create ns openubl
           
+          # Create CRD
+          kubectl apply -f operator/target/kubernetes/searchpes.searchpe.openubl.io-v1.yml
+          
           # Create custom catalog         
           kubectl create -f scripts/searchpe-operator.yaml
-          kubectl get pods -n olm --selector=olm.catalogSource=searchpe-catalog-source
           
-          # Verify subscription
+          # Verify
+          sleep 10;
+          kubectl get pods -n olm --selector=olm.catalogSource=searchpe-catalog-source
           kubectl get csv -n olm
+          
+          while ! kubectl get deployment/searchpe-operator -n openubl
+          do
+            echo "Waiting for operator to be created"
+            sleep 5;
+          done
+          
+          kubectl wait deployment/searchpe-operator --for condition=available --timeout=-1s -n openubl
       - name: Install Postgresql Operator
         run: |
           kubectl create -f https://operatorhub.io/install/postgresql.yaml
@@ -263,17 +283,35 @@ jobs:
           kubectl -n openubl apply -f scripts/searchpe.yaml
           sleep 10;
           
-          kubectl wait pods --selector "app.kubernetes.io/name"="searchpe" -n openubl --for condition=Ready --timeout=-1s
+          # Function to verify deployments
+          verify_deployment() {
+            deployment_name=$1
+            timeout=$2
+          
+            while ! kubectl get deployment/$deployment_name -n openubl
+            do
+              echo "Waiting for $deployment_name to be created"
+              sleep 5;
+            done
+          
+            kubectl wait deployment/$deployment_name --for condition=available --timeout=$timeout -n openubl || true
+            kubectl get deployment/$deployment_name -n openubl
+          }
+          
+          # Verify Searchpe
+          verify_deployment test-app-searchpe-deployment -1s        
 
+          # Verify Ingress
           external_ip=""
           while [[ -z $external_ip ]]
           do
-            external_ip=$(kubectl get ingress searchpe-searchpe-ingress --template="{{range.status.loadBalancer.ingress}}{{.ip}}{{end}}" -n openubl);
+            external_ip=$(kubectl get ingress test-app-searchpe-ingress --template="{{range.status.loadBalancer.ingress}}{{.ip}}{{end}}" -n openubl);
             echo "Waiting for end point...current=$external_ip"
             sleep 10;
           done
 
-          echo "End point ready: $external_ip"
+          echo "Searchpe ready to be served at: $external_ip"
+          
           export endpoint=$(minikube ip);
           echo "CYPRESS_BASE_URL=https://$endpoint" >> $GITHUB_ENV
       - name: Cypress run

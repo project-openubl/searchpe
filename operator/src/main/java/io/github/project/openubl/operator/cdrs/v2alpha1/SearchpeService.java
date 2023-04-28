@@ -24,9 +24,11 @@ import io.github.project.openubl.operator.Constants;
 import io.github.project.openubl.operator.utils.CRDUtils;
 import io.javaoperatorsdk.operator.api.reconciler.Context;
 import io.javaoperatorsdk.operator.processing.dependent.kubernetes.CRUDKubernetesDependentResource;
+import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.Map;
 
+@ApplicationScoped
 public class SearchpeService extends CRUDKubernetesDependentResource<Service, Searchpe> {
 
     public SearchpeService() {
@@ -43,24 +45,24 @@ public class SearchpeService extends CRUDKubernetesDependentResource<Service, Se
         final var labels = (Map<String, String>) context.managedDependentResourceContext()
                 .getMandatory(Constants.CONTEXT_LABELS_KEY, Map.class);
 
-        Service service = new ServiceBuilder()
+        return new ServiceBuilder()
                 .withNewMetadata()
-                .withName(cr.getMetadata().getName() + Constants.SERVICE_SUFFIX)
-                .withNamespace(cr.getMetadata().getNamespace())
-                .withLabels(labels)
+                    .withName(getServiceName(cr))
+                    .withNamespace(cr.getMetadata().getNamespace())
+                    .withLabels(labels)
+                    .withOwnerReferences(CRDUtils.getOwnerReference(cr))
                 .endMetadata()
                 .withSpec(getServiceSpec(cr))
                 .build();
-        return service;
     }
 
     private ServiceSpec getServiceSpec(Searchpe cr) {
         return new ServiceSpecBuilder()
                 .addNewPort()
-                .withPort(getServicePort(cr))
-                .withProtocol(Constants.SERVICE_PROTOCOL)
+                    .withPort(getServicePort(cr))
+                    .withProtocol(Constants.SERVICE_PROTOCOL)
                 .endPort()
-                .withSelector(Constants.DEFAULT_LABELS)
+                .withSelector(SearchpeDeployment.getDeploymentSelectorLabels(cr))
                 .withType("ClusterIP")
                 .build();
     }
@@ -77,6 +79,10 @@ public class SearchpeService extends CRUDKubernetesDependentResource<Service, Se
     public static boolean isTlsConfigured(Searchpe cr) {
         var tlsSecret = CRDUtils.getValueFromSubSpec(cr.getSpec().getHttpSpec(), SearchpeSpec.HttpSpec::getTlsSecret);
         return tlsSecret.isPresent() && !tlsSecret.get().trim().isEmpty();
+    }
+
+    public static String getServiceName(Searchpe cr) {
+        return cr.getMetadata().getName() + Constants.SERVICE_SUFFIX;
     }
 
 }

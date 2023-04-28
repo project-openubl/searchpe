@@ -23,23 +23,26 @@ public class Constants {
     public static final String CRDS_VERSION = "v1alpha1";
 
     public static final String CONTEXT_LABELS_KEY = "labels";
-    public static final String CONTEXT_CONFIG_KEY = "config";
-    public static final String CONTEXT_K8S_CLIENT_KEY = "k8sClient";
 
+    //
     public static final String SEARCHPE_NAME = "searchpe";
 
-    public static final String MANAGED_BY_LABEL = "app.kubernetes.io/managed-by";
-    public static final String MANAGED_BY_VALUE = "searchpe-operator";
-
-    public static final Map<String, String> DEFAULT_LABELS = Map.of(
-            MANAGED_BY_LABEL, MANAGED_BY_VALUE
+    public static final Map<String, String> DB_SELECTOR_LABELS = Map.of(
+            "openubl-operator/group", "db"
+    );
+    public static final Map<String, String> WEB_SELECTOR_LABELS = Map.of(
+            "openubl-operator/group", "web"
     );
 
+    //
     public static final Map<String, String> DEFAULT_DIST_CONFIG = Map.of();
 
+    //
     public static final Integer HTTP_PORT = 8080;
     public static final Integer HTTPS_PORT = 8443;
     public static final String SERVICE_PROTOCOL = "TCP";
+
+    //
     public static final String SERVICE_SUFFIX = "-" + SEARCHPE_NAME + "-service";
     public static final String INGRESS_SUFFIX = "-" + SEARCHPE_NAME + "-ingress";
     public static final String SECRET_SUFFIX = "-" + SEARCHPE_NAME + "-secret";
@@ -49,12 +52,12 @@ public class Constants {
 
     public static final String BASIC_AUTH_SECRET_ENCRYPTIONKEY = "encryption-key";
 
-
+    //
     public static final String PROFILE_PROD = "prod";
     public static final String PROFILE_BASIC = "basic";
     public static final String PROFILE_OIDC = "oidc";
 
-
+    //
     public static final String CERTIFICATES_FOLDER = "/mnt/certificates";
     public static final String WORKSPACES_FOLDER = "/mnt/workspace";
 
