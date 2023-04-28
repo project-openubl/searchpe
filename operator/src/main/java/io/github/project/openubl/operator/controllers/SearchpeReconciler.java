@@ -17,8 +17,6 @@
 package io.github.project.openubl.operator.controllers;
 
 import io.fabric8.kubernetes.api.model.networking.v1.Ingress;
-import io.fabric8.kubernetes.client.KubernetesClient;
-import io.github.project.openubl.operator.Config;
 import io.github.project.openubl.operator.Constants;
 import io.github.project.openubl.operator.cdrs.v2alpha1.Searchpe;
 import io.github.project.openubl.operator.cdrs.v2alpha1.SearchpeDeployment;
@@ -33,7 +31,6 @@ import io.javaoperatorsdk.operator.api.reconciler.UpdateControl;
 import io.javaoperatorsdk.operator.api.reconciler.dependent.Dependent;
 import org.jboss.logging.Logger;
 
-import jakarta.inject.Inject;
 import java.time.Duration;
 import java.util.Map;
 
@@ -52,16 +49,10 @@ public class SearchpeReconciler implements Reconciler<Searchpe>, ContextInitiali
 
     private static final Logger logger = Logger.getLogger(SearchpeReconciler.class);
 
-    @Inject
-    Config config;
-
-    @Inject
-    KubernetesClient k8sClient;
-
     @Override
     public void initContext(Searchpe cr, Context<Searchpe> context) {
         final var labels = Map.of(
-                "app.kubernetes.io/managed-by", "windup-operator",
+                "app.kubernetes.io/managed-by", "searchpe-operator",
                 "app.kubernetes.io/name", cr.getMetadata().getName(),
                 "app.kubernetes.io/part-of", cr.getMetadata().getName(),
                 "openubl-operator/cluster", Constants.SEARCHPE_NAME

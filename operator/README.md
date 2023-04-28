@@ -1,11 +1,11 @@
-# Quick start
+# Development
 
 ## Minikube
 
 Start minikube
 
 ```shell
-minikube start --kubernetes-version
+minikube start
 minikube addons enable ingress
 ```
 
@@ -64,7 +64,7 @@ This Operator will be installed in the "operators" namespace and will be usable 
 Create the CRDs:
 
 ```shell
-mvn clean package
+mvn clean package -DskipTests
 kubectl apply -f target/kubernetes/searchpes.searchpe.openubl.io-v1.yml
 ```
 

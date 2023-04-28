@@ -45,7 +45,7 @@ public class SearchpeService extends CRUDKubernetesDependentResource<Service, Se
         final var labels = (Map<String, String>) context.managedDependentResourceContext()
                 .getMandatory(Constants.CONTEXT_LABELS_KEY, Map.class);
 
-        Service service = new ServiceBuilder()
+        return new ServiceBuilder()
                 .withNewMetadata()
                     .withName(getServiceName(cr))
                     .withNamespace(cr.getMetadata().getNamespace())
@@ -54,16 +54,15 @@ public class SearchpeService extends CRUDKubernetesDependentResource<Service, Se
                 .endMetadata()
                 .withSpec(getServiceSpec(cr))
                 .build();
-        return service;
     }
 
     private ServiceSpec getServiceSpec(Searchpe cr) {
         return new ServiceSpecBuilder()
                 .addNewPort()
-                .withPort(getServicePort(cr))
-                .withProtocol(Constants.SERVICE_PROTOCOL)
+                    .withPort(getServicePort(cr))
+                    .withProtocol(Constants.SERVICE_PROTOCOL)
                 .endPort()
-                .withSelector(Constants.DEFAULT_LABELS)
+                .withSelector(SearchpeDeployment.getDeploymentSelectorLabels(cr))
                 .withType("ClusterIP")
                 .build();
     }

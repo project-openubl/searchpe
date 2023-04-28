@@ -55,7 +55,7 @@ public class SearchpeSecretBasicAuth extends CRUDKubernetesDependentResource<Sec
 
         String encryptionKey = Base64.getEncoder().encodeToString(UUID.randomUUID().toString().getBytes());
 
-        Secret secret = new SecretBuilder()
+        return new SecretBuilder()
                 .withNewMetadata()
                     .withName(getSecretName(cr))
                     .withNamespace(cr.getMetadata().getNamespace())
@@ -66,8 +66,6 @@ public class SearchpeSecretBasicAuth extends CRUDKubernetesDependentResource<Sec
                         Constants.BASIC_AUTH_SECRET_ENCRYPTIONKEY, encryptionKey
                 ))
                 .build();
-
-        return secret;
     }
 
     public static String getSecretName(Searchpe cr) {

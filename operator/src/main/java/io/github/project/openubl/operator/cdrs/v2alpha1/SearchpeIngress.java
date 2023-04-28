@@ -47,7 +47,6 @@ public class SearchpeIngress extends CRUDKubernetesDependentResource<Ingress, Se
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     protected Ingress desired(Searchpe cr, Context<Searchpe> context) {
         boolean isIngressEnabled = cr.getSpec().getIngressSpec() != null && CRDUtils.getValueFromSubSpec(cr.getSpec().getIngressSpec(), SearchpeSpec.IngressSpec::isEnabled)
                 .orElse(false);

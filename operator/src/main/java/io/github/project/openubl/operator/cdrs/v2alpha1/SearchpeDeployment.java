@@ -119,7 +119,8 @@ public class SearchpeDeployment extends CRUDKubernetesDependentResource<Deployme
         final var contextLabels = (Map<String, String>) context.managedDependentResourceContext()
                 .getMandatory(Constants.CONTEXT_LABELS_KEY, Map.class);
 
-        Map<String, String> selectorLabels = Constants.DEFAULT_LABELS;
+        Map<String, String> selectorLabels = getDeploymentSelectorLabels(cr);
+
         String image = Optional.ofNullable(cr.getSpec().getImage()).orElse(config.searchpe().image());
         String imagePullPolicy = config.searchpe().imagePullPolicy();
 
@@ -147,10 +148,8 @@ public class SearchpeDeployment extends CRUDKubernetesDependentResource<Deployme
                 )
                 .withTemplate(new PodTemplateSpecBuilder()
                         .withNewMetadata()
-                        .withLabels(Stream
-                                .concat(contextLabels.entrySet().stream(), selectorLabels.entrySet().stream())
-                                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue))
-                        )
+                        .withLabels(selectorLabels)
+                        .addToLabels(contextLabels)
                         .endMetadata()
                         .withSpec(new PodSpecBuilder()
                                 .withRestartPolicy("Always")
@@ -239,5 +238,12 @@ public class SearchpeDeployment extends CRUDKubernetesDependentResource<Deployme
 
     public static String getDeploymentName(Searchpe cr) {
         return cr.getMetadata().getName() + Constants.DEPLOYMENT_SUFFIX;
+    }
+
+    public static Map<String, String> getDeploymentSelectorLabels(Searchpe cr) {
+        return Map.of(
+                "openubl-operator/group", "web",
+                "openubl-operator/name", cr.getMetadata().getName()
+        );
     }
 }
