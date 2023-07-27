@@ -4,7 +4,7 @@
   "private": true,
   "dependencies": {
     "@hookform/resolvers": "^2.8.8",
-    "@patternfly/patternfly": "^4.224.2",
+    "@patternfly/patternfly": "^5.0.2",
     "@patternfly/react-core": "^4.276.6",
     "@patternfly/react-table": "^4.113.0",
     "@project-openubl/lib-ui": "^1.7.2",
