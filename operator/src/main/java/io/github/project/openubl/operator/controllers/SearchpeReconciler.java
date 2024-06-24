@@ -17,8 +17,6 @@
 package io.github.project.openubl.operator.controllers;
 
 import io.fabric8.kubernetes.api.model.networking.v1.Ingress;
-import io.fabric8.kubernetes.client.KubernetesClient;
-import io.github.project.openubl.operator.Config;
 import io.github.project.openubl.operator.Constants;
 import io.github.project.openubl.operator.cdrs.v2alpha1.Searchpe;
 import io.github.project.openubl.operator.cdrs.v2alpha1.SearchpeDeployment;
@@ -33,37 +31,33 @@ import io.javaoperatorsdk.operator.api.reconciler.UpdateControl;
 import io.javaoperatorsdk.operator.api.reconciler.dependent.Dependent;
 import org.jboss.logging.Logger;
 
-import jakarta.inject.Inject;
 import java.time.Duration;
 import java.util.Map;
 
 import static io.javaoperatorsdk.operator.api.reconciler.Constants.WATCH_CURRENT_NAMESPACE;
 
-@ControllerConfiguration(namespaces = WATCH_CURRENT_NAMESPACE, name = "searchpe", dependents = {
-        @Dependent(name = "secret", type = SearchpeSecretBasicAuth.class),
-        @Dependent(name = "deployment", type = SearchpeDeployment.class),
-        @Dependent(name = "service", type = SearchpeService.class),
-        @Dependent(name = "ingress", type = SearchpeIngress.class, readyPostcondition = SearchpeIngress.class, dependsOn = "service")
-})
+@ControllerConfiguration(namespaces = WATCH_CURRENT_NAMESPACE,
+        name = "searchpe",
+        dependents = {
+                @Dependent(name = "secret", type = SearchpeSecretBasicAuth.class),
+                @Dependent(name = "deployment", type = SearchpeDeployment.class),
+                @Dependent(name = "service", type = SearchpeService.class),
+                @Dependent(name = "ingress", type = SearchpeIngress.class)
+        }
+)
 public class SearchpeReconciler implements Reconciler<Searchpe>, ContextInitializer<Searchpe> {
 
     private static final Logger logger = Logger.getLogger(SearchpeReconciler.class);
 
-    @Inject
-    Config config;
-
-    @Inject
-    KubernetesClient k8sClient;
-
     @Override
     public void initContext(Searchpe cr, Context<Searchpe> context) {
         final var labels = Map.of(
+                "app.kubernetes.io/managed-by", "searchpe-operator",
                 "app.kubernetes.io/name", cr.getMetadata().getName(),
+                "app.kubernetes.io/part-of", cr.getMetadata().getName(),
                 "openubl-operator/cluster", Constants.SEARCHPE_NAME
         );
         context.managedDependentResourceContext().put(Constants.CONTEXT_LABELS_KEY, labels);
-        context.managedDependentResourceContext().put(Constants.CONTEXT_CONFIG_KEY, config);
-        context.managedDependentResourceContext().put(Constants.CONTEXT_K8S_CLIENT_KEY, k8sClient);
     }
 
     @SuppressWarnings("unchecked")

@@ -16,10 +16,24 @@
  */
 package io.github.project.openubl.operator.utils;
 
+import io.fabric8.kubernetes.api.model.OwnerReference;
+import io.fabric8.kubernetes.api.model.OwnerReferenceBuilder;
+import io.github.project.openubl.operator.cdrs.v2alpha1.Searchpe;
+
 import java.util.Optional;
 import java.util.function.Function;
 
 public class CRDUtils {
+
+    public static OwnerReference getOwnerReference(Searchpe cr) {
+        return new OwnerReferenceBuilder()
+                .withApiVersion(cr.getApiVersion())
+                .withKind(cr.getKind())
+                .withName(cr.getMetadata().getName())
+                .withUid(cr.getMetadata().getUid())
+                .withController(true)
+                .build();
+    }
 
     public static <T, R> Optional<R> getValueFromSubSpec(T subSpec, Function<T, R> valueSupplier) {
         if (subSpec != null) {
