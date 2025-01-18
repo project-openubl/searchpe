@@ -4,7 +4,7 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
     commit-message:
       prefix: "GitHub Actions"
       include: "scope"
@@ -12,7 +12,7 @@ updates:
   - package-ecosystem: "maven"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
     commit-message:
       prefix: "Maven pom.xml"
       include: "scope"
@@ -20,7 +20,7 @@ updates:
   - package-ecosystem: "npm"
     directory: "/application/src/main/webapp"
     schedule:
-      interval: "daily"
+      interval: "weekly"
     allow:
       - dependency-name: "@patternfly/*"
         dependency-type: "direct"
