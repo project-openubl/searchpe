@@ -49,10 +49,13 @@ Rust 1.100.0 is pinned in `engine/rust-toolchain.toml`. Java 25.
   - Records for data passed between components.
   - CDI beans are stateless (`@ApplicationScoped` with no mutable fields).
   - Entities and sessions never cross threads (DESIGN.md §10.8).
+- **API errors** for clients are `{ kind, message (Spanish), detail }`; internal details are logged, not returned.
 - **JSON** is snake_case everywhere (`quarkus.jackson.property-naming-strategy=SNAKE_CASE`), like xhandler-rust's models.
 - **Engine**:
   - stateless; no global mutable state;
-  - errors are `{ "kind", "message" }` with `kind` in `invalid_document | invalid_certificate | wrong_password | other`.
+  - errors are `{ "kind", "message" }` with `kind` in `invalid_document | invalid_certificate | wrong_password | invalid_request | other` (422, except `other`: 500);
+  - send outcomes: `unknown` means SUNAT may have the document (ask before resending), `not_delivered` means it never reached SUNAT;
+  - timeouts nest: app → engine read timeout > engine → SUNAT timeout.
 - **Concurrency rules** (DESIGN.md §10.8) apply to any change touching jobs, documents or numbering.
 - **SUNAT environments**:
   - tests and e2e use **SUNAT beta** only;

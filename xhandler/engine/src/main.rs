@@ -3,7 +3,8 @@
 mod api;
 mod telemetry;
 
-use tower_http::trace::TraceLayer;
+use tower_http::trace::{DefaultOnResponse, TraceLayer};
+use tracing::Level;
 
 /// Listens on localhost by default: the engine is a sidecar reached only by
 /// the Quarkus container of the same pod.
@@ -41,7 +42,13 @@ fn health_check(addr: &str) -> bool {
     use std::io::{Read, Write};
     use std::time::Duration;
 
-    let Ok(socket) = addr.parse() else {
+    use std::net::ToSocketAddrs;
+
+    let Some(socket) = addr
+        .to_socket_addrs()
+        .ok()
+        .and_then(|mut addrs| addrs.next())
+    else {
         return false;
     };
     let Ok(mut stream) = std::net::TcpStream::connect_timeout(&socket, Duration::from_secs(2))
@@ -62,8 +69,11 @@ fn health_check(addr: &str) -> bool {
 
 async fn serve() -> anyhow::Result<()> {
     let addr = addr();
-    let app =
-        api::router().layer(TraceLayer::new_for_http().make_span_with(telemetry::request_span));
+    let app = api::router().layer(
+        TraceLayer::new_for_http()
+            .make_span_with(telemetry::request_span)
+            .on_response(DefaultOnResponse::new().level(Level::INFO)),
+    );
 
     let listener = tokio::net::TcpListener::bind(&addr).await?;
     tracing::info!(%addr, "xhandler-engine listening");

@@ -9,6 +9,7 @@ labels:
 resources:
   - deployment.yaml
   - service.yaml
+# Environments pin these images by digest in their overlays.
 images:
   - name: xhandler-service
     newName: ghcr.io/project-openubl/xhandler-service

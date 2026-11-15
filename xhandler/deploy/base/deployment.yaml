@@ -15,6 +15,10 @@ spec:
       labels:
         app.kubernetes.io/name: xhandler-service
     spec:
+      automountServiceAccountToken: false
+      # Longer than a full SUNAT call (xsender: 120 s) plus the app's shutdown
+      # timeout, so in-flight sends finish instead of being killed.
+      terminationGracePeriodSeconds: 150
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: topology.kubernetes.io/zone
@@ -26,6 +30,40 @@ spec:
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
+      # Native sidecar (restartPolicy: Always): starts before the app and is
+      # stopped after it, so the app can finish its engine calls on shutdown.
+      initContainers:
+        - name: engine
+          image: xhandler-engine
+          restartPolicy: Always
+          env:
+            - name: XHANDLER_ENGINE_ADDR
+              value: 127.0.0.1:8090
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector:4318
+          # The engine listens on localhost only, which kubelet HTTP probes
+          # can't reach: probe with the binary itself.
+          startupProbe:
+            exec:
+              command: ["/usr/local/bin/xhandler-engine", "--health"]
+            timeoutSeconds: 3
+            periodSeconds: 1
+            failureThreshold: 30
+          readinessProbe:
+            exec:
+              command: ["/usr/local/bin/xhandler-engine", "--health"]
+            timeoutSeconds: 3
+          livenessProbe:
+            exec:
+              command: ["/usr/local/bin/xhandler-engine", "--health"]
+            timeoutSeconds: 3
+          resources:
+            requests: { cpu: 250m, memory: 64Mi }
+            limits: { memory: 256Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
       containers:
         - name: app
           image: xhandler-service
@@ -48,31 +86,20 @@ spec:
                 secretKeyRef: { name: xhandler-db, key: password }
           readinessProbe:
             httpGet: { path: /q/health/ready, port: http }
+            timeoutSeconds: 3
           livenessProbe:
             httpGet: { path: /q/health/live, port: http }
+            timeoutSeconds: 3
           resources:
             requests: { cpu: 250m, memory: 512Mi }
             limits: { memory: 1Gi }
           securityContext:
             allowPrivilegeEscalation: false
-            capabilities: { drop: [ALL] }
-        - name: engine
-          image: xhandler-engine
-          env:
-            - name: XHANDLER_ENGINE_ADDR
-              value: 127.0.0.1:8090
-            - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: http://otel-collector:4318
-          readinessProbe:
-            exec:
-              command: ["/usr/local/bin/xhandler-engine", "--health"]
-          livenessProbe:
-            exec:
-              command: ["/usr/local/bin/xhandler-engine", "--health"]
-          resources:
-            requests: { cpu: 250m, memory: 64Mi }
-            limits: { memory: 256Mi }
-          securityContext:
-            allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities: { drop: [ALL] }
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

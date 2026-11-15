@@ -11,6 +11,14 @@ WORK="$(mktemp -d)"
 PIDS=()
 
 cleanup() {
+  local status=$?
+  if [[ $status -ne 0 ]]; then
+    for log in "$WORK"/*.log; do
+      [[ -f "$log" ]] || continue
+      echo "---- $(basename "$log") (last 50 lines) ----" >&2
+      tail -n 50 "$log" >&2
+    done
+  fi
   for pid in "${PIDS[@]}"; do kill "$pid" 2>/dev/null || true; done
   $COMPOSE -f "$ROOT/hack/compose.yaml" down >/dev/null 2>&1 || true
 }
@@ -37,11 +45,11 @@ PIDS+=($!)
 wait_for http://localhost:8090/health "engine"
 
 echo "==> app"
-(cd "$ROOT" && ./mvnw -B -q package -DskipTests)
+# The skeleton endpoint is a build-time switch: production builds don't include it
+(cd "$ROOT" && ./mvnw -B -q package -DskipTests -Dxhandler.dev-endpoints.enabled=true)
 QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://localhost:5432/xhandler \
 QUARKUS_DATASOURCE_USERNAME=xhandler \
 QUARKUS_DATASOURCE_PASSWORD=xhandler \
-XHANDLER_DEV_ENDPOINTS_ENABLED=true \
   java -jar "$ROOT/app/target/quarkus-app/quarkus-run.jar" >"$WORK/app.log" 2>&1 &
 PIDS+=($!)
 wait_for http://localhost:8080/q/health/ready "app"

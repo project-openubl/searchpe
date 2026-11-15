@@ -13,7 +13,7 @@ services:
   # Grafana + Tempo + Prometheus + Loki with an OpenTelemetry collector
   # (http://localhost:3000). OTLP: gRPC 4317, HTTP 4318. Tempo API: 3200.
   lgtm:
-    image: docker.io/grafana/otel-lgtm:latest
+    image: docker.io/grafana/otel-lgtm:0.41.0
     ports:
       - "3000:3000"
       - "3200:3200"

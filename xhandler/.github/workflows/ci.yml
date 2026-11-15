@@ -50,6 +50,13 @@ jobs:
       - run: ./mvnw -B -q package -DskipTests
       - run: docker build -f app/src/main/docker/Dockerfile.jvm -t xhandler-service:ci app
       - run: docker build -t xhandler-engine:ci engine
+      # Smoke test: the image must serve and its exec probe must pass
+      - run: |
+          docker run -d --name engine --network host -e XHANDLER_ENGINE_ADDR=127.0.0.1:8090 xhandler-engine:ci
+          for i in $(seq 1 20); do curl -fs http://127.0.0.1:8090/health && break; sleep 1; done
+          docker exec engine /usr/local/bin/xhandler-engine --health
+          curl -fs -X POST http://127.0.0.1:8090/v1/build -H 'content-type: application/json' \
+            -d "{\"document\": $(cat examples/invoice.json)}" | grep -q '<cbc:ID>F001-1</cbc:ID>'
       # Publishing and signing images belongs to the infrastructure track (DESIGN.md §21.4)
 
   manifests:

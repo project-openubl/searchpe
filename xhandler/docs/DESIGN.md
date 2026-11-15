@@ -222,9 +222,12 @@ Mirrors xhandler-mobile's Rust bridge so the two stay aligned (a shared facade c
 | `POST /v1/sire/*`, `/v1/validity`, `/v1/conformity/*` | New SUNAT clients (§19) |
 | `POST /v1/cdr` | Build an OSE CDR (OSE role) |
 
-- Send results use the mobile `SunatStatus`: `Accepted | Rejected | Exception | InProgress | Unknown | NotDelivered`, plus `code`, `description`, `notes`, `cdr_zip` and `ticket`.
+- Send results use the mobile `SunatStatus`: `Accepted | Rejected | Exception | InProgress | Unknown | NotDelivered`, plus `code` (SUNAT's numeric code), `description`, `notes`, `cdr_zip` and `ticket`.
+  - `NotDelivered`: the request never reached SUNAT (connection refused, DNS, TLS, SUNAT's front-proxy rate limit), so it is safe to resend.
+  - `Unknown`: no usable answer after the request may have reached SUNAT (timeout, HTTP error, unreadable SOAP or CDR), so ask before resending (§9.2.1).
+  - Everything that can be checked before contacting SUNAT (document type, signature present, credentials, the demo key not used in production) is checked first and returns 422.
 - xsender's `Status` maps from SUNAT codes: 0 → Accepted, 98 → InProgress, 99–1999 → Exception ("not processed, can be sent again"), 2000–3999 → Rejected, ≥ 4000 → Accepted. Its `Unknown` means "any other code". §9.2 decides what each outcome does. The service's `unknown` status ("we don't know whether SUNAT has it") is a separate concept: it is set by crash recovery and by xsender `Unknown` codes.
-- Errors carry `kind` (`WrongPassword | InvalidCertificate | InvalidDocument | Other`) and `message`.
+- Errors carry `kind` (`invalid_document | invalid_certificate | wrong_password | invalid_request | other`) and `message`. SUNAT's beta demo key is used only on an explicit `demo_key: true`, and `/v1/send` refuses it in production.
 - The sidecar API is versioned in its path. Quarkus and the engine ship in the same image release, so only one version is live at a time.
 
 ---
@@ -656,7 +659,13 @@ These rules apply pulpcore's tasking discipline to a multi-threaded JVM. Every P
   - JCA `Signature` and `Cipher` instances.
   - PKCS#11 sessions come from a bounded HSM session pool, one thread per session at a time.
 - The engine client (REST client over Vert.x) is shared and thread-safe. The engine itself is stateless: Rust holds no global mutable state, and its template and catalog statics are immutable.
-- Timeouts everywhere: database statement timeout, engine call timeout, HSM timeout, SUNAT connect and read timeouts. Nothing waits forever while holding a slot.
+- Timeouts everywhere: database statement timeout, engine call timeout, HSM timeout, SUNAT connect and read timeouts. Nothing waits forever while holding a slot. **Timeouts nest outward:**
+  - SUNAT call (xsender: 120 s);
+  - < app → engine read timeout (130 s);
+  - < app shutdown timeout (135 s);
+  - < pod termination grace period (150 s).
+
+  So no layer gives up on, or kills, a send that an inner layer may still complete.
 
 **Verification**
 
@@ -993,7 +1002,7 @@ Infrastructure I1 (dev/staging) ─── I2 (production HA: sync replication, m
 | Phase | Goal | Deliverables | Exit criteria |
 |---|---|---|---|
 | **P0** Walking skeleton | Prove the architecture | Repo with `AGENTS.md`/`CLAUDE.md` conventions (§26.9); Maven parent + `app` module (Quarkus 3.40, Java 25); `engine/` Rust sidecar (axum, xhandler-rust pinned by rev) with `/v1/build`, `/v1/sign` (single-step with SUNAT's beta demo key or a PKCS#12, until R1), `/v1/send`, `/health` and a `--health` exec probe; dev-only `POST /api/v1/dev/documents` (build → sign → send to beta); Dev Services PostgreSQL + Flyway baseline; health, metrics, OpenAPI; OpenTelemetry across both containers (W3C trace context); `hack/compose.yaml` (PostgreSQL, Grafana LGTM) and `hack/e2e.sh`; container images; Kustomize base (one pod = app + engine); CI (app, engine, images, manifests) and a nightly SUNAT-beta e2e. Keycloak, MinIO and SoftHSM move to P1, where they're first used. Publishing and signing images and the dev/staging GitOps environments belong to the infrastructure track (I1). | Done: `hack/e2e.sh` gets an invoice accepted by SUNAT beta through the engine, and one trace spans `xhandler-service` → `xhandler-engine` → `sunat.send` |
-| **P1** Platform core | Multi-tenant foundations | Dev Services for Keycloak, MinIO and SoftHSM; Partner/tenant/company, row-level security, Keycloak roles + client credentials, self-service signup with free-tier abuse controls (§26.8), support access (§26.1), audit log, envelope-encrypted secrets with rotation, HSM integration, certificate import/inspect, series, beta/production per company, API conventions (errors, pagination, idempotency, labels, permissions) | Cross-tenant tests fail closed; keys never leave the HSM; keys rotate without downtime |
+| **P1** Platform core | Multi-tenant foundations | Dev Services for Keycloak, MinIO and SoftHSM; engine JSON logs carrying `trace_id`/`span_id` (the app's already do); Partner/tenant/company, row-level security, Keycloak roles + client credentials, self-service signup with free-tier abuse controls (§26.8), support access (§26.1), audit log, envelope-encrypted secrets with rotation, HSM integration, certificate import/inspect, series, beta/production per company, API conventions (errors, pagination, idempotency, labels, permissions) | Cross-tenant tests fail closed; keys never leave the HSM; keys rotate without downtime |
 | **P2** Job system | Pulp-style tasking + SUNAT resilience | Jobs + state machine, unblocker (FIFO per document, credential slots), claim with try-lock before the compare-and-set, heartbeat on the lock connection, recovery via `unknown`, **reconciler with leases (only creator of attempts), document-level retry state and fencing, endpoint breakers, deadline-ordered drain, `needs_attention`, holds (§24)**, LISTEN/NOTIFY, schedules, purge, metrics, `/api/v1/status`, admin CLI (hold/release/retry), SUNAT fake | Property and chaos tests: killing or pausing workers, or killing the lock connection, loses no work and causes no duplicate attempts; stale workers can't overwrite outcomes; simulated SUNAT outage + recovery drains without loss, in deadline order, with no thundering herd |
 | **P3** Emit and send (software mode) | Real factura/boleta | `POST /documents` (idempotency table, short emit transaction with HSM executor and emit semaphore), numbering, XSD (R5) + sign (R1), storage, capability links, status machine, send/retry/ticket with the definitive-answer rule, per-type ambiguity resolution and 1033 digest check (§9.2), code classification, boleta D+5 → RC fallback, deadline alerts (America/Lima), webhooks, timeline | Accepted on SUNAT beta; retry tests show no send after a definitive answer; SUNAT-outage codes are retried; alerts fire |
 | **P4** All documents | Complete the set | Notes; SBS exchange rates (§26.7); RA/RC/RR voiding with the delivered guard and voiding-rejection rollback; GRE REST + OAuth; percepción/retención; derived submission route (SUNAT or third-party OSE); production switch gate; 2027 rules | Every document accepted on beta; sending through a third-party OSE works; invalid routes refused |
