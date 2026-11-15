@@ -1,0 +1,21 @@
+# Local dependencies for running the packaged app and the e2e test.
+# (`./mvnw quarkus:dev` starts PostgreSQL by itself through Dev Services.)
+services:
+  postgres:
+    image: docker.io/library/postgres:18
+    environment:
+      POSTGRES_DB: xhandler
+      POSTGRES_USER: xhandler
+      POSTGRES_PASSWORD: xhandler
+    ports:
+      - "5432:5432"
+
+  # Grafana + Tempo + Prometheus + Loki with an OpenTelemetry collector
+  # (http://localhost:3000). OTLP: gRPC 4317, HTTP 4318. Tempo API: 3200.
+  lgtm:
+    image: docker.io/grafana/otel-lgtm:latest
+    ports:
+      - "3000:3000"
+      - "3200:3200"
+      - "4317:4317"
+      - "4318:4318"

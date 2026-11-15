@@ -1,0 +1,78 @@
+# One pod = the Quarkus app + the Rust engine sidecar, talking over localhost
+# (DESIGN.md §4). In P2 this splits into "api" and "worker" deployments of the
+# same images.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: xhandler-service
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: xhandler-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: xhandler-service
+    spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: xhandler-service
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: app
+          image: xhandler-service
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: XHANDLER_ENGINE_URL
+              value: http://localhost:8090
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector:4317
+            - name: QUARKUS_DATASOURCE_JDBC_URL
+              valueFrom:
+                secretKeyRef: { name: xhandler-db, key: jdbc-url }
+            - name: QUARKUS_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef: { name: xhandler-db, key: username }
+            - name: QUARKUS_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: xhandler-db, key: password }
+          readinessProbe:
+            httpGet: { path: /q/health/ready, port: http }
+          livenessProbe:
+            httpGet: { path: /q/health/live, port: http }
+          resources:
+            requests: { cpu: 250m, memory: 512Mi }
+            limits: { memory: 1Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+        - name: engine
+          image: xhandler-engine
+          env:
+            - name: XHANDLER_ENGINE_ADDR
+              value: 127.0.0.1:8090
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector:4318
+          readinessProbe:
+            exec:
+              command: ["/usr/local/bin/xhandler-engine", "--health"]
+          livenessProbe:
+            exec:
+              command: ["/usr/local/bin/xhandler-engine", "--health"]
+          resources:
+            requests: { cpu: 250m, memory: 64Mi }
+            limits: { memory: 256Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }

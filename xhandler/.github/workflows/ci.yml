@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request: {}
+
+env:
+  CI: true
+
+jobs:
+  app:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+      # Tests use Dev Services: Testcontainers starts PostgreSQL on the runner's Docker
+      - run: ./mvnw -B verify
+
+  engine:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@v7.0.1
+      # Installs the toolchain of engine/rust-toolchain.toml
+      - run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2.9.3
+        with:
+          workspaces: engine
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
+
+  images:
+    runs-on: ubuntu-latest
+    needs: [app, engine]
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+      - run: ./mvnw -B -q package -DskipTests
+      - run: docker build -f app/src/main/docker/Dockerfile.jvm -t xhandler-service:ci app
+      - run: docker build -t xhandler-engine:ci engine
+      # Publishing and signing images belongs to the infrastructure track (DESIGN.md §21.4)
+
+  manifests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - run: kubectl kustomize deploy/base > /dev/null
