@@ -62,4 +62,4 @@ Rust 1.100.0 is pinned in `engine/rust-toolchain.toml`. Java 25.
   - never send to production from tests or scripts.
 - **Commits**:
   - Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `ci:`, `chore:`).
-  - One PR per phase (DESIGN.md §21), each followed by a senior-engineer review.
+  - Commits go straight to `main` (no PRs in this repo). Each phase (DESIGN.md §21) is followed by a senior-engineer review.

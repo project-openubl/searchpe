@@ -984,7 +984,7 @@ xhandler-service/
 
 ## 21. Roadmap
 
-Four tracks run in parallel. Each phase is one PR (or a small stack of PRs), followed by a senior-engineer review. Phases are internal milestones; the public v1 launches at GA with all three roles.
+Four tracks run in parallel. In this repo, each phase is committed straight to `main`; work in other repos (xhandler-rust, xhandler-ui) goes in one single PR per repo. Every phase is followed by a senior-engineer review. Phases are internal milestones; the public v1 launches at GA with all three roles.
 
 This is a deliberate choice, made after the design review. Launching all three roles at once means GA waits for OSE registration (capital, bank guarantee, audit, SUNAT tests). Pilot tenants at M1 and M2 can still run in production before GA.
 
