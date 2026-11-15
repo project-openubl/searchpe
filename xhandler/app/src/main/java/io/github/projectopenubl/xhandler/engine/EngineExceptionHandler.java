@@ -3,6 +3,7 @@ package io.github.projectopenubl.xhandler.engine;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
+import io.github.projectopenubl.xhandler.api.ApiError;
 import org.jboss.logging.Logger;
 
 /**
@@ -14,9 +15,6 @@ import org.jboss.logging.Logger;
 public class EngineExceptionHandler implements ExceptionMapper<EngineException> {
 
     private static final Logger LOG = Logger.getLogger(EngineExceptionHandler.class);
-
-    /** API error body. {@code detail} carries the engine's explanation for client errors. */
-    public record ApiError(String kind, String message, String detail) {}
 
     @Override
     public Response toResponse(EngineException e) {
@@ -32,8 +30,6 @@ public class EngineExceptionHandler implements ExceptionMapper<EngineException> 
     private static String clientMessage(String kind) {
         return switch (kind) {
             case "invalid_document" -> "El documento no es válido.";
-            case "invalid_certificate" -> "El certificado digital no es válido.";
-            case "wrong_password" -> "La contraseña del certificado digital es incorrecta.";
             case "invalid_request" -> "La solicitud está incompleta o es inconsistente.";
             default -> "No se pudo procesar el documento.";
         };

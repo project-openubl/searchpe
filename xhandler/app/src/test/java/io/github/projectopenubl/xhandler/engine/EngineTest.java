@@ -21,6 +21,16 @@ class EngineTest {
         }
 
         @Override
+        public EngineModels.SignPrepareResponse signPrepare(EngineModels.SignPrepareRequest request) {
+            throw new ProcessingException("Connection refused");
+        }
+
+        @Override
+        public EngineModels.SignResponse signFinalize(EngineModels.SignFinalizeRequest request) {
+            throw new ProcessingException("Connection refused");
+        }
+
+        @Override
         public EngineModels.SendResponse send(EngineModels.SendRequest request) {
             throw new ProcessingException("Read timed out");
         }

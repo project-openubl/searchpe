@@ -31,6 +31,11 @@ public class EngineStub implements QuarkusTestResourceLifecycleManager {
         REQUESTS.clear();
     }
 
+    /** Body of the last request to {@code path}. */
+    public static String lastBody(String path) {
+        return REQUESTS.stream().filter(r -> r.path().equals(path)).reduce((a, b) -> b).map(Recorded::body).orElseThrow();
+    }
+
     @Override
     public Map<String, String> start() {
         try {
@@ -63,7 +68,10 @@ public class EngineStub implements QuarkusTestResourceLifecycleManager {
                     respond(exchange, 422, "{\"kind\":\"invalid_document\",\"message\":\"missing field `serie_numero`\"}");
                 }
             }
-            case "/v1/sign" -> respond(exchange, 200, "{\"xml\":\"<Invoice signed/>\",\"digest_value\":\"digest-123\"}");
+            case "/v1/sign" -> respond(exchange, 200, "{\"xml\":\"<Invoice signed-with-demo-key/>\",\"digest_value\":\"digest-demo\"}");
+            // data_to_sign = base64("data-to-sign")
+            case "/v1/sign/prepare" -> respond(exchange, 200, "{\"data_to_sign\":\"ZGF0YS10by1zaWdu\",\"digest_value\":\"digest-123\"}");
+            case "/v1/sign/finalize" -> respond(exchange, 200, "{\"xml\":\"<Invoice signed/>\",\"digest_value\":\"digest-123\"}");
             case "/v1/send" -> respond(exchange, 200, """
                     {"status":"accepted","code":0,"description":"La Factura numero F001-1, ha sido aceptada",\
                     "notes":[],"cdr_zip":"UEsDBA==","ticket":null}""");

@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
-# P0 exit criterion (DESIGN.md §21.1): an invoice is built, signed and accepted
-# by SUNAT beta through the engine, and one trace spans app -> engine -> SUNAT.
+# End-to-end check against SUNAT beta (DESIGN.md §21.1):
+#   P0: a document is built, signed and accepted by SUNAT beta through the
+#       engine, and one trace spans app -> engine -> SUNAT.
+#   P1: through the real API with a Keycloak token: sign up, create a company,
+#       upload its certificate, then sign through the key vault (engine
+#       prepare -> vault -> engine finalize) and send.
 #
 # Needs: cargo, java 25, podman (or docker) compose, curl, jq, network access.
 set -euo pipefail
@@ -9,6 +13,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 COMPOSE="${COMPOSE:-podman compose}"
 WORK="$(mktemp -d)"
 PIDS=()
+RUC=20123456789
+PFX="$ROOT/app/src/test/resources/certificates/valid-$RUC.pfx"
 
 cleanup() {
   local status=$?
@@ -25,7 +31,7 @@ cleanup() {
 trap cleanup EXIT
 
 wait_for() { # url, name
-  for _ in $(seq 1 90); do
+  for _ in $(seq 1 120); do
     if curl -fsS "$1" >/dev/null 2>&1; then return 0; fi
     sleep 1
   done
@@ -33,9 +39,10 @@ wait_for() { # url, name
   return 1
 }
 
-echo "==> dependencies (postgres, lgtm)"
+echo "==> dependencies (postgres, keycloak, lgtm)"
 $COMPOSE -f "$ROOT/hack/compose.yaml" up -d
 wait_for http://localhost:3000/api/health "grafana"
+wait_for http://localhost:8180/realms/xhandler/.well-known/openid-configuration "keycloak"
 
 echo "==> engine"
 (cd "$ROOT/engine" && cargo build --release --quiet)
@@ -50,15 +57,33 @@ echo "==> app"
 QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://localhost:5432/xhandler \
 QUARKUS_DATASOURCE_USERNAME=xhandler \
 QUARKUS_DATASOURCE_PASSWORD=xhandler \
+QUARKUS_OIDC_AUTH_SERVER_URL=http://localhost:8180/realms/xhandler \
+XHANDLER_VAULT_KIND=software \
+XHANDLER_VAULT_SOFTWARE_ALLOW_IN_PRODUCTION=true \
+XHANDLER_VAULT_SOFTWARE_CURRENT_MASTER_KEY=e2e \
+XHANDLER_VAULT_SOFTWARE_MASTER_KEYS_E2E="$(head -c 32 /dev/urandom | base64)" \
   java -jar "$ROOT/app/target/quarkus-app/quarkus-run.jar" >"$WORK/app.log" 2>&1 &
 PIDS+=($!)
 wait_for http://localhost:8080/q/health/ready "app"
 
-echo "==> send an invoice to SUNAT beta"
+echo "==> sign up and set up a company (alice)"
+TOKEN=$(curl -fsS http://localhost:8180/realms/xhandler/protocol/openid-connect/token \
+  -d grant_type=password -d client_id=xhandler-service -d client_secret=secret \
+  -d username=alice -d password=alice | jq -r .access_token)
+api() { curl -fsS -H "authorization: Bearer $TOKEN" "$@"; }
+TENANT=$(api -X POST http://localhost:8080/api/v1/tenants -H 'content-type: application/json' \
+  -d '{"name":"Empresa de Prueba"}' | jq -r .id)
+COMPANY=$(api -X POST "http://localhost:8080/api/v1/tenants/$TENANT/companies" -H 'content-type: application/json' \
+  -d "{\"ruc\":\"$RUC\",\"razon_social\":\"Empresa de Prueba S.A.C.\"}" | jq -r .id)
+api -X PUT "http://localhost:8080/api/v1/tenants/$TENANT/companies/$COMPANY/certificate" \
+  -F "file=@$PFX" -F password=password | jq -c '{ruc, ruc_matches}'
+
+echo "==> build, sign through the vault, send to SUNAT beta"
 NUMERO=$(( $(date +%s) % 99999999 ))
-jq --arg sn "F001-$NUMERO" '.spec.serie_numero = $sn' "$ROOT/examples/invoice.json" >"$WORK/invoice.json"
+jq --arg sn "F001-$NUMERO" --arg ruc "$RUC" '.spec.serie_numero = $sn | .spec.proveedor.ruc = $ruc' \
+  "$ROOT/examples/invoice.json" >"$WORK/invoice.json"
 TRACE_ID=$(od -An -tx1 -N16 /dev/urandom | tr -d ' \n')
-curl -fsS -X POST http://localhost:8080/api/v1/dev/documents \
+api -X POST "http://localhost:8080/api/v1/tenants/$TENANT/companies/$COMPANY/dev/documents" \
   -H 'content-type: application/json' \
   -H "traceparent: 00-$TRACE_ID-$(od -An -tx1 -N8 /dev/urandom | tr -d ' \n')-01" \
   --data @"$WORK/invoice.json" | tee "$WORK/result.json" | jq '{digest_value, status: .sunat.status, code: .sunat.code, description: .sunat.description}'

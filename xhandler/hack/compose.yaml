@@ -10,6 +10,18 @@ services:
     ports:
       - "5432:5432"
 
+  # Keycloak with the dev realm (users alice, bob, carol, dave; client acme-erp)
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.4
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    volumes:
+      - ../deploy/keycloak/xhandler-realm-dev.json:/opt/keycloak/data/import/xhandler-realm.json:Z
+    ports:
+      - "8180:8080"
+
   # Grafana + Tempo + Prometheus + Loki with an OpenTelemetry collector
   # (http://localhost:3000). OTLP: gRPC 4317, HTTP 4318. Tempo API: 3200.
   lgtm:

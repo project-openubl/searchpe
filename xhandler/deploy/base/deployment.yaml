@@ -84,6 +84,21 @@ spec:
             - name: QUARKUS_DATASOURCE_PASSWORD
               valueFrom:
                 secretKeyRef: { name: xhandler-db, key: password }
+            # Migrations run separately with the owner role; the app's login role
+            # must be a member of xhandler_app (V2 migration)
+            - name: QUARKUS_FLYWAY_MIGRATE_AT_START
+              value: "false"
+            - name: QUARKUS_OIDC_AUTH_SERVER_URL
+              valueFrom:
+                configMapKeyRef: { name: xhandler-config, key: oidc-auth-server-url }
+            # Key vault: an HSM through PKCS#11 (the module comes from the
+            # environment's overlay, e.g. a volume with the vendor's library)
+            - name: XHANDLER_VAULT_PKCS11_LIBRARY
+              valueFrom:
+                configMapKeyRef: { name: xhandler-config, key: pkcs11-library }
+            - name: XHANDLER_VAULT_PKCS11_PIN
+              valueFrom:
+                secretKeyRef: { name: xhandler-hsm, key: pin }
           readinessProbe:
             httpGet: { path: /q/health/ready, port: http }
             timeoutSeconds: 3

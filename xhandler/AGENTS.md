@@ -56,6 +56,16 @@ Rust 1.100.0 is pinned in `engine/rust-toolchain.toml`. Java 25.
   - errors are `{ "kind", "message" }` with `kind` in `invalid_document | invalid_certificate | wrong_password | invalid_request | other` (422, except `other`: 500);
   - send outcomes: `unknown` means SUNAT may have the document (ask before resending), `not_delivered` means it never reached SUNAT;
   - timeouts nest: app → engine read timeout > engine → SUNAT timeout.
+- **Tenancy (DESIGN.md §6)**:
+  - every `@Transactional` method touching tenant data calls `TenantAccess.enter(tenantId, minimumRole)` first;
+  - PostgreSQL row-level security does the isolation: the app runs as `xhandler_app`, and a query without an open tenant sees no rows;
+  - cross-tenant lookups are `SECURITY DEFINER` SQL functions in the migrations, never ad-hoc queries;
+  - foreign and unknown tenants are both 404.
+- **Secrets and keys**:
+  - private keys only through `KeyVault` (an HSM in production; `SoftwareKeyVault` for dev and tests only);
+  - secrets only through `CredentialService`/`SecretBox`;
+  - never log or return them; reads of secrets are audited (`Auditor`).
+- **Tests** use real Keycloak tokens (`Api.as("alice")`) and Dev Services PostgreSQL; they must pass against a database that outlives the run (random RUCs, no fixed ids).
 - **Concurrency rules** (DESIGN.md §10.8) apply to any change touching jobs, documents or numbering.
 - **SUNAT environments**:
   - tests and e2e use **SUNAT beta** only;

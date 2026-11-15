@@ -25,8 +25,16 @@ public final class EngineModels {
 
     public record BuildResponse(String xml, JsonNode enrichedJson) {}
 
-    /** P0 signs only with SUNAT's beta demo key, which the engine requires to be explicit. */
+    /** One-step signing, only with SUNAT's beta demo key (the engine requires it to be explicit). */
     public record SignRequest(String xml, boolean demoKey) {}
+
+    public record SignPrepareRequest(String xml) {}
+
+    /** {@code dataToSign}: base64 bytes to sign with SHA256withRSA. */
+    public record SignPrepareResponse(String dataToSign, String digestValue) {}
+
+    /** {@code signatureValue} and {@code certificate} (DER) in base64. */
+    public record SignFinalizeRequest(String xml, String signatureValue, String certificate) {}
 
     public record SignResponse(String xml, String digestValue) {}
 
@@ -46,8 +54,7 @@ public final class EngineModels {
             String ticket) {}
 
     /**
-     * Error body of the engine. {@code kind}: invalid_document, invalid_certificate,
-     * wrong_password, invalid_request, other.
+     * Error body of the engine. {@code kind}: invalid_document, invalid_request, other.
      */
     public record ErrorBody(String kind, String message) {}
 }

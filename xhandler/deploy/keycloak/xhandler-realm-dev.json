@@ -1,0 +1,59 @@
+{
+  "realm": "xhandler",
+  "enabled": true,
+  "sslRequired": "none",
+  "accessTokenLifespan": 900,
+  "roles": {
+    "realm": [
+      { "name": "platform-support", "description": "Platform operators: read-only tenant access through approved support sessions" },
+      { "name": "platform-admin", "description": "Platform administrators" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "xhandler-service",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false
+    },
+    {
+      "clientId": "acme-erp",
+      "description": "Example machine client (an ERP) using client credentials",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "acme-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true
+    }
+  ],
+  "users": [
+    {
+      "username": "alice", "enabled": true, "email": "alice@example.com", "emailVerified": true,
+      "firstName": "Alice", "lastName": "Admin",
+      "credentials": [{ "type": "password", "value": "alice", "temporary": false }]
+    },
+    {
+      "username": "bob", "enabled": true, "email": "bob@example.com", "emailVerified": true,
+      "firstName": "Bob", "lastName": "Builder",
+      "credentials": [{ "type": "password", "value": "bob", "temporary": false }]
+    },
+    {
+      "username": "dave", "enabled": true, "email": "dave@example.com", "emailVerified": false,
+      "firstName": "Dave", "lastName": "Unverified",
+      "credentials": [{ "type": "password", "value": "dave", "temporary": false }]
+    },
+    {
+      "username": "carol", "enabled": true, "email": "carol@example.com", "emailVerified": true,
+      "firstName": "Carol", "lastName": "Support",
+      "realmRoles": ["platform-support"],
+      "credentials": [{ "type": "password", "value": "carol", "temporary": false }]
+    },
+    {
+      "username": "service-account-acme-erp", "enabled": true, "serviceAccountClientId": "acme-erp"
+    }
+  ]
+}

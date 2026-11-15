@@ -26,9 +26,19 @@ public class Engine {
         return call(() -> client.build(new EngineModels.BuildRequest(document)));
     }
 
-    /** Signs with SUNAT's beta demo key (P0; real keys arrive with the HSM in P1). */
+    /** Signs with SUNAT's public beta demo key (beta companies without their own certificate). */
     public EngineModels.SignResponse signWithDemoKey(String xml) {
         return call(() -> client.sign(new EngineModels.SignRequest(xml, true)));
+    }
+
+    public EngineModels.SignPrepareResponse signPrepare(String xml) {
+        return call(() -> client.signPrepare(new EngineModels.SignPrepareRequest(xml)));
+    }
+
+    public EngineModels.SignResponse signFinalize(String xml, byte[] signatureValue, byte[] certificateDer) {
+        java.util.Base64.Encoder base64 = java.util.Base64.getEncoder();
+        return call(() -> client.signFinalize(new EngineModels.SignFinalizeRequest(
+                xml, base64.encodeToString(signatureValue), base64.encodeToString(certificateDer))));
     }
 
     public EngineModels.SendResponse send(String xml, EngineModels.Environment environment) {

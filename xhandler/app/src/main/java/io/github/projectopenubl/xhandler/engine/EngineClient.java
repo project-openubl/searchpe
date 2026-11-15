@@ -23,6 +23,14 @@ public interface EngineClient {
     EngineModels.SignResponse sign(EngineModels.SignRequest request);
 
     @POST
+    @Path("/sign/prepare")
+    EngineModels.SignPrepareResponse signPrepare(EngineModels.SignPrepareRequest request);
+
+    @POST
+    @Path("/sign/finalize")
+    EngineModels.SignResponse signFinalize(EngineModels.SignFinalizeRequest request);
+
+    @POST
     @Path("/send")
     EngineModels.SendResponse send(EngineModels.SendRequest request);
 }

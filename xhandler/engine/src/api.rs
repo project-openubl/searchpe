@@ -29,6 +29,8 @@ pub fn router() -> Router {
         .route("/health", get(|| async { "ok" }))
         .route("/v1/build", post(build))
         .route("/v1/sign", post(sign))
+        .route("/v1/sign/prepare", post(sign_prepare))
+        .route("/v1/sign/finalize", post(sign_finalize))
         .route("/v1/send", post(send))
         .layer(DefaultBodyLimit::max(MAX_BODY_BYTES))
 }
@@ -40,8 +42,6 @@ pub fn router() -> Router {
 pub enum ErrorKind {
     /// The document can't be built, signed or sent as it is
     InvalidDocument,
-    InvalidCertificate,
-    WrongPassword,
     /// The request itself is incomplete or contradictory
     InvalidRequest,
     Other,
@@ -112,79 +112,119 @@ fn lima_today() -> NaiveDate {
 }
 
 // --- sign -------------------------------------------------------------------
+//
+// Real keys never reach the engine: they stay in the HSM, and signing takes
+// two calls (DESIGN.md §4.1). The app asks for the data to sign, signs it in
+// the HSM, and sends the signature back. The engine is stateless, so finalize
+// prepares the document again (preparing is deterministic).
 
 #[derive(Deserialize)]
-pub struct SignRequest {
+pub struct SignPrepareRequest {
     pub xml: String,
-    /// PKCS#12 keystore to sign with. Temporary until the HSM two-step
-    /// signing of R1 (DESIGN.md §19).
-    pub pkcs12: Option<Pkcs12>,
-    /// Sign with SUNAT's public beta demo key instead. Must be explicit, so a
-    /// missing keystore is an error rather than a document SUNAT production
-    /// will reject.
-    #[serde(default)]
-    pub demo_key: bool,
+}
+
+#[derive(Serialize)]
+pub struct SignPrepareResponse {
+    /// Bytes to sign with RSA PKCS#1 v1.5 + SHA-256 (Java `SHA256withRSA`), base64
+    pub data_to_sign: String,
+    pub digest_value: String,
+}
+
+async fn sign_prepare(
+    Json(request): Json<SignPrepareRequest>,
+) -> Result<Json<SignPrepareResponse>, ApiError> {
+    blocking(move || {
+        let prepared = prepare(request.xml)?;
+        Ok(SignPrepareResponse {
+            data_to_sign: base64::engine::general_purpose::STANDARD.encode(prepared.data_to_sign()),
+            digest_value: prepared.digest_value().to_string(),
+        })
+    })
+    .await
 }
 
 #[derive(Deserialize)]
-pub struct Pkcs12 {
-    pub base64: String,
-    pub password: String,
+pub struct SignFinalizeRequest {
+    pub xml: String,
+    /// Signature over `data_to_sign`, base64
+    pub signature_value: String,
+    /// Signer's X.509 certificate (DER), base64
+    pub certificate: String,
 }
 
 #[derive(Serialize)]
 pub struct SignResponse {
     pub xml: String,
-    pub digest_value: Option<String>,
+    pub digest_value: String,
+}
+
+async fn sign_finalize(
+    Json(request): Json<SignFinalizeRequest>,
+) -> Result<Json<SignResponse>, ApiError> {
+    blocking(move || {
+        let decode = |value: &str, what: &str| {
+            base64::engine::general_purpose::STANDARD
+                .decode(value)
+                .map_err(|e| ApiError::new(ErrorKind::InvalidRequest, format!("{what}: {e}")))
+        };
+        let signature_value = decode(&request.signature_value, "signature_value")?;
+        let certificate = decode(&request.certificate, "certificate")?;
+        let prepared = prepare(request.xml)?;
+        let digest_value = prepared.digest_value().to_string();
+        let xml = String::from_utf8(prepared.finalize(&signature_value, &certificate))
+            .map_err(|e| ApiError::new(ErrorKind::Other, e))?;
+        Ok(SignResponse { xml, digest_value })
+    })
+    .await
+}
+
+/// One-step signing with SUNAT's public beta demo key, for beta companies
+/// without their own certificate (DESIGN.md §4.1). Must be explicit.
+#[derive(Deserialize)]
+pub struct SignRequest {
+    pub xml: String,
+    #[serde(default)]
+    pub demo_key: bool,
 }
 
 async fn sign(Json(request): Json<SignRequest>) -> Result<Json<SignResponse>, ApiError> {
-    // RSA signing is CPU-bound: keep it off the async workers.
+    if !request.demo_key {
+        return Err(ApiError::new(
+            ErrorKind::InvalidRequest,
+            "one-step signing is only for SUNAT's beta demo key (demo_key: true); use /v1/sign/prepare and /v1/sign/finalize",
+        ));
+    }
+    blocking(move || {
+        let key_pair = RsaKeyPair::from_pem(BETA_PRIVATE_KEY, BETA_CERTIFICATE)
+            .map_err(|e| ApiError::new(ErrorKind::Other, e))?;
+        let prepared = prepare(request.xml)?;
+        let digest_value = prepared.digest_value().to_string();
+        let signature_value = key_pair
+            .sign(prepared.data_to_sign())
+            .map_err(|e| ApiError::new(ErrorKind::Other, e))?;
+        let xml =
+            String::from_utf8(prepared.finalize(&signature_value, key_pair.certificate_der()))
+                .map_err(|e| ApiError::new(ErrorKind::Other, e))?;
+        Ok(SignResponse { xml, digest_value })
+    })
+    .await
+}
+
+fn prepare(xml: String) -> Result<PreparedSignature, ApiError> {
+    XSigner { xml_document: xml }
+        .prepare()
+        .map_err(|e| ApiError::new(ErrorKind::InvalidDocument, e))
+}
+
+/// Runs CPU-bound work (C14N, RSA) off the async workers, in the caller's span.
+async fn blocking<T: Send + 'static>(
+    work: impl FnOnce() -> Result<T, ApiError> + Send + 'static,
+) -> Result<Json<T>, ApiError> {
     let span = tracing::Span::current();
-    tokio::task::spawn_blocking(move || span.in_scope(|| sign_blocking(request)))
+    tokio::task::spawn_blocking(move || span.in_scope(work))
         .await
         .map_err(|e| ApiError::new(ErrorKind::Other, e))?
         .map(Json)
-}
-
-fn sign_blocking(request: SignRequest) -> Result<SignResponse, ApiError> {
-    let key_pair = match (&request.pkcs12, request.demo_key) {
-        (Some(_), true) => {
-            return Err(ApiError::new(
-                ErrorKind::InvalidRequest,
-                "pkcs12 and demo_key are mutually exclusive",
-            ))
-        }
-        (Some(pkcs12), false) => {
-            let bytes = base64::engine::general_purpose::STANDARD
-                .decode(&pkcs12.base64)
-                .map_err(|e| ApiError::new(ErrorKind::InvalidCertificate, e))?;
-            RsaKeyPair::from_pkcs12(&bytes, &pkcs12.password).map_err(|e| match e {
-                SignError::WrongPassword => ApiError::new(ErrorKind::WrongPassword, e),
-                _ => ApiError::new(ErrorKind::InvalidCertificate, e),
-            })?
-        }
-        (None, true) => RsaKeyPair::from_pem(BETA_PRIVATE_KEY, BETA_CERTIFICATE)
-            .map_err(|e| ApiError::new(ErrorKind::Other, e))?,
-        (None, false) => {
-            return Err(ApiError::new(
-                ErrorKind::InvalidRequest,
-                "either pkcs12 or demo_key is required",
-            ))
-        }
-    };
-
-    let signed = XSigner {
-        xml_document: request.xml,
-    }
-    .sign(&key_pair)
-    .map_err(|e| ApiError::new(ErrorKind::InvalidDocument, e))?;
-    let xml = String::from_utf8(signed).map_err(|e| ApiError::new(ErrorKind::Other, e))?;
-    let digest_value = UblFile::from(xml.as_str())
-        .metadata()
-        .map_err(|e| ApiError::new(ErrorKind::InvalidDocument, e))?
-        .digest_value;
-    Ok(SignResponse { xml, digest_value })
 }
 
 /// True when the XML is signed with SUNAT's beta demo certificate.
@@ -481,22 +521,50 @@ mod tests {
         assert_eq!(body["kind"], "invalid_request");
     }
 
+    /// Two-step signing with an external key gives the same document as the
+    /// one-step demo signing (same key).
     #[tokio::test]
-    async fn sign_rejects_wrong_pkcs12_password() {
-        let pfx = include_bytes!("../tests/resources/demo.pfx");
+    async fn prepare_and_finalize_match_one_step_signing() {
+        let xml = build_invoice().await["xml"].clone();
+        let (status, prepared) = post("/v1/sign/prepare", serde_json::json!({ "xml": xml })).await;
+        assert_eq!(status, StatusCode::OK, "{prepared}");
+
+        // The "HSM": any RSA PKCS#1 v1.5 SHA-256 signer
+        let key_pair = RsaKeyPair::from_pem(BETA_PRIVATE_KEY, BETA_CERTIFICATE).unwrap();
+        let data = base64::engine::general_purpose::STANDARD
+            .decode(prepared["data_to_sign"].as_str().unwrap())
+            .unwrap();
+        let signature = key_pair.sign(&data).unwrap();
+
+        let (status, finalized) = post(
+            "/v1/sign/finalize",
+            serde_json::json!({
+                "xml": xml,
+                "signature_value": base64::engine::general_purpose::STANDARD.encode(signature),
+                "certificate": base64::engine::general_purpose::STANDARD.encode(key_pair.certificate_der()),
+            }),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK, "{finalized}");
+        assert_eq!(finalized["digest_value"], prepared["digest_value"]);
+
+        let one_step = sign_with_demo_key(xml).await;
+        assert_eq!(finalized["xml"], one_step["xml"]);
+    }
+
+    #[tokio::test]
+    async fn finalize_rejects_bad_base64() {
         let (status, body) = post(
-            "/v1/sign",
+            "/v1/sign/finalize",
             serde_json::json!({
                 "xml": build_invoice().await["xml"],
-                "pkcs12": {
-                    "base64": base64::engine::general_purpose::STANDARD.encode(pfx),
-                    "password": "not-the-password",
-                },
+                "signature_value": "not base64!",
+                "certificate": "",
             }),
         )
         .await;
         assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
-        assert_eq!(body["kind"], "wrong_password");
+        assert_eq!(body["kind"], "invalid_request");
     }
 
     #[tokio::test]

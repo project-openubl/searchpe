@@ -7,8 +7,9 @@ publish = false
 description = "Stateless sidecar of xhandler-service: builds, signs and sends SUNAT documents with xhandler-rust"
 
 [dependencies]
-# Pinned by revision; bumping it is its own PR (DESIGN.md §26.3)
-xhandler = { git = "https://github.com/project-openubl/xhandler-rust", rev = "fdefe29adc3779293d6aea2238b8a37e8349219d" }
+# Pinned by revision (DESIGN.md §26.3). Points at the fork commit with the
+# two-step signing (R1) until project-openubl/xhandler-rust#610 is merged.
+xhandler = { git = "https://github.com/carlosthe19916/xhandler-rust", rev = "d8003b2b8ec16b37678e93fc83220916209ea8dd" }
 
 anyhow = "1"
 axum = "0.8"

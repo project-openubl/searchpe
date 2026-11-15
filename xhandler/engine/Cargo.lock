@@ -3123,7 +3123,7 @@ dependencies = [
 [[package]]
 name = "xhandler"
 version = "0.0.0-dev"
-source = "git+https://github.com/project-openubl/xhandler-rust?rev=fdefe29adc3779293d6aea2238b8a37e8349219d#fdefe29adc3779293d6aea2238b8a37e8349219d"
+source = "git+https://github.com/carlosthe19916/xhandler-rust?rev=d8003b2b8ec16b37678e93fc83220916209ea8dd#d8003b2b8ec16b37678e93fc83220916209ea8dd"
 dependencies = [
  "anyhow",
  "base64 0.23.1",

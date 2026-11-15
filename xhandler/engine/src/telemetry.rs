@@ -3,7 +3,7 @@
 //! the W3C `traceparent` header (DESIGN.md §15).
 
 use axum::http::Request;
-use opentelemetry::trace::TracerProvider as _;
+use opentelemetry::trace::{TraceContextExt as _, TracerProvider as _};
 use opentelemetry::{global, KeyValue};
 use opentelemetry_http::HeaderExtractor;
 use opentelemetry_sdk::propagation::TraceContextPropagator;
@@ -63,10 +63,16 @@ pub fn request_span<B>(request: &Request<B>) -> Span {
         otel.kind = "server",
         http.request.method = %request.method(),
         url.path = %request.uri().path(),
+        trace_id = tracing::field::Empty,
     );
     let parent = global::get_text_map_propagator(|propagator| {
         propagator.extract(&HeaderExtractor(request.headers()))
     });
     let _ = span.set_parent(parent);
+    // JSON log lines carry the trace id, so logs and traces correlate (DESIGN.md §15)
+    let trace_id = span.context().span().span_context().trace_id();
+    if trace_id != opentelemetry::trace::TraceId::INVALID {
+        span.record("trace_id", tracing::field::display(trace_id));
+    }
     span
 }
