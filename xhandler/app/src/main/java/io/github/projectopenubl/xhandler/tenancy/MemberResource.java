@@ -61,7 +61,7 @@ public class MemberResource {
         try {
             member.persistAndFlush();
         } catch (PersistenceException e) {
-            if (Constraints.violated(e).isPresent()) {
+            if (Constraints.violated(e).filter(name -> name.startsWith("tenant_member_") && name.endsWith("_key")).isPresent()) {
                 throw ApiException.conflict("member_exists", "El miembro ya pertenece a la cuenta.");
             }
             throw e;

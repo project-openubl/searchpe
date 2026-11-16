@@ -94,7 +94,7 @@ class CredentialTest {
             c.companyId = company;
             c.kind = "smtp";
             c.label = "smtp";
-            c.seal(oldBox.seal("{\"password\":\"vieja\"}".getBytes(StandardCharsets.UTF_8)));
+            c.seal(oldBox.seal("{\"password\":\"vieja\"}".getBytes(StandardCharsets.UTF_8), c.context()));
             c.persist();
             return c.id;
         });
@@ -109,6 +109,14 @@ class CredentialTest {
             Map<String, String> read = credentials.read(platform(tenant), Company.findById(company), "smtp", "test").orElseThrow();
             assertEquals("vieja", read.get("password"));
         });
+    }
+
+    @Test
+    void a_ciphertext_only_opens_in_its_own_row() {
+        SecretBox box = new SecretBox(TestVaults.software("test-2"));
+        SecretBox.Sealed sealed = box.seal("clave".getBytes(StandardCharsets.UTF_8), "credential:a");
+        assertEquals("clave", new String(box.open(sealed, "credential:a"), StandardCharsets.UTF_8));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () -> box.open(sealed, "credential:b"));
     }
 
     private static TenantScope platform(UUID tenant) {

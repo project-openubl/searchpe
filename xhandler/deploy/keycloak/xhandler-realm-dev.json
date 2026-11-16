@@ -5,8 +5,14 @@
   "accessTokenLifespan": 900,
   "roles": {
     "realm": [
-      { "name": "platform-support", "description": "Platform operators: read-only tenant access through approved support sessions" },
-      { "name": "platform-admin", "description": "Platform administrators" }
+      {
+        "name": "platform-support",
+        "description": "Platform operators: read-only tenant access through approved support sessions"
+      },
+      {
+        "name": "platform-admin",
+        "description": "Platform administrators"
+      }
     ]
   },
   "clients": [
@@ -17,7 +23,20 @@
       "secret": "secret",
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": true,
-      "serviceAccountsEnabled": false
+      "serviceAccountsEnabled": false,
+      "protocolMappers": [
+        {
+          "name": "xhandler-service audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "xhandler-service",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
     },
     {
       "clientId": "acme-erp",
@@ -27,33 +46,103 @@
       "secret": "acme-secret",
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "serviceAccountsEnabled": true
+      "serviceAccountsEnabled": true,
+      "protocolMappers": [
+        {
+          "name": "xhandler-service audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "xhandler-service",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "client_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "config": {
+            "user.session.note": "client_id",
+            "claim.name": "client_id",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
     }
   ],
   "users": [
     {
-      "username": "alice", "enabled": true, "email": "alice@example.com", "emailVerified": true,
-      "firstName": "Alice", "lastName": "Admin",
-      "credentials": [{ "type": "password", "value": "alice", "temporary": false }]
+      "username": "alice",
+      "enabled": true,
+      "email": "alice@example.com",
+      "emailVerified": true,
+      "firstName": "Alice",
+      "lastName": "Admin",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "alice",
+          "temporary": false
+        }
+      ]
     },
     {
-      "username": "bob", "enabled": true, "email": "bob@example.com", "emailVerified": true,
-      "firstName": "Bob", "lastName": "Builder",
-      "credentials": [{ "type": "password", "value": "bob", "temporary": false }]
+      "username": "bob",
+      "enabled": true,
+      "email": "bob@example.com",
+      "emailVerified": true,
+      "firstName": "Bob",
+      "lastName": "Builder",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "bob",
+          "temporary": false
+        }
+      ]
     },
     {
-      "username": "dave", "enabled": true, "email": "dave@example.com", "emailVerified": false,
-      "firstName": "Dave", "lastName": "Unverified",
-      "credentials": [{ "type": "password", "value": "dave", "temporary": false }]
+      "username": "dave",
+      "enabled": true,
+      "email": "dave@example.com",
+      "emailVerified": false,
+      "firstName": "Dave",
+      "lastName": "Unverified",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "dave",
+          "temporary": false
+        }
+      ]
     },
     {
-      "username": "carol", "enabled": true, "email": "carol@example.com", "emailVerified": true,
-      "firstName": "Carol", "lastName": "Support",
-      "realmRoles": ["platform-support"],
-      "credentials": [{ "type": "password", "value": "carol", "temporary": false }]
+      "username": "carol",
+      "enabled": true,
+      "email": "carol@example.com",
+      "emailVerified": true,
+      "firstName": "Carol",
+      "lastName": "Support",
+      "realmRoles": [
+        "platform-support"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "carol",
+          "temporary": false
+        }
+      ]
     },
     {
-      "username": "service-account-acme-erp", "enabled": true, "serviceAccountClientId": "acme-erp"
+      "username": "service-account-acme-erp",
+      "enabled": true,
+      "serviceAccountClientId": "acme-erp"
     }
   ]
 }

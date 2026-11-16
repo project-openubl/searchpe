@@ -58,12 +58,18 @@ public class KeyRotation {
     private int[] rewrapTenant(UUID tenantId) {
         access.enterAsPlatform(tenantId);
         String current = vault.currentMasterKeyId();
-        List<Credential> credentials = Credential.list("masterKeyId <> ?1", current);
+        // Locked, so a concurrent update of the secret can't be overwritten with the old ciphertext
+        List<Credential> credentials = Credential.<Credential>find("masterKeyId <> ?1", current)
+                .withLock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+                .list();
         for (Credential credential : credentials) {
             credential.seal(box.rewrap(credential.sealed()));
         }
         int keys = 0;
-        for (SigningKey key : SigningKey.<SigningKey>list("status = 'active'")) {
+        // Every key, not only active ones: replaced keys stay readable for retention
+        for (SigningKey key : SigningKey.<SigningKey>find("from SigningKey")
+                .withLock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+                .list()) {
             String rewrapped = vault.rewrapPrivateKey(key.keyRef);
             if (!rewrapped.equals(key.keyRef)) {
                 key.keyRef = rewrapped;

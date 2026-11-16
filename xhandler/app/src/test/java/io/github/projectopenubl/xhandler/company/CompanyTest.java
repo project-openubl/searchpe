@@ -20,6 +20,9 @@ import org.junit.jupiter.api.Test;
 @QuarkusTestResource(EngineStub.class)
 class CompanyTest {
 
+    @jakarta.inject.Inject
+    io.github.projectopenubl.xhandler.tenancy.TenantAccess access;
+
     @Test
     void new_company_starts_in_beta_with_default_series() {
         UUID tenant = tenantOf("alice");
@@ -38,13 +41,39 @@ class CompanyTest {
     }
 
     @Test
-    void a_ruc_exists_once_on_the_platform() {
+    void a_ruc_is_claimed_only_when_verified() {
+        // Typing a RUC doesn't claim it: two tenants may register it unverified
         String ruc = randomRuc();
-        createCompany("alice", tenantOf("alice"), ruc);
+        UUID alices = createCompany("alice", tenantOf("alice"), ruc);
+        UUID bobs = createCompany("bob", tenantOf("bob"), ruc);
 
-        as("bob").body(Map.of("ruc", ruc, "razon_social", "Impostor SAC"))
-                .post("/api/v1/tenants/" + tenantOf("bob") + "/companies")
-                .then().statusCode(409).body("kind", equalTo("ruc_taken"));
+        // Verifying claims it (P3: SOL login); a second verification of the same RUC fails
+        verify(tenantOf("alice"), alices);
+        RuntimeException duplicate = org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, () -> verify(tenantOf("bob"), bobs));
+        org.junit.jupiter.api.Assertions.assertEquals("company_ruc_env_verified",
+                io.github.projectopenubl.xhandler.api.Constraints.violated(duplicate).orElseThrow());
+    }
+
+    @Test
+    void unverified_companies_per_tenant_are_limited() {
+        UUID tenant = tenantOf("carol");
+        int created = 0;
+        io.restassured.response.Response response;
+        do {
+            response = as("carol").body(Map.of("ruc", randomRuc(), "razon_social", "Empresa"))
+                    .post("/api/v1/tenants/" + tenant + "/companies");
+            created++;
+        } while (response.statusCode() == 201 && created <= 31);
+        response.then().statusCode(409).body("kind", equalTo("limit_reached"));
+    }
+
+    private void verify(UUID tenant, UUID company) {
+        io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().run(() -> {
+            access.enterAsPlatform(tenant);
+            Company c = Company.findById(company);
+            c.rucVerifiedAt = java.time.Instant.now();
+            Company.flush();
+        });
     }
 
     @Test

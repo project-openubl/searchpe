@@ -59,8 +59,9 @@ class CertificateTest {
                 .body("ruc", equalTo(ruc))
                 .body("ruc_matches", equalTo(true))
                 .body("valid_until", notNullValue());
+        // A matching RUC in a (possibly self-signed) certificate doesn't verify the company
         as("alice").get("/api/v1/tenants/" + tenant + "/companies/" + company)
-                .then().body("ruc_verified_at", notNullValue());
+                .then().body("ruc_verified_at", org.hamcrest.Matchers.nullValue());
 
         // Signing goes engine prepare -> vault -> engine finalize; the key never reaches the engine
         as("alice").body(INVOICE).post("/api/v1/tenants/" + tenant + "/companies/" + company + "/dev/documents")

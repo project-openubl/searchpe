@@ -80,7 +80,15 @@ public class TenantResource {
         tenant.id = tenantId;
         tenant.name = request.name().strip();
         tenant.createdBy = actor.subject();
-        tenant.persist();
+        try {
+            tenant.persistAndFlush();
+        } catch (jakarta.persistence.PersistenceException e) {
+            // Two concurrent signups: the database keeps one free tenant per person
+            if (io.github.projectopenubl.xhandler.api.Constraints.violated(e).filter("tenant_one_free_per_person"::equals).isPresent()) {
+                throw ApiException.conflict("limit_reached", "Ya tiene una cuenta gratuita.");
+            }
+            throw e;
+        }
 
         TenantMember owner = new TenantMember();
         owner.id = Ids.newId();

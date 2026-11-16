@@ -55,8 +55,10 @@ echo "==> app"
 # The skeleton endpoint is a build-time switch: production builds don't include it
 (cd "$ROOT" && ./mvnw -B -q package -DskipTests -Dxhandler.dev-endpoints.enabled=true)
 QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://localhost:5432/xhandler \
-QUARKUS_DATASOURCE_USERNAME=xhandler \
-QUARKUS_DATASOURCE_PASSWORD=xhandler \
+QUARKUS_DATASOURCE_USERNAME=xhandler_login \
+QUARKUS_DATASOURCE_PASSWORD=xhandler_login \
+QUARKUS_FLYWAY_USERNAME=xhandler_owner \
+QUARKUS_FLYWAY_PASSWORD=xhandler_owner \
 QUARKUS_OIDC_AUTH_SERVER_URL=http://localhost:8180/realms/xhandler \
 XHANDLER_VAULT_KIND=software \
 XHANDLER_VAULT_SOFTWARE_ALLOW_IN_PRODUCTION=true \

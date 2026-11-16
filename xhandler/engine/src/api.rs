@@ -171,8 +171,11 @@ async fn sign_finalize(
         let certificate = decode(&request.certificate, "certificate")?;
         let prepared = prepare(request.xml)?;
         let digest_value = prepared.digest_value().to_string();
-        let xml = String::from_utf8(prepared.finalize(&signature_value, &certificate))
-            .map_err(|e| ApiError::new(ErrorKind::Other, e))?;
+        // Fails when the signature doesn't verify with the certificate (wrong key)
+        let signed = prepared
+            .finalize(&signature_value, &certificate)
+            .map_err(|e| ApiError::new(ErrorKind::InvalidRequest, e))?;
+        let xml = String::from_utf8(signed).map_err(|e| ApiError::new(ErrorKind::Other, e))?;
         Ok(SignResponse { xml, digest_value })
     })
     .await
@@ -202,9 +205,10 @@ async fn sign(Json(request): Json<SignRequest>) -> Result<Json<SignResponse>, Ap
         let signature_value = key_pair
             .sign(prepared.data_to_sign())
             .map_err(|e| ApiError::new(ErrorKind::Other, e))?;
-        let xml =
-            String::from_utf8(prepared.finalize(&signature_value, key_pair.certificate_der()))
-                .map_err(|e| ApiError::new(ErrorKind::Other, e))?;
+        let signed = prepared
+            .finalize(&signature_value, key_pair.certificate_der())
+            .map_err(|e| ApiError::new(ErrorKind::Other, e))?;
+        let xml = String::from_utf8(signed).map_err(|e| ApiError::new(ErrorKind::Other, e))?;
         Ok(SignResponse { xml, digest_value })
     })
     .await
@@ -550,6 +554,25 @@ mod tests {
 
         let one_step = sign_with_demo_key(xml).await;
         assert_eq!(finalized["xml"], one_step["xml"]);
+    }
+
+    #[tokio::test]
+    async fn finalize_rejects_a_signature_that_does_not_match_the_certificate() {
+        let xml = build_invoice().await["xml"].clone();
+        let key_pair = RsaKeyPair::from_pem(BETA_PRIVATE_KEY, BETA_CERTIFICATE).unwrap();
+        // A valid RSA signature, but over other data
+        let signature = key_pair.sign(b"other data").unwrap();
+        let (status, body) = post(
+            "/v1/sign/finalize",
+            serde_json::json!({
+                "xml": xml,
+                "signature_value": base64::engine::general_purpose::STANDARD.encode(signature),
+                "certificate": base64::engine::general_purpose::STANDARD.encode(key_pair.certificate_der()),
+            }),
+        )
+        .await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{body}");
+        assert_eq!(body["kind"], "invalid_request");
     }
 
     #[tokio::test]

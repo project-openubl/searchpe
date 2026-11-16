@@ -34,11 +34,14 @@ public class CertificateResource {
     private final TenantAccess access;
     private final KeyVault vault;
     private final Auditor auditor;
+    private final jakarta.transaction.TransactionSynchronizationRegistry transactions;
 
-    public CertificateResource(TenantAccess access, KeyVault vault, Auditor auditor) {
+    public CertificateResource(
+            TenantAccess access, KeyVault vault, Auditor auditor, jakarta.transaction.TransactionSynchronizationRegistry transactions) {
         this.access = access;
         this.vault = vault;
         this.auditor = auditor;
+        this.transactions = transactions;
     }
 
     /** Uploads a .pfx (multipart: {@code file}, {@code password}), replacing the active key. */
@@ -51,7 +54,8 @@ public class CertificateResource {
             @RestForm("file") FileUpload file,
             @RestForm("password") String password) {
         TenantScope scope = access.enter(tenantId, Role.ADMIN);
-        Company company = CompanyResource.find(companyId);
+        // Serializes concurrent uploads for the same company
+        Company company = CompanyResource.findForUpdate(companyId);
         if (file == null || password == null) {
             throw ApiException.invalid("invalid_request", "Debe enviar el archivo .pfx y su contraseña.", null);
         }
@@ -66,9 +70,8 @@ public class CertificateResource {
             Arrays.fill(pkcs12, (byte) 0);
         }
 
-        SigningKey.active(company.id).ifPresent(previous -> {
-            previous.status = "replaced";
-        });
+        java.util.Optional<SigningKey> previous = SigningKey.active(company.id);
+        previous.ifPresent(p -> p.status = "replaced");
         // The previous key must stop being "active" before the new one is inserted (unique index)
         SigningKey.flush();
 
@@ -77,6 +80,25 @@ public class CertificateResource {
         key.tenantId = tenantId;
         key.companyId = company.id;
         key.keyRef = vault.storePrivateKey(imported.privateKey(), imported.certificate());
+        // Keep the vault in step with the database: drop the new key if the transaction rolls
+        // back, and the replaced one once it commits
+        String newRef = key.keyRef;
+        String replacedRef = previous.map(p -> p.keyRef).orElse(null);
+        transactions.registerInterposedSynchronization(new jakarta.transaction.Synchronization() {
+            @Override
+            public void beforeCompletion() {}
+
+            @Override
+            public void afterCompletion(int status) {
+                if (status == jakarta.transaction.Status.STATUS_COMMITTED) {
+                    if (replacedRef != null) {
+                        vault.deletePrivateKey(replacedRef);
+                    }
+                } else {
+                    vault.deletePrivateKey(newRef);
+                }
+            }
+        });
         try {
             key.certificate = imported.certificate().getEncoded();
         } catch (CertificateEncodingException e) {
@@ -90,11 +112,10 @@ public class CertificateResource {
         key.validUntil = imported.certificate().getNotAfter().toInstant();
         key.persist();
 
+        // A matching RUC is informative only: anyone can make a self-signed certificate with any
+        // RUC. The RUC is verified by a SUNAT SOL login (P3), or later by checking the chain against
+        // the CAs SUNAT accepts.
         boolean rucMatches = company.ruc.equals(key.ruc);
-        // First proof of RUC ownership (DESIGN.md §6); the SOL login check comes with sending (P3)
-        if (rucMatches && company.rucVerifiedAt == null) {
-            company.rucVerifiedAt = Instant.now();
-        }
         auditor.record(scope, "certificate.imported", "signing_key", key.id,
                 Map.of("company_id", company.id.toString(), "serial", key.serial, "ruc_matches", rucMatches));
         return view(key, company);

@@ -40,7 +40,7 @@ public class CredentialService {
                     return c;
                 });
         credential.label = label;
-        credential.seal(box.seal(toJson(fields)));
+        credential.seal(box.seal(toJson(fields), credential.context()));
         credential.persist();
         auditor.record(scope, "credential.stored", "credential", credential.id, Map.of("kind", kind, "company_id", company.id.toString()));
         return credential;
@@ -53,7 +53,7 @@ public class CredentialService {
                 .firstResultOptional()
                 .map(credential -> {
                     auditor.record(scope, "credential.read", "credential", credential.id, Map.of("kind", kind, "purpose", purpose));
-                    return fromJson(box.open(credential.sealed()));
+                    return fromJson(box.open(credential.sealed(), credential.context()));
                 });
     }
 

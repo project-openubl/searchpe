@@ -23,13 +23,14 @@ public class CurrentActor {
         if (identity.isAnonymous() || token.getSubject() == null) {
             throw new ApiException(401, "unauthorized", "Se requiere autenticación.");
         }
-        // Keycloak service accounts (client credentials) carry the client id and a
-        // service-account-* username; people don't.
+        // A Keycloak service account (client credentials) token carries client_id = azp and the
+        // username "service-account-<azp>". All three must agree: a person can't pick a
+        // username to become a client.
+        String clientId = token.getClaim("client_id");
+        String azp = token.getClaim("azp");
         String username = token.getClaim("preferred_username");
-        boolean client = token.containsClaim("client_id") || (username != null && username.startsWith("service-account-"));
-        if (client) {
-            String clientId = token.getClaim("azp");
-            return new Actor("client", clientId, false, false);
+        if (clientId != null && clientId.equals(azp) && ("service-account-" + azp).equals(username)) {
+            return new Actor("client", azp, false, false);
         }
         Object verified = token.getClaim("email_verified");
         return new Actor("user", token.getSubject(), Boolean.TRUE.equals(verified) || "true".equals(String.valueOf(verified)),

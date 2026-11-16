@@ -10,13 +10,16 @@ import java.security.Signature;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.UUID;
-import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 
 /**
  * HSM vault through PKCS#11 (SunPKCS11). Signing keys are token objects ({@code p11:<alias>}) and
  * never leave the HSM; master keys are AES-256 token objects ({@code master-*}) used for envelope
  * encryption inside the HSM (DESIGN.md §6).
+ *
+ * <p>Keys are created non-extractable and sensitive. Master keys are created out of band (e.g.
+ * with the HSM's tooling) and must exist at startup: generating them here would race between
+ * replicas and silently accept a mistyped id.
  *
  * <p>Tenant keys are stored one object each for now. Wrapping them under an HSM master key (to
  * avoid object limits at thousands of tenants, DESIGN.md §25) can replace this without changing
@@ -29,15 +32,20 @@ final class Pkcs11KeyVault implements KeyVault {
     private final Provider provider;
     private final KeyStore keyStore;
     private final String current;
+    /** Key handles: KeyStore lookups are serialized inside SunPKCS11, signing isn't. */
+    private final java.util.concurrent.ConcurrentHashMap<String, Key> handles = new java.util.concurrent.ConcurrentHashMap<>();
 
     Pkcs11KeyVault(String library, int slotListIndex, char[] pin, String currentMasterKey) {
         try {
-            String config = "--name=xhandler\nlibrary=" + library + "\nslotListIndex=" + slotListIndex + "\n";
+            String config = "--name=xhandler\nlibrary=" + library + "\nslotListIndex=" + slotListIndex + "\n"
+                    // Keys never leave the HSM, whatever the token's defaults
+                    + "attributes(*,CKO_PRIVATE_KEY,*) = {\n  CKA_SENSITIVE = true\n  CKA_EXTRACTABLE = false\n  CKA_TOKEN = true\n}\n"
+                    + "attributes(*,CKO_SECRET_KEY,*) = {\n  CKA_SENSITIVE = true\n  CKA_EXTRACTABLE = false\n  CKA_TOKEN = true\n}\n";
             this.provider = Security.getProvider("SunPKCS11").configure(config);
             this.keyStore = KeyStore.getInstance("PKCS11", provider);
             this.keyStore.load(null, pin);
             this.current = currentMasterKey;
-            ensureMasterKey(currentMasterKey);
+            master(currentMasterKey); // fails now if it doesn't exist
         } catch (GeneralSecurityException | java.io.IOException e) {
             throw new IllegalStateException("could not open the PKCS#11 token", e);
         }
@@ -57,10 +65,7 @@ final class Pkcs11KeyVault implements KeyVault {
     @Override
     public byte[] sign(String keyRef, byte[] data) {
         try {
-            PrivateKey key = (PrivateKey) keyStore.getKey(alias(keyRef), null);
-            if (key == null) {
-                throw new IllegalStateException("signing key not found in the HSM");
-            }
+            PrivateKey key = (PrivateKey) handle(alias(keyRef));
             Signature signature = Signature.getInstance("SHA256withRSA", provider);
             signature.initSign(key);
             signature.update(data);
@@ -73,6 +78,7 @@ final class Pkcs11KeyVault implements KeyVault {
     @Override
     public synchronized void deletePrivateKey(String keyRef) {
         try {
+            handles.remove(alias(keyRef));
             keyStore.deleteEntry(alias(keyRef));
         } catch (GeneralSecurityException e) {
             throw new IllegalStateException("could not delete the key from the HSM", e);
@@ -100,24 +106,24 @@ final class Pkcs11KeyVault implements KeyVault {
     }
 
     private SecretKey master(String id) {
-        try {
-            Key key = keyStore.getKey(id, null);
-            if (!(key instanceof SecretKey secretKey)) {
-                throw new IllegalStateException("master key " + id + " not found in the HSM");
-            }
-            return secretKey;
-        } catch (GeneralSecurityException e) {
-            throw new IllegalStateException("could not read master key " + id, e);
+        if (!(handle(id) instanceof SecretKey secretKey)) {
+            throw new IllegalStateException("master key " + id + " is not an AES key");
         }
+        return secretKey;
     }
 
-    private synchronized void ensureMasterKey(String id) throws GeneralSecurityException {
-        if (keyStore.containsAlias(id)) {
-            return;
-        }
-        KeyGenerator generator = KeyGenerator.getInstance("AES", provider);
-        generator.init(256);
-        keyStore.setEntry(id, new KeyStore.SecretKeyEntry(generator.generateKey()), null);
+    private Key handle(String alias) {
+        return handles.computeIfAbsent(alias, a -> {
+            try {
+                Key key = keyStore.getKey(a, null);
+                if (key == null) {
+                    throw new IllegalStateException("key " + a + " not found in the HSM");
+                }
+                return key;
+            } catch (GeneralSecurityException e) {
+                throw new IllegalStateException("could not read key " + a + " from the HSM", e);
+            }
+        });
     }
 
     private static String alias(String keyRef) {

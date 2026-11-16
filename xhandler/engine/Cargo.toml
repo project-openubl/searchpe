@@ -9,7 +9,7 @@ description = "Stateless sidecar of xhandler-service: builds, signs and sends SU
 [dependencies]
 # Pinned by revision (DESIGN.md §26.3). Points at the fork commit with the
 # two-step signing (R1) until project-openubl/xhandler-rust#610 is merged.
-xhandler = { git = "https://github.com/carlosthe19916/xhandler-rust", rev = "d8003b2b8ec16b37678e93fc83220916209ea8dd" }
+xhandler = { git = "https://github.com/carlosthe19916/xhandler-rust", rev = "56ea4775f23eef46350edc43c7a04ebd1e4500fc" }
 
 anyhow = "1"
 axum = "0.8"

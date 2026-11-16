@@ -1,6 +1,10 @@
 package io.github.projectopenubl.xhandler.tenancy;
 
 import io.github.projectopenubl.xhandler.api.ApiException;
+import io.github.projectopenubl.xhandler.audit.Auditor;
+import io.vertx.core.http.HttpServerRequest;
+import jakarta.enterprise.inject.Instance;
+import java.util.Map;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
@@ -18,10 +22,14 @@ public class TenantAccess {
 
     private final EntityManager em;
     private final CurrentActor currentActor;
+    private final Auditor auditor;
+    private final Instance<HttpServerRequest> request;
 
-    public TenantAccess(EntityManager em, CurrentActor currentActor) {
+    public TenantAccess(EntityManager em, CurrentActor currentActor, Auditor auditor, Instance<HttpServerRequest> request) {
         this.em = em;
         this.currentActor = currentActor;
+        this.auditor = auditor;
+        this.request = request;
     }
 
     @Transactional(Transactional.TxType.MANDATORY)
@@ -35,7 +43,13 @@ public class TenantAccess {
             throw ApiException.forbidden();
         }
         setTenant(tenantId);
-        return new TenantScope(tenantId, actor, role);
+        TenantScope scope = new TenantScope(tenantId, actor, role);
+        if (role == Role.SUPPORT) {
+            // Every access by a platform operator is audited (DESIGN.md §26.1)
+            HttpServerRequest http = request.get();
+            auditor.record(scope, "support.access", "tenant", tenantId, Map.of("method", http.method().name(), "path", http.path()));
+        }
+        return scope;
     }
 
     /**

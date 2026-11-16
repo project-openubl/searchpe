@@ -30,6 +30,7 @@ import java.util.UUID;
 @Path("/api/v1/tenants/{tenantId}/companies")
 public class CompanyResource {
 
+
     public record CreateCompany(
             @NotBlank @Pattern(regexp = "\\d{11}", message = "debe tener 11 dígitos") String ruc,
             @NotBlank @Size(max = 300) String razonSocial,
@@ -48,30 +49,37 @@ public class CompanyResource {
 
     private final TenantAccess access;
     private final Auditor auditor;
+    /**
+     * Unverified companies a tenant may have (DESIGN.md §26.8): RUCs are claimed only when verified,
+     * and this keeps a free signup from registering RUCs in bulk.
+     */
+    private final long maxUnverifiedCompanies;
 
-    public CompanyResource(TenantAccess access, Auditor auditor) {
+    public CompanyResource(
+            TenantAccess access,
+            Auditor auditor,
+            @org.eclipse.microprofile.config.inject.ConfigProperty(name = "xhandler.limits.max-unverified-companies", defaultValue = "3")
+                    long maxUnverifiedCompanies) {
         this.access = access;
         this.auditor = auditor;
+        this.maxUnverifiedCompanies = maxUnverifiedCompanies;
     }
 
     @POST
     @Transactional
     public Response create(@PathParam("tenantId") UUID tenantId, @Valid CreateCompany request) {
         TenantScope scope = access.enter(tenantId, Role.ADMIN);
+        if (Company.count("rucVerifiedAt is null and deletedAt is null") >= maxUnverifiedCompanies) {
+            throw ApiException.conflict("limit_reached", "Alcanzó el máximo de empresas sin verificar.");
+        }
         Company company = new Company();
         company.id = Ids.newId();
         company.tenantId = tenantId;
         company.ruc = request.ruc();
         company.razonSocial = request.razonSocial().strip();
         company.nombreComercial = request.nombreComercial() == null ? null : request.nombreComercial().strip();
-        try {
-            company.persistAndFlush();
-        } catch (PersistenceException e) {
-            if (Constraints.violated(e).filter("company_ruc_env"::equals).isPresent()) {
-                throw ApiException.conflict("ruc_taken", "El RUC ya está registrado en la plataforma.");
-            }
-            throw e;
-        }
+        // Unverified duplicates of a RUC are allowed: the RUC is claimed at verification (P3)
+        company.persist();
         for (DefaultSeries.Entry entry : DefaultSeries.ENTRIES) {
             Series series = new Series();
             series.id = Ids.newId();
@@ -147,7 +155,15 @@ public class CompanyResource {
 
     /** A company of the open tenant (row-level security already limits the query to it). */
     public static Company find(UUID companyId) {
-        Company company = Company.findById(companyId);
+        return check(Company.findById(companyId));
+    }
+
+    /** Same as {@link #find}, locking the row until the transaction ends. */
+    public static Company findForUpdate(UUID companyId) {
+        return check(Company.findById(companyId, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE));
+    }
+
+    private static Company check(Company company) {
         if (company == null || company.deletedAt != null) {
             throw ApiException.notFound();
         }

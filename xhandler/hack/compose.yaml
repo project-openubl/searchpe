@@ -5,8 +5,10 @@ services:
     image: docker.io/library/postgres:18
     environment:
       POSTGRES_DB: xhandler
-      POSTGRES_USER: xhandler
-      POSTGRES_PASSWORD: xhandler
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:Z
     ports:
       - "5432:5432"
 

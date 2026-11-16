@@ -22,7 +22,7 @@ import javax.crypto.BadPaddingException;
 final class CertificateImporter {
 
     /** RUC in the subject: "RUC 20123456789", "RUC:2012...", or organizationIdentifier "VATPE-2012...". */
-    private static final Pattern RUC_LABELED = Pattern.compile("(?:RUC|VATPE)[^0-9]{0,3}(\\d{11})");
+    private static final Pattern RUC_LABELED = Pattern.compile("(?:RUC|VATPE)[^0-9]{0,3}(\\d{11})(?!\\d)");
     private static final Pattern RUC_ANY = Pattern.compile("\\b((?:10|15|16|17|20)\\d{9})\\b");
 
     record Imported(PrivateKey privateKey, X509Certificate certificate, Optional<String> ruc) {}
@@ -61,6 +61,9 @@ final class CertificateImporter {
                 if (certificate.getNotBefore().toInstant().isAfter(now)) {
                     throw invalid("El certificado digital aún no es válido.", "valid from " + certificate.getNotBefore().toInstant());
                 }
+                if (!keyMatchesCertificate(key, certificate)) {
+                    throw invalid("La llave privada no corresponde al certificado.", null);
+                }
                 return new Imported(key, certificate, rucOf(certificate.getSubjectX500Principal().getName()));
             }
         } catch (java.security.UnrecoverableKeyException e) {
@@ -69,6 +72,18 @@ final class CertificateImporter {
             throw invalid("No se pudo leer la llave privada del certificado.", e.getMessage());
         }
         throw invalid("El archivo .pfx no contiene una llave privada con su certificado.", null);
+    }
+
+    private static boolean keyMatchesCertificate(PrivateKey key, X509Certificate certificate) throws GeneralSecurityException {
+        byte[] probe = "xhandler-key-check".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        java.security.Signature signer = java.security.Signature.getInstance("SHA256withRSA");
+        signer.initSign(key);
+        signer.update(probe);
+        byte[] signature = signer.sign();
+        java.security.Signature verifier = java.security.Signature.getInstance("SHA256withRSA");
+        verifier.initVerify(certificate.getPublicKey());
+        verifier.update(probe);
+        return verifier.verify(signature);
     }
 
     static Optional<String> rucOf(String subject) {

@@ -70,6 +70,63 @@ class TenancyTest {
         assertEquals(0, visible);
     }
 
+    @jakarta.inject.Inject
+    TenantAccess access;
+
+    @jakarta.inject.Inject
+    jakarta.persistence.EntityManager em;
+
+    @Test
+    void an_open_tenant_cant_read_or_write_another_tenants_rows() {
+        UUID alices = tenantOf("alice");
+        UUID bobs = tenantOf("bob");
+        UUID bobsCompany = createCompany("bob", bobs, randomRuc());
+
+        QuarkusTransaction.requiringNew().run(() -> {
+            access.enterAsPlatform(alices);
+            org.junit.jupiter.api.Assertions.assertNull(Company.findById(bobsCompany));
+        });
+        // Writing a row for another tenant violates the policy's WITH CHECK
+        RuntimeException e = org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, () ->
+                QuarkusTransaction.requiringNew().run(() -> {
+                    access.enterAsPlatform(alices);
+                    Company c = new Company();
+                    c.id = io.github.projectopenubl.xhandler.api.Ids.newId();
+                    c.tenantId = bobs;
+                    c.ruc = randomRuc();
+                    c.razonSocial = "Intrusa";
+                    c.persistAndFlush();
+                }));
+        assertTrue(rootMessage(e).contains("row-level security"), rootMessage(e));
+    }
+
+    @Test
+    void the_app_runs_as_xhandler_app_and_the_audit_log_is_append_only() {
+        UUID tenant = tenantOf("alice");
+        QuarkusTransaction.requiringNew().run(() -> {
+            access.enterAsPlatform(tenant);
+            Object[] who = (Object[]) em.createNativeQuery(
+                            "SELECT current_user, (SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname = current_user)")
+                    .getSingleResult();
+            assertEquals("xhandler_app", who[0]);
+            assertEquals(false, who[1]);
+        });
+        RuntimeException e = org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, () ->
+                QuarkusTransaction.requiringNew().run(() -> {
+                    access.enterAsPlatform(tenant);
+                    em.createNativeQuery("UPDATE xhandler.audit_log SET action = 'x'").executeUpdate();
+                }));
+        assertTrue(rootMessage(e).contains("permission denied"), rootMessage(e));
+    }
+
+    private static String rootMessage(Throwable e) {
+        Throwable t = e;
+        while (t.getCause() != null) {
+            t = t.getCause();
+        }
+        return String.valueOf(t.getMessage());
+    }
+
     @Test
     void machine_clients_act_with_their_role() {
         UUID tenant = tenantOf("alice");

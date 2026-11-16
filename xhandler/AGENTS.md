@@ -58,8 +58,9 @@ Rust 1.100.0 is pinned in `engine/rust-toolchain.toml`. Java 25.
   - timeouts nest: app → engine read timeout > engine → SUNAT timeout.
 - **Tenancy (DESIGN.md §6)**:
   - every `@Transactional` method touching tenant data calls `TenantAccess.enter(tenantId, minimumRole)` first;
-  - PostgreSQL row-level security does the isolation: the app runs as `xhandler_app`, and a query without an open tenant sees no rows;
+  - PostgreSQL row-level security does the isolation: the app runs as `xhandler_app` (never as the owner or a superuser; `DatabaseRoleCheck`), and a query without an open tenant sees no rows;
   - cross-tenant lookups are `SECURITY DEFINER` SQL functions in the migrations, never ad-hoc queries;
+  - never edit an applied migration (`V1`, `V2`, …): add a new one;
   - foreign and unknown tenants are both 404.
 - **Secrets and keys**:
   - private keys only through `KeyVault` (an HSM in production; `SoftwareKeyVault` for dev and tests only);

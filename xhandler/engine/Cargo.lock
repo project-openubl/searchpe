@@ -3123,7 +3123,7 @@ dependencies = [
 [[package]]
 name = "xhandler"
 version = "0.0.0-dev"
-source = "git+https://github.com/carlosthe19916/xhandler-rust?rev=d8003b2b8ec16b37678e93fc83220916209ea8dd#d8003b2b8ec16b37678e93fc83220916209ea8dd"
+source = "git+https://github.com/carlosthe19916/xhandler-rust?rev=56ea4775f23eef46350edc43c7a04ebd1e4500fc#56ea4775f23eef46350edc43c7a04ebd1e4500fc"
 dependencies = [
  "anyhow",
  "base64 0.23.1",

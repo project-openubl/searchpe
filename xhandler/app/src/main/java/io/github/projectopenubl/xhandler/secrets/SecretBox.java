@@ -29,21 +29,25 @@ public class SecretBox {
         this.vault = vault;
     }
 
-    public Sealed seal(byte[] plaintext) {
+    /**
+     * {@code context} is authenticated, not encrypted (AES-GCM associated data): a ciphertext only
+     * opens with the same context, so it can't be moved to another row, tenant or kind.
+     */
+    public Sealed seal(byte[] plaintext, String context) {
         byte[] dataKey = new byte[32];
         RANDOM.nextBytes(dataKey);
         try {
             String master = vault.currentMasterKeyId();
-            return new Sealed(encrypt(dataKey, plaintext), vault.wrapDataKey(master, dataKey), master);
+            return new Sealed(encrypt(dataKey, plaintext, context), vault.wrapDataKey(master, dataKey), master);
         } finally {
             Arrays.fill(dataKey, (byte) 0);
         }
     }
 
-    public byte[] open(Sealed sealed) {
+    public byte[] open(Sealed sealed, String context) {
         byte[] dataKey = vault.unwrapDataKey(sealed.masterKeyId(), sealed.wrappedDataKey());
         try {
-            return decrypt(dataKey, sealed.ciphertext());
+            return decrypt(dataKey, sealed.ciphertext(), context);
         } finally {
             Arrays.fill(dataKey, (byte) 0);
         }
@@ -63,12 +67,13 @@ public class SecretBox {
         }
     }
 
-    private static byte[] encrypt(byte[] key, byte[] plaintext) {
+    private static byte[] encrypt(byte[] key, byte[] plaintext, String context) {
         try {
             byte[] iv = new byte[12];
             RANDOM.nextBytes(iv);
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
             cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "AES"), new GCMParameterSpec(128, iv));
+            cipher.updateAAD(context.getBytes(java.nio.charset.StandardCharsets.UTF_8));
             byte[] ciphertext = cipher.doFinal(plaintext);
             return ByteBuffer.allocate(iv.length + ciphertext.length).put(iv).put(ciphertext).array();
         } catch (GeneralSecurityException e) {
@@ -76,10 +81,11 @@ public class SecretBox {
         }
     }
 
-    private static byte[] decrypt(byte[] key, byte[] ivAndCiphertext) {
+    private static byte[] decrypt(byte[] key, byte[] ivAndCiphertext, String context) {
         try {
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
             cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, "AES"), new GCMParameterSpec(128, ivAndCiphertext, 0, 12));
+            cipher.updateAAD(context.getBytes(java.nio.charset.StandardCharsets.UTF_8));
             return cipher.doFinal(ivAndCiphertext, 12, ivAndCiphertext.length - 12);
         } catch (GeneralSecurityException e) {
             throw new IllegalStateException("could not decrypt the secret", e);

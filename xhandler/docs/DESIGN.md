@@ -250,20 +250,21 @@ Mirrors xhandler-mobile's Rust bridge so the two stay aligned (a shared facade c
 - **Tenants.**
   - `partner`, `tenant` and `company` are first-class rows.
   - Every business table has `tenant_id`, and it is part of every tenant-scoped uniqueness rule.
-- **One RUC, one company.** SUNAT numbering is unique per RUC, so a RUC exists only once on the platform per environment: a global partial unique index on `company(ruc, sunat_env) WHERE active`.
-  - Before production, the tenant proves it owns the RUC: the certificate's RUC must match and the SOL credentials must log in.
+- **One RUC, one verified company.** SUNAT numbering is unique per RUC, so a RUC is *claimed* once on the platform per environment: a global partial unique index on `company(ruc, sunat_env) WHERE active AND ruc_verified_at IS NOT NULL`.
+  - Typing a RUC claims nothing. Unverified duplicates are allowed, so nobody can squat a RUC by registering it first, and a tenant may have at most 3 unverified companies (§26.8).
+  - Verification proves ownership and claims the RUC: a successful SUNAT SOL login (P3). A matching RUC in an uploaded certificate is only informative, because anyone can create a self-signed certificate with any RUC. Checking the chain against the CAs SUNAT accepts may become a second proof later.
   - Moving a company to another tenant (for example, from a partner to the client) is an explicit transfer, never a second registration.
 - **Row-level security mechanics.**
-  - The application connects as a non-owner role. Every tenant table has `ENABLE` and `FORCE ROW LEVEL SECURITY`.
-  - The tenant is set with `SET LOCAL app.tenant_id` inside each transaction, never per session, so it can't leak across pooled connections.
-  - Policies compare against `current_setting('app.tenant_id', true)`. A missing setting matches no rows.
-  - Cross-tenant work uses a separate, narrowly granted role or `SECURITY DEFINER` functions, and is audited: the job unblocker and claimer, schedules (purge, retention, blocked lists) and the public capability-link lookups.
+  - **The app never holds owner or superuser rights.** In production it logs in as a non-owner role that is a member of `xhandler_app` (NOSUPERUSER, NOBYPASSRLS); migrations run with separate owner credentials (`quarkus.flyway.username/password` or a migration job). `DatabaseRoleCheck` refuses to start otherwise. In dev and tests the login is a superuser, and the pool interceptor runs every connection as `xhandler_app` (`SET ROLE`).
+  - Every tenant table has `ENABLE ROW LEVEL SECURITY`, without `FORCE`: the owner is never the app, and the owner-run `SECURITY DEFINER` lookups must see all rows.
+  - The tenant is set with `set_config('app.tenant_id', …, true)` inside each transaction (`TenantAccess.enter`), never per session, so it can't leak across pooled connections. A missing setting matches no rows.
+  - Cross-tenant work goes only through narrow `SECURITY DEFINER` functions (`search_path` pinned, EXECUTE revoked from PUBLIC): membership lookups, signup checks, support sessions, the tenant list for platform jobs; later the job unblocker, schedules and public capability-link lookups.
   - Hibernate's tenant discriminator sits on top as a second layer.
   - Tests deliberately try to cross tenants, including with the setting missing.
 - **Protected deletion.** A tenant or company that has documents cannot be deleted (legal retention); it can only be deactivated.
 - **Identity.**
   - Keycloak realm(s) with roles per partner and tenant (admin, operator, viewer, billing) and optional per-company scoping.
-  - Machine clients use OAuth2 client credentials.
+  - Machine clients use OAuth2 client credentials. A token counts as a machine client only when `client_id` = `azp` and the username is `service-account-<azp>`; the API only accepts tokens whose audience includes `xhandler-service` (deploy/keycloak/README.md).
   - 2FA for users; stronger authentication for platform operators.
   - Self-service signup creates the tenant on first login, with the free tier and SUNAT beta.
 - **Keys.**
@@ -277,9 +278,12 @@ Mirrors xhandler-mobile's Rust bridge so the two stay aligned (a shared facade c
   - At import, the .pfx and its password pass through application memory once. They are never logged or stored, and the buffers are cleared.
   - Development and CI use SoftHSM.
   - Every signature is logged: who, document, key, time.
+  - PKCS#11 keys are created sensitive and non-extractable. Master keys are created out of band and must exist at startup. Replaced signing keys are deleted from the vault after the change commits, and a key from a rolled-back upload is deleted too.
+  - `finalize` verifies the HSM signature against the certificate (R1), and import checks that the key matches the certificate.
 - **Secrets** (SOL, GRE and SIRE credentials, SMTP passwords, lookup tokens).
   - Each secret is encrypted with its own data key, which is wrapped by a master key. Master keys live in the HSM.
-  - Decryption tries every active master key, and `xhandler-admin rotate-keys` re-wraps data keys without downtime.
+  - Decryption tries every active master key, and `xhandler-admin rotate-keys` re-wraps data keys without downtime, row-locked against concurrent updates, including deleted tenants and replaced keys.
+  - The credential's identity (id, tenant, company, kind) is AES-GCM associated data, so a ciphertext only opens in its own row.
 - **Contract.** The tenant contract includes the data processing agreement, the sub-processor list, and the clause authorizing the platform to sign on the tenant's behalf (§3.4).
 
 ---

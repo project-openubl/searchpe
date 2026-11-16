@@ -33,6 +33,10 @@ class SupportTest {
         as("alice").post("/api/v1/tenants/" + tenant + "/support-sessions/" + session + "/approve")
                 .then().statusCode(200).body("expires_at", notNullValue());
         as("carol").get(companies).then().statusCode(200);
+        // Every access by the operator is in the tenant's audit log
+        as("alice").get("/api/v1/tenants/" + tenant + "/audit").then().statusCode(200)
+                .body("items.find { it.action == 'support.access' }.details.path", equalTo(companies))
+                .body("items.find { it.action == 'support_session.requested' }.actor", org.hamcrest.Matchers.startsWith("user:"));
         // Read-only
         as("carol").body(Map.of("ruc", randomRuc(), "razon_social", "X")).post(companies)
                 .then().statusCode(403);
