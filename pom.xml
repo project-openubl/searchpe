@@ -45,7 +45,8 @@
         <maven-assembly-plugin.version>3.5.0</maven-assembly-plugin.version>
 
         <awaitility.version>4.2.0</awaitility.version>
-        <testcontainers.version>1.17.6</testcontainers.version>
+        <testcontainers.version>1.21.4</testcontainers.version>
+        <docker-java.version>3.4.2</docker-java.version>
 
         <license.dir>${basedir}</license.dir>
 
