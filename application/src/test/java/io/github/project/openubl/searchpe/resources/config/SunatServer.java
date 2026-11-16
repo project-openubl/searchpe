@@ -20,7 +20,7 @@ import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 import org.apache.commons.io.IOUtils;
 import org.mockserver.client.MockServerClient;
 import org.mockserver.model.MediaType;
-import org.testcontainers.containers.MockServerContainer;
+import org.testcontainers.mockserver.MockServerContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import java.io.IOException;
@@ -43,7 +43,7 @@ public class SunatServer implements QuarkusTestResourceLifecycleManager {
 
     @Override
     public Map<String, String> start() {
-        sunat = new MockServerContainer(DockerImageName.parse("jamesdbloom/mockserver:mockserver-5.13.2"));
+        sunat = new MockServerContainer(DockerImageName.parse("mockserver/mockserver:9.3.0"));
         sunat.start();
 
         final String fileName = "padron_reducido_ruc.zip";

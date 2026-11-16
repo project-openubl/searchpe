@@ -20,7 +20,7 @@ import io.github.project.openubl.searchpe.dto.BasicUserDto;
 import io.github.project.openubl.searchpe.models.jpa.entity.BasicUserEntity;
 import io.quarkus.security.Authenticated;
 import io.quarkus.security.identity.SecurityIdentity;
-import org.eclipse.microprofile.metrics.annotation.Counted;
+import io.micrometer.core.annotation.Counted;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -47,7 +47,7 @@ public class WhoAmIResource {
     @Authenticated
     @GET
     @Path("/")
-    @Counted(name = "getCurrentUserChecks", description = "How many times the current user data was requested")
+    @Counted(value = "getCurrentUserChecks", description = "How many times the current user data was requested")
     public BasicUserDto getCurrentUser(@Context SecurityContext ctx) {
         String authenticationScheme = ctx.getAuthenticationScheme();
 

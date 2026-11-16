@@ -31,8 +31,8 @@ import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.resources.interceptors.AllowAdvancedSearch;
 import io.github.project.openubl.searchpe.security.Permission;
-import org.eclipse.microprofile.metrics.annotation.Counted;
-import org.eclipse.microprofile.metrics.annotation.Timed;
+import io.micrometer.core.annotation.Counted;
+import io.micrometer.core.annotation.Timed;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.jboss.resteasy.reactive.RestResponse;
 import org.jboss.resteasy.reactive.RestResponse.ResponseBuilder;
@@ -75,8 +75,8 @@ public class ContribuyenteResource {
     @GET
     @Path("/")
     @Produces("application/json")
-    @Counted(name = "searchContribuyenteChecks", description = "How many times the advanced search was used")
-    @Timed(name = "searchContribuyenteTimer", description = "How long it took to serve the advanced search")
+    @Counted(value = "searchContribuyenteChecks", description = "How many times the advanced search was used")
+    @Timed(value = "searchContribuyenteTimer", description = "How long it took to serve the advanced search")
     public SearchResultDto<ContribuyenteDto> getContribuyentes(
             @QueryParam("filterText") String filterText,
             @QueryParam("tipoPersona") String tipoPersona,
@@ -108,8 +108,8 @@ public class ContribuyenteResource {
     @GET
     @Path("/{numeroDocumento}")
     @Produces("application/json")
-    @Counted(name = "getContribuyenteChecks", description = "How many times the endpoint was used")
-    @Timed(name = "getContribuyenteTimer", description = "How long it took to serve the data")
+    @Counted(value = "getContribuyenteChecks", description = "How many times the endpoint was used")
+    @Timed(value = "getContribuyenteTimer", description = "How long it took to serve the data")
     public RestResponse<ContribuyenteDto> getContribuyente(@PathParam("numeroDocumento") String numeroDocumento) {
         RestResponse<ContribuyenteDto> notFound = ResponseBuilder.<ContribuyenteDto>notFound().build();
 
