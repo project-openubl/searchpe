@@ -76,7 +76,7 @@ public class SearchpeDeployment extends CRUDKubernetesDependentResource<Deployme
 
     @SuppressWarnings("unchecked")
     private Deployment newDeployment(Searchpe cr, Context<Searchpe> context, SearchpeDistConfigurator distConfigurator) {
-        final var contextLabels = (Map<String, String>) context.managedDependentResourceContext()
+        final var contextLabels = (Map<String, String>) context.managedWorkflowAndDependentResourceContext()
                 .getMandatory(Constants.CONTEXT_LABELS_KEY, Map.class);
 
         Deployment deployment = new DeploymentBuilder()
@@ -92,9 +92,9 @@ public class SearchpeDeployment extends CRUDKubernetesDependentResource<Deployme
 
     @SuppressWarnings("unchecked")
     private DeploymentSpec getDeploymentSpec(Searchpe cr, Context<Searchpe> context, SearchpeDistConfigurator distConfigurator) {
-        final var config = (Config) context.managedDependentResourceContext()
+        final var config = (Config) context.managedWorkflowAndDependentResourceContext()
                 .getMandatory(Constants.CONTEXT_CONFIG_KEY, Config.class);
-        final var contextLabels = (Map<String, String>) context.managedDependentResourceContext()
+        final var contextLabels = (Map<String, String>) context.managedWorkflowAndDependentResourceContext()
                 .getMandatory(Constants.CONTEXT_LABELS_KEY, Map.class);
 
         Map<String, String> selectorLabels = Constants.DEFAULT_LABELS;

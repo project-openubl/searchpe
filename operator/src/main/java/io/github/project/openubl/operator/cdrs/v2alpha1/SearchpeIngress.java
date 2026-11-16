@@ -73,7 +73,7 @@ public class SearchpeIngress extends CRUDKubernetesDependentResource<Ingress, Se
 
     @SuppressWarnings("unchecked")
     private Ingress newIngress(Searchpe cr, Context<Searchpe> context) {
-        final var labels = (Map<String, String>) context.managedDependentResourceContext()
+        final var labels = (Map<String, String>) context.managedWorkflowAndDependentResourceContext()
                 .getMandatory(Constants.CONTEXT_LABELS_KEY, Map.class);
 
         var port = SearchpeService.getServicePort(cr);
@@ -130,7 +130,7 @@ public class SearchpeIngress extends CRUDKubernetesDependentResource<Ingress, Se
 
     @SuppressWarnings("unchecked")
     private Optional<String> getClusterDomainOnOpenshift(Context<Searchpe> context) {
-        final var k8sClient = (KubernetesClient) context.managedDependentResourceContext()
+        final var k8sClient = (KubernetesClient) context.managedWorkflowAndDependentResourceContext()
                 .getMandatory(Constants.CONTEXT_K8S_CLIENT_KEY, KubernetesClient.class);
 
         String clusterDomain = null;

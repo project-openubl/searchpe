@@ -4,9 +4,7 @@ import {
   Bullseye,
   EmptyState,
   EmptyStateBody,
-  EmptyStateIcon,
   EmptyStateVariant,
-  Title,
 } from "@patternfly/react-core";
 import { WarningTriangleIcon } from "@patternfly/react-icons";
 
@@ -23,11 +21,12 @@ export const RoleRoute: React.FC<IRoleRouteProps> = ({ hasAny, children }) => {
 
   const notAuthorizedState = (
     <Bullseye>
-      <EmptyState variant={EmptyStateVariant.small}>
-        <EmptyStateIcon icon={WarningTriangleIcon} />
-        <Title headingLevel="h2" size="lg">
-          403 Forbidden
-        </Title>
+      <EmptyState
+        headingLevel="h2"
+        icon={WarningTriangleIcon}
+        titleText="403 Forbidden"
+        variant={EmptyStateVariant.sm}
+      >
         <EmptyStateBody>You are not allowed to access this page</EmptyStateBody>
       </EmptyState>
     </Bullseye>

@@ -1,30 +1,24 @@
 import React from "react";
-import { HashRouter } from "react-router-dom";
-
-import { SimplePlaceholder, ConditionalRender } from "@project-openubl/lib-ui";
+import { HashRouter } from "react-router";
 
 import {
   Bullseye,
   Button,
   EmptyState,
   EmptyStateBody,
-  EmptyStateIcon,
   EmptyStateVariant,
-  Title,
+  EmptyStateFooter,
 } from "@patternfly/react-core";
 import { WarningTriangleIcon } from "@patternfly/react-icons";
 
 import { AppRoutes } from "./Routes";
-import "./App.scss";
 
 import { DefaultLayout } from "./shared/components/layout";
 
-import NotificationsPortal from "@redhat-cloud-services/frontend-components-notifications/NotificationPortal";
-import "@redhat-cloud-services/frontend-components-notifications/index.css";
-
 import { useWhoAmIQuery } from "queries/whoami";
 
-import { ConfirmationContextProvider } from "@project-openubl/lib-ui";
+import { ConditionalRender, SimplePlaceholder } from "shared/components";
+import { ConfirmationContextProvider } from "shared/context";
 
 const App: React.FC = () => {
   const whoAmI = useWhoAmIQuery();
@@ -32,33 +26,36 @@ const App: React.FC = () => {
   if (whoAmI.isError) {
     return (
       <Bullseye>
-        <EmptyState variant={EmptyStateVariant.small}>
-          <EmptyStateIcon icon={WarningTriangleIcon} />
-          <Title headingLevel="h2" size="lg">
-            404 Forbidden
-          </Title>
+        <EmptyState
+          headingLevel="h2"
+          icon={WarningTriangleIcon}
+          titleText="404 Forbidden"
+          variant={EmptyStateVariant.sm}
+        >
           <EmptyStateBody>
             No se pudo identificar sus credenciales; haga click en 'Login' y una
             vez hecho login refresque la presente página.
           </EmptyStateBody>
-          <Button
-            variant="primary"
-            onClick={() => {
-              const loginPopUp = window.open(
-                "http://localhost:8080",
-                "example",
-                "width=800,height=750"
-              );
-              const timer = setInterval(function () {
-                if (loginPopUp && loginPopUp.closed) {
-                  clearInterval(timer);
-                  window.location.replace("/");
-                }
-              }, 1000);
-            }}
-          >
-            Login
-          </Button>
+          <EmptyStateFooter>
+            <Button
+              variant="primary"
+              onClick={() => {
+                const loginPopUp = window.open(
+                  "http://localhost:8080",
+                  "example",
+                  "width=800,height=750"
+                );
+                const timer = setInterval(function () {
+                  if (loginPopUp && loginPopUp.closed) {
+                    clearInterval(timer);
+                    window.location.replace("/");
+                  }
+                }, 1000);
+              }}
+            >
+              Login
+            </Button>
+          </EmptyStateFooter>
         </EmptyState>
       </Bullseye>
     );
@@ -72,7 +69,6 @@ const App: React.FC = () => {
             <AppRoutes />
           </DefaultLayout>
         </ConfirmationContextProvider>
-        <NotificationsPortal />
       </ConditionalRender>
     </HashRouter>
   );

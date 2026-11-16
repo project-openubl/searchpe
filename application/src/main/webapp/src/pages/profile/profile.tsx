@@ -5,15 +5,9 @@ import {
   Routes,
   useLocation,
   useNavigate,
-} from "react-router-dom";
+} from "react-router";
 
-import {
-  PageSection,
-  PageSectionVariants,
-  Tab,
-  Tabs,
-  TabTitleText,
-} from "@patternfly/react-core";
+import { PageSection, Tab, Tabs, TabTitleText } from "@patternfly/react-core";
 
 import { SimplePageSection } from "shared/components";
 
@@ -58,7 +52,7 @@ export const Profile: React.FC = () => {
   return (
     <>
       <SimplePageSection title="Profile" description="Your personal account" />
-      <PageSection variant={PageSectionVariants.light} type="tabs">
+      <PageSection hasBodyWrapper={false} type="tabs">
         <Tabs
           activeKey={activeKey}
           onSelect={(_event, eventKey) => {
@@ -75,7 +69,7 @@ export const Profile: React.FC = () => {
           />
         </Tabs>
       </PageSection>
-      <PageSection>
+      <PageSection hasBodyWrapper={false}>
         <Routes>
           <Route path="/" element={<Overview />} />
           <Route path="/security" element={<PasswordAndAuthentication />} />

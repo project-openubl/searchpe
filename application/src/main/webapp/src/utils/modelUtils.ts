@@ -7,8 +7,9 @@ export const getBaseApiUrl = (): string => {
 // Axios error
 
 export const getAxiosErrorMessage = (axiosError: AxiosError) => {
-  if (axiosError.response?.data.message) {
-    return axiosError.response?.data.message;
+  const data = axiosError.response?.data as { message?: string } | undefined;
+  if (data?.message) {
+    return data.message;
   }
   return axiosError.message;
 };

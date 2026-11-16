@@ -16,8 +16,8 @@
  */
 package io.github.project.openubl.operator;
 
-import io.quarkiverse.operatorsdk.bundle.runtime.CSVMetadata;
-import io.quarkiverse.operatorsdk.bundle.runtime.SharedCSVMetadata;
+import io.quarkiverse.operatorsdk.annotations.CSVMetadata;
+import io.quarkiverse.operatorsdk.annotations.SharedCSVMetadata;
 
 @CSVMetadata(
 //        name = "searchpe-operator.v${RELEASE_VERSION}",

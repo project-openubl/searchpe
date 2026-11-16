@@ -1,13 +1,6 @@
 import React, { useState } from "react";
 
 import {
-  useTable,
-  useTableControls,
-  SimpleTableWithToolbar,
-  useConfirmationContext,
-} from "@project-openubl/lib-ui";
-
-import {
   Button,
   ButtonVariant,
   Label,
@@ -15,16 +8,7 @@ import {
   ToolbarGroup,
   ToolbarItem,
 } from "@patternfly/react-core";
-import {
-  cellWidth,
-  IAction,
-  ICell,
-  IExtraData,
-  IRow,
-  IRowData,
-  ISeparator,
-  sortable,
-} from "@patternfly/react-table";
+import { IAction } from "@patternfly/react-table";
 
 import {
   useCancelVersionMutation,
@@ -35,56 +19,34 @@ import {
 import {
   SearchInput,
   SimplePageSection,
+  SimpleTableColumn,
+  SimpleTableWithToolbar,
   VersionStatusIcon,
 } from "shared/components";
-
-import { useDispatch } from "react-redux";
-import { alertActions } from "store/alert";
+import { useConfirmationContext, useNotificationContext } from "shared/context";
+import { useTable, useTableControls } from "shared/hooks";
 
 import { Version } from "api/models";
 import { formatNumber, getAxiosErrorMessage } from "utils/modelUtils";
 import { fromNow } from "utils/dateUtils";
 
-const columns: ICell[] = [
-  { title: "Id", transforms: [sortable, cellWidth(10)] },
-  { title: "Creado", transforms: [sortable, cellWidth(20)] },
-  { title: "Records", transforms: [cellWidth(20)] },
-  { title: "Labels", transforms: [cellWidth(25)] },
-  { title: "Estado", transforms: [cellWidth(25)] },
+const columns: SimpleTableColumn[] = [
+  { title: "Id", width: 10, isSortable: true },
+  { title: "Creado", width: 20, isSortable: true },
+  { title: "Records", width: 20 },
+  { title: "Labels", width: 25 },
+  { title: "Estado", width: 25 },
 ];
 
-const VERSION_FIELD = "version";
-
-const itemsToRow = (items: Version[]) => {
-  return items.map((item) => ({
-    [VERSION_FIELD]: item,
-    cells: [
-      {
-        title: `#${item.id}`,
-      },
-      {
-        title: fromNow(item.createdAt),
-      },
-      {
-        title: formatNumber(item.records, 0),
-      },
-      {
-        title: (
-          <Label color={item.active ? "green" : "grey"}>
-            {item.active ? "Activo" : "Inactivo"}
-          </Label>
-        ),
-      },
-      {
-        title: <VersionStatusIcon value={item.status} />,
-      },
-    ],
-  }));
-};
-
-const getRow = (rowData: IRowData): Version => {
-  return rowData[VERSION_FIELD];
-};
+const renderCells = (item: Version): React.ReactNode[] => [
+  `#${item.id}`,
+  fromNow(item.createdAt),
+  formatNumber(item.records, 0),
+  <Label color={item.active ? "green" : "grey"}>
+    {item.active ? "Activo" : "Inactivo"}
+  </Label>,
+  <VersionStatusIcon value={item.status} />,
+];
 
 export const compareByColumnIndex = (
   a: Version,
@@ -108,7 +70,7 @@ export const filterByText = (filterText: string, item: Version) => {
 };
 
 export const Versions: React.FC = () => {
-  const dispatch = useDispatch();
+  const { pushNotification } = useNotificationContext();
   const confirmation = useConfirmationContext();
 
   const versions = useVersionsQuery();
@@ -133,10 +95,16 @@ export const Versions: React.FC = () => {
     filterItem: (item) => filterByText(filterText, item),
   });
 
-  const actionResolver = (rowData: IRowData): (IAction | ISeparator)[] => {
-    const row: Version = getRow(rowData);
+  const notifyError = (error: any) => {
+    pushNotification({
+      variant: "danger",
+      title: "Error",
+      message: getAxiosErrorMessage(error),
+    });
+  };
 
-    const actions: (IAction | ISeparator)[] = [];
+  const actionResolver = (row: Version): IAction[] => {
+    const actions: IAction[] = [];
 
     if (
       row.status !== "COMPLETED" &&
@@ -146,8 +114,7 @@ export const Versions: React.FC = () => {
     ) {
       actions.push({
         title: "Cancelar",
-        onClick: (_, rowIndex: number, rowData: IRowData) => {
-          const row: Version = getRow(rowData);
+        onClick: () => {
           confirmation.open({
             title: "Cancelar Versión",
             titleIconVariant: "warning",
@@ -159,15 +126,7 @@ export const Versions: React.FC = () => {
               confirmation.enableProcessing();
               cancelVersionMutation
                 .mutateAsync(row)
-                .catch((error) => {
-                  dispatch(
-                    alertActions.addAlert(
-                      "danger",
-                      "Error",
-                      getAxiosErrorMessage(error)
-                    )
-                  );
-                })
+                .catch(notifyError)
                 .finally(() => {
                   confirmation.close();
                 });
@@ -178,13 +137,7 @@ export const Versions: React.FC = () => {
     } else {
       actions.push({
         title: "Eliminar",
-        onClick: (
-          event: React.MouseEvent,
-          rowIndex: number,
-          rowData: IRowData,
-          extraData: IExtraData
-        ) => {
-          const row: Version = getRow(rowData);
+        onClick: () => {
           confirmation.open({
             title: "Eliminar Versión",
             titleIconVariant: "warning",
@@ -196,15 +149,7 @@ export const Versions: React.FC = () => {
               confirmation.enableProcessing();
               deleteVersionMutation
                 .mutateAsync(row)
-                .catch((error) => {
-                  dispatch(
-                    alertActions.addAlert(
-                      "danger",
-                      "Error",
-                      getAxiosErrorMessage(error)
-                    )
-                  );
-                })
+                .catch(notifyError)
                 .finally(() => {
                   confirmation.close();
                 });
@@ -217,22 +162,12 @@ export const Versions: React.FC = () => {
     return actions;
   };
 
-  const areActionsDisabled = (
-    rowData: IRowData,
-    extraData: IExtraData
-  ): boolean => {
-    const row: Version = getRow(rowData);
+  const areActionsDisabled = (row: Version): boolean => {
     return row.status === "DELETING" || row.status === "CANCELLING";
   };
 
-  const rows: IRow[] = itemsToRow(pageItems || []);
-
   const onNewVersion = () => {
-    createVersionMutation.mutateAsync().catch((error) => {
-      dispatch(
-        alertActions.addAlert("danger", "Error", getAxiosErrorMessage(error))
-      );
-    });
+    createVersionMutation.mutateAsync().catch(notifyError);
   };
 
   return (
@@ -241,22 +176,22 @@ export const Versions: React.FC = () => {
         title="Versiones"
         description="Las Versiones representan una versión específica del 'padrón reducido' de la SUNAT."
       />
-      <PageSection>
+      <PageSection hasBodyWrapper={false}>
         <SimpleTableWithToolbar
           hasTopPagination
           hasBottomPagination
           totalCount={filteredItems.length}
           // Sorting
-          sortBy={
-            currentSortBy || { index: undefined, defaultDirection: "asc" }
-          }
+          sortBy={currentSortBy}
           onSort={onChangeSortBy}
           // Pagination
           currentPage={currentPage}
           onPageChange={onPageChange}
           // Table
-          rows={rows}
-          cells={columns}
+          columns={columns}
+          items={pageItems}
+          itemKey={(item) => item.id}
+          renderCells={renderCells}
           actionResolver={actionResolver}
           areActionsDisabled={areActionsDisabled}
           // Fech data
@@ -273,7 +208,7 @@ export const Versions: React.FC = () => {
             </ToolbarGroup>
           }
           toolbarActions={
-            <ToolbarGroup variant="button-group">
+            <ToolbarGroup variant="action-group">
               <ToolbarItem>
                 <Button
                   type="button"

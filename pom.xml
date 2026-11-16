@@ -29,29 +29,24 @@
     <packaging>pom</packaging>
 
     <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <maven.compiler.release>25</maven.compiler.release>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
-        <quarkus.platform.group-id>io.quarkus</quarkus.platform.group-id>
-        <quarkus.platform.version>3.0.3.Final</quarkus.platform.version>
+        <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
+        <quarkus.platform.version>3.40.1.2</quarkus.platform.version>
 
         <maven.compiler.parameters>true</maven.compiler.parameters>
-        <surefire-plugin.version>3.1.0</surefire-plugin.version>
-        <compiler-plugin.version>3.11.0</compiler-plugin.version>
-        <maven-assembly-plugin.version>3.5.0</maven-assembly-plugin.version>
-
-        <awaitility.version>4.2.0</awaitility.version>
-        <testcontainers.version>1.21.4</testcontainers.version>
-        <docker-java.version>3.4.2</docker-java.version>
+        <surefire-plugin.version>3.6.1</surefire-plugin.version>
+        <compiler-plugin.version>3.16.0</compiler-plugin.version>
+        <maven-assembly-plugin.version>3.8.0</maven-assembly-plugin.version>
 
         <license.dir>${basedir}</license.dir>
 
-        <lombok.version>1.18.26</lombok.version>
-        <mapstruct.version>1.5.5.Final</mapstruct.version>
+        <lombok.version>1.18.48</lombok.version>
+        <mapstruct.version>1.6.3</mapstruct.version>
     </properties>
 
     <url>https://project-openubl.github.io/</url>
@@ -106,7 +101,7 @@
             <plugin>
                 <groupId>com.mycila</groupId>
                 <artifactId>license-maven-plugin</artifactId>
-                <version>4.2</version>
+                <version>5.1.2</version>
                 <configuration>
                     <licenseSets>
                         <licenseSet>
@@ -140,7 +135,7 @@
                     <plugin>
                         <groupId>org.jacoco</groupId>
                         <artifactId>jacoco-maven-plugin</artifactId>
-                        <version>0.8.10</version>
+                        <version>0.8.16</version>
                         <executions>
                             <execution>
                                 <id>prepare-agent</id>
@@ -195,7 +190,7 @@
                     <plugin>
                         <groupId>org.sonarsource.scanner.maven</groupId>
                         <artifactId>sonar-maven-plugin</artifactId>
-                        <version>3.9.1.2184</version>
+                        <version>5.9.0.7382</version>
                         <executions>
                             <execution>
                                 <phase>verify</phase>
