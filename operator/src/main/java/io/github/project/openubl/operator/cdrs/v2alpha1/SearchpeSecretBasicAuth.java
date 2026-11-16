@@ -47,7 +47,7 @@ public class SearchpeSecretBasicAuth extends CRUDKubernetesDependentResource<Sec
 
     @SuppressWarnings("unchecked")
     private Secret newIngress(Searchpe cr, Context<Searchpe> context) {
-        final var labels = (Map<String, String>) context.managedDependentResourceContext()
+        final var labels = (Map<String, String>) context.managedWorkflowAndDependentResourceContext()
                 .getMandatory(Constants.CONTEXT_LABELS_KEY, Map.class);
 
         String encryptionKey = Base64.getEncoder().encodeToString(UUID.randomUUID().toString().getBytes());

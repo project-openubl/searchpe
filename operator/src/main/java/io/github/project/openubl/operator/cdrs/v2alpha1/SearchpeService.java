@@ -40,7 +40,7 @@ public class SearchpeService extends CRUDKubernetesDependentResource<Service, Se
 
     @SuppressWarnings("unchecked")
     private Service newService(Searchpe cr, Context context) {
-        final var labels = (Map<String, String>) context.managedDependentResourceContext()
+        final var labels = (Map<String, String>) context.managedWorkflowAndDependentResourceContext()
                 .getMandatory(Constants.CONTEXT_LABELS_KEY, Map.class);
 
         Service service = new ServiceBuilder()

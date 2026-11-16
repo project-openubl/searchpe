@@ -25,11 +25,13 @@ import io.github.project.openubl.operator.cdrs.v2alpha1.SearchpeDeployment;
 import io.github.project.openubl.operator.cdrs.v2alpha1.SearchpeIngress;
 import io.github.project.openubl.operator.cdrs.v2alpha1.SearchpeSecretBasicAuth;
 import io.github.project.openubl.operator.cdrs.v2alpha1.SearchpeService;
+import io.javaoperatorsdk.operator.api.config.informer.Informer;
 import io.javaoperatorsdk.operator.api.reconciler.Context;
 import io.javaoperatorsdk.operator.api.reconciler.ContextInitializer;
 import io.javaoperatorsdk.operator.api.reconciler.ControllerConfiguration;
 import io.javaoperatorsdk.operator.api.reconciler.Reconciler;
 import io.javaoperatorsdk.operator.api.reconciler.UpdateControl;
+import io.javaoperatorsdk.operator.api.reconciler.Workflow;
 import io.javaoperatorsdk.operator.api.reconciler.dependent.Dependent;
 import org.jboss.logging.Logger;
 
@@ -39,7 +41,8 @@ import java.util.Map;
 
 import static io.javaoperatorsdk.operator.api.reconciler.Constants.WATCH_CURRENT_NAMESPACE;
 
-@ControllerConfiguration(namespaces = WATCH_CURRENT_NAMESPACE, name = "searchpe", dependents = {
+@ControllerConfiguration(name = "searchpe", informer = @Informer(namespaces = WATCH_CURRENT_NAMESPACE))
+@Workflow(dependents = {
         @Dependent(name = "secret", type = SearchpeSecretBasicAuth.class),
         @Dependent(name = "deployment", type = SearchpeDeployment.class),
         @Dependent(name = "service", type = SearchpeService.class),
@@ -61,9 +64,9 @@ public class SearchpeReconciler implements Reconciler<Searchpe>, ContextInitiali
                 "app.kubernetes.io/name", cr.getMetadata().getName(),
                 "openubl-operator/cluster", Constants.SEARCHPE_NAME
         );
-        context.managedDependentResourceContext().put(Constants.CONTEXT_LABELS_KEY, labels);
-        context.managedDependentResourceContext().put(Constants.CONTEXT_CONFIG_KEY, config);
-        context.managedDependentResourceContext().put(Constants.CONTEXT_K8S_CLIENT_KEY, k8sClient);
+        context.managedWorkflowAndDependentResourceContext().put(Constants.CONTEXT_LABELS_KEY, labels);
+        context.managedWorkflowAndDependentResourceContext().put(Constants.CONTEXT_CONFIG_KEY, config);
+        context.managedWorkflowAndDependentResourceContext().put(Constants.CONTEXT_K8S_CLIENT_KEY, k8sClient);
     }
 
     @SuppressWarnings("unchecked")
@@ -72,7 +75,7 @@ public class SearchpeReconciler implements Reconciler<Searchpe>, ContextInitiali
         final var name = cr.getMetadata().getName();
 
         // retrieve the workflow reconciliation result and re-schedule if we have dependents that are not yet ready
-        return context.managedDependentResourceContext()
+        return context.managedWorkflowAndDependentResourceContext()
                 .getWorkflowReconcileResult()
                 .map(wrs -> {
                     if (wrs.allDependentResourcesReady()) {
