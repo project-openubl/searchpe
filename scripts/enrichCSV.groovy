@@ -26,17 +26,23 @@ def fileReader = new FileReader(file)
 def yaml = new Yaml().load(fileReader)
 
 yaml.metadata.name = 'searchpe-operator.v' + version
-yaml.spec.annotations.containerImage = 'quay.io/projectopenubl/searchpe-operator:v' + version
-yaml.spec.annotations.description = 'Searchpe is an enterprise solution for managing natural and legal entities in your organization. Valid for Peru.'
-yaml.spec.annotations.createdAt = LocalDate.now().toString()
+
+// Quarkus Operator SDK >= 7 already writes the CSV annotations under metadata.annotations (where
+// OperatorHub.io expects them); older versions wrote them under spec.annotations. Support both.
+def annotations = yaml.metadata.annotations ?: [:]
+if (yaml.spec.annotations instanceof Map) {
+    annotations.putAll(yaml.spec.annotations)
+}
+yaml.spec.remove('annotations')
+annotations.containerImage = 'quay.io/projectopenubl/searchpe-operator:v' + version
+annotations.description = 'Searchpe is an enterprise solution for managing natural and legal entities in your organization. Valid for Peru.'
+annotations.createdAt = LocalDate.now().toString()
+yaml.metadata.annotations = annotations
+
 // yaml.spec.install.spec.deployments[0].spec.template.spec.containers[0].image = 'quay.io/projectopenubl/searchpe-operator:v' + version
 yaml.spec.version = version
 yaml.spec.customresourcedefinitions.owned[0].displayName = 'Searchpe'
 yaml.spec.customresourcedefinitions.owned[0].description = 'Searchpe'
-
-// Workaround for moving annotations since OperatorHub.io complains about it
-yaml.metadata.annotations = yaml.spec.annotations
-yaml.spec.annotations = ""
 
 DumperOptions options = new DumperOptions();
 options.indent = 2
