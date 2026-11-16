@@ -6,7 +6,7 @@ description: ${project.description}
 version: ${project.version}
 appVersion: ${project.version}
 home: ${project.url}
-icon: https://raw.githubusercontent.com/project-openubl/searchpe/master/src/main/resources/META-INF/branding/logo.png
+icon: https://raw.githubusercontent.com/project-openubl/searchpe/main/src/main/resources/META-INF/branding/logo.png
 sources:
   - ${project.scm.url}
 keywords:
