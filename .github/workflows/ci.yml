@@ -46,7 +46,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: 18
+          node-version: 26
       - name: Build
         working-directory: application/src/main/webapp
         run: |
@@ -54,7 +54,7 @@ jobs:
           npm run build
       - name: Test
         working-directory: application/src/main/webapp
-        run: npm run test -- --coverage --watchAll=false
+        run: npm run test -- --coverage
 
   application-container:
     name: Application container
@@ -191,7 +191,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
-          node-version: 18
+          node-version: 26
       - uses: actions/download-artifact@v6
         with:
           pattern: artifacts-*
