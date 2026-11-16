@@ -16,8 +16,8 @@ jobs:
     name: JVM Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-java@v3
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           java-version: 17
           distribution: temurin
@@ -29,8 +29,8 @@ jobs:
     name: Native Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-java@v3
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           java-version: 17
           distribution: temurin
@@ -42,11 +42,11 @@ jobs:
     name: UI Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v5
         with:
-          node-version: 16
+          node-version: 18
       - name: Build
         working-directory: application/src/main/webapp
         run: |
@@ -60,8 +60,8 @@ jobs:
     name: Application container
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-java@v3
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           java-version: 17
           distribution: temurin
@@ -81,17 +81,17 @@ jobs:
       - name: Save container image
         run: docker save -o searchpe-application-container-image.tar localhost:5000/searchpe:0.0.0
       - name: Upload container image
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v5
         with:
-          name: artifacts
+          name: artifacts-application
           path: searchpe-application-container-image.tar
 
   operator-container:
     name: Operator container
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-java@v3
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           java-version: 17
           distribution: temurin
@@ -111,17 +111,17 @@ jobs:
       - name: Save container image
         run: docker save -o searchpe-operator-container-image.tar localhost:5000/searchpe-operator:0.0.0
       - name: Upload container image
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v5
         with:
-          name: artifacts
+          name: artifacts-operator
           path: searchpe-operator-container-image.tar
 
   catalog-container:
     name: Catalog container
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-java@v3
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           java-version: 17
           distribution: temurin
@@ -176,9 +176,9 @@ jobs:
           docker save -o searchpe-bundle-container-image.tar $BUNDLE_IMAGE
           docker save -o searchpe-catalog-container-image.tar $CATALOG_IMAGE
       - name: Upload container image
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v5
         with:
-          name: artifacts
+          name: artifacts-catalog
           path: |
             searchpe-bundle-container-image.tar
             searchpe-catalog-container-image.tar
@@ -188,11 +188,15 @@ jobs:
     name: UI E2E Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: 16
-      - uses: actions/download-artifact@v3
+          node-version: 18
+      - uses: actions/download-artifact@v6
+        with:
+          pattern: artifacts-*
+          path: artifacts
+          merge-multiple: true
       - name: Load and config images
         run: |
           docker load -i artifacts/searchpe-application-container-image.tar
@@ -277,19 +281,19 @@ jobs:
           export endpoint=$(minikube ip);
           echo "CYPRESS_BASE_URL=https://$endpoint" >> $GITHUB_ENV
       - name: Cypress run
-        uses: cypress-io/github-action@v5
+        uses: cypress-io/github-action@v6
         with:
           working-directory: application/src/main/webapp
           record: false
           browser: chrome
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v5
         if: failure()
         with:
           name: container-screenshots
           path: application/src/main/webapp/cypress/screenshots
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: container-videos
@@ -299,13 +303,13 @@ jobs:
 #    name: Helm Tests
 #    runs-on: ubuntu-latest
 #    steps:
-#      - uses: actions/checkout@v3
-#      - uses: actions/setup-java@v3
+#      - uses: actions/checkout@v5
+#      - uses: actions/setup-java@v5
 #        with:
 #          java-version: 17
 #          distribution: temurin
 #          cache: maven
-#      - uses: azure/setup-helm@v3
+#      - uses: azure/setup-helm@v4
 #      - name: Helm
 #        run: |
 #          mvn process-resources
