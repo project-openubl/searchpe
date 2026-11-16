@@ -12,8 +12,8 @@ import {
 import { Spinner } from "@patternfly/react-core";
 
 import {
-  global_success_color_200 as globalSuccessColor200,
-  global_danger_color_200 as globalDangerColor200,
+  t_global_icon_color_status_success_default as successColor,
+  t_global_icon_color_status_danger_default as dangerColor,
 } from "@patternfly/react-tokens";
 
 import { VersionStatus } from "api/models";
@@ -45,11 +45,11 @@ export const mapStateToIcon = (state: VersionStatus) => {
     case "INDEXING":
       return <StorageDomainIcon />;
     case "COMPLETED":
-      return <CheckCircleIcon color={globalSuccessColor200.value} />;
+      return <CheckCircleIcon color={successColor.var} />;
     case "CANCELLED":
       return <BanIcon />;
     case "ERROR":
-      return <ErrorCircleOIcon color={globalDangerColor200.value} />;
+      return <ErrorCircleOIcon color={dangerColor.var} />;
     case "DELETING":
     case "CANCELLING":
       return <Spinner size="sm" />;

@@ -1,6 +1,11 @@
 import React, { useState } from "react";
 
-import { Button, InputGroup, TextInput } from "@patternfly/react-core";
+import {
+  Button,
+  InputGroup,
+  TextInput,
+  InputGroupItem,
+} from "@patternfly/react-core";
 import { SearchIcon } from "@patternfly/react-icons";
 
 export interface SearchInputProps {
@@ -14,7 +19,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({ onSearch }) => {
     onSearch(filterText);
   };
 
-  const handleOnKeyDown = (event: any) => {
+  const handleOnKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === "Enter") {
       callSearch();
     }
@@ -22,18 +27,25 @@ export const SearchInput: React.FC<SearchInputProps> = ({ onSearch }) => {
 
   return (
     <InputGroup>
-      <TextInput
-        name="filterText"
-        type="search"
-        aria-label="search input"
-        value={filterText}
-        onChange={setFilterText}
-        onKeyDown={handleOnKeyDown}
-        autoComplete="off"
-      />
-      <Button variant="control" aria-label="search button" onClick={callSearch}>
-        <SearchIcon />
-      </Button>
+      <InputGroupItem isFill>
+        <TextInput
+          name="filterText"
+          type="search"
+          aria-label="search input"
+          value={filterText}
+          onChange={(_event, val) => setFilterText(val)}
+          onKeyDown={handleOnKeyDown}
+          autoComplete="off"
+        />
+      </InputGroupItem>
+      <InputGroupItem>
+        <Button
+          icon={<SearchIcon />}
+          variant="control"
+          aria-label="search button"
+          onClick={callSearch}
+        />
+      </InputGroupItem>
     </InputGroup>
   );
 };

@@ -1,4 +1,4 @@
-import { UseQueryResult, useQuery } from "react-query";
+import { UseQueryResult, useQuery } from "@tanstack/react-query";
 
 import { CoreClusterResource, CoreClusterResourceKind } from "api-client";
 import { ApiClientError } from "api-client/types";
@@ -11,7 +11,7 @@ const whoAmIResource = new CoreClusterResource(CoreClusterResourceKind.WhoAmI);
 export const useWhoAmIQuery = (): UseQueryResult<User, ApiClientError> => {
   const client = useSearchpeClient();
   const result = useQuery<User, ApiClientError>({
-    queryKey: "whoami",
+    queryKey: ["whoami"],
     queryFn: async () => {
       return (await client.get<User>(whoAmIResource, "")).data;
     },

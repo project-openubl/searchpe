@@ -1,72 +1,100 @@
-import { useController, UseControllerProps } from "react-hook-form";
-import { SelectOptionObject } from "@patternfly/react-core";
-
+import React, { useState } from "react";
 import {
-  ISimpleSelectProps,
-  OptionWithValue,
-  SimpleSelect,
-} from "@project-openubl/lib-ui";
+  FieldValues,
+  useController,
+  UseControllerProps,
+} from "react-hook-form";
+import {
+  Badge,
+  MenuToggle,
+  MenuToggleElement,
+  Select,
+  SelectList,
+  SelectOption,
+} from "@patternfly/react-core";
 
-type OptionLike = string | SelectOptionObject | OptionWithValue;
-
-export interface IControllerSelectMultipleProps {
-  fieldConfig: UseControllerProps<any>;
-  selectConfig: Omit<
-    ISimpleSelectProps,
-    "value" | "options" | "onChange" | "onClear"
-  >;
-  options: OptionLike[];
-  isEqual?: (a: OptionLike, b: OptionLike) => boolean;
+export interface IControllerSelectMultipleProps<
+  TFieldValues extends FieldValues,
+> {
+  fieldConfig: UseControllerProps<TFieldValues>;
+  selectConfig: {
+    "aria-label": string;
+    "aria-describedby"?: string;
+    placeholderText?: string;
+    isDisabled?: boolean;
+  };
+  options: string[];
+  isEqual?: (a: string, b: string) => boolean;
 }
 
-export const ControllerSelectMultiple = ({
+/**
+ * Multi (checkbox) select bound to a react-hook-form field holding a string[].
+ * Built on the PatternFly 6 composable Select (replaces lib-ui's SimpleSelect).
+ */
+export const ControllerSelectMultiple = <TFieldValues extends FieldValues>({
   fieldConfig,
   selectConfig,
   options,
   isEqual = (a, b) => a === b,
-}: IControllerSelectMultipleProps) => {
+}: IControllerSelectMultipleProps<TFieldValues>) => {
   const { field } = useController(fieldConfig);
+  const [isOpen, setIsOpen] = useState(false);
+
+  const currentValue: string[] = field.value || [];
+
+  const onSelect = (selection: string) => {
+    const elementExists = currentValue.some((f) => isEqual(f, selection));
+    const nextValue = elementExists
+      ? currentValue.filter((f) => !isEqual(f, selection))
+      : [...currentValue, selection];
+    field.onChange(nextValue);
+  };
+
+  const toggle = (toggleRef: React.Ref<MenuToggleElement>) => (
+    <MenuToggle
+      ref={toggleRef}
+      onClick={() => setIsOpen((current) => !current)}
+      isExpanded={isOpen}
+      isDisabled={selectConfig.isDisabled}
+      isFullWidth
+      aria-label={selectConfig["aria-label"]}
+      aria-describedby={selectConfig["aria-describedby"]}
+      badge={
+        currentValue.length > 0 ? (
+          <Badge isRead>{currentValue.length}</Badge>
+        ) : undefined
+      }
+    >
+      {selectConfig.placeholderText ?? "Select..."}
+    </MenuToggle>
+  );
 
   return (
-    <SimpleSelect
-      value={field.value}
-      options={options}
-      onChange={(selection) => {
-        let selectionValue: any;
-
-        if (typeof selection === "string") {
-          selectionValue = selection;
-        } else {
-          const optionWithValue = selection as OptionWithValue;
-          if (
-            optionWithValue.value !== null &&
-            optionWithValue.value !== undefined
-          ) {
-            selectionValue = optionWithValue;
-          } else {
-            selectionValue = selection;
-          }
+    <Select
+      role="menu"
+      isOpen={isOpen}
+      selected={currentValue}
+      onSelect={(_event, selection) => onSelect(selection as string)}
+      onOpenChange={(nextOpen) => {
+        setIsOpen(nextOpen);
+        if (!nextOpen) {
+          field.onBlur();
         }
-
-        const currentValue = field.value;
-
-        let nextValue: OptionLike[];
-        const elementExists = currentValue.find((f: OptionLike) => {
-          return isEqual(f, selectionValue);
-        });
-
-        if (elementExists) {
-          nextValue = currentValue.filter(
-            (f: OptionLike) => !isEqual(f, selectionValue)
-          );
-        } else {
-          nextValue = [...currentValue, selectionValue];
-        }
-
-        field.onChange(nextValue);
       }}
-      onClear={() => field.onChange([])}
-      {...selectConfig}
-    />
+      toggle={toggle}
+    >
+      <SelectList>
+        {options.map((option) => (
+          <SelectOption
+            key={option}
+            value={option}
+            hasCheckbox
+            isSelected={currentValue.some((f) => isEqual(f, option))}
+          >
+            {option}
+          </SelectOption>
+        ))}
+      </SelectList>
+    </Select>
   );
 };

@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 
-import { useForm, Controller, FieldValues, FieldErrors } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
-import { object, string, array } from "yup";
+import { object, string, array, ObjectSchema } from "yup";
 
 import {
   ActionGroup,
@@ -12,17 +12,17 @@ import {
   Form,
   FormGroup,
   InputGroup,
+  InputGroupItem,
   TextInput,
 } from "@patternfly/react-core";
 import { EditAltIcon } from "@patternfly/react-icons";
 
 import { useCreateUserMutation, useUpdateUserMutation } from "queries/users";
-import { ControllerSelectMultiple } from "shared/components";
+import { ControllerSelectMultiple, FormFieldError } from "shared/components";
 
 import { User } from "api/models";
 import {
   getAxiosErrorMessage,
-  getValidatedFromError,
   getValidatedFromErrorTouched,
 } from "utils/modelUtils";
 import { ALL_PERMISSIONS, Permission } from "Constants";
@@ -48,7 +48,7 @@ export const UserForm: React.FC<UserFormProps> = ({
   const createUserMutation = useCreateUserMutation();
   const updateUserMutation = useUpdateUserMutation();
 
-  const [error, setError] = useState();
+  const [error, setError] = useState<any>();
   const [isEditingPassword, setIsEditingPassword] = useState(false);
 
   const initialValues: FormValues = {
@@ -58,8 +58,8 @@ export const UserForm: React.FC<UserFormProps> = ({
     permissions: user?.permissions || [],
   };
 
-  const validationSchema = object().shape({
-    fullName: string().trim().max(250),
+  const validationSchema: ObjectSchema<FormValues> = object({
+    fullName: string().trim().max(250).defined(),
     username: string()
       .trim()
       .required()
@@ -68,18 +68,27 @@ export const UserForm: React.FC<UserFormProps> = ({
       .matches(/^[a-zA-Z0-9._-]{3,}$/),
     password:
       user && !isEditingPassword
-        ? string().max(250)
+        ? string().max(250).defined()
         : string().required().min(3).max(250),
-    permissions: array().required().min(1),
+    permissions: array().of(string<Permission>().defined()).required().min(1),
   });
 
-  const onSubmit = (formValues: FieldValues) => {
+  const {
+    handleSubmit,
+    formState: { errors, isSubmitting, isValidating, isValid, isDirty },
+    control,
+    reset,
+  } = useForm<FormValues>({
+    defaultValues: initialValues,
+    resolver: yupResolver(validationSchema),
+    mode: "onChange",
+  });
+
+  const onSubmit = (formValues: FormValues) => {
     const payload: User = {
       fullName: formValues.fullName.trim(),
       username: formValues.username,
-      password: (formValues.password !== ""
-        ? formValues.password
-        : undefined) as any,
+      password: formValues.password !== "" ? formValues.password : undefined,
       permissions: formValues.permissions,
     };
     let promise: Promise<User>;
@@ -98,29 +107,12 @@ export const UserForm: React.FC<UserFormProps> = ({
       });
   };
 
-  const {
-    handleSubmit,
-    formState: { errors, isSubmitting, isValidating, isValid, isDirty },
-    control,
-    reset,
-  } = useForm({
-    defaultValues: initialValues,
-    resolver: yupResolver(validationSchema),
-    mode: "onChange",
-  });
-
   return (
     <Form onSubmit={handleSubmit(onSubmit)}>
       {error && (
         <Alert variant="danger" isInline title={getAxiosErrorMessage(error)} />
       )}
-      <FormGroup
-        label="Nombre"
-        fieldId="fullName"
-        isRequired={false}
-        validated={getValidatedFromError(errors.fullName)}
-        helperTextInvalid={errors.fullName?.message}
-      >
+      <FormGroup label="Nombre" fieldId="fullName" isRequired={false}>
         <Controller
           control={control}
           name="fullName"
@@ -130,29 +122,24 @@ export const UserForm: React.FC<UserFormProps> = ({
           }) => (
             <TextInput
               type="text"
+              id="fullName"
               name={name}
               aria-label="fullName"
               aria-describedby="fullName"
               isRequired={false}
-              onChange={onChange}
+              onChange={(_event, value) => onChange(value)}
               onBlur={onBlur}
               value={value}
               validated={getValidatedFromErrorTouched(error, isTouched)}
             />
           )}
         />
+        <FormFieldError message={errors.fullName?.message} />
       </FormGroup>
-      <FormGroup
-        label="Permisos"
-        fieldId="permissions"
-        isRequired={true}
-        validated={getValidatedFromError(errors.permissions)}
-        helperTextInvalid={(errors.permissions as FieldErrors)?.message}
-      >
+      <FormGroup label="Permisos" fieldId="permissions" isRequired={true}>
         <ControllerSelectMultiple
           fieldConfig={{ name: "permissions", control: control }}
           selectConfig={{
-            variant: "checkbox",
             "aria-label": "permissions",
             "aria-describedby": "permissions",
             placeholderText: "Permisos asignados",
@@ -160,14 +147,9 @@ export const UserForm: React.FC<UserFormProps> = ({
           options={ALL_PERMISSIONS}
           isEqual={(a, b) => a === b}
         />
+        <FormFieldError message={errors.permissions?.message} />
       </FormGroup>
-      <FormGroup
-        label="Usuario"
-        fieldId="username"
-        isRequired={true}
-        validated={getValidatedFromError(errors.username)}
-        helperTextInvalid={errors.username?.message}
-      >
+      <FormGroup label="Usuario" fieldId="username" isRequired={true}>
         <Controller
           control={control}
           name="username"
@@ -177,11 +159,12 @@ export const UserForm: React.FC<UserFormProps> = ({
           }) => (
             <TextInput
               type="text"
+              id="username"
               name={name}
               aria-label="username"
               aria-describedby="username"
               isRequired={true}
-              onChange={onChange}
+              onChange={(_event, value) => onChange(value)}
               onBlur={onBlur}
               value={value}
               validated={getValidatedFromErrorTouched(error, isTouched)}
@@ -189,18 +172,13 @@ export const UserForm: React.FC<UserFormProps> = ({
             />
           )}
         />
+        <FormFieldError message={errors.username?.message} />
       </FormGroup>
       {user ? (
         <FormGroup
           label="Contraseña"
           fieldId="password"
           isRequired={isEditingPassword}
-          validated={
-            isEditingPassword
-              ? getValidatedFromError(errors.password)
-              : "default"
-          }
-          helperTextInvalid={isEditingPassword ? errors.password?.message : ""}
         >
           <Controller
             control={control}
@@ -210,46 +188,45 @@ export const UserForm: React.FC<UserFormProps> = ({
               fieldState: { isTouched, error },
             }) => (
               <InputGroup>
-                <TextInput
-                  type="password"
-                  name={name}
-                  aria-label="password"
-                  aria-describedby="password"
-                  isRequired={isEditingPassword}
-                  onChange={onChange}
-                  onBlur={onBlur}
-                  value={isEditingPassword ? value : "******"}
-                  validated={
-                    isEditingPassword
-                      ? getValidatedFromErrorTouched(error, isTouched)
-                      : "default"
-                  }
-                  isDisabled={!isEditingPassword}
-                />
-                <Button
-                  variant="control"
-                  aria-label="change-password"
-                  onClick={() => {
-                    setIsEditingPassword((current) => {
+                <InputGroupItem isFill>
+                  <TextInput
+                    type="password"
+                    id="password"
+                    name={name}
+                    aria-label="password"
+                    aria-describedby="password"
+                    isRequired={isEditingPassword}
+                    onChange={(_event, value) => onChange(value)}
+                    onBlur={onBlur}
+                    value={isEditingPassword ? value : "******"}
+                    validated={
+                      isEditingPassword
+                        ? getValidatedFromErrorTouched(error, isTouched)
+                        : "default"
+                    }
+                    isDisabled={!isEditingPassword}
+                  />
+                </InputGroupItem>
+                <InputGroupItem>
+                  <Button
+                    variant="control"
+                    aria-label="change-password"
+                    icon={<EditAltIcon />}
+                    onClick={() => {
                       onChange("");
-                      return !current;
-                    });
-                  }}
-                >
-                  <EditAltIcon />
-                </Button>
+                      setIsEditingPassword((current) => !current);
+                    }}
+                  />
+                </InputGroupItem>
               </InputGroup>
             )}
           />
+          {isEditingPassword && (
+            <FormFieldError message={errors.password?.message} />
+          )}
         </FormGroup>
       ) : (
-        <FormGroup
-          label="Contraseña"
-          fieldId="password"
-          isRequired={true}
-          validated={getValidatedFromError(errors.password)}
-          helperTextInvalid={errors.password?.message}
-        >
+        <FormGroup label="Contraseña" fieldId="password" isRequired={true}>
           <Controller
             control={control}
             name="password"
@@ -259,17 +236,19 @@ export const UserForm: React.FC<UserFormProps> = ({
             }) => (
               <TextInput
                 type="password"
+                id="password"
                 name={name}
                 aria-label="password"
                 aria-describedby="password"
                 isRequired={true}
-                onChange={onChange}
+                onChange={(_event, value) => onChange(value)}
                 onBlur={onBlur}
                 value={value}
                 validated={getValidatedFromErrorTouched(error, isTouched)}
               />
             )}
           />
+          <FormFieldError message={errors.password?.message} />
         </FormGroup>
       )}
 

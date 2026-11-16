@@ -1,7 +1,7 @@
 import { lazy, Suspense } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router";
 
-import { SimplePlaceholder } from "@project-openubl/lib-ui";
+import { SimplePlaceholder } from "shared/components";
 
 import { RoleRoute } from "./RoleRoute";
 import { EnabledRoute } from "./EnabledRoute";
@@ -19,7 +19,7 @@ const Users = lazy(() => import("./pages/users"));
 const Profile = lazy(() => import("./pages/profile"));
 
 interface IRouteWrapperProps {
-  children: any;
+  children: React.ReactNode;
 }
 
 export const RouteWrapper: React.FC<IRouteWrapperProps> = ({ children }) => {
@@ -27,7 +27,7 @@ export const RouteWrapper: React.FC<IRouteWrapperProps> = ({ children }) => {
     return <Navigate to={Paths.consultaRuc} />;
   }
 
-  return children;
+  return <>{children}</>;
 };
 
 export const AppRoutes = () => {

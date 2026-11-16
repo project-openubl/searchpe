@@ -7,9 +7,7 @@ import {
   ListItem,
   Stack,
   StackItem,
-  TextContent,
-  TextList,
-  TextListItem,
+  Content,
 } from "@patternfly/react-core";
 import {
   GithubIcon,
@@ -41,7 +39,7 @@ export const AppAboutModal: React.FC<AppAboutModalProps> = ({
     >
       <Stack hasGutter>
         <StackItem>
-          <TextContent className="pf-u-py-xl">
+          <Content className="pf-v6-u-py-xl">
             <p>
               <a
                 href="https://project-openubl.github.io/"
@@ -53,16 +51,14 @@ export const AppAboutModal: React.FC<AppAboutModalProps> = ({
               es un producto de Project OpenUBL que te permite consumir los
               datos expuestos por la SUNAT a travéz del 'padrón reducido'.
             </p>
-            <TextList component="dl">
-              <TextListItem component="dt">Version</TextListItem>
-              <TextListItem component="dd">
-                {getApplicationVersion()}
-              </TextListItem>
-            </TextList>
-          </TextContent>
+            <Content component="dl">
+              <Content component="dt">Version</Content>
+              <Content component="dd">{getApplicationVersion()}</Content>
+            </Content>
+          </Content>
         </StackItem>
         <StackItem>
-          <TextContent>
+          <Content>
             <h2>Links</h2>
             <List>
               <ListItem>
@@ -84,11 +80,11 @@ export const AppAboutModal: React.FC<AppAboutModalProps> = ({
                 </a>
               </ListItem>
             </List>
-          </TextContent>
+          </Content>
         </StackItem>
       </Stack>
 
-      <div className="pf-c-about-modal-box__strapline">
+      <div className="pf-v6-u-mt-lg">
         <Flex>
           <FlexItem>
             <a

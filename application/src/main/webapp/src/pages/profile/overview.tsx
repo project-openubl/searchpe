@@ -9,35 +9,43 @@ import {
   Card,
   CardBody,
   EmptyState,
-  EmptyStateIcon,
   EmptyStateVariant,
   Form,
   FormGroup,
   Grid,
   GridItem,
-  Select,
-  SelectVariant,
+  Label,
+  LabelGroup,
   TextInput,
-  Title,
 } from "@patternfly/react-core";
 import { UserCircleIcon } from "@patternfly/react-icons";
 
-import { useForm, Controller, FieldValues } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
-import { object, string } from "yup";
+import { object, string, ObjectSchema } from "yup";
 
 import { AxiosError } from "axios";
-import { useConfirmationContext } from "@project-openubl/lib-ui";
 
 import { useWhoAmIQuery } from "queries/whoami";
 import { useUpdateCurrentUserProfileMutation } from "queries/currentUser";
+import { FormFieldError } from "shared/components";
+import { useConfirmationContext } from "shared/context";
 
 import {
   getAxiosErrorMessage,
-  getValidatedFromError,
   getValidatedFromErrorTouched,
 } from "utils/modelUtils";
 import { User } from "api/models";
+
+interface FormValues {
+  username: string;
+  fullName: string;
+}
+
+const validationSchema: ObjectSchema<FormValues> = object({
+  username: string().trim().required().min(3).max(250),
+  fullName: string().trim().max(250).defined(),
+});
 
 export const Overview: React.FC = () => {
   const confirmation = useConfirmationContext();
@@ -46,17 +54,12 @@ export const Overview: React.FC = () => {
 
   // Form
 
-  const validationSchema = object().shape({
-    username: string().trim().required().min(3).max(250),
-    fullName: string().trim().max(250),
-  });
-
   const {
     handleSubmit,
     getFieldState,
     formState: { errors, isSubmitting, isValidating, isValid, isDirty },
     control,
-  } = useForm({
+  } = useForm<FormValues>({
     defaultValues: {
       username: whoAmI.data?.username || "",
       fullName: whoAmI.data?.fullName || "",
@@ -65,7 +68,7 @@ export const Overview: React.FC = () => {
     mode: "onChange",
   });
 
-  const onSubmit = (formValues: FieldValues) => {
+  const onSubmit = (formValues: FormValues) => {
     const user: User = {
       ...whoAmI.data,
       username: formValues.username,
@@ -113,14 +116,14 @@ export const Overview: React.FC = () => {
       <CardBody>
         <Grid hasGutter>
           <GridItem md={2}>
-            <Card isHoverable isCompact>
+            <Card isCompact>
               <Bullseye>
-                <EmptyState variant={EmptyStateVariant.xs}>
-                  <EmptyStateIcon icon={UserCircleIcon} />
-                  <Title headingLevel="h2" size="md">
-                    Profile picture
-                  </Title>
-                </EmptyState>
+                <EmptyState
+                  headingLevel="h2"
+                  icon={UserCircleIcon}
+                  titleText="Profile picture"
+                  variant={EmptyStateVariant.xs}
+                />
               </Bullseye>
             </Card>
           </GridItem>
@@ -133,13 +136,7 @@ export const Overview: React.FC = () => {
                   title={getAxiosErrorMessage(updateError)}
                 />
               )}
-              <FormGroup
-                label="Username"
-                fieldId="username"
-                isRequired={true}
-                validated={getValidatedFromError(errors.username)}
-                helperTextInvalid={errors?.username?.message}
-              >
+              <FormGroup label="Username" fieldId="username" isRequired={true}>
                 <Controller
                   control={control}
                   name="username"
@@ -148,8 +145,9 @@ export const Overview: React.FC = () => {
                     fieldState: { isTouched, error },
                   }) => (
                     <TextInput
-                      onChange={onChange}
+                      onChange={(_event, value) => onChange(value)}
                       type="text"
+                      id="username"
                       name={name}
                       aria-label="username"
                       aria-describedby="username"
@@ -159,14 +157,9 @@ export const Overview: React.FC = () => {
                     />
                   )}
                 />
+                <FormFieldError message={errors.username?.message} />
               </FormGroup>
-              <FormGroup
-                label="Full name"
-                fieldId="fullName"
-                isRequired={true}
-                validated={getValidatedFromError(errors.fullName)}
-                helperTextInvalid={errors?.fullName?.message}
-              >
+              <FormGroup label="Full name" fieldId="fullName" isRequired={true}>
                 <Controller
                   control={control}
                   name="fullName"
@@ -175,8 +168,9 @@ export const Overview: React.FC = () => {
                     fieldState: { isTouched, error },
                   }) => (
                     <TextInput
-                      onChange={onChange}
+                      onChange={(_event, value) => onChange(value)}
                       type="text"
+                      id="fullName"
                       name={name}
                       aria-label="full-name"
                       aria-describedby="full-name"
@@ -186,22 +180,19 @@ export const Overview: React.FC = () => {
                     />
                   )}
                 />
+                <FormFieldError message={errors.fullName?.message} />
               </FormGroup>
               <FormGroup
                 label="Permissions"
                 fieldId="permissions"
                 isRequired={false}
               >
-                <Select
-                  variant={SelectVariant.typeaheadMulti}
-                  aria-label="permissions"
-                  onToggle={() => {}}
-                  selections={whoAmI.data?.permissions}
-                  aria-labelledby="permissions"
-                  isDisabled={true}
-                >
-                  {[]}
-                </Select>
+                {/* Read-only; replaces a disabled PF4 typeahead-multi Select */}
+                <LabelGroup aria-label="permissions" numLabels={10}>
+                  {(whoAmI.data?.permissions || []).map((permission) => (
+                    <Label key={permission}>{permission}</Label>
+                  ))}
+                </LabelGroup>
               </FormGroup>
 
               <ActionGroup>

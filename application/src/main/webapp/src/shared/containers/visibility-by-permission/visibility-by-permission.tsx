@@ -4,6 +4,7 @@ import { usePermission } from "shared/hooks";
 
 export interface VisibilityByPermissionProps {
   hasAny: Permission[];
+  children?: React.ReactNode;
 }
 
 export const VisibilityByPermission: React.FC<VisibilityByPermissionProps> = ({

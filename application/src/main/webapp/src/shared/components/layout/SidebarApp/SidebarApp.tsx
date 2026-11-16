@@ -1,71 +1,65 @@
 import React from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useMatch } from "react-router";
 
-import { Nav, PageSidebar, NavList } from "@patternfly/react-core";
-import { css } from "@patternfly/react-styles";
+import {
+  Nav,
+  NavItem,
+  NavList,
+  PageSidebar,
+  PageSidebarBody,
+} from "@patternfly/react-core";
 
 import { Paths } from "Paths";
 import { isAdvancedSearchEnabled, isAuthDisabled, Permission } from "Constants";
-import { LayoutTheme } from "../LayoutUtils";
 import { VisibilityByPermission } from "shared/containers";
 
-export const SidebarApp: React.FC = () => {
-  const renderPageNav = () => {
-    return (
-      <Nav id="nav-sidebar" aria-label="Nav" theme={LayoutTheme}>
-        <NavList title="Consultas">
-          <VisibilityByPermission
-            hasAny={[Permission.admin, Permission.search]}
-          >
-            {isAdvancedSearchEnabled() && (
-              <NavLink
-                to={Paths.contribuyentes}
-                className={({ isActive }) =>
-                  css("pf-c-nav__link", isActive ? "pf-m-current" : "")
-                }
-              >
-                Buscar
-              </NavLink>
-            )}
-            <NavLink
-              to={Paths.consultaRuc}
-              className={({ isActive }) =>
-                css("pf-c-nav__link", isActive ? "pf-m-current" : "")
-              }
-            >
-              Número documento
-            </NavLink>
-          </VisibilityByPermission>
-          <VisibilityByPermission
-            hasAny={[Permission.admin, Permission.version_write]}
-          >
-            <NavLink
-              to={Paths.versiones}
-              className={({ isActive }) =>
-                css("pf-c-nav__link", isActive ? "pf-m-current" : "")
-              }
-            >
-              Versiones
-            </NavLink>
-          </VisibilityByPermission>
-          {!isAuthDisabled() && (
-            <VisibilityByPermission
-              hasAny={[Permission.admin, Permission.user_write]}
-            >
-              <NavLink
-                to={Paths.users}
-                className={({ isActive }) =>
-                  css("pf-c-nav__link", isActive ? "pf-m-current" : "")
-                }
-              >
-                Usuarios
-              </NavLink>
-            </VisibilityByPermission>
-          )}
-        </NavList>
-      </Nav>
-    );
-  };
+interface SidebarNavItemProps {
+  to: string;
+  children: React.ReactNode;
+}
 
-  return <PageSidebar nav={renderPageNav()} theme={LayoutTheme} />;
+const SidebarNavItem: React.FC<SidebarNavItemProps> = ({ to, children }) => {
+  const match = useMatch({ path: to, end: false });
+  return (
+    <NavItem isActive={!!match}>
+      <NavLink to={to}>{children}</NavLink>
+    </NavItem>
+  );
+};
+
+export const SidebarApp: React.FC = () => {
+  return (
+    <PageSidebar>
+      <PageSidebarBody>
+        <Nav id="nav-sidebar" aria-label="Nav">
+          <NavList>
+            <VisibilityByPermission
+              hasAny={[Permission.admin, Permission.search]}
+            >
+              {isAdvancedSearchEnabled() && (
+                <SidebarNavItem to={Paths.contribuyentes}>
+                  Buscar
+                </SidebarNavItem>
+              )}
+              <SidebarNavItem to={Paths.consultaRuc}>
+                Número documento
+              </SidebarNavItem>
+            </VisibilityByPermission>
+            <VisibilityByPermission
+              hasAny={[Permission.admin, Permission.version_write]}
+            >
+              <SidebarNavItem to={Paths.versiones}>Versiones</SidebarNavItem>
+            </VisibilityByPermission>
+            {!isAuthDisabled() && (
+              <VisibilityByPermission
+                hasAny={[Permission.admin, Permission.user_write]}
+              >
+                <SidebarNavItem to={Paths.users}>Usuarios</SidebarNavItem>
+              </VisibilityByPermission>
+            )}
+          </NavList>
+        </Nav>
+      </PageSidebarBody>
+    </PageSidebar>
+  );
 };

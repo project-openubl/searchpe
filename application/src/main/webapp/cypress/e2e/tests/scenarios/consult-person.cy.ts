@@ -11,13 +11,13 @@ describe("Flows", () => {
     versionsPage.create();
 
     // Verify table
-    cy.get(".pf-c-table")
-      .pf4_table_rows()
+    cy.get(".pf-v6-c-table")
+      .pf6_table_rows()
       .eq(0)
       .find("td[data-label='Estado']")
       .contains("Completed", { timeout: 60000 });
-    cy.get(".pf-c-table")
-      .pf4_table_rows()
+    cy.get(".pf-v6-c-table")
+      .pf6_table_rows()
       .eq(0)
       .find("td[data-label='Labels']")
       .should("contain", "Activo");
