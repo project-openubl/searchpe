@@ -1,74 +1,46 @@
 import React, { useState } from "react";
 
-import { useDispatch } from "react-redux";
-import { alertActions } from "store/alert";
-
-import {
-  useModal,
-  useTableControls,
-  useTable,
-  SimpleTableWithToolbar,
-  SimplePlaceholder,
-  ConditionalRender,
-  useConfirmationContext,
-} from "@project-openubl/lib-ui";
-
 import {
   Button,
   ButtonVariant,
   Modal,
+  ModalBody,
+  ModalHeader,
   ModalVariant,
   PageSection,
   ToolbarGroup,
   ToolbarItem,
 } from "@patternfly/react-core";
-import {
-  cellWidth,
-  IAction,
-  ICell,
-  IExtraData,
-  IRow,
-  IRowData,
-  ISeparator,
-  sortable,
-} from "@patternfly/react-table";
+import { IAction } from "@patternfly/react-table";
 
 import { User } from "api/models";
 
-import { SearchInput, SimplePageSection } from "shared/components";
+import {
+  ConditionalRender,
+  SearchInput,
+  SimplePageSection,
+  SimplePlaceholder,
+  SimpleTableColumn,
+  SimpleTableWithToolbar,
+} from "shared/components";
+import { useConfirmationContext, useNotificationContext } from "shared/context";
+import { useModal, useTable, useTableControls } from "shared/hooks";
 
 import { UserForm } from "./components/user-form";
 import { getAxiosErrorMessage } from "utils/modelUtils";
 import { useDeleteUserMutation, useUsersQuery } from "queries/users";
 
-const columns: ICell[] = [
-  { title: "Usuario", transforms: [sortable, cellWidth(30)] },
-  { title: "Permisos", transforms: [cellWidth(50)] },
-  { title: "Nombre", transforms: [cellWidth(20)] },
+const columns: SimpleTableColumn[] = [
+  { title: "Usuario", width: 30, isSortable: true },
+  { title: "Permisos", width: 50 },
+  { title: "Nombre", width: 20 },
 ];
 
-const USER_FIELD = "user";
-
-const itemsToRow = (items: User[]) => {
-  return items.map((item) => ({
-    [USER_FIELD]: item,
-    cells: [
-      {
-        title: item.username,
-      },
-      {
-        title: item.permissions?.join(", "),
-      },
-      {
-        title: item.fullName,
-      },
-    ],
-  }));
-};
-
-const getRow = (rowData: IRowData): User => {
-  return rowData[USER_FIELD];
-};
+const renderCells = (item: User): React.ReactNode[] => [
+  item.username,
+  item.permissions?.join(", "),
+  item.fullName,
+];
 
 export const compareByColumnIndex = (
   a: User,
@@ -91,7 +63,7 @@ export const filterByText = (filterText: string, item: User) => {
 };
 
 export const Users: React.FC = () => {
-  const dispatch = useDispatch();
+  const { pushNotification } = useNotificationContext();
   const confirmation = useConfirmationContext();
 
   const [filterText, setFilterText] = useState("");
@@ -121,73 +93,50 @@ export const Users: React.FC = () => {
     filterItem: (item) => filterByText(filterText, item),
   });
 
-  const actionResolver = (rowData: IRowData): (IAction | ISeparator)[] => {
-    const actions: (IAction | ISeparator)[] = [];
-
-    actions.push({
-      title: "Editar",
-      onClick: (
-        event: React.MouseEvent,
-        rowIndex: number,
-        rowData: IRowData,
-        extraData: IExtraData
-      ) => {
-        const row: User = getRow(rowData);
-        openUserModal("update", row);
+  const actionResolver = (row: User): IAction[] => {
+    return [
+      {
+        title: "Editar",
+        onClick: () => openUserModal("update", row),
       },
-    });
-
-    actions.push({
-      title: "Eliminar",
-      onClick: (
-        event: React.MouseEvent,
-        rowIndex: number,
-        rowData: IRowData,
-        extraData: IExtraData
-      ) => {
-        const row: User = getRow(rowData);
-        confirmation.open({
-          title: "Eliminar usuario",
-          titleIconVariant: "warning",
-          message: `¿Estas seguro de querer eliminar este Usuario? Esta acción eliminará a ${row.username} permanentemente.`,
-          confirmBtnLabel: "Eliminar",
-          cancelBtnLabel: "Cancelar",
-          confirmBtnVariant: ButtonVariant.danger,
-          onConfirm: () => {
-            confirmation.enableProcessing();
-            deleteUserMutation
-              .mutateAsync(row)
-              .catch((error) => {
-                dispatch(
-                  alertActions.addAlert(
-                    "danger",
-                    "Error",
-                    getAxiosErrorMessage(error)
-                  )
-                );
-              })
-              .finally(() => {
-                confirmation.close();
-              });
-          },
-        });
+      {
+        title: "Eliminar",
+        onClick: () => {
+          confirmation.open({
+            title: "Eliminar usuario",
+            titleIconVariant: "warning",
+            message: `¿Estas seguro de querer eliminar este Usuario? Esta acción eliminará a ${row.username} permanentemente.`,
+            confirmBtnLabel: "Eliminar",
+            cancelBtnLabel: "Cancelar",
+            confirmBtnVariant: ButtonVariant.danger,
+            onConfirm: () => {
+              confirmation.enableProcessing();
+              deleteUserMutation
+                .mutateAsync(row)
+                .catch((error) => {
+                  pushNotification({
+                    variant: "danger",
+                    title: "Error",
+                    message: getAxiosErrorMessage(error),
+                  });
+                })
+                .finally(() => {
+                  confirmation.close();
+                });
+            },
+          });
+        },
       },
-    });
-
-    return actions;
+    ];
   };
 
-  const areActionsDisabled = (): boolean => {
-    return false;
-  };
-
-  const rows: IRow[] = itemsToRow(pageItems || []);
-
-  const handleOnUserFormSaved = (user: User) => {
+  const handleOnUserFormSaved = () => {
     if (!userToUpdate) {
-      dispatch(
-        alertActions.addAlert("success", "Éxito", "Usuario actualizado")
-      );
+      pushNotification({
+        variant: "success",
+        title: "Éxito",
+        message: "Usuario actualizado",
+      });
     }
     closeUserModal();
   };
@@ -199,24 +148,23 @@ export const Users: React.FC = () => {
         then={<SimplePlaceholder />}
       >
         <SimplePageSection title="Usuarios" />
-        <PageSection>
+        <PageSection hasBodyWrapper={false}>
           <SimpleTableWithToolbar
             hasTopPagination
             hasBottomPagination
             totalCount={filteredItems.length}
             // Sorting
-            sortBy={
-              currentSortBy || { index: undefined, defaultDirection: "asc" }
-            }
+            sortBy={currentSortBy}
             onSort={onChangeSortBy}
             // Pagination
             currentPage={currentPage}
             onPageChange={onPageChange}
             // Table
-            rows={rows}
-            cells={columns}
+            columns={columns}
+            items={pageItems}
+            itemKey={(item) => item.id ?? item.username}
+            renderCells={renderCells}
             actionResolver={actionResolver}
-            areActionsDisabled={areActionsDisabled}
             // Fech data
             isLoading={usersQuery.isFetching}
             loadingVariant="skeleton"
@@ -231,7 +179,7 @@ export const Users: React.FC = () => {
               </ToolbarGroup>
             }
             toolbarActions={
-              <ToolbarGroup variant="button-group">
+              <ToolbarGroup variant="action-group">
                 <ToolbarItem>
                   <Button
                     type="button"
@@ -248,16 +196,22 @@ export const Users: React.FC = () => {
         </PageSection>
       </ConditionalRender>
       <Modal
-        title={`${userToUpdate ? "Editar" : "Crear"} usuario`}
         variant={ModalVariant.medium}
         isOpen={isUserModalOpen}
         onClose={closeUserModal}
+        aria-labelledby="user-modal-title"
       >
-        <UserForm
-          user={userToUpdate}
-          onSaved={handleOnUserFormSaved}
-          onCancel={closeUserModal}
+        <ModalHeader
+          title={`${userToUpdate ? "Editar" : "Crear"} usuario`}
+          labelId="user-modal-title"
         />
+        <ModalBody>
+          <UserForm
+            user={userToUpdate}
+            onSaved={handleOnUserFormSaved}
+            onCancel={closeUserModal}
+          />
+        </ModalBody>
       </Modal>
     </>
   );

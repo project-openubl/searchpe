@@ -5,7 +5,7 @@ import {
   useQuery,
   useQueryClient,
   useMutation,
-} from "react-query";
+} from "@tanstack/react-query";
 
 import { AdminClusterResource, AdminClusterResourceKind } from "api-client";
 import { User } from "api/models";
@@ -21,7 +21,7 @@ export const useUsersQuery = (): UseQueryResult<User[], ApiClientError> => {
   }, []);
   const client = useSearchpeClient();
   const result = useQuery<User[], ApiClientError>({
-    queryKey: "users",
+    queryKey: ["users"],
     queryFn: async () => {
       return (await client.list<User[]>(userResource)).data;
     },
@@ -35,17 +35,15 @@ export const useCreateUserMutation = (
 ): UseMutationResult<User, ApiClientError, User> => {
   const client = useSearchpeClient();
   const queryClient = useQueryClient();
-  return useMutation<User, ApiClientError, User>(
-    async (user: User) => {
+  return useMutation<User, ApiClientError, User>({
+    mutationFn: async (user: User) => {
       return (await client.create<User>(userResource, user)).data;
     },
-    {
-      onSuccess: (response) => {
-        queryClient.invalidateQueries("users");
-        onSuccess && onSuccess(response);
-      },
-    }
-  );
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      onSuccess && onSuccess(response);
+    },
+  });
 };
 
 export const useUpdateUserMutation = (
@@ -53,19 +51,17 @@ export const useUpdateUserMutation = (
 ): UseMutationResult<User, ApiClientError, User> => {
   const client = useSearchpeClient();
   const queryClient = useQueryClient();
-  return useMutation<User, ApiClientError, User>(
-    async (user: User) => {
+  return useMutation<User, ApiClientError, User>({
+    mutationFn: async (user: User) => {
       return (
         await client.put<User>(userResource, user.id?.toString() || "", user)
       ).data;
     },
-    {
-      onSuccess: (response) => {
-        queryClient.invalidateQueries("users");
-        onSuccess && onSuccess(response);
-      },
-    }
-  );
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      onSuccess && onSuccess(response);
+    },
+  });
 };
 
 export const useDeleteUserMutation = (
@@ -73,15 +69,13 @@ export const useDeleteUserMutation = (
 ): UseMutationResult<void, ApiClientError, User, unknown> => {
   const client = useSearchpeClient();
   const queryClient = useQueryClient();
-  return useMutation<void, ApiClientError, User>(
-    async (user: User) => {
+  return useMutation<void, ApiClientError, User>({
+    mutationFn: async (user: User) => {
       await client.delete<void>(userResource, `${user.id}`);
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries("users");
-        onSuccess && onSuccess();
-      },
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      onSuccess && onSuccess();
+    },
+  });
 };

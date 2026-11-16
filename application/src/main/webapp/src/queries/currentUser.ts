@@ -1,4 +1,8 @@
-import { UseMutationResult, useQueryClient, useMutation } from "react-query";
+import {
+  UseMutationResult,
+  useQueryClient,
+  useMutation,
+} from "@tanstack/react-query";
 
 import {
   CurrentUserClusterResource,
@@ -23,19 +27,17 @@ export const useUpdateCurrentUserProfileMutation = (
 ): UseMutationResult<void, ApiClientError, User> => {
   const client = useSearchpeClient();
   const queryClient = useQueryClient();
-  return useMutation<void, ApiClientError, User>(
-    async (user: User) => {
+  return useMutation<void, ApiClientError, User>({
+    mutationFn: async (user: User) => {
       return (await client.put<void>(profileResource, "", user)).data;
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries("users");
-        queryClient.invalidateQueries("whoami");
-        onSuccess && onSuccess();
-      },
-      onError,
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["whoami"] });
+      onSuccess && onSuccess();
+    },
+    onError,
+  });
 };
 
 export const useUpdateCurrentUserPasswordMutation = (
@@ -43,15 +45,13 @@ export const useUpdateCurrentUserPasswordMutation = (
   onError: (err: AxiosError) => void
 ): UseMutationResult<void, ApiClientError, UserPasswordChange> => {
   const client = useSearchpeClient();
-  return useMutation<void, ApiClientError, UserPasswordChange>(
-    async (password: UserPasswordChange) => {
+  return useMutation<void, ApiClientError, UserPasswordChange>({
+    mutationFn: async (password: UserPasswordChange) => {
       return (await client.create<void>(credentialsResource, password)).data;
     },
-    {
-      onSuccess: () => {
-        onSuccess && onSuccess();
-      },
-      onError,
-    }
-  );
+    onSuccess: () => {
+      onSuccess && onSuccess();
+    },
+    onError,
+  });
 };

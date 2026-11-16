@@ -1,46 +1,36 @@
 import React, { useEffect, useState } from "react";
 
-import { SimplePlaceholder, ConditionalRender } from "@project-openubl/lib-ui";
-
 import { PageSection, ToolbarGroup, ToolbarItem } from "@patternfly/react-core";
-import {
-  cellWidth,
-  IActions,
-  ICell,
-  IExtraData,
-  IRow,
-  IRowData,
-  sortable,
-} from "@patternfly/react-table";
-
-import {
-  useModal,
-  useTableControls,
-  SimpleTableWithToolbar,
-} from "@project-openubl/lib-ui";
+import { IAction } from "@patternfly/react-table";
 
 import {
   IContribuyentesParams,
   IContribuyentesParamsBuilder,
   useContribuyentesQuery,
 } from "queries/contribuyentes";
-import { SimplePageSection, SearchInput } from "shared/components";
+import {
+  ConditionalRender,
+  SearchInput,
+  SimplePageSection,
+  SimplePlaceholder,
+  SimpleTableColumn,
+  SimpleTableWithToolbar,
+} from "shared/components";
+import { useModal, useTableControls } from "shared/hooks";
+import { SortBy } from "shared/types";
 
 import { Contribuyente, SortByQuery } from "api/models";
 
 import { DetailsModal } from "./components/details-modal/details-modal";
 
-const columns: ICell[] = [
-  { title: "RUC", transforms: [cellWidth(20)] },
-  { title: "DNI", transforms: [cellWidth(15)] },
-  { title: "Nombre", transforms: [sortable, cellWidth(50)] },
-  { title: "Estado", transforms: [cellWidth(15)] },
+const columns: SimpleTableColumn[] = [
+  { title: "RUC", width: 20 },
+  { title: "DNI", width: 15 },
+  { title: "Nombre", width: 50, isSortable: true },
+  { title: "Estado", width: 15 },
 ];
 
-const toSortByQuery = (sortBy?: {
-  index: number;
-  direction: "asc" | "desc";
-}): SortByQuery | undefined => {
+const toSortByQuery = (sortBy?: SortBy): SortByQuery | undefined => {
   if (!sortBy) {
     return undefined;
   }
@@ -58,32 +48,6 @@ const toSortByQuery = (sortBy?: {
     orderBy: field,
     orderDirection: sortBy.direction,
   };
-};
-
-const CONTRIBUYENTE_FIELD = "contribuyente";
-
-const itemsToRow = (items: Contribuyente[]) => {
-  return items.map((item) => ({
-    [CONTRIBUYENTE_FIELD]: item,
-    cells: [
-      {
-        title: item.ruc,
-      },
-      {
-        title: item.dni,
-      },
-      {
-        title: item.nombre,
-      },
-      {
-        title: item.estado,
-      },
-    ],
-  }));
-};
-
-const getRow = (rowData: IRowData): Contribuyente => {
-  return rowData[CONTRIBUYENTE_FIELD];
 };
 
 export const Contribuyentes: React.FC = () => {
@@ -119,22 +83,12 @@ export const Contribuyentes: React.FC = () => {
     setQueryParams(params);
   }, [filterText, currentPage, currentSortBy]);
 
-  const actions: IActions = [
+  const actionResolver = (item: Contribuyente): IAction[] => [
     {
       title: "Ver detalle",
-      onClick: (
-        event: React.MouseEvent,
-        rowIndex: number,
-        rowData: IRowData,
-        extraData: IExtraData
-      ) => {
-        const row: Contribuyente = getRow(rowData);
-        openModal("view", row);
-      },
+      onClick: () => openModal("view", item),
     },
   ];
-
-  const rows: IRow[] = itemsToRow(contribuyentes.data?.data || []);
 
   return (
     <>
@@ -146,22 +100,27 @@ export const Contribuyentes: React.FC = () => {
           title="Buscar por 'Nombre'"
           description="Ingresa el nombre de la persona natural o jurídica que deseas consultar."
         />
-        <PageSection>
+        <PageSection hasBodyWrapper={false}>
           <SimpleTableWithToolbar
             hasTopPagination
             totalCount={contribuyentes.data?.meta.count || 0}
             // Sorting
-            sortBy={
-              currentSortBy || { index: undefined, defaultDirection: "asc" }
-            }
+            sortBy={currentSortBy}
             onSort={onChangeSortBy}
             // Pagination
             currentPage={currentPage}
             onPageChange={onPageChange}
             // Table
-            rows={rows}
-            cells={columns}
-            actions={actions}
+            columns={columns}
+            items={contribuyentes.data?.data || []}
+            itemKey={(item) => item.ruc}
+            renderCells={(item) => [
+              item.ruc,
+              item.dni,
+              item.nombre,
+              item.estado,
+            ]}
+            actionResolver={actionResolver}
             // Fech data
             isLoading={contribuyentes.isFetching}
             loadingVariant="skeleton"

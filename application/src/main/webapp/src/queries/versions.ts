@@ -5,7 +5,7 @@ import {
   UseMutationResult,
   useMutation,
   useQueryClient,
-} from "react-query";
+} from "@tanstack/react-query";
 
 import { CoreClusterResource, CoreClusterResourceKind } from "api-client";
 import { Version } from "api/models";
@@ -28,11 +28,12 @@ export const useVersionsQuery = (): UseQueryResult<
 
   const client = useSearchpeClient();
   const result = useQuery<Version[], ApiClientError>({
-    queryKey: "versions",
+    queryKey: ["versions"],
     queryFn: async () => {
       return (await client.list<Version[]>(versionResource)).data;
     },
-    refetchInterval: (data) => {
+    refetchInterval: (query) => {
+      const data = query.state.data;
       if (data && data.length > 0) {
         const someIsBegingDeleted = data.some((f) => f.status === "DELETING");
         const someIsInProgress = data.some(
@@ -55,19 +56,17 @@ export const useCreateVersionMutation = (
 ): UseMutationResult<Version, ApiClientError, void> => {
   const client = useSearchpeClient();
   const queryClient = useQueryClient();
-  return useMutation<Version, ApiClientError, void>(
-    async () => {
+  return useMutation<Version, ApiClientError, void>({
+    mutationFn: async () => {
       return (await client.create<Version>(versionResource, {})).data;
     },
-    {
-      onSuccess: (response) => {
-        queryClient.invalidateQueries("versions");
-        queryClient.invalidateQueries("contribuyente");
-        queryClient.invalidateQueries("contribuyentes");
-        onSuccess && onSuccess(response);
-      },
-    }
-  );
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ["versions"] });
+      queryClient.invalidateQueries({ queryKey: ["contribuyente"] });
+      queryClient.invalidateQueries({ queryKey: ["contribuyentes"] });
+      onSuccess && onSuccess(response);
+    },
+  });
 };
 
 export const useDeleteVersionMutation = (
@@ -75,19 +74,17 @@ export const useDeleteVersionMutation = (
 ): UseMutationResult<void, ApiClientError, Version, unknown> => {
   const client = useSearchpeClient();
   const queryClient = useQueryClient();
-  return useMutation<void, ApiClientError, Version>(
-    async (version: Version) => {
+  return useMutation<void, ApiClientError, Version>({
+    mutationFn: async (version: Version) => {
       await client.delete<void>(versionResource, `${version.id}`);
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries("versions");
-        queryClient.invalidateQueries("contribuyente");
-        queryClient.invalidateQueries("contribuyentes");
-        onSuccess && onSuccess();
-      },
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["versions"] });
+      queryClient.invalidateQueries({ queryKey: ["contribuyente"] });
+      queryClient.invalidateQueries({ queryKey: ["contribuyentes"] });
+      onSuccess && onSuccess();
+    },
+  });
 };
 
 export const useCancelVersionMutation = (
@@ -95,16 +92,14 @@ export const useCancelVersionMutation = (
 ): UseMutationResult<void, ApiClientError, Version> => {
   const client = useSearchpeClient();
   const queryClient = useQueryClient();
-  return useMutation<void, ApiClientError, Version>(
-    async (version: Version) => {
+  return useMutation<void, ApiClientError, Version>({
+    mutationFn: async (version: Version) => {
       const newVersion: Version = { ...version, status: "CANCELLING" };
       await client.put<void>(versionResource, `${version.id}`, newVersion);
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries("versions");
-        onSuccess && onSuccess();
-      },
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["versions"] });
+      onSuccess && onSuccess();
+    },
+  });
 };

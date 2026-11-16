@@ -1,12 +1,14 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import {
+  Divider,
   Dropdown,
   DropdownItem,
-  DropdownSeparator,
-  KebabToggle,
+  DropdownList,
+  MenuToggle,
+  MenuToggleElement,
 } from "@patternfly/react-core";
-import { HelpIcon } from "@patternfly/react-icons";
+import { EllipsisVIcon, HelpIcon } from "@patternfly/react-icons";
 
 import {
   getAuthFormCookieName,
@@ -25,18 +27,10 @@ export const MobileDropdown: React.FC = () => {
   const [isKebabDropdownOpen, setIsKebabDropdownOpen] = useState(false);
   const [isAboutModalOpen, setAboutModalOpen] = useState(false);
 
-  const onKebabDropdownToggle = (isOpen: boolean) => {
-    setIsKebabDropdownOpen(isOpen);
-  };
-  const onKebabDropdownSelect = () => {
-    setIsKebabDropdownOpen((current) => !current);
-  };
-
   const toggleAboutModal = () => {
     setAboutModalOpen((current) => !current);
   };
 
-  //
   const profile = () => {
     navigate(Paths.profile);
   };
@@ -50,8 +44,7 @@ export const MobileDropdown: React.FC = () => {
     }
   };
 
-  //
-  let dropdownItems: JSX.Element[] = [];
+  let dropdownItems: React.ReactElement[] = [];
 
   if (!isAuthDisabled()) {
     if (isBasicDefaultAuth()) {
@@ -68,28 +61,37 @@ export const MobileDropdown: React.FC = () => {
       <DropdownItem key="logout" onClick={logout}>
         Logout
       </DropdownItem>,
-      <DropdownSeparator key="separator" />,
+      <Divider component="li" key="separator" />,
     ];
   }
 
   dropdownItems = [
     ...dropdownItems,
-    <DropdownItem key="about" onClick={toggleAboutModal}>
-      <HelpIcon />
-      &nbsp;About
+    <DropdownItem key="about" onClick={toggleAboutModal} icon={<HelpIcon />}>
+      About
     </DropdownItem>,
   ];
 
   return (
     <>
       <Dropdown
-        isPlain
-        position="right"
-        onSelect={onKebabDropdownSelect}
-        toggle={<KebabToggle onToggle={onKebabDropdownToggle} />}
         isOpen={isKebabDropdownOpen}
-        dropdownItems={dropdownItems}
-      />
+        onSelect={() => setIsKebabDropdownOpen(false)}
+        onOpenChange={(isOpen) => setIsKebabDropdownOpen(isOpen)}
+        popperProps={{ position: "right" }}
+        toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+          <MenuToggle
+            ref={toggleRef}
+            variant="plain"
+            aria-label="Application menu"
+            isExpanded={isKebabDropdownOpen}
+            onClick={() => setIsKebabDropdownOpen((current) => !current)}
+            icon={<EllipsisVIcon />}
+          />
+        )}
+      >
+        <DropdownList>{dropdownItems}</DropdownList>
+      </Dropdown>
       <AppAboutModal isOpen={isAboutModalOpen} onClose={toggleAboutModal} />
     </>
   );

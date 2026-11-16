@@ -1,10 +1,5 @@
 import React from "react";
-import {
-  PageSection,
-  PageSectionVariants,
-  TextContent,
-  Text,
-} from "@patternfly/react-core";
+import { PageSection, Content } from "@patternfly/react-core";
 
 export interface SimplePageSectionProps {
   title: string;
@@ -16,11 +11,11 @@ export const SimplePageSection: React.FC<SimplePageSectionProps> = ({
   description,
 }) => {
   return (
-    <PageSection variant={PageSectionVariants.light}>
-      <TextContent>
-        <Text component="h1">{title}</Text>
-        {description && <Text component="small">{description}</Text>}
-      </TextContent>
+    <PageSection hasBodyWrapper={false}>
+      <Content>
+        <Content component="h1">{title}</Content>
+        {description && <Content component="small">{description}</Content>}
+      </Content>
     </PageSection>
   );
 };

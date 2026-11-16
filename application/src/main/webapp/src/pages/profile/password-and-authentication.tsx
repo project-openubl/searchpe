@@ -12,43 +12,46 @@ import {
   TextInput,
 } from "@patternfly/react-core";
 
-import { useForm, Controller, FieldValues } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
-import { object, string, ref } from "yup";
-
-import { useDispatch } from "react-redux";
-import { alertActions } from "store/alert";
+import { object, string, ref, ObjectSchema } from "yup";
 
 import { AxiosError } from "axios";
 import { useUpdateCurrentUserPasswordMutation } from "queries/currentUser";
+import { FormFieldError } from "shared/components";
+import { useNotificationContext } from "shared/context";
 
 import {
   getAxiosErrorMessage,
-  getValidatedFromError,
   getValidatedFromErrorTouched,
 } from "utils/modelUtils";
 
+interface FormValues {
+  newPassword: string;
+  confirmNewPassword: string;
+}
+
+const validationSchema: ObjectSchema<FormValues> = object({
+  newPassword: string().trim().max(250).defined(),
+  confirmNewPassword: string()
+    .trim()
+    .max(250)
+    .oneOf([ref("newPassword")], "Passwords must match")
+    .defined(),
+});
+
 export const PasswordAndAuthentication: React.FC = () => {
-  const dispatch = useDispatch();
+  const { pushNotification } = useNotificationContext();
 
   // Form
-
-  const validationSchema = object().shape({
-    newPassword: string().trim().max(250),
-    confirmNewPassword: string()
-      .trim()
-      .max(250)
-      .oneOf([ref("newPassword"), null], "Passwords must match"),
-  });
 
   const {
     handleSubmit,
     formState: { errors, isSubmitting, isValidating, isValid, isDirty },
     control,
     reset,
-  } = useForm({
+  } = useForm<FormValues>({
     defaultValues: {
-      oldPassword: "",
       newPassword: "",
       confirmNewPassword: "",
     },
@@ -56,7 +59,7 @@ export const PasswordAndAuthentication: React.FC = () => {
     mode: "onChange",
   });
 
-  const onSubmit = (formValues: FieldValues) => {
+  const onSubmit = (formValues: FormValues) => {
     const newPassword = formValues.newPassword;
     return updatePasswordMutation.mutateAsync({ newPassword });
   };
@@ -65,7 +68,11 @@ export const PasswordAndAuthentication: React.FC = () => {
   const [updateError, setUpdateError] = useState<AxiosError>();
 
   const onUpdatePasswordSuccess = () => {
-    dispatch(alertActions.addAlert("success", "Éxito", "Password actualizado"));
+    pushNotification({
+      variant: "success",
+      title: "Éxito",
+      message: "Password actualizado",
+    });
     reset();
   };
 
@@ -93,8 +100,6 @@ export const PasswordAndAuthentication: React.FC = () => {
             label="New password"
             fieldId="newPassword"
             isRequired={true}
-            validated={getValidatedFromError(errors.newPassword)}
-            helperTextInvalid={errors?.newPassword?.message}
           >
             <Controller
               control={control}
@@ -104,8 +109,9 @@ export const PasswordAndAuthentication: React.FC = () => {
                 fieldState: { isTouched, error },
               }) => (
                 <TextInput
-                  onChange={onChange}
+                  onChange={(_event, value) => onChange(value)}
                   type="password"
+                  id="newPassword"
                   name={name}
                   aria-label="new-password"
                   aria-describedby="new-password"
@@ -115,13 +121,12 @@ export const PasswordAndAuthentication: React.FC = () => {
                 />
               )}
             />
+            <FormFieldError message={errors.newPassword?.message} />
           </FormGroup>
           <FormGroup
             label="Confirm new password"
             fieldId="confirmNewPassword"
             isRequired={true}
-            validated={getValidatedFromError(errors.confirmNewPassword)}
-            helperTextInvalid={errors?.confirmNewPassword?.message}
           >
             <Controller
               control={control}
@@ -131,8 +136,9 @@ export const PasswordAndAuthentication: React.FC = () => {
                 fieldState: { isTouched, error },
               }) => (
                 <TextInput
-                  onChange={onChange}
+                  onChange={(_event, value) => onChange(value)}
                   type="password"
+                  id="confirmNewPassword"
                   name={name}
                   aria-label="confirm-new-password"
                   aria-describedby="confirm-new-password"
@@ -142,6 +148,7 @@ export const PasswordAndAuthentication: React.FC = () => {
                 />
               )}
             />
+            <FormFieldError message={errors.confirmNewPassword?.message} />
           </FormGroup>
 
           <ActionGroup>

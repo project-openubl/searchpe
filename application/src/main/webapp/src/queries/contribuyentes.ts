@@ -1,4 +1,8 @@
-import { UseQueryResult, useQuery } from "react-query";
+import {
+  UseQueryResult,
+  keepPreviousData,
+  useQuery,
+} from "@tanstack/react-query";
 
 import { CoreClusterResource, CoreClusterResourceKind } from "api-client";
 import { Contribuyente, SearchResult } from "api/models";
@@ -49,11 +53,10 @@ export const useContribuyentesQuery = (
   const result = useQuery<SearchResult<Contribuyente>, ApiClientError>({
     queryKey: ["contribuyentes", params],
     queryFn: async (): Promise<SearchResult<Contribuyente>> => {
-      return (
-        await client.list<SearchResult<Contribuyente>>(resource, params)
-      ).data;
+      return (await client.list<SearchResult<Contribuyente>>(resource, params))
+        .data;
     },
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
     refetchOnMount: true,
   });
   return result;

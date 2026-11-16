@@ -1,13 +1,8 @@
 /* eslint-disable @typescript-eslint/ban-types */
 import { ApiResource } from "./resources/common";
 
-import type { AxiosStatic, AxiosInstance, ResponseType } from "axios";
-
-let axios: AxiosStatic;
-try {
-  axios = require("axios");
-  // eslint-disable-next-line no-empty
-} catch (e) {}
+import axios from "axios";
+import type { AxiosInstance, ResponseType } from "axios";
 
 export interface IClusterClient {
   list(resource: ApiResource, params?: object): Promise<any>;
