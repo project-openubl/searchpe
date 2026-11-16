@@ -3,7 +3,7 @@ kind: PostgresCluster
 metadata:
   name: postgresql
 spec:
-  postgresVersion: 14
+  postgresVersion: 17
   instances:
     - name: pg-1
       replicas: 1

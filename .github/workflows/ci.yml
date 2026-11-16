@@ -187,6 +187,7 @@ jobs:
     needs: [ application-container, operator-container, catalog-container ]
     name: UI E2E Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -227,6 +228,7 @@ jobs:
           docker push localhost:5000/searchpe-operator-bundle:0.0.0
           docker push localhost:5000/searchpe-operator-catalog:0.0.0
       - name: Install Searchpe operator
+        timeout-minutes: 10
         run: |
           kubectl create ns openubl
           
@@ -237,6 +239,7 @@ jobs:
           # Verify subscription
           kubectl get csv -n olm
       - name: Install Postgresql Operator
+        timeout-minutes: 10
         run: |
           kubectl create -f https://operatorhub.io/install/postgresql.yaml
           
@@ -248,6 +251,7 @@ jobs:
             sleep 10;
           done
       - name: Install DB
+        timeout-minutes: 10
         run: |
           kubectl -n openubl apply -f scripts/postgresql.yaml
           
@@ -260,14 +264,15 @@ jobs:
           done
           echo "Resources exists, now wait for them to be ready"
 
-          kubectl wait pods -l "postgres-operator.crunchydata.com/data"="pgbackrest" -n openubl --for condition=Ready --timeout=-1s
-          kubectl wait pods -l "postgres-operator.crunchydata.com/data"="postgres" -n openubl --for condition=Ready --timeout=-1s
+          kubectl wait pods -l "postgres-operator.crunchydata.com/data"="pgbackrest" -n openubl --for condition=Ready --timeout=8m
+          kubectl wait pods -l "postgres-operator.crunchydata.com/data"="postgres" -n openubl --for condition=Ready --timeout=8m
       - name: Install Searchpe
+        timeout-minutes: 10
         run: |
           kubectl -n openubl apply -f scripts/searchpe.yaml
           sleep 10;
           
-          kubectl wait pods --selector "app.kubernetes.io/name"="searchpe" -n openubl --for condition=Ready --timeout=-1s
+          kubectl wait pods --selector "app.kubernetes.io/name"="searchpe" -n openubl --for condition=Ready --timeout=8m
 
           external_ip=""
           while [[ -z $external_ip ]]
@@ -281,6 +286,7 @@ jobs:
           export endpoint=$(minikube ip);
           echo "CYPRESS_BASE_URL=https://$endpoint" >> $GITHUB_ENV
       - name: Cypress run
+        timeout-minutes: 20
         uses: cypress-io/github-action@v7
         with:
           working-directory: application/src/main/webapp
@@ -288,6 +294,16 @@ jobs:
           browser: chrome
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Dump cluster state
+        if: failure()
+        run: |
+          kubectl get csv,subscription,installplan -A || true
+          kubectl get postgrescluster,searchpe,all,pvc,ingress -n openubl -o wide || true
+          kubectl describe postgrescluster -n openubl || true
+          kubectl get events -A --sort-by=.lastTimestamp | tail -100 || true
+          kubectl logs -n operators -l postgres-operator.crunchydata.com/control-plane --tail=100 || true
+          kubectl logs -n olm -l olm.catalogSource=searchpe-catalog-source --tail=50 || true
+          kubectl logs -n openubl --all-containers --prefix -l app.kubernetes.io/name=searchpe --tail=100 || true
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
