@@ -197,12 +197,6 @@ jobs:
           pattern: artifacts-*
           path: artifacts
           merge-multiple: true
-      - name: Load and config images
-        run: |
-          docker load -i artifacts/searchpe-application-container-image.tar
-          docker load -i artifacts/searchpe-operator-container-image.tar
-          docker load -i artifacts/searchpe-bundle-container-image.tar
-          docker load -i artifacts/searchpe-catalog-container-image.tar
       - name: Setup Minikube
         uses: manusa/actions-setup-minikube@v2.19.0
         with:
@@ -210,6 +204,12 @@ jobs:
           kubernetes version: v1.37.2
           start args: --insecure-registry "10.0.0.0/24" --addons=registry,ingress
           github token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Load and config images
+        run: |
+          docker load -i artifacts/searchpe-application-container-image.tar
+          docker load -i artifacts/searchpe-operator-container-image.tar
+          docker load -i artifacts/searchpe-bundle-container-image.tar
+          docker load -i artifacts/searchpe-catalog-container-image.tar
       - name: Configure Minikube
         run: |
           # Install OLM
