@@ -22,7 +22,7 @@ release:
   github:
     owner: project-openubl
     name: searchpe
-    branch: master
+    branch: main
     overwrite: true
     discussionCategoryName: Announcements
     issues:

@@ -3,7 +3,7 @@ name: Azure cloud
 on:
   push:
     branches:
-      [ master ]
+      [ main ]
     paths:
       - '**'
       - '.github/workflows/azure.yml'
