@@ -1,0 +1,234 @@
+apiVersion: searchpe.openubl.io/v1alpha1
+kind: Searchpe
+metadata:
+  name: full
+  namespace: default
+spec:
+  additionalOptions:
+    - name: QUARKUS_LOG_LEVEL
+      value: DEBUG
+    - name: SEARCHPE_TOKEN
+      secret:
+        key: token
+        name: searchpe-options
+  basicAuth:
+    enabled: true
+  db:
+    passwordSecret:
+      key: password
+      name: db
+    url: jdbc:postgresql://db:5432/searchpe
+    usernameSecret:
+      key: user
+      name: db
+  hostname:
+    hostname: searchpe.example.com
+  http:
+    tlsSecret: searchpe-tls
+  image: quay.io/example/searchpe:custom
+  imagePullSecrets:
+    - name: registry-credentials
+  instances: 2
+  oidc:
+    clientId: searchpe
+    credentialsSecret:
+      key: secret
+      name: oidc
+    enabled: true
+    serverUrl: https://keycloak.example.com/realms/openubl
+  sunat:
+    padronReducidoCron: 0 0 1 * * ?
+    padronReducidoUrl: https://example.com/padron.zip
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: full
+    openubl-operator/cluster: searchpe
+  name: full-searchpe-deployment
+  namespace: default
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 2
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/managed-by: searchpe-operator
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/managed-by: searchpe-operator
+        app.kubernetes.io/name: full
+        openubl-operator/cluster: searchpe
+    spec:
+      containers:
+        - env:
+            - name: QUARKUS_LOG_LEVEL
+              value: DEBUG
+            - name: SEARCHPE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  key: token
+                  name: searchpe-options
+            - name: QUARKUS_HTTP_SSL_CERTIFICATE_FILE
+              value: /mnt/certificates/tls.crt
+            - name: QUARKUS_HTTP_SSL_CERTIFICATE_KEY_FILE
+              value: /mnt/certificates/tls.key
+            - name: QUARKUS_HTTP_INSECURE_REQUESTS
+              value: redirect
+            - name: QUARKUS_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  key: user
+                  name: db
+            - name: QUARKUS_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: db
+            - name: QUARKUS_DATASOURCE_JDBC_URL
+              value: jdbc:postgresql://db:5432/searchpe
+            - name: QUARKUS_HTTP_AUTH_SESSION_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: encryption-key
+                  name: full-basic-auth-searchpe-secret
+                  optional: false
+            - name: QUARKUS_OIDC_AUTH_SERVER_URL
+              value: https://keycloak.example.com/realms/openubl
+            - name: QUARKUS_OIDC_CLIENT_ID
+              value: searchpe
+            - name: QUARKUS_OIDC_CREDENTIALS_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: secret
+                  name: oidc
+            - name: SEARCHPE_SUNAT_PADRONREDUCIDOURL
+              value: https://example.com/padron.zip
+            - name: SEARCHPE_SCHEDULED_CRON
+              value: 0 0 1 * * ?
+            - name: SEARCHPE_WORKSPACE_DIRECTORY
+              value: /mnt/workspace
+            - name: QUARKUS_PROFILE
+              value: prod,basic,oidc
+          image: quay.io/example/searchpe:custom
+          imagePullPolicy: Always
+          livenessProbe:
+            failureThreshold: 150
+            httpGet:
+              path: /q/health/live
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: 20
+            periodSeconds: 2
+            successThreshold: 1
+            timeoutSeconds: 1
+          name: searchpe
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+            - containerPort: 8443
+              name: https
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 250
+            httpGet:
+              path: /q/health/ready
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: 20
+            periodSeconds: 2
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /mnt/certificates
+              name: searchpe-tls-certificates
+            - mountPath: /mnt/workspace
+              name: searchpe-workspace
+      dnsPolicy: ClusterFirst
+      imagePullSecrets:
+        - name: registry-credentials
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - name: searchpe-tls-certificates
+          secret:
+            defaultMode: 420
+            optional: false
+            secretName: searchpe-tls
+        - emptyDir: {}
+          name: searchpe-workspace
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: full
+    openubl-operator/cluster: searchpe
+  name: full-searchpe-service
+  namespace: default
+spec:
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+    - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+    - port: 8443
+      protocol: TCP
+      targetPort: 8443
+  selector:
+    app.kubernetes.io/managed-by: searchpe-operator
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: HTTPS
+    route.openshift.io/termination: passthrough
+  labels:
+    app.kubernetes.io/name: full
+    openubl-operator/cluster: searchpe
+  name: full-searchpe-ingress
+  namespace: default
+spec:
+  defaultBackend:
+    service:
+      name: full-searchpe-service
+      port:
+        number: 8443
+  rules:
+    - host: searchpe.example.com
+      http:
+        paths:
+          - backend:
+              service:
+                name: full-searchpe-service
+                port:
+                  number: 8443
+            pathType: ImplementationSpecific
+---
+apiVersion: v1
+data:
+  encryption-key: MzQwNTg0NTktNTU4Yi00NWY1LWJlZGQtMWU0NzdhYWNhMjNl
+kind: Secret
+metadata:
+  labels:
+    app.kubernetes.io/name: full
+    openubl-operator/cluster: searchpe
+  name: full-basic-auth-searchpe-secret
+  namespace: default
+type: Opaque
