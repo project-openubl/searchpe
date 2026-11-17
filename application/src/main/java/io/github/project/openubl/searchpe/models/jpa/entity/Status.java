@@ -40,4 +40,22 @@ public enum Status {
             case SCHEDULED, DOWNLOADING, UNZIPPING, IMPORTING, INDEXING, DELETING, CANCELLING -> false;
         };
     }
+
+    /**
+     * @return whether an import job is working on the version, as opposed to waiting to start or being over
+     */
+    public boolean isImportRunning() {
+        return switch (this) {
+            case DOWNLOADING, UNZIPPING, IMPORTING, INDEXING -> true;
+            case SCHEDULED, ERROR, CANCELLED, COMPLETED, DELETING, CANCELLING -> false;
+        };
+    }
+
+    /**
+     * @return the status a cancellation request moves the version to: a running import is asked to stop, and the
+     * status watcher of the replica running it records CANCELLED; anything else is cancelled right away
+     */
+    public Status afterCancellationRequest() {
+        return isImportRunning() || this == CANCELLING ? CANCELLING : CANCELLED;
+    }
 }
