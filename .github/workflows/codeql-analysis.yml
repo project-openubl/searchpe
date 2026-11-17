@@ -20,6 +20,11 @@ on:
   schedule:
     - cron: '35 23 * * 2'
 
+# A new push to a pull request cancels the run of the previous one
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   analyze:
     name: Analyze
