@@ -11,6 +11,8 @@ create table CONTRIBUYENTE_VERSION_1 partition of CONTRIBUYENTE for values from 
 create table CONTRIBUYENTE_VERSION_2 partition of CONTRIBUYENTE for values from (2) TO (3);
 create table CONTRIBUYENTE_VERSION_3 partition of CONTRIBUYENTE for values from (3) TO (4);
 
-insert into CONTRIBUYENTE(version_id, ruc, nombre)
-values (3, '11111111111', 'mi empresa1'),
-       (3, '22222222222', 'mi empresa2');
+insert into CONTRIBUYENTE(version_id, ruc, dni, nombre)
+values (3, '11111111111', null, 'mi empresa1'),
+       (3, '22222222222', null, 'mi empresa2'),
+       -- Natural person whose RUC check digit is 0
+       (3, '10000000090', '00000009', 'mi persona1');

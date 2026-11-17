@@ -55,6 +55,25 @@ public class ContribuyenteResourceTest extends AbstractBaseTest {
     }
 
     @Test
+    public void getContribuyenteByDni() {
+        // Given
+        String dni = "00000009";
+
+        // When
+        givenAuth("alice")
+                .header("Content-Type", "application/json")
+                .when()
+                .get("/" + dni)
+                .then()
+                .statusCode(200)
+                .body(
+                        "ruc", is("10000000090"),
+                        "dni", is(dni),
+                        "nombre", is("mi persona1")
+                );
+    }
+
+    @Test
     public void getContribuyente_notFound() {
         givenAuth("alice")
                 .header("Content-Type", "application/json")
