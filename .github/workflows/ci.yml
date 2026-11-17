@@ -156,6 +156,19 @@ jobs:
           
           groovy scripts/enrichCSV.groovy operator/target/bundle/searchpe-operator/manifests/searchpe-operator.clusterserviceversion.yaml 0.0.0
           sed -i "/  annotations: ''/d" ./operator/target/bundle/searchpe-operator/manifests/searchpe-operator.clusterserviceversion.yaml
+      # The checks both catalogs run on a bundle (check_osdk_bundle_validate_*), as the release does
+      - name: Validate the operator bundle
+        env:
+          OPERATOR_SDK_VERSION: v1.42.3
+          OPERATOR_SDK_SHA256: 887a3bb0d63ccc4ca47a522d0c8ffac56d9d5246f6a2bd886b4ed23eb2e2672f
+        run: |
+          curl -sSfLo "$RUNNER_TEMP/operator-sdk" \
+            "https://github.com/operator-framework/operator-sdk/releases/download/$OPERATOR_SDK_VERSION/operator-sdk_linux_amd64"
+          echo "$OPERATOR_SDK_SHA256  $RUNNER_TEMP/operator-sdk" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/operator-sdk"
+          bundle=operator/target/bundle/searchpe-operator
+          "$RUNNER_TEMP/operator-sdk" bundle validate "$bundle" --select-optional name=operatorhub
+          "$RUNNER_TEMP/operator-sdk" bundle validate "$bundle" --select-optional suite=operatorframework
       - name: Init local Registry
         run: |
           docker run -d -p 5000:5000 --name registry registry:2

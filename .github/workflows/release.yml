@@ -1,234 +1,273 @@
 name: Release
 
+# Runs when a release is published. release-tools' release-searchpe workflow creates the release
+# (tag and notes) once CI passed on the commit, waits for this workflow and then opens the
+# OperatorHub pull requests from the bundle attached here.
+#
+# The tag is the version: the poms on main keep a development version and every job sets the
+# tag's. Publishes:
+# - quay.io/projectopenubl/searchpe and searchpe-operator, native, for amd64 and arm64:
+#   vX.Y.Z always; latest and vX only for the highest stable release (of its major for vX).
+# - the Helm chart to oci://ghcr.io/project-openubl/charts/searchpe.
+# - release assets: the JVM distribution, the operator bundle, the Helm chart and SHA256SUMS.
+#
+# Running it again for the same tag is safe: images already pushed are kept and the assets are
+# replaced. To retry with a fixed workflow, dispatch it from main with the tag.
+
 on:
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
-      version:
-        description: "Release version"
-        default: "E.g. 4.0.0"
+      tag:
+        description: "Existing release tag to publish again, e.g. v4.2.0"
         required: true
-      next:
-        description: "Next version"
-        default: "E.g. 5.0.0-SNAPSHOT"
-        required: false
+        type: string
+
+# release-tools finds the run of a release by this name
+run-name: Release ${{ github.event.release.tag_name || inputs.tag }}
+
+concurrency:
+  group: release-${{ github.event.release.tag_name || inputs.tag }}
+
+permissions:
+  contents: read
+
+env:
+  TAG: ${{ github.event.release.tag_name || inputs.tag }}
+  REGISTRY: quay.io/projectopenubl
 
 jobs:
   prepare:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v6
-        with:
-          java-version: 25
-          distribution: temurin
-          cache: maven
-      - name: Set release version ${{ github.event.inputs.version }}
+      - name: Version
+        id: version
         run: |
-          mvn -B versions:set versions:commit -DnewVersion=$NEW_VERSION
-        env:
-          NEW_VERSION: ${{ github.event.inputs.version }}
-      - name: Commit and Push
-        uses: project-openubl/.github/actions/commit@master
-        with:
-          commit_message: "🏁 Releasing version ${{ github.event.inputs.version }}"
+          version_re='^v[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc)\.[0-9]+)?$'
+          if [[ ! "$TAG" =~ $version_re ]]; then
+            echo "::error::$TAG is not vX.Y.Z or vX.Y.Z-alpha.N, -beta.N, -rc.N"
+            exit 1
+          fi
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
 
-  application:
-    needs: [ prepare ]
-    runs-on: ubuntu-latest
+  images:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [searchpe, searchpe-operator]
+        arch: [amd64, arm64]
+        include:
+          - image: searchpe
+            module: application
+            profiles: native,ui
+          - image: searchpe-operator
+            module: operator
+            profiles: native
+          - arch: amd64
+            runner: ubuntu-latest
+          # Native images are built for the runner's architecture
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      IMAGE: quay.io/projectopenubl/${{ matrix.image }}:${{ github.event.release.tag_name || inputs.tag }}-${{ matrix.arch }}
     steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: main
-      - uses: actions/setup-java@v6
-        with:
-          java-version: 25
-          distribution: temurin
-          cache: maven
-      - name: Login to Quay.io
-        uses: docker/login-action@v4
+      - uses: docker/login-action@v4
         with:
           registry: quay.io
           username: ${{ secrets.QUAYIO_USERNAME }}
           password: ${{ secrets.QUAYIO_PASSWORD }}
-      - name: Release container images
+      - name: Already pushed?
+        id: pushed
         run: |
-          mvn -U -B package -DskipTests \
-          -Dquarkus.native.container-build=true \
-          -Dquarkus.container-image.push=false \
-          -Dquarkus.container-image.build=true \
-          -Dquarkus.container-image.registry=quay.io \
-          -Dquarkus.container-image.group=projectopenubl \
-          -Dquarkus.container-image.name=searchpe \
-          -Dquarkus.container-image.tag=latest \
-          -P native,ui \
-          -pl application
-
-          # Identify major version
-          major=$(echo "${{ github.event.inputs.version }}" | cut -d. -f1)
-
-          # Tag images
-          docker tag quay.io/projectopenubl/searchpe:latest quay.io/projectopenubl/searchpe:latest
-          docker tag quay.io/projectopenubl/searchpe:latest quay.io/projectopenubl/searchpe:v$major
-          docker tag quay.io/projectopenubl/searchpe:latest quay.io/projectopenubl/searchpe:v${{ github.event.inputs.version }}
-
-          # Push images
-          docker image push --all-tags quay.io/projectopenubl/searchpe
-
-  #  helm:
-  #    needs: [ prepare ]
-  #    runs-on: ubuntu-latest
-  #    steps:
-  #      - uses: actions/checkout@v7
-  #        with:
-  #          ref: main
-  #      - uses: actions/setup-java@v6
-  #        with:
-  #          java-version: 25
-  #          distribution: temurin
-  #          cache: maven
-  #      - uses: azure/setup-helm@v5
-  #      - name: Release Helm
-  #        run: |
-  #          mvn package -DskipTests
-  #          mvn process-resources
-  #
-  #          helm plugin install https://github.com/chartmuseum/helm-push
-  #          helm repo add \
-  #          --username ${{ secrets.GITLAB_REGISTRY_USERNAME }} \
-  #          --password ${{ secrets.GITLAB_REGISTRY_TOKEN }} \
-  #          openubl https://gitlab.com/api/v4/projects/36554180/packages/helm/stable
-  #          helm cm-push --force application/target/helm openubl
-
-  operator:
-    needs: [ prepare ]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
+          if docker buildx imagetools inspect "$IMAGE" >/dev/null 2>&1; then
+            echo "::notice::$IMAGE is already pushed"
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: ${{ !steps.pushed.outputs.pushed }}
+        uses: actions/checkout@v7
         with:
-          ref: main
-      - uses: actions/setup-java@v6
+          ref: ${{ env.TAG }}
+      - if: ${{ !steps.pushed.outputs.pushed }}
+        uses: actions/setup-java@v6
         with:
           java-version: 25
           distribution: temurin
           cache: maven
-      - name: Login to Quay.io
-        uses: docker/login-action@v4
+      - if: ${{ !steps.pushed.outputs.pushed }}
+        run: mvn -B -q versions:set -DnewVersion="$VERSION" -DgenerateBackupPoms=false
+      - name: Build ${{ env.IMAGE }}
+        if: ${{ !steps.pushed.outputs.pushed }}
+        env:
+          MODULE: ${{ matrix.module }}
+          PROFILES: ${{ matrix.profiles }}
+          ARCH: ${{ matrix.arch }}
+          NAME: ${{ matrix.image }}
+        run: |
+          mvn -U -B package -DskipTests \
+            -Dquarkus.native.container-build=true \
+            -Dquarkus.container-image.build=true \
+            -Dquarkus.container-image.push=false \
+            -Dquarkus.container-image.registry=quay.io \
+            -Dquarkus.container-image.group=projectopenubl \
+            -Dquarkus.container-image.name="$NAME" \
+            -Dquarkus.container-image.tag="$TAG-$ARCH" \
+            -Dquarkus.jib.platforms="linux/$ARCH" \
+            -Doperator.searchpe.image="$REGISTRY/searchpe:$TAG" \
+            -P "$PROFILES" \
+            -pl "$MODULE"
+      - if: ${{ !steps.pushed.outputs.pushed }}
+        run: docker push "$IMAGE"
+
+  manifests:
+    needs: [prepare, images]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image: [searchpe, searchpe-operator]
+    # One release at a time moves the floating tags of an image, from the tags that exist then
+    concurrency:
+      group: floating-tags-${{ matrix.image }}
+    steps:
+      - uses: docker/login-action@v4
         with:
           registry: quay.io
           username: ${{ secrets.QUAYIO_USERNAME }}
           password: ${{ secrets.QUAYIO_PASSWORD }}
-      - name: Release container images
+      # Pre-releases and patches of older lines don't move latest or vX
+      - name: Floating tags
+        id: floating
         run: |
-          mvn -U -B package -DskipTests \
-          -Dquarkus.native.container-build=true \
-          -Dquarkus.container-image.push=false \
-          -Dquarkus.container-image.build=true \
-          -Dquarkus.container-image.registry=quay.io \
-          -Dquarkus.container-image.group=projectopenubl \
-          -Dquarkus.container-image.name=searchpe-operator \
-          -Dquarkus.container-image.tag=latest \
-          -Dquarkus.operator-sdk.bundle.package-name=searchpe-operator \
-          -Dquarkus.operator-sdk.bundle.channels=alpha \
-          -Doperator.searchpe.image=quay.io/projectopenubl/searchpe:v${{ github.event.inputs.version }} \
-          -P native \
-          -pl operator
+          stable_re='^v[0-9]+\.[0-9]+\.[0-9]+$'
+          floating=""
+          if [[ "$TAG" =~ $stable_re ]]; then
+            major=$(cut -d. -f1 <<< "$TAG")
+            tags=$(git ls-remote --tags --refs "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git" 'v*' |
+              sed 's#.*refs/tags/##' | grep -E "$stable_re" || true)
+            stable=$(printf '%s\n' "$tags" "$TAG" | sed '/^$/d' | sort -uV)
+            if [ "$(tail -1 <<< "$stable")" = "$TAG" ]; then
+              floating+=" latest"
+            fi
+            if [ "$(grep "^$major\." <<< "$stable" | tail -1)" = "$TAG" ]; then
+              floating+=" $major"
+            fi
+          fi
+          echo "floating=${floating# }" >> "$GITHUB_OUTPUT"
+          echo "::notice::$TAG moves: ${floating:-no floating tags}"
+      - name: Multi-arch ${{ matrix.image }}:${{ env.TAG }}
+        env:
+          NAME: ${{ matrix.image }}
+          FLOATING: ${{ steps.floating.outputs.floating }}
+        run: |
+          image="$REGISTRY/$NAME"
+          tags=(-t "$image:$TAG")
+          for floating in $FLOATING; do
+            tags+=(-t "$image:$floating")
+          done
+          docker buildx imagetools create "${tags[@]}" "$image:$TAG-amd64" "$image:$TAG-arm64"
+          docker buildx imagetools inspect "$image:$TAG"
 
-          # Tag images
-          docker tag quay.io/projectopenubl/searchpe-operator:latest quay.io/projectopenubl/searchpe-operator:v${{ github.event.inputs.version }}
-
-          # Push images
-          docker image push --all-tags quay.io/projectopenubl/searchpe-operator
-
-  publish-operator:
-    needs: [ application, operator ]
+  assets:
+    needs: prepare
     runs-on: ubuntu-latest
+    permissions:
+      # Release assets
+      contents: write
+      # The Helm chart on ghcr.io
+      packages: write
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      CHARTS: oci://ghcr.io/${{ github.repository_owner }}/charts
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: main
-          path: searchpe
+          ref: ${{ env.TAG }}
       - uses: actions/setup-java@v6
         with:
           java-version: 25
           distribution: temurin
           cache: maven
-      - name: Setup other tools
+      - uses: azure/setup-helm@v5
+      - name: Setup groovy
+        run: sudo apt-get update -q && sudo apt-get install -y groovy
+      - run: mvn -B -q versions:set -DnewVersion="$VERSION" -DgenerateBackupPoms=false
+      - run: mkdir dist
+      - name: Distribution and OpenAPI schema
         run: |
-          sudo apt-get install -y groovy
-      - name: Prepare files
-        working-directory: searchpe
+          mvn -B package -DskipTests -P ui,distribution -pl application \
+            -Dquarkus.smallrye-openapi.store-schema-directory=target/openapi
+          cp "application/target/distributions/searchpe-$VERSION.tar.gz" "application/target/distributions/searchpe-$VERSION.zip" dist/
+          cp application/target/openapi/openapi.yaml dist/
+      # The bundle the catalogs get: release-tools sets spec.replaces for each catalog
+      - name: Operator bundle
         run: |
-          mvn package -DskipTests \
-          -Doperator.searchpe.image=quay.io/projectopenubl/searchpe:v${{ github.event.inputs.version }} \
-          -Dquarkus.operator-sdk.bundle.package-name=searchpe-operator \
-          -Dquarkus.operator-sdk.bundle.channels=alpha \
-          -Dquarkus.application.version=v${{ github.event.inputs.version }} \
-          -pl operator
+          mvn -B package -DskipTests \
+            -Dquarkus.container-image.tag="$TAG" \
+            -Doperator.searchpe.image="$REGISTRY/searchpe:$TAG" \
+            -Dquarkus.operator-sdk.bundle.package-name=searchpe-operator \
+            -Dquarkus.operator-sdk.bundle.channels=alpha \
+            -Dquarkus.application.version="$VERSION" \
+            -pl operator
+          csv=operator/target/bundle/searchpe-operator/manifests/searchpe-operator.clusterserviceversion.yaml
+          groovy scripts/enrichCSV.groovy "$csv" "$VERSION"
+          sed -i "/  annotations: ''/d" "$csv"
+          grep -q "image: $REGISTRY/searchpe-operator:$TAG" "$csv" || {
+            echo "::error::The CSV does not deploy $REGISTRY/searchpe-operator:$TAG"
+            exit 1
+          }
+      # The checks both catalogs run on a bundle (check_osdk_bundle_validate_*)
+      - name: Validate the operator bundle
+        env:
+          OPERATOR_SDK_VERSION: v1.42.3
+          OPERATOR_SDK_SHA256: 887a3bb0d63ccc4ca47a522d0c8ffac56d9d5246f6a2bd886b4ed23eb2e2672f
+        run: |
+          curl -sSfLo "$RUNNER_TEMP/operator-sdk" \
+            "https://github.com/operator-framework/operator-sdk/releases/download/$OPERATOR_SDK_VERSION/operator-sdk_linux_amd64"
+          echo "$OPERATOR_SDK_SHA256  $RUNNER_TEMP/operator-sdk" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/operator-sdk"
+          bundle=operator/target/bundle/searchpe-operator
+          "$RUNNER_TEMP/operator-sdk" bundle validate "$bundle" --select-optional name=operatorhub
+          "$RUNNER_TEMP/operator-sdk" bundle validate "$bundle" --select-optional suite=operatorframework
+          tar -C operator/target/bundle -czf "dist/searchpe-operator-bundle-$VERSION.tar.gz" searchpe-operator
+      - name: Helm chart
+        run: |
+          helm lint application/target/helm
+          helm package application/target/helm --destination dist
+      - name: Push the Helm chart
+        env:
+          GH_ACTOR: ${{ github.actor }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          helm registry login ghcr.io --username "$GH_ACTOR" --password-stdin <<< "$GH_TOKEN"
+          if helm show chart "$CHARTS/searchpe" --version "$VERSION" >/dev/null 2>&1; then
+            echo "::notice::The searchpe $VERSION chart is already pushed"
+          else
+            helm push "dist/searchpe-$VERSION.tgz" "$CHARTS"
+          fi
+      - name: Upload the release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          (cd dist && sha256sum -- * > SHA256SUMS)
+          cat dist/SHA256SUMS
+          gh release upload "$TAG" dist/* --clobber
 
-          groovy scripts/enrichCSV.groovy operator/target/bundle/searchpe-operator/manifests/searchpe-operator.clusterserviceversion.yaml ${{ github.event.inputs.version }}
-          sed -i "/  annotations: ''/d" ./operator/target/bundle/searchpe-operator/manifests/searchpe-operator.clusterserviceversion.yaml
-      - name: Create PR community-operators
-        uses: project-openubl/.github/actions/pull-request-operator@master
-        with:
-          operator_name: searchpe-operator
-          operator_version: ${{ github.event.inputs.version }}
-          operator_bundle_directory: searchpe/operator/target/bundle/searchpe-operator
-          pr_body_template_url: https://raw.githubusercontent.com/project-openubl/community-operators/main/docs/pull_request_template.md
-          repository_origin_owner: project-openubl
-          repository_origin_name: community-operators
-          repository_upstream_owner: k8s-operatorhub
-          repository_upstream_name: community-operators
-          repository_default_branch: main
-          github_pat: ${{ secrets.GH_PAT }}
-
-  release:
-    needs: [ publish-operator ]
+  summary:
+    needs: [prepare, manifests, assets]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: main
-          fetch-depth: 0
-      - uses: actions/setup-java@v6
-        with:
-          java-version: 25
-          distribution: temurin
-          cache: maven
-      - name: Build distribution
-        run: mvn package -DskipTests -P ui,distribution -pl application
-
-      - name: JReleaser - release
-        uses: jreleaser/release-action@v2
-        env:
-          JRELEASER_GITHUB_TOKEN: ${{ secrets.GH_PAT }}
-          JRELEASER_PROJECT_VERSION: ${{ github.event.inputs.version }}
-          JRELEASER_PRERELEASE_PATTERN: .*(?:Alpha|alpha|Beta|beta)[0-9]
-          JRELEASER_ZULIP_API_KEY: ${{ secrets.JRELEASER_ZULIP_API_KEY }}
-          JRELEASER_TWITTER_CONSUMER_KEY: ${{ secrets.JRELEASER_TWITTER_CONSUMER_KEY }}
-          JRELEASER_TWITTER_CONSUMER_SECRET: ${{ secrets.JRELEASER_TWITTER_CONSUMER_SECRET }}
-          JRELEASER_TWITTER_ACCESS_TOKEN: ${{ secrets.JRELEASER_TWITTER_ACCESS_TOKEN }}
-          JRELEASER_TWITTER_ACCESS_TOKEN_SECRET: ${{ secrets.JRELEASER_TWITTER_ACCESS_TOKEN_SECRET }}
-          JRELEASER_SLACK_TOKEN: ${{ secrets.JRELEASER_SLACK_TOKEN }}
-          JRELEASER_SLACK_WEBHOOK: ${{ secrets.JRELEASER_SLACK_WEBHOOK }}
-          JRELEASER_MAIL_PASSWORD: ${{ secrets.JRELEASER_MAIL_PASSWORD }}
-          JRELEASER_ARTICLE_GITHUB_TOKEN: ${{ secrets.GH_PAT }}
-      - name: JReleaser - generate log
-        if: always()
-        shell: bash
-        run: tar -czvf jreleaser-log.tgz out/
-      - name: JReleaser - upload log
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: jreleaser-log
-          path: 'jreleaser-log.tgz'
-
-      - name: Set version ${{ github.event.inputs.next }}
+      - env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          CHARTS: oci://ghcr.io/${{ github.repository_owner }}/charts
         run: |
-          mvn -B versions:set versions:commit -DnewVersion=$NEW_VERSION
-        env:
-          NEW_VERSION: ${{ github.event.inputs.next }}
-      - name: Commit and Push
-        uses: project-openubl/.github/actions/commit@master
-        with:
-          commit_message: "⬆️ Next version ${{ github.event.inputs.next }}"
+          {
+            echo "# searchpe $TAG"
+            echo
+            echo "- \`$REGISTRY/searchpe:$TAG\`, \`$REGISTRY/searchpe-operator:$TAG\` (amd64, arm64)"
+            echo "- \`helm install searchpe $CHARTS/searchpe --version $VERSION\`"
+          } >> "$GITHUB_STEP_SUMMARY"

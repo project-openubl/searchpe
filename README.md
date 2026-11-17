@@ -15,6 +15,15 @@ Microservicio que expone los datos provenientes del `padrón reducido` de la SUN
 - [Documentación](https://project-openubl.github.io)
 - [Discusiones](https://github.com/project-openubl/searchpe/discussions)
 
+## Releasing
+
+Releases are made with the
+[Release searchpe](https://github.com/project-openubl/release-tools#releasing-searchpe) workflow of
+release-tools. It tags this repository and publishes the GitHub release, which runs
+[release.yml](./.github/workflows/release.yml): the images, the Helm chart and the release assets. Then
+release-tools opens the OperatorHub pull requests. Don't create releases by hand: release-tools checks
+CI first.
+
 ## License
 
 - [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0)

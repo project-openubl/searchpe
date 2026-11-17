@@ -39,6 +39,13 @@ annotations.description = 'Searchpe is an enterprise solution for managing natur
 annotations.createdAt = LocalDate.now().toString()
 yaml.metadata.annotations = annotations
 
+// The operator and searchpe images are published for both architectures
+def labels = yaml.metadata.labels ?: [:]
+labels['operatorframework.io/arch.amd64'] = 'supported'
+labels['operatorframework.io/arch.arm64'] = 'supported'
+labels['operatorframework.io/os.linux'] = 'supported'
+yaml.metadata.labels = labels
+
 // yaml.spec.install.spec.deployments[0].spec.template.spec.containers[0].image = 'quay.io/projectopenubl/searchpe-operator:v' + version
 yaml.spec.version = version
 yaml.spec.customresourcedefinitions.owned[0].displayName = 'Searchpe'

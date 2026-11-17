@@ -5,10 +5,10 @@ name: searchpe
 description: ${project.description}
 version: ${project.version}
 appVersion: ${project.version}
-home: ${project.url}
-icon: https://raw.githubusercontent.com/project-openubl/searchpe/main/src/main/resources/META-INF/branding/logo.png
+home: https://project-openubl.github.io/
+icon: https://raw.githubusercontent.com/project-openubl/searchpe/main/application/src/main/resources/META-INF/branding/logo.png
 sources:
-  - ${project.scm.url}
+  - https://github.com/project-openubl/searchpe
 keywords:
   - searchpe
   - openubl

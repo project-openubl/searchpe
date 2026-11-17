@@ -3,23 +3,23 @@
 ## TL;DR
 
 ```
-helm repo add openubl https://gitlab.com/api/v4/projects/36554180/packages/helm/stable
-helm install my-release openubl/searchpe
+helm install my-release oci://ghcr.io/project-openubl/charts/searchpe
 ```
 
 ## Pre requisites
 
 - Kubernetes 1.19+
-- Helm 3.2.0+
+- Helm 3.8.0+ (OCI charts)
 
 ## Installing the chart
 
 To install the chart with the release name `my-release`:
 
 ```
-helm repo add bitnami https://gitlab.com/api/v4/projects/36554180/packages/helm/stable
-helm install my-release openubl/searchpe
+helm install my-release oci://ghcr.io/project-openubl/charts/searchpe --version <version>
 ```
+
+Every release publishes the chart with the release's version, e.g. `4.2.0` for `v4.2.0`.
 
 > Tip: List all releases using `helm list`
 
