@@ -17,11 +17,7 @@
 package io.github.project.openubl.searchpe.jobs.clean;
 
 import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
-import io.github.project.openubl.searchpe.models.jpa.entity.Status;
-import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.services.VersionService;
-import io.quarkus.narayana.jta.QuarkusTransaction;
-import io.quarkus.narayana.jta.RunOptions;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.jboss.logging.Logger;
 import org.quartz.Job;
@@ -29,17 +25,13 @@ import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 
 import jakarta.inject.Inject;
-import jakarta.transaction.UserTransaction;
-import java.util.Objects;
-import java.util.Optional;
+import java.time.Instant;
+import java.util.Date;
 
 @RegisterForReflection
 public class DeleteVersionsCronJob implements Job {
 
     private static final Logger logger = Logger.getLogger(DeleteVersionsCronJob.class);
-
-    @Inject
-    UserTransaction tx;
 
     @Inject
     VersionService versionService;
@@ -49,21 +41,16 @@ public class DeleteVersionsCronJob implements Job {
 
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
-        logger.error("Starting cleaning of unused VersionEntities Cron");
-
-        QuarkusTransaction.run(
-                QuarkusTransaction.runOptions()
-                        .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
-                        .semantic(RunOptions.Semantic.DISALLOW_EXISTING),
-                () -> {
-                    Optional<VersionEntity> activeVersion = versionRepository.findActive();
-
-                    versionRepository.listAll().stream()
-                            .filter(f -> f.status.equals(Status.COMPLETED) || f.status.equals(Status.ERROR))
-                            .filter(f -> activeVersion.map(versionEntity -> !Objects.equals(versionEntity, f)).orElse(true))
-                            .peek(f -> logger.info("Deleting VersionEntity:" + f.id))
-                            .forEach(f -> versionService.deleteVersion(f.id));
-                }
-        );
+        logger.info("Starting cleaning of obsolete versions");
+        Date staleBefore = Date.from(Instant.now().minus(VersionService.IMPORT_TIMEOUT));
+        // Each deletion runs in its own transaction, so one failure doesn't roll back the others
+        versionRepository.listObsolete(staleBefore).forEach(version -> {
+            logger.infof("Deleting Version %s in status %s", version.id, version.status);
+            try {
+                versionService.deleteVersion(version.id);
+            } catch (RuntimeException e) {
+                logger.errorf(e, "Could not delete Version %s", version.id);
+            }
+        });
     }
 }

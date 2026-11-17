@@ -9,6 +9,7 @@ import {
 
 import { CoreClusterResource, CoreClusterResourceKind } from "api-client";
 import { Version } from "api/models";
+import { isVersionFinished } from "utils/modelUtils";
 
 import { ApiClientError } from "api-client/types";
 import { useSearchpeClient } from "./fetchHelpers";
@@ -33,18 +34,10 @@ export const useVersionsQuery = (): UseQueryResult<
       return (await client.list<Version[]>(versionResource)).data;
     },
     refetchInterval: (query) => {
-      const data = query.state.data;
-      if (data && data.length > 0) {
-        const someIsBegingDeleted = data.some((f) => f.status === "DELETING");
-        const someIsInProgress = data.some(
-          (f) => f.status !== "COMPLETED" && f.status !== "ERROR"
-        );
-        if (someIsBegingDeleted || someIsInProgress) {
-          return 5_000;
-        }
-      }
-
-      return false;
+      const someIsInProgress = query.state.data?.some(
+        (version) => !isVersionFinished(version.status)
+      );
+      return someIsInProgress ? 5_000 : false;
     },
     select: sortVersionListByIdCallback,
   });
