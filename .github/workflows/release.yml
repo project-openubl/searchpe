@@ -111,7 +111,7 @@ jobs:
             -Dquarkus.container-image.name=searchpe/searchpe \
             -Dquarkus.container-image.tag="$TAG-$ARCH" \
             -Dquarkus.jib.platforms="linux/$ARCH" \
-            -P native,ui \
+            -P native \
             -pl searchpe
       - name: Build ${{ env.IMAGE }}
         if: ${{ !steps.pushed.outputs.pushed && matrix.image == 'searchpe-operator' }}
@@ -192,7 +192,7 @@ jobs:
       - run: mkdir dist
       - name: Distribution and OpenAPI schema
         run: |
-          mvn -B package -DskipTests -P ui,distribution -pl searchpe \
+          mvn -B package -DskipTests -P distribution -pl searchpe \
             -Dquarkus.smallrye-openapi.store-schema-directory=target/openapi
           cp "searchpe/target/distributions/searchpe-$VERSION.tar.gz" "searchpe/target/distributions/searchpe-$VERSION.zip" dist/
           cp searchpe/target/openapi/openapi.yaml dist/

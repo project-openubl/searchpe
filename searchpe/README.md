@@ -12,19 +12,10 @@ Puedes ejecutar la aplicación en modo desarrollo con:
 mvn compile quarkus:dev
 ```
 
-### Iniciar UI
+### UI
 
-Instala las dependencias npm:
-
-```shell
-npm install --prefix src/main/webapp
-```
-
-Inicia la UI en modo desarrollo:
-
-```shell
-npm run start --prefix src/main/webapp
-```
+Searchpe sirve solo su API. La interfaz es la UI única del repositorio: [ui/](../ui) (ver
+`ui/e2e/README.md` para levantarla junto a los backends).
 
 ## Desplegar en Minikube
 

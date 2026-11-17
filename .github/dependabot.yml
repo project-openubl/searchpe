@@ -90,7 +90,7 @@ updates:
 
   # Maintain dependencies from package.json
   - package-ecosystem: "npm"
-    directory: "/searchpe/src/main/webapp"
+    directory: "/ui"
     schedule:
       interval: "weekly"
     cooldown:
@@ -102,7 +102,5 @@ updates:
     allow:
       - dependency-name: "@patternfly/*"
         dependency-type: "direct"
-      - dependency-name: "cypress"
-        dependency-type: "direct"
-      - dependency-name: "@cypress/*"
+      - dependency-name: "@playwright/*"
         dependency-type: "direct"

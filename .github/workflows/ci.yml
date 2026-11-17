@@ -44,23 +44,31 @@ jobs:
       - name: Build with Maven
         run: mvn verify -pl searchpe -Dquarkus.native.container-build=true -P native
 
+  # The unified UI (ui/); a required check, so it runs on every change
   ui-tests:
     name: UI Tests
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
     steps:
       - uses: actions/checkout@v7
       - name: Use Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: 26
-      - name: Build
-        working-directory: searchpe/src/main/webapp
-        run: |
-          npm install
-          npm run build
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      # npm ci runs `prepare`, which generates the API clients from client/openapi/
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
       - name: Test
-        working-directory: searchpe/src/main/webapp
-        run: npm run test -- --coverage
+        run: npm test
+        env:
+          CI: "1"
 
   operator-tests:
     name: Operator Tests
@@ -105,7 +113,7 @@ jobs:
           -Dquarkus.container-image.group="" \
           -Dquarkus.container-image.name=searchpe \
           -Dquarkus.container-image.tag=0.0.0 \
-          -P native,ui \
+          -P native \
           -pl searchpe
       - name: Save container image
         run: docker save -o searchpe-application-container-image.tar localhost:5000/searchpe:0.0.0
@@ -280,17 +288,14 @@ jobs:
           done
 
           echo "End point ready: $external_ip"
-          export endpoint=$(minikube ip);
-          echo "CYPRESS_BASE_URL=https://$endpoint" >> $GITHUB_ENV
-      - name: Cypress run
-        timeout-minutes: 20
-        uses: cypress-io/github-action@v7
-        with:
-          working-directory: searchpe/src/main/webapp
-          record: false
-          browser: chrome
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          echo "SEARCHPE_URL=https://$(minikube ip)" >> $GITHUB_ENV
+      # searchpe serves only its API now: the UI is ui/, deployed by the XHandler kind
+      - name: Searchpe API smoke test
+        timeout-minutes: 10
+        run: |
+          for i in $(seq 1 30); do curl -fsk "$SEARCHPE_URL/q/health/ready" && break; sleep 10; done
+          curl -fsk "$SEARCHPE_URL/q/health/ready" | grep -q '"status": *"UP"'
+          curl -fsk "$SEARCHPE_URL/api/versions" -H 'Accept: application/json' | jq -e 'type == "array"'
       - name: Dump cluster state
         if: failure()
         run: |
@@ -302,13 +307,3 @@ jobs:
           kubectl logs -n olm -l olm.catalogSource=searchpe-catalog-source --tail=50 || true
           kubectl logs -n openubl -l app.kubernetes.io/name=searchpe-operator --tail=100 || true
           kubectl logs -n openubl --all-containers --prefix -l app.kubernetes.io/name=searchpe --tail=100 || true
-      - uses: actions/upload-artifact@v7
-        if: failure()
-        with:
-          name: container-screenshots
-          path: searchpe/src/main/webapp/cypress/screenshots
-      - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: container-videos
-          path: searchpe/src/main/webapp/cypress/videos
