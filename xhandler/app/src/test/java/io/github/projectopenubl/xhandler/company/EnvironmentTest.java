@@ -64,6 +64,21 @@ class EnvironmentTest {
     }
 
     @Test
+    void failed_verifications_are_rate_limited_per_ruc() {
+        UUID tenant = tenantOf("alice");
+        String ruc = randomRuc();
+        UUID company = createCompany("alice", tenant, ruc);
+        String path = "/api/v1/tenants/" + tenant + "/companies/" + company;
+        as("alice").body(Map.of("username", ruc + "USER", "password", "guess")).put(path + "/credentials/sol").then().statusCode(200);
+        EngineStub.on("/v1/status-cdr", body ->
+                EngineStub.Reply.ok("{\"status\":\"unknown\",\"code\":\"0102\",\"description\":\"Usuario o contraseña incorrectos\",\"cdr_zip\":null}"));
+        for (int i = 0; i < 5; i++) {
+            as("alice").post(path + "/verify").then().statusCode(422);
+        }
+        as("alice").post(path + "/verify").then().statusCode(429).body("kind", equalTo("too_many_attempts"));
+    }
+
+    @Test
     void settings_change_the_emit_defaults() {
         UUID tenant = tenantOf("alice");
         UUID company = createCompany("alice", tenant, randomRuc());

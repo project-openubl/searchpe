@@ -27,7 +27,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -66,6 +65,7 @@ public class EmitService {
     private final io.github.projectopenubl.xhandler.rates.ExchangeRates rates;
     private final Semaphore permits;
     private final long permitTimeoutMillis;
+    private final String lockTimeout;
 
     public EmitService(
             TenantAccess access,
@@ -83,7 +83,8 @@ public class EmitService {
             Instance<EmitQuota> quota,
             io.github.projectopenubl.xhandler.rates.ExchangeRates rates,
             @ConfigProperty(name = "xhandler.emit.permits", defaultValue = "32") int permits,
-            @ConfigProperty(name = "xhandler.emit.permit-timeout", defaultValue = "5s") Duration permitTimeout) {
+            @ConfigProperty(name = "xhandler.emit.permit-timeout", defaultValue = "5s") Duration permitTimeout,
+            @ConfigProperty(name = "xhandler.emit.lock-timeout", defaultValue = "10s") Duration lockTimeout) {
         this.access = access;
         this.numbering = numbering;
         this.engine = engine;
@@ -100,6 +101,7 @@ public class EmitService {
         this.rates = rates;
         this.permits = new Semaphore(permits);
         this.permitTimeoutMillis = permitTimeout.toMillis();
+        this.lockTimeout = lockTimeout.toMillis() + "ms";
     }
 
     public Emitted emit(UUID tenantId, UUID companyId, String idempotencyKey, EmitRequest request, String correlationId) {
@@ -109,12 +111,15 @@ public class EmitService {
         }
         // Authorize before touching the idempotency table
         QuarkusTransaction.requiringNew().run(() -> access.enter(tenantId, Role.OPERATOR));
+        UUID claim = null;
         if (idempotencyKey != null) {
-            Optional<Idempotency.Stored> stored = idempotency.begin(tenantId, idempotencyKey, hash(companyId, request));
-            if (stored.isPresent()) {
-                return new Emitted(stored.get().status(), stored.get().body());
+            Idempotency.Begun begun = idempotency.begin(tenantId, idempotencyKey, hash(companyId, request));
+            if (begun.replay() != null) {
+                return new Emitted(begun.replay().status(), begun.replay().body());
             }
+            claim = begun.claim();
         }
+        UUID owned = claim;
         boolean acquired = false;
         try {
             for (EmitQuota q : quota) {
@@ -126,14 +131,16 @@ public class EmitService {
             }
             UUID documentId = Ids.newId();
             JsonNode body = QuarkusTransaction.requiringNew().call(() ->
-                    emitInTransaction(tenantId, companyId, documentId, idempotencyKey, request, correlationId));
+                    emitInTransaction(tenantId, companyId, documentId, idempotencyKey, owned, request, correlationId));
             return new Emitted(201, body);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            abandon(tenantId, idempotencyKey, owned);
             throw new ApiException(503, "busy", "El servicio está ocupado. Intente nuevamente en unos segundos.");
         } catch (RuntimeException e) {
-            if (idempotencyKey != null) {
-                idempotency.abandon(tenantId, idempotencyKey);
+            abandon(tenantId, idempotencyKey, owned);
+            if (lockTimeout(e)) {
+                throw new ApiException(503, "busy", "La serie está ocupada por otras emisiones. Intente nuevamente en unos segundos.");
             }
             throw e;
         } finally {
@@ -143,9 +150,27 @@ public class EmitService {
         }
     }
 
-    private JsonNode emitInTransaction(UUID tenantId, UUID companyId, UUID documentId, String idempotencyKey, EmitRequest request,
-            String correlationId) {
+    private void abandon(UUID tenantId, String key, UUID claim) {
+        if (key != null && claim != null) {
+            idempotency.abandon(tenantId, key, claim);
+        }
+    }
+
+    /** PostgreSQL's lock_not_available (55P03): another emit held the series row too long. */
+    private static boolean lockTimeout(Throwable e) {
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            if (t instanceof java.sql.SQLException sql && "55P03".equals(sql.getSQLState())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private JsonNode emitInTransaction(UUID tenantId, UUID companyId, UUID documentId, String idempotencyKey, UUID claim,
+            EmitRequest request, String correlationId) {
         TenantScope scope = access.enter(tenantId, Role.OPERATOR);
+        // Waits on the series row (another emit holds it across engine, HSM and storage) are bounded
+        em.createNativeQuery("SELECT set_config('lock_timeout', :timeout, true)").setParameter("timeout", lockTimeout).getSingleResult();
         // Lock order: company → series → documents (§10.8 rule 4). FOR SHARE: an environment
         // switch (FOR UPDATE) waits for running emits and blocks new ones.
         Company company = Company.findById(companyId, LockModeType.PESSIMISTIC_READ);
@@ -164,7 +189,7 @@ public class EmitService {
         Routes.Assignment route = routes.assign(company, sunatEnv, tipo);
 
         fillProveedor(spec, company);
-        LocalDate fecha = spec.hasNonNull("fecha_emision") ? LocalDate.parse(spec.get("fecha_emision").asText()) : Deadlines.todayInLima();
+        LocalDate fecha = issueDate(spec);
         spec.put("fecha_emision", fecha.toString());
         String serie = chooseSerie(request, spec, company, tipo);
         long numero = numbering.reserve(company.id, sunatEnv, tipo, serie);
@@ -177,7 +202,7 @@ public class EmitService {
             String detail = validation.errors().stream().map(f -> f.code() + ": " + f.message()).collect(Collectors.joining("; "));
             throw ApiException.invalid("invalid_document", "El documento no cumple las validaciones de SUNAT.", detail);
         }
-        SigningService.Signed signed = signing.sign(company, built.xml());
+        SigningService.Signed signed = signing.sign(company, sunatEnv, built.xml());
         signatureLog.record(tenantId, documentId, serie + "-" + numero, signed.signingKeyId(), signed.digestValue(),
                 scope.actor().auditName());
         EngineModels.InspectResponse identity = engine.inspect(signed.xml());
@@ -237,10 +262,12 @@ public class EmitService {
         String token = links.create(doc);
         em.createNativeQuery("SELECT pg_notify('xhandler_reconcile', '')").getSingleResult();
 
-        DocumentView view = DocumentView.of(doc, links.url(token), Qr.of(company.ruc, doc, built.enrichedJson()));
-        JsonNode body = json.valueToTree(view);
+        String qr = Qr.of(company.ruc, doc, built.enrichedJson());
+        JsonNode body = json.valueToTree(DocumentView.of(doc, links.url(token), qr));
         if (idempotencyKey != null) {
-            idempotency.complete(tenantId, idempotencyKey, 201, body);
+            // Stored without the buyer link: its token is never stored in clear (§12); a replay
+            // gets everything else, and a new link can be created
+            idempotency.complete(tenantId, idempotencyKey, claim, 201, json.valueToTree(DocumentView.of(doc, null, qr)));
         }
         return body;
     }
@@ -267,6 +294,25 @@ public class EmitService {
             throw ApiException.invalid("invalid_document", "Una boleta mayor a S/ 700 debe identificar al comprador.",
                     "2514: equivalente S/ " + pen.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString());
         }
+    }
+
+    /** D defaults to today in Lima; SUNAT refuses more than 2 days ahead (2329) and late documents lose their validity. */
+    private static LocalDate issueDate(ObjectNode spec) {
+        LocalDate today = Deadlines.todayInLima();
+        if (!spec.hasNonNull("fecha_emision")) {
+            return today;
+        }
+        LocalDate fecha;
+        try {
+            fecha = LocalDate.parse(spec.get("fecha_emision").asText());
+        } catch (java.time.format.DateTimeParseException e) {
+            throw ApiException.invalid("invalid_document", "fecha_emision debe tener el formato AAAA-MM-DD.", null);
+        }
+        if (fecha.isAfter(today.plusDays(2)) || fecha.isBefore(today.minusDays(7))) {
+            throw ApiException.invalid("invalid_document",
+                    "fecha_emision debe estar entre " + today.minusDays(7) + " y " + today.plusDays(2) + " (hora de Lima).", "2329");
+        }
+        return fecha;
     }
 
     private String chooseSerie(EmitRequest request, ObjectNode spec, Company company, String tipo) {
@@ -310,14 +356,16 @@ public class EmitService {
             return null;
         }
         String serie = affected.substring(0, affected.indexOf('-'));
+        String tipoAfectado = spec.path("comprobante_afectado_tipo").asText(serie.startsWith("B") ? "03" : "01");
         long numero;
         try {
             numero = Long.parseLong(affected.substring(affected.indexOf('-') + 1));
         } catch (NumberFormatException e) {
             return null;
         }
-        return Document.<Document>find("companyId = ?1 and sunatEnv = ?2 and serie = ?3 and numero = ?4 and origin <> 'ose_inbound'",
-                        companyId, sunatEnv, serie, numero)
+        return Document.<Document>find(
+                        "companyId = ?1 and sunatEnv = ?2 and tipoComprobante = ?3 and serie = ?4 and numero = ?5 and origin <> 'ose_inbound'",
+                        companyId, sunatEnv, tipoAfectado, serie, numero)
                 .firstResultOptional()
                 .map(d -> d.id)
                 .orElse(null);
@@ -331,11 +379,32 @@ public class EmitService {
         }
     }
 
+    /** Hash of the request in canonical JSON (keys sorted), so reordered fields are the same request. */
     private String hash(UUID companyId, EmitRequest request) {
         try {
-            return FileStore.sha256((companyId + ":" + json.writeValueAsString(request)).getBytes(StandardCharsets.UTF_8));
+            JsonNode canonical = canonical(json.valueToTree(request));
+            return FileStore.sha256((companyId + ":" + json.writeValueAsString(canonical)).getBytes(StandardCharsets.UTF_8));
         } catch (JsonProcessingException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    static JsonNode canonical(JsonNode node) {
+        if (node.isObject()) {
+            ObjectNode sorted = com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.objectNode();
+            java.util.List<String> names = new java.util.ArrayList<>();
+            node.fieldNames().forEachRemaining(names::add);
+            java.util.Collections.sort(names);
+            for (String name : names) {
+                sorted.set(name, canonical(node.get(name)));
+            }
+            return sorted;
+        }
+        if (node.isArray()) {
+            com.fasterxml.jackson.databind.node.ArrayNode array = com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.arrayNode();
+            node.forEach(item -> array.add(canonical(item)));
+            return array;
+        }
+        return node;
     }
 }

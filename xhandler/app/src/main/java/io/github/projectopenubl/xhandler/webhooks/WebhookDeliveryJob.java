@@ -41,14 +41,20 @@ public class WebhookDeliveryJob implements JobHandler {
     static final int MAX_ATTEMPTS = 12;
     static final int BATCH = 100;
     static final Duration TIMEOUT = Duration.ofSeconds(10);
+    /** Headers and body: a receiver that trickles its answer is cut off here. */
+    static final Duration HARD_DEADLINE = Duration.ofSeconds(15);
+    static final Duration RUN_DEADLINE = Duration.ofSeconds(60);
 
     private final EntityManager em;
     private final TenantAccess access;
     private final SecretBox box;
     private final Egress egress;
     private final ObjectMapper json;
+    private final io.github.projectopenubl.xhandler.audit.Auditor auditor;
 
-    public WebhookDeliveryJob(EntityManager em, TenantAccess access, SecretBox box, Egress egress, ObjectMapper json) {
+    public WebhookDeliveryJob(EntityManager em, TenantAccess access, SecretBox box, Egress egress, ObjectMapper json,
+            io.github.projectopenubl.xhandler.audit.Auditor auditor) {
+        this.auditor = auditor;
         this.em = em;
         this.access = access;
         this.box = box;
@@ -78,9 +84,15 @@ public class WebhookDeliveryJob implements JobHandler {
             for (Leased lease : due) {
                 results.add(pool.submit(() -> deliver(lease.id(), lease.tenantId(), lease.attempts())));
             }
+            // Every delivery has its own hard deadline; this bounds the whole run on top
+            long deadline = System.nanoTime() + RUN_DEADLINE.toNanos();
             for (Future<Boolean> result : results) {
-                if (Boolean.TRUE.equals(result.get())) {
-                    delivered++;
+                try {
+                    if (Boolean.TRUE.equals(result.get(Math.max(1, deadline - System.nanoTime()), java.util.concurrent.TimeUnit.NANOSECONDS))) {
+                        delivered++;
+                    }
+                } catch (java.util.concurrent.TimeoutException e) {
+                    result.cancel(true);
                 }
             }
         }
@@ -90,7 +102,7 @@ public class WebhookDeliveryJob implements JobHandler {
     private boolean deliver(UUID id, UUID tenantId, int attempts) {
         record Request(String url, byte[] body, byte[] secret, String eventId, String type) {}
         Request request = QuarkusTransaction.requiringNew().call(() -> {
-            access.enterAsPlatform(tenantId);
+            io.github.projectopenubl.xhandler.tenancy.TenantScope scope = access.enterAsPlatform(tenantId);
             WebhookDelivery delivery = WebhookDelivery.findById(id);
             WebhookSubscription subscription = WebhookSubscription.findById(delivery.subscriptionId);
             if (subscription == null || subscription.deletedAt != null || !subscription.active) {
@@ -99,6 +111,8 @@ public class WebhookDeliveryJob implements JobHandler {
                 delivery.nextAttemptAt = null;
                 return null;
             }
+            // Reads of secrets are audited (AGENTS.md)
+            auditor.record(scope, "webhook.secret_used", "webhook", subscription.id, Map.of("delivery_id", id.toString()));
             return new Request(subscription.url, json.writeValueAsBytes(delivery.payload), box.open(subscription.sealed(),
                     subscription.context()), delivery.eventId.toString(), delivery.eventType);
         });
@@ -119,7 +133,15 @@ public class WebhookDeliveryJob implements JobHandler {
                     .header("X-Xhandler-Signature", signature(request.secret(), timestamp, request.body()))
                     .POST(HttpRequest.BodyPublishers.ofByteArray(request.body()))
                     .build();
-            status = egress.client().send(http, HttpResponse.BodyHandlers.discarding()).statusCode();
+            var pending = egress.client().sendAsync(http, HttpResponse.BodyHandlers.replacing((Void) null));
+            try {
+                status = pending.get(HARD_DEADLINE.toMillis(), java.util.concurrent.TimeUnit.MILLISECONDS).statusCode();
+            } catch (java.util.concurrent.TimeoutException e) {
+                pending.cancel(true);
+                throw new java.io.IOException("no complete answer within " + HARD_DEADLINE.toSeconds() + " s");
+            } catch (java.util.concurrent.ExecutionException e) {
+                throw e.getCause() instanceof Exception cause ? cause : e;
+            }
             if (status / 100 != 2) {
                 error = "HTTP " + status;
             }

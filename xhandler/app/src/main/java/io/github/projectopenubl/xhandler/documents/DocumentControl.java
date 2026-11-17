@@ -28,10 +28,13 @@ public class DocumentControl {
 
     private final Auditor auditor;
     private final EntityManager em;
+    private final io.github.projectopenubl.xhandler.jobs.JobStore jobs;
     private final Event<DocumentStatusChanged> statusChanged;
 
-    public DocumentControl(Auditor auditor, EntityManager em, Event<DocumentStatusChanged> statusChanged) {
+    public DocumentControl(Auditor auditor, EntityManager em, Event<DocumentStatusChanged> statusChanged,
+            io.github.projectopenubl.xhandler.jobs.JobStore jobs) {
         this.auditor = auditor;
+        this.jobs = jobs;
         this.em = em;
         this.statusChanged = statusChanged;
     }
@@ -96,6 +99,14 @@ public class DocumentControl {
             throw ApiException.conflict("document_not_retryable", "El documento no se puede reenviar en su estado actual.");
         }
         retryLocked(scope, doc);
+        if (doc.isBoletaFamily() && Deadlines.boletaPastIndividualWindow(doc.fechaEmision, Deadlines.todayInLima())) {
+            // Past D+5 a boleta can't go on its own: the resumen diario fallback takes it now
+            doc.status = "pending_send";
+            doc.codeClass = "route_change";
+            doc.nextAttemptAt = null;
+            jobs.enqueuePlatform("documents.boleta-summary-fallback", 2, Map.of("trigger", "retry"),
+                    List.of("schedule:boleta-summary-fallback"));
+        }
         notifyReconciler();
         return doc;
     }
@@ -145,6 +156,9 @@ public class DocumentControl {
         doc.nextAttemptAt = now;
         doc.sameOutcomeCount = 0;
         doc.lastOutcome = null;
+        if ("summary_failed".equals(doc.codeClass)) {
+            doc.codeClass = null;
+        }
         doc.progressAt = now;
         doc.updatedAt = now;
         DocumentEvent.record(doc, null, "manual retry", scope.actor().auditName(), null);

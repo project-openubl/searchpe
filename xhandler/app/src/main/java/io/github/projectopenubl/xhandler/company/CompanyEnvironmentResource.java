@@ -48,6 +48,8 @@ public class CompanyEnvironmentResource {
 
     public record EnvironmentChange(@NotBlank @Pattern(regexp = "fake|beta|production") String sunatEnv) {}
 
+    static final int MAX_FAILURES_PER_HOUR = 5;
+
     static final Set<String> SOL_ERRORS = Set.of("0101", "0102", "0103", "0104", "0105", "0106", "0110", "0111", "0112", "0113", "0154");
 
     private final TenantAccess access;
@@ -149,6 +151,14 @@ public class CompanyEnvironmentResource {
         Check check = QuarkusTransaction.requiringNew().call(() -> {
             TenantScope scope = access.enter(tenantId, Role.ADMIN);
             Company company = CompanyResource.find(companyId);
+            // Not a password-guessing oracle against SUNAT: failures per RUC, across tenants
+            Object failures = io.github.projectopenubl.xhandler.company.Company.getEntityManager()
+                    .createNativeQuery("SELECT xhandler.recent_failed_verifications(:ruc, interval '1 hour')")
+                    .setParameter("ruc", company.ruc)
+                    .getSingleResult();
+            if (((Number) failures).intValue() >= MAX_FAILURES_PER_HOUR) {
+                throw new ApiException(429, "too_many_attempts", "Demasiados intentos fallidos de verificación para este RUC. Intente en una hora.");
+            }
             Map<String, String> sol = credentials.read(scope, company, "sol", "ruc-verification").orElseThrow(() ->
                     ApiException.conflict("no_credentials", "Registre el usuario SOL de la empresa para verificar el RUC."));
             String username = sol.getOrDefault("username", "");
@@ -165,6 +175,8 @@ public class CompanyEnvironmentResource {
             throw new ApiException(503, "sunat_unavailable", "No se pudo consultar a SUNAT. Intente nuevamente.");
         }
         if (answer.code() != null && SOL_ERRORS.contains(answer.code())) {
+            QuarkusTransaction.requiringNew().run(() -> auditor.record(access.enter(tenantId, Role.ADMIN),
+                    "company.ruc_verification_failed", "company", companyId, Map.of("ruc", check.ruc(), "code", answer.code())));
             throw ApiException.invalid("sol_invalid", "SUNAT rechazó el usuario SOL: " + answer.description(), answer.code());
         }
         if (!Set.of("accepted", "rejected", "voided", "not_found").contains(answer.status())) {

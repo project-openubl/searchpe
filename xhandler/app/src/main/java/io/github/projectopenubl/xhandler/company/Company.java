@@ -28,7 +28,7 @@ public class Company extends PanacheEntityBase {
     public Instant rucVerifiedAt;
     public String email;
     /** Default of {@code delivered} on emit (usually true for POS, DESIGN.md §9.3) */
-    public boolean deliveredOnEmitDefault = true;
+    public boolean deliveredOnEmitDefault;
     /** sunat or ose (a third-party OSE, DESIGN.md §3.2) */
     public String submissionRoute = "sunat";
     /** Must send through an OSE (a regulatory status, set by the platform) */

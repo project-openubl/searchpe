@@ -66,11 +66,24 @@ public class Summaries {
     @Transactional(Transactional.TxType.MANDATORY)
     public Document resumenDiario(TenantScope scope, Company company, String sunatEnv, LocalDate fechaComprobantes,
             List<Document> lines, String operacion, String correlationId) {
+        LocalDate day = Deadlines.todayInLima();
+        int numero = numbering.reserveDaily(company.tenantId, company.id, sunatEnv, "RC", day);
+        return resumenDiario(scope, company, sunatEnv, fechaComprobantes, lines, operacion, correlationId, day, numero);
+    }
+
+    /** RC number for today, reserved before the caller locks the lines (lock order company → counter → documents). */
+    @Transactional(Transactional.TxType.MANDATORY)
+    public int reserveResumenDiario(Company company, String sunatEnv) {
+        return numbering.reserveDaily(company.tenantId, company.id, sunatEnv, "RC", Deadlines.todayInLima());
+    }
+
+    /** A resumen diario with a number already reserved for {@code day}. */
+    @Transactional(Transactional.TxType.MANDATORY)
+    public Document resumenDiario(TenantScope scope, Company company, String sunatEnv, LocalDate fechaComprobantes,
+            List<Document> lines, String operacion, String correlationId, LocalDate day, int numero) {
         if (lines.isEmpty() || lines.size() > MAX_LINES) {
             throw new IllegalArgumentException("a resumen diario has 1 to " + MAX_LINES + " lines");
         }
-        LocalDate day = Deadlines.todayInLima();
-        int numero = numbering.reserveDaily(company.tenantId, company.id, sunatEnv, "RC", day);
         ObjectNode spec = json.createObjectNode();
         spec.put("numero", numero);
         spec.put("fecha_emision", day.toString());
@@ -144,7 +157,7 @@ public class Summaries {
             String detail = validation.errors().stream().map(f -> f.code() + ": " + f.message()).collect(Collectors.joining("; "));
             throw ApiException.invalid("invalid_document", "El resumen no cumple las validaciones de SUNAT.", detail);
         }
-        SigningService.Signed signed = signing.sign(company, built.xml());
+        SigningService.Signed signed = signing.sign(company, sunatEnv, built.xml());
         Document doc = new Document();
         doc.id = Ids.newId();
         String serie = tipo + "-" + BASIC.format(day);

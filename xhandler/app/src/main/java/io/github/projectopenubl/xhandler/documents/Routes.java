@@ -69,7 +69,10 @@ public class Routes {
                     ApiException.invalid("no_credentials", "Registre las credenciales del OSE de la empresa.", null));
             return new Assignment("ose:" + ose.id + ":" + service, credential);
         }
-        Optional<UUID> credential = credentialId(company, "despatch".equals(service) ? "gre" : "sol");
+        // A company's real SOL/GRE credentials go to SUNAT production only, never to beta or the fake
+        Optional<UUID> credential = "production".equals(sunatEnv)
+                ? credentialId(company, "despatch".equals(service) ? "gre" : "sol")
+                : Optional.empty();
         if ("production".equals(sunatEnv) && credential.isEmpty()) {
             throw ApiException.invalid("no_credentials", "despatch".equals(service)
                     ? "La empresa no tiene credenciales GRE (usuario SOL y cliente API) para enviar guías a SUNAT."

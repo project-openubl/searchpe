@@ -73,6 +73,13 @@ class EmitTest {
     }
 
     Response emit(Object body, String key) {
+        if (body instanceof String raw) {
+            var request = as("alice").body(raw);
+            if (key != null) {
+                request = request.header("Idempotency-Key", key);
+            }
+            return request.post(base + "/companies/" + company + "/documents");
+        }
         var request = as("alice").body(body);
         if (key != null) {
             request = request.header("Idempotency-Key", key);
@@ -92,7 +99,7 @@ class EmitTest {
                 .body("serie_numero", equalTo("F001-1"))
                 .body("tipo_comprobante", equalTo("01"))
                 .body("access_url", startsWith("http"))
-                .body("qr", startsWith(""))
+                .body("qr", org.hamcrest.Matchers.containsString("|01|F001|1|"))
                 .body("prn", startsWith("xh:document:"));
         String id = emitted.path("id");
         await().atMost(WAIT).until(() -> "accepted".equals(status(id)));
@@ -242,13 +249,92 @@ class EmitTest {
                     .post(base + "/webhooks").then().statusCode(201).body("secret", startsWith("whsec_")).extract().path("secret");
             EngineStub.on("/v1/send", body -> body.contains("F001-1")
                     ? Reply.ok(sendAnswer("rejected", 2335, null, null)) : Reply.ok(sendAnswer("accepted", 0, null, null)));
-            String id = emit(invoice(Map.of()), null).path("id");
+            Map<String, Object> delivered = new HashMap<>(invoice(Map.of()));
+            delivered.put("delivered", true);
+            String id = emit(delivered, null).path("id");
             await().atMost(WAIT).until(() -> receiver.types().contains("document.rejected_after_delivery"));
             WebhookReceiver.Received rejected = receiver.received().stream()
                     .filter(r -> r.body().contains("\"document.rejected\"")).findFirst().orElseThrow();
             assertTrue(rejected.body().contains(id));
             assertTrue(receiver.verifies(rejected, secret), "HMAC signature verifies with the subscription's secret");
             assertEquals("application/cloudevents+json", rejected.contentType());
+            deleteWebhooks();
         }
+    }
+
+    void deleteWebhooks() {
+        List<String> ids = as("alice").get(base + "/webhooks").then().extract().path("id");
+        ids.forEach(w -> as("alice").delete(base + "/webhooks/" + w).then().statusCode(204));
+    }
+
+    @Test
+    void a_replay_matches_the_same_body_with_reordered_fields() {
+        String key = UUID.randomUUID().toString();
+        String first = "{\"document\":{\"kind\":\"Invoice\",\"spec\":{\"cliente\":{\"tipo_documento_identidad\":\"6\","
+                + "\"numero_documento_identidad\":\"12121212121\",\"nombre\":\"X\"},\"detalles\":[]}},\"delivered\":false}";
+        String reordered = "{\"delivered\":false,\"document\":{\"spec\":{\"detalles\":[],\"cliente\":{\"nombre\":\"X\","
+                + "\"numero_documento_identidad\":\"12121212121\",\"tipo_documento_identidad\":\"6\"}},\"kind\":\"Invoice\"}}";
+        String a = emit(first, key).then().statusCode(201).body("access_url", startsWith("http")).extract().path("id");
+        // The replay has everything but the buyer link: its token is never stored
+        emit(reordered, key).then().statusCode(201).body("id", equalTo(a)).body("access_url", org.hamcrest.Matchers.nullValue());
+    }
+
+    @Test
+    void buyer_links_can_be_revoked() {
+        Response emitted = emit(invoice(Map.of()), null);
+        String path = URI.create(emitted.<String>path("access_url")).getPath();
+        given().get(path).then().statusCode(200);
+        as("alice").post(base + "/documents/" + emitted.path("id") + "/access-links/revoke").then().statusCode(204);
+        given().get(path).then().statusCode(404);
+    }
+
+    @Test
+    void the_issue_date_must_be_near_today() {
+        emit(invoice(Map.of("fecha_emision", Deadlines.todayInLima().plusDays(3).toString())), null).then().statusCode(422);
+        emit(invoice(Map.of("fecha_emision", Deadlines.todayInLima().minusDays(8).toString())), null).then().statusCode(422);
+    }
+
+    @Inject
+    Idempotency idempotency;
+
+    @Inject
+    io.github.projectopenubl.xhandler.tenancy.TenantAccess access;
+
+    @Test
+    void a_request_that_outlives_a_takeover_cant_touch_the_new_owners_key() {
+        String key = UUID.randomUUID().toString();
+        Idempotency.Begun a = idempotency.begin(tenant, key, "h");
+        // A's key looks abandoned (A is stuck); B takes it over
+        io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().run(() -> {
+            access.enterAsPlatform(tenant);
+            io.github.projectopenubl.xhandler.documents.Document.getEntityManager().createNativeQuery(
+                            "UPDATE xhandler.idempotency_key SET created_at = now() - interval '5 minutes' WHERE key = :key")
+                    .setParameter("key", key).executeUpdate();
+        });
+        Idempotency.Begun b = idempotency.begin(tenant, key, "h");
+        org.junit.jupiter.api.Assertions.assertNotEquals(a.claim(), b.claim());
+        // A fails late: its abandon leaves B's key alone, and its complete is refused
+        idempotency.abandon(tenant, key, a.claim());
+        org.junit.jupiter.api.Assertions.assertThrows(io.github.projectopenubl.xhandler.api.ApiException.class,
+                () -> idempotency.begin(tenant, key, "h"), "B still owns the key: 409");
+        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, () -> io.quarkus.narayana.jta.QuarkusTransaction
+                .requiringNew().run(() -> {
+                    access.enterAsPlatform(tenant);
+                    idempotency.complete(tenant, key, a.claim(), 201, Map.of());
+                }));
+        io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().run(() -> {
+            access.enterAsPlatform(tenant);
+            idempotency.complete(tenant, key, b.claim(), 201, Map.of("ok", true));
+        });
+        assertEquals(201, idempotency.begin(tenant, key, "h").replay().status());
+    }
+
+    @Test
+    void stored_credentials_never_go_to_the_sandbox() {
+        as("alice").body(Map.of("username", "20000000001REAL", "password", "real-password"))
+                .put(base + "/companies/" + company + "/credentials/sol").then().statusCode(200);
+        String id = emit(invoice(Map.of()), null).path("id");
+        await().atMost(WAIT).until(() -> "accepted".equals(status(id)));
+        assertTrue(EngineStub.requests("/v1/send", "real-password").isEmpty(), "the fake gets SUNAT's public user");
     }
 }

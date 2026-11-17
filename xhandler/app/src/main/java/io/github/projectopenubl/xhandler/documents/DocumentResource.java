@@ -59,8 +59,7 @@ public class DocumentResource {
             @HeaderParam("Idempotency-Key") String idempotencyKey,
             @HeaderParam("X-Correlation-Id") String correlationId,
             EmitService.EmitRequest request) {
-        EmitService.Emitted emitted = emit.emit(tenantId, companyId, idempotencyKey, request,
-                correlationId != null ? correlationId : UUID.randomUUID().toString());
+        EmitService.Emitted emitted = emit.emit(tenantId, companyId, idempotencyKey, request, correlation(correlationId));
         return Response.status(emitted.status()).entity(emitted.body()).build();
     }
 
@@ -190,8 +189,7 @@ public class DocumentResource {
     @Operation(operationId = "voidDocument", summary = "Anula un documento aceptado y no entregado (RA, RC o RR)")
     public Response voidDocument(@PathParam("tenantId") UUID tenantId, @PathParam("documentId") UUID documentId,
             @HeaderParam("X-Correlation-Id") String correlationId, VoidingService.VoidRequest request) {
-        Document voidingDocument = voiding.voidDocument(tenantId, documentId, request,
-                correlationId != null ? correlationId : UUID.randomUUID().toString());
+        Document voidingDocument = voiding.voidDocument(tenantId, documentId, request, correlation(correlationId));
         return Response.status(202).entity(DocumentView.of(voidingDocument)).build();
     }
 
@@ -223,6 +221,30 @@ public class DocumentResource {
         Document doc = find(documentId);
         auditor.record(scope, "document.access_link_created", "document", doc.id);
         return new AccessLink(links.url(links.create(doc)));
+    }
+
+    /** Ends every buyer link of the document now (e.g. sent to the wrong person). */
+    @POST
+    @Path("/documents/{documentId}/access-links/revoke")
+    @Transactional
+    @Operation(operationId = "revokeDocumentAccessLinks")
+    public Response revokeAccessLinks(@PathParam("tenantId") UUID tenantId, @PathParam("documentId") UUID documentId) {
+        TenantScope scope = access.enter(tenantId, Role.OPERATOR);
+        Document doc = find(documentId);
+        int revoked = Document.getEntityManager()
+                .createNativeQuery("UPDATE xhandler.access_token SET expires_at = now() WHERE document_id = :id AND expires_at > now()")
+                .setParameter("id", doc.id)
+                .executeUpdate();
+        auditor.record(scope, "document.access_links_revoked", "document", doc.id, Map.of("count", revoked));
+        return Response.noContent().build();
+    }
+
+    /** A client correlation id is kept only if it is short and plain; otherwise a new one is made. */
+    static String correlation(String given) {
+        if (given != null && given.length() <= 100 && given.matches("[A-Za-z0-9._:-]+")) {
+            return given;
+        }
+        return UUID.randomUUID().toString();
     }
 
     static Document find(UUID documentId) {

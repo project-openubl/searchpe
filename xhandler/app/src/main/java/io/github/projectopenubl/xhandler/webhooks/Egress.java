@@ -29,10 +29,14 @@ public class Egress {
 
     private final HttpClient client;
     private final boolean allowPrivate;
+    private final boolean proxyMissing;
 
     public Egress(
             @ConfigProperty(name = "xhandler.egress.proxy") Optional<String> proxy,
-            @ConfigProperty(name = "xhandler.egress.allow-private", defaultValue = "false") boolean allowPrivate) {
+            @ConfigProperty(name = "xhandler.egress.allow-private", defaultValue = "false") boolean allowPrivate,
+            @ConfigProperty(name = "xhandler.egress.require-proxy", defaultValue = "true") boolean requireProxy) {
+        // Without the proxy nothing pins DNS between this check and the connection (rebinding)
+        this.proxyMissing = requireProxy && proxy.isEmpty();
         HttpClient.Builder builder = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(5))
                 .followRedirects(HttpClient.Redirect.NEVER);
@@ -50,6 +54,9 @@ public class Egress {
 
     /** Refuses a URL the platform must not call (422 with a Spanish message). */
     public URI check(String url) {
+        if (proxyMissing) {
+            throw new ApiException(503, "egress_unavailable", "Las llamadas a sistemas externos no están disponibles (proxy de salida no configurado).");
+        }
         URI uri;
         try {
             uri = URI.create(url);
@@ -97,8 +104,13 @@ public class Egress {
         }
         if (address instanceof Inet6Address) {
             int first = b[0] & 0xff;
-            // Unique local fc00::/7; IPv4-mapped addresses are checked as IPv4
+            // Unique local fc00::/7; NAT64 64:ff9b::/96, 6to4 2002::/16 and Teredo 2001::/32 embed IPv4
             if ((first & 0xfe) == 0xfc) {
+                return false;
+            }
+            if ((first == 0x00 && (b[1] & 0xff) == 0x64 && (b[2] & 0xff) == 0xff && (b[3] & 0xff) == 0x9b)
+                    || (first == 0x20 && (b[1] & 0xff) == 0x02)
+                    || (first == 0x20 && (b[1] & 0xff) == 0x01 && b[2] == 0 && b[3] == 0)) {
                 return false;
             }
             boolean mapped = b[10] == (byte) 0xff && b[11] == (byte) 0xff;

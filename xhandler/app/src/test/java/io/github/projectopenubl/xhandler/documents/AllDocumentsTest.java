@@ -147,8 +147,11 @@ class AllDocumentsTest {
         as("alice").body(Map.of("motivo", "x")).post(base + "/documents/" + undelivered + "/void").then().statusCode(409)
                 .body("kind", equalTo("delivered_use_credit_note"));
 
-        String old = emit(document("Invoice", Map.of("fecha_emision", Deadlines.todayInLima().minusDays(8).toString()), "delivered", false));
-        awaitStatus(old, "accepted");
+        String old = docs.pending(tenant, company, "t-" + UUID.randomUUID() + ":invoice", d -> {
+            d.status = "accepted";
+            d.nextAttemptAt = null;
+            d.fechaEmision = Deadlines.todayInLima().minusDays(8);
+        }).id().toString();
         as("alice").body(voidRequest()).post(base + "/documents/" + old + "/void").then().statusCode(409)
                 .body("kind", equalTo("void_window_passed"));
 
@@ -204,12 +207,20 @@ class AllDocumentsTest {
     }
 
     @Test
-    void guias_are_sent_with_the_gre_api_client() {
-        as("alice").body(Map.of("username", "20123456789GREUSER", "password", "x", "client_id", "gre-client", "client_secret", "gre-secret"))
-                .put(base + "/companies/" + company + "/credentials/gre").then().statusCode(200);
-        String id = emit(document("DespatchAdvice", Map.of()));
+    void guias_go_to_sunat_production_with_the_gre_api_client() throws Exception {
+        String ruc = io.github.projectopenubl.xhandler.Api.randomRuc();
+        UUID production = companies.verified(tenant, "production", ruc);
+        java.io.File pfx = io.github.projectopenubl.xhandler.keys.TestCertificates.generate(ruc);
+        io.restassured.RestAssured.given().auth().oauth2(new io.quarkus.test.keycloak.client.KeycloakTestClient().getAccessToken("alice"))
+                .multiPart("file", pfx, "application/x-pkcs12").multiPart("password", io.github.projectopenubl.xhandler.keys.TestCertificates.PASSWORD)
+                .put(base + "/companies/" + production + "/certificate").then().statusCode(200);
+        as("alice").body(Map.of("username", ruc + "GREUSER", "password", "x", "client_id", "gre-client", "client_secret", "gre-secret"))
+                .put(base + "/companies/" + production + "/credentials/gre").then().statusCode(200);
+        String id = as("alice").body(document("DespatchAdvice", Map.of())).post(base + "/companies/" + production + "/documents")
+                .then().statusCode(201).extract().path("id");
         awaitStatus(id, "accepted");
         assertTrue(EngineStub.lastBody("/v1/send").contains("\"client_id\":\"gre-client\""));
+        assertTrue(EngineStub.lastBody("/v1/send").contains("\"environment\":\"production\""));
     }
 
     @Test

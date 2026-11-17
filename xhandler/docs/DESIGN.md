@@ -257,7 +257,7 @@ Mirrors xhandler-mobile's Rust bridge so the two stay aligned (a shared facade c
   - Every business table has `tenant_id`, and it is part of every tenant-scoped uniqueness rule.
 - **One RUC, one verified company.** SUNAT numbering is unique per RUC, so a RUC is *claimed* once on the platform per environment: a global partial unique index on `company(ruc, sunat_env) WHERE active AND ruc_verified_at IS NOT NULL`.
   - Typing a RUC claims nothing. Unverified duplicates are allowed, so nobody can squat a RUC by registering it first, and a tenant may have at most 3 unverified companies (§26.8).
-  - Verification proves ownership and claims the RUC: a successful SUNAT SOL login (`POST …/companies/{id}/verify`). The company's SOL user, which must start with its RUC, asks SUNAT production's consult service about one of the company's own numbers. Any answer other than an authentication error (0101–0106, 0110–0113, 0154) proves the credentials work for that RUC. A matching RUC in an uploaded certificate is only informative, because anyone can create a self-signed certificate with any RUC. Checking the chain against the CAs SUNAT accepts may become a second proof later.
+  - Verification proves ownership and claims the RUC: a successful SUNAT SOL login (`POST …/companies/{id}/verify`), limited to 5 failures per RUC per hour across tenants, so the platform is no password-guessing oracle against SUNAT. The company's SOL user, which must start with its RUC, asks SUNAT production's consult service about one of the company's own numbers. Any answer other than an authentication error (0101–0106, 0110–0113, 0154) proves the credentials work for that RUC. A matching RUC in an uploaded certificate is only informative, because anyone can create a self-signed certificate with any RUC. Checking the chain against the CAs SUNAT accepts may become a second proof later.
   - Moving a company to another tenant (for example, from a partner to the client) is an explicit transfer, never a second registration.
 - **Row-level security mechanics.**
   - **The app never holds owner or superuser rights.** In production it logs in as a non-owner role that is a member of `xhandler_app` (NOSUPERUSER, NOBYPASSRLS); migrations run with separate owner credentials (`quarkus.flyway.username/password` or a migration job). `DatabaseRoleCheck` refuses to start otherwise. In dev and tests the login is a superuser, and the pool interceptor runs every connection as `xhandler_app` (`SET ROLE`).
@@ -360,6 +360,7 @@ audit_log         at, actor, tenant_id, action, object, details     -- personal-
 - Every status change writes a `document_event` carrying the request's `correlation_id`.
 - OSE inbound documents are not covered by the document uniqueness rule. An issuer may resubmit a number after an inconsistency notice. For those documents, uniqueness of `(issuer_ruc, tipo, serie, numero)` holds among accepted submissions only, through a partial unique index on `ose_submission WHERE result = 'cdr'`.
 - Credentials can belong to the platform (`owner_type = platform`): the PSE SOL users (a pool), the OSE's SUNAT credentials, and the validity API.
+- A company's own SOL and GRE credentials are only ever sent to SUNAT production. Beta and the fake use SUNAT's public test user (a third-party OSE route uses that OSE's credentials).
 
 ### 7.2 Ready for mobile sync
 
@@ -493,14 +494,14 @@ The GRE REST API and SIRE have their own error codes, published in their manuals
 - **No hot loops.** After 10 identical transient outcomes, or 24 hours without progress, the document gets `hold_reason = needs_attention` and an alert. **It keeps being retried, every 6 hours,** until it is definitive or someone acts on it. This keeps "always retryable" without hammering SUNAT with a request that keeps failing the same way.
 - During an outage, the endpoint's circuit breaker stops attempts for all its documents (§24). Deadline alerts fire before the legal limit (§3.1).
 - **Boletas past D+5.** A boleta still not accepted when D+5 (Lima) passes stops being sent individually.
-  - A scheduled job groups such boletas by issue day into a resumen diario (RC, estado 1) and sends it before D+7.
+  - A scheduled job groups such boletas by issue day into a resumen diario (RC, estado 1) and sends it before D+7. It only takes boletas SUNAT can't have: `pending_send` (or `exception` after 1079) with no attempt in flight; `unknown` ones are resolved first. Each RC is its own transaction (number reserved, then lines locked with `SKIP LOCKED`); lines whose RC can't be built are set aside (`summary_failed`, `needs_attention`) instead of blocking the group. A retried boleta past D+5 goes back to this job, never on its own.
   - Each boleta gets `summary_document_id` set and `next_attempt_at` cleared; from then on it follows the RC's outcome.
 
 ### 9.3 Guards
 
 - **Delivery.** A document counts as delivered when:
   - the service delivered it (email, portal download);
-  - the client attests it, with `delivered: true` on emit (the default comes from `company.delivered_on_emit_default`, usually true for POS), or `POST /documents/{id}/delivered`.
+  - the client attests it, with `delivered: true` on emit (the default comes from `company.delivered_on_emit_default`: false unless the company sets it, usually POS), or `POST /documents/{id}/delivered`.
 
   `delivered_source` records which of the two.
 - **Voiding** is allowed only when all of these hold:
@@ -655,7 +656,7 @@ These rules apply pulpcore's tasking discipline to a multi-threaded JVM. Every P
 - If the lock connection breaks, the locks are gone. The worker stops claiming, lets in-flight calls finish, writes their outcomes (fenced on `document.attempts`), and exits (§10.4).
 - The lock and listener connections are direct to Postgres. They never go through a transaction-pooling proxy such as PgBouncer.
 - A separate dedicated **listener connection** handles `LISTEN`/`NOTIFY`.
-- The pool size covers concurrent jobs, concurrent requests, the lock connection, the listener connection and headroom. It's checked at startup.
+- The pool size covers concurrent jobs, concurrent requests and headroom; the lock and listener connections are outside it. An emit holds two connections at once (its transaction and the signature log), so `PoolSizeCheck` refuses to start unless `max-size ≥ 2 × emit permits + job slots + 8`. Waits on a series row are bounded by `lock_timeout` (`xhandler.emit.lock-timeout`), answered with 503.
 
 **Threads (Quarkus / Java)**
 
@@ -704,7 +705,8 @@ These rules apply pulpcore's tasking discipline to a multi-threaded JVM. Every P
 
 1. **Idempotency.** Insert `(tenant_id, key, request_hash)` into `idempotency_key`, in its own committed transaction so concurrent retries see it.
    - On conflict with the same hash and a stored response: return that response.
-   - On conflict while the first request is still running: 409. A key left running by a crashed process is taken over after two minutes.
+   - On conflict while the first request is still running: 409. A key left running by a crashed process is taken over after two minutes. Every claim has its own token: `complete` and `abandon` only touch their own claim, so a request that outlives a takeover rolls back instead of creating a duplicate, and can't free the new owner's key.
+   - The request hash is over canonical JSON (keys sorted). The stored response omits the buyer link (its token is never stored); a replay gets everything else.
    - On conflict with a different hash: 422.
    - A request that fails deletes its key, so the client can retry. Keys are purged after 24 hours.
 2. **Quota** check against cached Lago entitlements. If Lago is unreachable, the last known entitlements are used for up to 24 hours; after that, emits for over-quota tenants fail closed.
@@ -809,14 +811,14 @@ One row generator feeds CSV, Excel, SIRE and legacy PLE. Reports run as jobs (`2
   - payload is a CloudEvent 1.0 (`application/cloudevents+json`; types `document.accepted`, `document.rejected`, `document.rejected_after_delivery`, `document.exception`, `document.voided`, `document.delayed`, `conformity.objected`, …) with a versioned `dataschema` (`urn:xhandler:schema:document-event:v1`);
   - signed with HMAC-SHA256 over `"<timestamp>.<body>"`: `X-Xhandler-Signature: t=<unix seconds>,v1=<hex>`; the per-subscription secret (`whsec_…`) is shown once and stored envelope-encrypted;
   - written to `webhook_delivery` in the transaction that caused the event (an outbox), leased and delivered by a job every 2 seconds, retried 10 s, 1 min, 5 min, 30 min, 2 h, then every 6 h, up to 12 attempts; every delivery is logged and can be redelivered or tested through the API;
-  - sent through the egress proxy (§16), and checked in the app too: https, ports 443/8443, public addresses only, no redirects.
+  - sent through the egress proxy (§16), and checked in the app too: https, ports 443/8443, public addresses only (including IPv4 embedded in NAT64, 6to4 and Teredo), no redirects; production refuses to call out without the proxy (`xhandler.egress.require-proxy`), since only the proxy pins DNS. Each delivery has a hard 15-second deadline for headers and body, so a slow receiver can't stall the others. Every use of a webhook secret is audited.
 - Client SDKs are generated from the OpenAPI spec.
 - **Versioning.**
   - Within `/api/v1`, changes are additive only.
   - A breaking change creates `/api/v2`, and v1 is kept for at least 12 months after v2 ships, with `Deprecation`/`Sunset` headers.
   - Webhook payloads follow the same rule through `dataschema` versions.
 - **Public endpoints** (no login, rate limited, behind the gateway's bot protection):
-  - **Buyer access by capability link.** Each document gets a random 128-bit token, stored hashed in `access_token`. It is printed in the PDF QR, sent in emails and returned by the emit API (`access_url`; a new one can be created later, the token itself is never stored). `GET /api/v1/public/documents/{token}` shows the document's status and files, and `/{xml|cdr|pdf}` downloads them for the legal access period (366 days). The first download marks the document delivered (`delivered_source = service`) and is logged in `delivery`. This is the primary path.
+  - **Buyer access by capability link** (revocable: `POST …/documents/{id}/access-links/revoke`). Each document gets a random 128-bit token, stored hashed in `access_token`. It is printed in the PDF QR, sent in emails and returned by the emit API (`access_url`; a new one can be created later, the token itself is never stored). `GET /api/v1/public/documents/{token}` shows the document's status and files, and `/{xml|cdr|pdf}` downloads them for the legal access period (366 days). The first download marks the document delivered (`delivered_source = service`) and is logged in `delivery`. This is the primary path.
   - **Lookup by data.** RUC + serie-número + date + total is low-entropy and guessable. It requires a CAPTCHA, has per-IP and per-RUC limits, and returns **only status and validity**, never the files.
   - **OSE validity** (RS 242-2018): status only.
 

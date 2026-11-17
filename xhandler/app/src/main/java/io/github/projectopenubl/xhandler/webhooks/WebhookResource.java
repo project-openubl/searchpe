@@ -104,8 +104,9 @@ public class WebhookResource {
     @Path("/{webhookId}/test")
     @Transactional
     public DeliveryView test(@PathParam("tenantId") UUID tenantId, @PathParam("webhookId") UUID webhookId) {
-        access.enter(tenantId, Role.ADMIN);
+        TenantScope scope = access.enter(tenantId, Role.ADMIN);
         WebhookSubscription subscription = find(webhookId);
+        auditor.record(scope, "webhook.test_sent", "webhook", webhookId);
         Map<String, Object> event = Map.of("specversion", "1.0", "id", Ids.newId().toString(), "source", WebhookEvents.SOURCE,
                 "type", "webhook.test", "subject", "xh:webhook:" + webhookId, "time", Instant.now().toString(),
                 "datacontenttype", "application/json", "data", Map.of("message", "Evento de prueba de xhandler"));
@@ -145,11 +146,12 @@ public class WebhookResource {
     @Transactional
     public DeliveryView redeliver(@PathParam("tenantId") UUID tenantId, @PathParam("webhookId") UUID webhookId,
             @PathParam("deliveryId") UUID deliveryId) {
-        access.enter(tenantId, Role.OPERATOR);
+        TenantScope scope = access.enter(tenantId, Role.OPERATOR);
         WebhookDelivery delivery = WebhookDelivery.findById(deliveryId, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
         if (delivery == null || !delivery.subscriptionId.equals(webhookId)) {
             throw ApiException.notFound();
         }
+        auditor.record(scope, "webhook.redelivered", "webhook_delivery", deliveryId);
         delivery.status = "pending";
         delivery.attempts = 0;
         delivery.nextAttemptAt = Instant.now();

@@ -22,12 +22,16 @@ public class TestCompanies {
     }
 
     public UUID verified(UUID tenantId, String sunatEnv) {
+        return verified(tenantId, sunatEnv, Api.randomRuc());
+    }
+
+    public UUID verified(UUID tenantId, String sunatEnv, String ruc) {
         return QuarkusTransaction.requiringNew().call(() -> {
             access.enterAsPlatform(tenantId);
             Company company = new Company();
             company.id = Ids.newId();
             company.tenantId = tenantId;
-            company.ruc = Api.randomRuc();
+            company.ruc = ruc;
             company.razonSocial = "Empresa " + company.ruc;
             company.sunatEnv = sunatEnv;
             company.rucVerifiedAt = Instant.now();

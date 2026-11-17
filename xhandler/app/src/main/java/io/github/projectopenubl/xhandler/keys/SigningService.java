@@ -35,9 +35,14 @@ public class SigningService {
      * accept SUNAT's public demo key when the company has no certificate; production never does.
      */
     public Signed sign(Company company, String xml) {
+        return sign(company, company.sunatEnv, xml);
+    }
+
+    /** Signs for a given environment (a document's own, which may differ after a switch). */
+    public Signed sign(Company company, String sunatEnv, String xml) {
         Optional<SigningKey> key = SigningKey.active(company.id);
         if (key.isEmpty()) {
-            if (!"production".equals(company.sunatEnv)) {
+            if (!"production".equals(sunatEnv)) {
                 EngineModels.SignResponse demo = engine.signWithDemoKey(xml);
                 return new Signed(demo.xml(), demo.digestValue(), null);
             }

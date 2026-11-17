@@ -114,6 +114,8 @@ class SummaryAndAlertsTest {
             await().atMost(WAIT).until(() -> receiver.types().contains("document.delayed"));
             Thread.sleep(500);
             assertEquals(1, receiver.received().stream().filter(r -> r.body().contains(doc.id().toString())).count(), "alerted once");
+            java.util.List<String> ids = as("alice").get("/api/v1/tenants/" + tenant + "/webhooks").then().extract().path("id");
+            ids.forEach(w -> as("alice").delete("/api/v1/tenants/" + tenant + "/webhooks/" + w).then().statusCode(204));
         }
     }
 }
