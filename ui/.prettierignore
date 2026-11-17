@@ -1,0 +1,14 @@
+# Library, IDE and build locations
+**/node_modules/
+**/coverage/
+**/dist/
+.vscode/
+.idea/
+.eslintcache/
+
+# App excluded files
+client/src/app/client/**
+client/openapi/**
+**/*.gen.ts
+routeTree.gen.ts
+package-lock.json

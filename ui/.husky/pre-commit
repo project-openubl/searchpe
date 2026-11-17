@@ -1,0 +1,2 @@
+# Installed with `npm run hooks:install` (core.hooksPath=ui/.husky/_); runs only on staged ui/ files.
+cd ui && npx lint-staged

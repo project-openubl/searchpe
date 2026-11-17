@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+
+  "include": ["src/**/*"],
+
+  "compilerOptions": {
+    "strict": true,
+    "target": "es2021",
+    "module": "node16",
+    "moduleResolution": "node16",
+    "esModuleInterop": true,
+    "sourceMap": true,
+    "skipLibCheck": true,
+    "types": ["node"]
+  }
+}

@@ -1,0 +1,78 @@
+---
+name: xhandler-api
+description: "Apply when code calls or interprets the xhandler-service API: read the operation in client/openapi/xhandler.json, use snake_case JSON, tenant-scoped paths with the hook-injected tenant, its { kind, message, detail } errors, Pulp-like jobs, role gates that mirror Role#allows, and only public endpoints from public pages."
+root: false
+targets: ["claudecode", "cursor"]
+globs:
+  [
+    "client/src/app/queries/xhandler/**",
+    "client/src/app/hooks/**",
+    "client/src/app/pages/xhandler/**",
+    "client/src/app/pages/public/**",
+    "client/config/**",
+  ]
+---
+
+# xhandler-service API usage
+
+Before wiring an endpoint, read its operation in `client/openapi/xhandler.json` (or the
+generated client `@app/client/xhandler`): params, body and declared responses. The service's
+design is xhandler `docs/DESIGN.md` §12; behaviour notes are in
+`docs/internals/xhandler-api-notes.md`.
+
+## Shape
+
+- Base path `/api/v1`, called through the generated client (base URL `/api/xhandler`); never a
+  hand-built URL.
+- JSON is **snake_case** in both directions. The generated types are snake_case because
+  `client/config/specPatches.ts` fixes the spec; don't convert names by hand.
+- Tenant data lives under `/tenants/{tenantId}/…`: the tenant comes from the URL through
+  `useSelectedTenantId()` ([queries](queries.md)). A `404` there can mean a foreign tenant: show
+  it as "no existe", never as "forbidden" ([ADR 0002](../../docs/adr/0002-navigation-partner-tenant-company.md)).
+- Pages answer `{ items, limit, offset }` with no total ([list-reads](list-reads.md)).
+- Only the documented filters exist (`state`, `name` for jobs; `status`, `serie`, … for
+  documents); don't filter client-side what the API can't.
+
+## Errors
+
+- Every error body is `{ kind, message, detail }` (`IXhandlerErrorData`): turn it into UI text
+  with `getMutationErrorMessage({ error, fallback })`; never parse `error.response.data` ad hoc.
+- Branch on `getApiErrorKind(error)` (`invalid_document`, `wrong_password`, …), never on the
+  Spanish `message`, which can change.
+
+## Writes and jobs
+
+- Type a write by the responses its operation declares: `201` emit, `202` + job link for long
+  operations, `409` guard violations, `422` invalid documents (DESIGN.md §12).
+- Creates send an `Idempotency-Key` header (a fresh UUID per user intent, reused on retry of
+  the same submission).
+- Jobs are Pulp-like ([ADR 0007](../../docs/adr/0007-job-reporting.md)): terminal states via
+  `isTerminalJobState` (`completed`, `failed`, `canceled`; `canceling` still runs); cancel is
+  `POST …/jobs/{id}/cancel`, offered only while `isJobCancelable`. Show a failed job's error as
+  returned.
+
+## Permissions
+
+- The user's role per tenant comes from `GET /tenants`; gate actions with
+  `useTenantRole().can(minimum)` / `disabledProps(minimum)`, whose order mirrors the service's
+  `Role#allows` (owner > admin > operator > viewer; support only reads). Use the same minimum
+  role the endpoint's `TenantAccess.enter` requires.
+
+## Public endpoints
+
+- Public pages call only `/api/v1/public/*` and `/api/v1/status`, through
+  `xhandlerPublicClient` (no token) ([ADR 0003](../../docs/adr/0003-public-and-authenticated-routes.md)).
+- A capability token is a credential: never log it or put it in a toast.
+
+## Checklist
+
+Pass/fail rubric for `/eval`. Check changed xhandler queries, hooks and pages.
+
+- [ ] Calls go through `@app/client/xhandler` with snake_case types; no hand-built URLs.
+- [ ] Tenant-scoped calls take the tenant from `useSelectedTenantId()`; tenant 404s read as
+      "no existe".
+- [ ] Errors become text via `getMutationErrorMessage`; logic branches on `kind`, not `message`.
+- [ ] Writes are typed from their declared statuses; creates send an `Idempotency-Key`.
+- [ ] Job state uses `isTerminalJobState` / `isJobCancelable`; cancel is the `POST …/cancel`.
+- [ ] Actions are gated with `useTenantRole` at the endpoint's minimum role.
+- [ ] Public pages use `xhandlerPublicClient` and public endpoints only.

@@ -1,0 +1,77 @@
+---
+name: forms
+description: "Apply when building a form page or a modal form: react-hook-form + yup, Spanish labels and messages, edit sends only what the API accepts, submission errors show in the form, and the form leaves (page) or closes (modal) only on success."
+root: false
+targets: ["claudecode", "cursor"]
+globs:
+  [
+    "client/src/app/pages/**/*-create/**",
+    "client/src/app/pages/**/*-edit/**",
+    "client/src/app/**/*Form.tsx",
+    "client/src/app/**/use*Form.tsx",
+    "client/src/app/**/use*Form.ts",
+    "client/src/app/**/*Modal.tsx",
+    "client/src/app/components/FormSubmitError.tsx",
+    "client/src/app/hooks/useSubmitError.ts",
+  ]
+---
+
+# Forms
+
+Two kinds of form share one core: **form pages** (create and edit of objects with a page of
+their own: a company, a series, a webhook) and **modal forms** (actions and small objects).
+
+## Shared core
+
+- Form state and validation are react-hook-form with a yup schema (`yupResolver`); zod is for
+  URL and storage state only ([list-state](list-state.md)).
+- Labels, helper texts and validation messages are Spanish ([ADR 0005](../../docs/adr/0005-spanish-ui.md)):
+  pass the message to each yup rule (`string().required("Ingresa el RUC")`), never yup's English
+  defaults.
+- SUNAT formats are validated client-side where the format is fixed (RUC 11 digits, DNI 8,
+  serie `F001`); the server's answer still decides.
+
+**A submission failure is shown _in the form_, not as a toast**
+([ADR 0006](../../docs/adr/0006-api-error-display.md)): an inline alert at the top of `<Form>`,
+and the form stays for retry. Success toasts and list/detail error toasts stay toasts.
+
+- **`useSubmitError`** (`hooks/useSubmitError.ts`) returns `submitError`, `setSubmitError` and
+  `clearSubmitError`; **`FormSubmitError`** renders it as the **first child of `<Form>`**
+  (message, then detail); **`getMutationErrorMessage({ error, fallback })`** builds it.
+- `clearSubmitError()` runs at the start of each submit.
+- The primary button is `type="submit" form={formId}` with `<Form id={formId}>`, so Enter and
+  click share one `onSubmit`.
+
+## Form pages
+
+- The page (`pages/<area>/<entity>/<entity>-create/`, `<entity>-edit/`) owns `useSubmitError`,
+  the mutation, the toasts and the navigation.
+- It navigates away only from the mutation's call-level `onSuccess` (a create → the new detail
+  page; an edit → the detail page). Nothing navigates in `onError`.
+- Edit sends what the endpoint's body accepts, derived from the changed fields when the API
+  patches, the whole body when it replaces (`PUT`); see [xhandler-api](xhandler-api.md).
+- No wizard unless an ADR asks for one.
+
+## Modal forms
+
+- The **form hook** owns the error (sets it in the mutation `onError`), the **form component**
+  renders it, the **modal** threads it.
+- A persistently-mounted modal also clears the error in its close handler.
+- The modal closes **on success only**: call-level `onSuccess: onClose`. `mutateAsync` modals
+  (chained requests) `setSubmitError(…)` in `catch` and `return` instead of closing.
+
+Out of scope: confirmations (`ConfirmActionModal`, errors owned by the page) keep toasts.
+
+## Checklist
+
+Pass/fail rubric for `/eval`. Check changed `*-create/**`, `*-edit/**`, `*Form.tsx`,
+`use*Form.ts(x)` and `*Modal.tsx` (skip confirmations).
+
+- [ ] react-hook-form + yup; every label, helper and validation message in Spanish.
+- [ ] Submission failures are shown in-form via `FormSubmitError` as the **first child of
+      `<Form>`**, fed by `useSubmitError` and `getMutationErrorMessage` — **not** a danger
+      toast; `clearSubmitError()` runs at the start of each submit.
+- [ ] The primary button is `type="submit" form={formId}` tied to `<Form id={formId}>`.
+- [ ] A form page navigates away only from the mutation's call-level `onSuccess`.
+- [ ] A modal **closes on success only**.
+- [ ] Success toasts and all list/detail error toasts remain toasts.

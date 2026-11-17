@@ -1,0 +1,45 @@
+# The unified UI (ui/): lint, format, build, unit tests (Vitest browser mode) and its image
+name: ui
+
+on:
+  push:
+    branches: [main]
+    paths: ["ui/**", ".github/workflows/ui.yml"]
+  pull_request:
+    paths: ["ui/**", ".github/workflows/ui.yml"]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      # npm ci runs `prepare`, which generates the API clients from client/openapi/
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm test
+        env:
+          CI: "1"
+
+  image:
+    runs-on: ubuntu-latest
+    needs: [check]
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -t xhandler-ui:ci ui
+      # Smoke test: the server starts with the required settings and answers its health check
+      - run: |
+          docker run -d --name ui -p 8080:8080 \
+            -e XHANDLER_API_URL=http://127.0.0.1:9 -e OIDC_SERVER_URL=http://127.0.0.1:9/realms/xhandler xhandler-ui:ci
+          for i in $(seq 1 30); do curl -fs http://127.0.0.1:8080/healthz && break; sleep 1; done
+          curl -fs http://127.0.0.1:8080/ | grep -q '<div id="root"'

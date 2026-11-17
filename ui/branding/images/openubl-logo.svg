@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Openubl">
+  <!-- Placeholder logo: replace with the official Openubl artwork. -->
+  <rect width="64" height="64" rx="12" fill="#0066cc"/>
+  <path d="M18 14h20l10 10v26H18z" fill="#ffffff"/>
+  <path d="M38 14v10h10" fill="#99c2eb"/>
+  <path d="M24 32h18M24 39h18M24 46h12" stroke="#0066cc" stroke-width="3" stroke-linecap="round"/>
+</svg>

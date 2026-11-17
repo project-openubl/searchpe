@@ -1,0 +1,81 @@
+---
+description: 'Apply when adding or changing a TanStack Router route or a *DetailRoute adapter: route files only wire loaders and states to pages, public pages live under _public and private ones under _authenticated, the loader primes detail queries, and pages get props instead of reading params.'
+globs: client/src/routes/**,client/src/router.ts,client/src/app/pages/**/*DetailRoute.tsx,client/src/app/pages/**/*Route.tsx
+---
+
+# Route conventions (`client/src/routes/`)
+
+## Groups
+
+- `_authenticated/` holds every page that needs a session; its `beforeLoad` starts the OIDC
+  login. `_public/` holds the pages anyone opens ([ADR 0003](../../docs/adr/0003-public-and-authenticated-routes.md));
+  `RootLayout` renders them in `PublicLayout`, and they only call public endpoints through
+  `xhandlerPublicClient`.
+- Paths are Spanish and follow the hierarchy of [ADR 0002](../../docs/adr/0002-navigation-partner-tenant-company.md):
+  `/organizaciones/$tenantId/empresas/$companyId`, `/padron/…`, `/perfil`, `/p/documentos/$token`.
+- `padron.ts` 404s every searchpe page when searchpe isn't deployed; a new optional product gets
+  the same guard ([ADR 0001](../../docs/adr/0001-one-shell-two-backends.md)).
+
+## Route files
+
+- A route file only wires `createFileRoute` options (`validateSearch`, `search`, `beforeLoad`,
+  `loader`, `pendingComponent`, `errorComponent`, `component`) to a page from `@app/pages/...`.
+  No page JSX, hooks or queries; no `lazy()` (routes are auto code-split).
+- A list route passes `validateSearch` and `search` from `listSearch(<LIST>_STATE)`
+  ([list-state](list-state.md)).
+- A pathless or path layout (`_authenticated.ts`, `_public.ts`, `padron.ts`,
+  `organizaciones/$tenantId.ts`) has no `component`; the router renders `<Outlet />`.
+
+## Detail routes
+
+- The loader primes the detail query with `queryClient.query({ …options, staleTime: "static" })`
+  from its params (`tenantId` included) and returns the ids the page needs.
+- `pendingComponent` is `DetailRoutePending` labelled `Cargando <objeto>`, no ellipsis;
+  `errorComponent` is `DetailRouteError` (a 404 and a foreign tenant look the same). The page
+  uses `useSuspense*Query` and has no loading or not-found guards.
+- `component` is a `*DetailRoute.tsx` adapter next to the page: it reads loader data or params
+  with `getRouteApi("<exact route id>")` and passes them as props.
+
+```tsx
+// routes/_authenticated/organizaciones/$tenantId/empresas/$companyId.tsx
+export const Route = createFileRoute(
+  "/_authenticated/organizaciones/$tenantId/empresas/$companyId",
+)({
+  loader: async ({
+    context: { queryClient },
+    params: { tenantId, companyId },
+  }) => {
+    await queryClient.query({
+      ...companyDetailQueryOptions({ tenantId, companyId }),
+      staleTime: "static",
+    });
+    return { companyId };
+  },
+  pendingComponent: () => <DetailRoutePending label="Cargando empresa" />,
+  errorComponent: DetailRouteError,
+  component: CompanyDetailRoute,
+});
+```
+
+## Params, search and links
+
+- Pages and components never read path params; the one exception is `useSelectedTenantId()`.
+- A page may read and update its own route's search params only through
+  `getRouteApi("<its route id>").useSearch()` / `.useNavigate()`.
+- `validateSearch` returns a typed fallback for each key and never throws.
+- Internal links use typed `to` + `params` (`<Link>`, `navigate`), never a template-string URL.
+
+## Checklist
+
+Pass/fail rubric for `/eval`. Check changed files under `client/src/routes/`, `router.ts`,
+`*Route.tsx`, and pages that read search params.
+
+- [ ] Private pages are under `_authenticated/`, public ones under `_public/`; paths are Spanish
+      and carry tenant/company ids.
+- [ ] Route files only wire options to a page; layouts have no `component`.
+- [ ] Detail loaders prime the detail query with `staleTime: "static"` and return ids.
+- [ ] `DetailRoutePending` with `Cargando <objeto>` (no ellipsis) and `DetailRouteError`.
+- [ ] Adapters read through `getRouteApi` with the exact route id and pass props.
+- [ ] Pages read no path params (except `useSelectedTenantId`) and read search only for their
+      own route via `getRouteApi`.
+- [ ] `validateSearch` has typed fallbacks; internal links are typed.

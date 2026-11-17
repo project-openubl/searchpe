@@ -1,0 +1,7 @@
+# Git runs hooks from the repository root and passes the message file relative to it.
+ROOT=$(git rev-parse --show-toplevel)
+case "$1" in
+  /*) MSG_FILE="$1" ;;
+  *) MSG_FILE="$ROOT/$1" ;;
+esac
+cd "$ROOT/ui" && npx --no -- commitlint --edit "$MSG_FILE"

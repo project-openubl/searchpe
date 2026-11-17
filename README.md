@@ -10,6 +10,7 @@ Todos los servicios de xhandler, construidos y desplegados juntos:
 - [Searchpe](./searchpe): microservicio que expone los datos del `padrón reducido` de la SUNAT.
 - [xhandler-service](./xhandler): servicio multi-tenant de comprobantes electrónicos SUNAT
   (diseño: [xhandler/docs/DESIGN.md](./xhandler/docs/DESIGN.md)).
+- [UI](./ui): la interfaz única de todos los servicios.
 - [Operator](./operator): operador de Kubernetes para todos los servicios.
 
 ## Links

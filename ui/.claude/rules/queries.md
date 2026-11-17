@@ -1,0 +1,134 @@
+---
+paths:
+  - client/src/app/queries/**
+---
+# Query module conventions (`client/src/app/queries/`)
+
+Scope: the **public query-reading surface** — `*QueryOptions` factories and `use*Query` /
+`use*Queries` hooks. For mutations it sets only their `TError`/`TData` and which file they
+live in.
+
+## Files
+
+One module per domain and backend: `queries/xhandler/<family>.ts` (`tenants`, `companies`,
+`jobs`, `status`, …) and `queries/searchpe/<family>.ts` (`contribuyentes`, `versions`,
+`whoami`, `health`). Shared types and helpers live in `queries/utils/`; the `QueryClient` in
+`queries/config.ts`. A module never imports the other backend's modules, except to invalidate
+what its write changes.
+
+## Calls go through the generated client
+
+Query functions call the generated SDK function with `throwOnError: true` and return `.data`:
+
+```ts
+queryFn: async () =>
+  (
+    await getV1TenantsByTenantIdJobs({
+      path: { tenantId },
+      query: params,
+      throwOnError: true,
+    })
+  ).data,
+```
+
+- No hand-built URL or raw `axios` call for an endpoint the spec documents. The exceptions are
+  endpoints outside the specs (searchpe's `/q/health`), which use the backend's axios instance
+  from `@app/axios-config/apiInit` with a comment saying why.
+- Public pages pass `client: xhandlerPublicClient`, never the default (token-carrying) client.
+
+## One inline-object arg
+
+Every `*QueryOptions` factory and `use*Query`/`use*Queries` hook takes **exactly one
+inline-typed object**, even for a single field:
+
+```ts
+export const jobsListQueryOptions = ({
+  tenantId,
+  params,
+  options,
+}: {
+  tenantId: string;
+  params: IJobListParams;
+  options?: JobListOptions;
+}) => queryOptions<PageJobView, XhandlerAxiosError>({/* key, fn */});
+
+export const useJobsListQuery = ({
+  params,
+  options,
+}: {
+  params: IJobListParams;
+  options?: JobListOptions;
+}) => {
+  const tenantId = useSelectedTenantId();
+  return useQuery(jobsListQueryOptions({ tenantId, params, options }));
+};
+```
+
+- **`params`** — list/filter params, always required, typed from the generated data type
+  (`type IJobListParams = ListParams<GetV1TenantsByTenantIdJobsData>`). `ListParams` makes
+  `limit` required.
+- **`tenantId`** — passed explicitly to the pure `*QueryOptions`; the **hook** injects it with
+  `useSelectedTenantId()`, so callers never pass it. Route loaders pass it from their params.
+- **ids** — a query for one resource takes the ids of its path (`companyId`, `numeroDocumento`),
+  never a URL.
+- **`options`** — optional, typed
+  `Omit<UseQueryOptions<T, TError>, "queryKey" | "queryFn">`, **spread first** so the factory's
+  `queryKey`/`queryFn` win.
+
+Key factories (`jobKeys.listQuery(tenantId, params)`, `companyKeys.detail(tenantId, id)`) and
+`use*Mutation` call signatures **stay positional**.
+
+## Keys
+
+- Each family exports a `*QueryKey` constant and a `*Keys` factory mirroring the REST path,
+  identifying segments before params, so a prefix invalidates every variant:
+  `[...companyKeys.all(), tenantId, "list", params]`.
+- Tenant-scoped keys include the tenant, so switching tenants never shows another tenant's
+  cache.
+
+## One generic query per list endpoint
+
+Each list endpoint has **one** generic `*QueryOptions` + `use*Query` typed with the full
+`ListParams<…Data>`; callers pass their own params. No per-use-case query that bakes params in;
+polling or `enabled` go through `options`.
+
+## Precondition-guard detail queries
+
+- `*QueryOptions` sets **no `enabled`**: route loaders prime it with
+  `queryClient.query({ ...options, staleTime: "static" })`.
+- The `use*Query` hook takes only the identifying args and re-asserts its precondition
+  (`enabled: isNumeroDocumento(numeroDocumento)`); a detail page uses `useSuspense*Query`.
+- Variant: when `enabled` is a caller preference (the shell skips a call while a backend is
+  down), keep `options` on the hook and forward it.
+
+## Error and response typing
+
+RQ v5 doesn't infer `TError`; declare it on every `queryOptions` / `useMutation` /
+`UseQueryOptions`, from `queries/utils/openapiErrorTypes.ts`: `XhandlerAxiosError` for
+xhandler-service, `SearchpeAxiosError` for searchpe. `TData` is the generated response type,
+never `any`/`unknown`.
+
+## No `throw` in a `queryFn`
+
+Errors propagate from the HTTP layer (`throwOnError: true`); a manual `throw` triggers RQ retry
+on a non-recoverable condition.
+
+## Checklist
+
+Pass/fail rubric for `/eval`. Check changed `queries/` files.
+
+- [ ] The module sits in `queries/xhandler/` or `queries/searchpe/` by backend, one per domain.
+- [ ] Documented endpoints are called through the generated SDK with `throwOnError: true`;
+      public pages pass `xhandlerPublicClient`; any raw call has a comment saying why.
+- [ ] Every `*QueryOptions` factory and `use*Query` / `use*Queries` hook takes **exactly one
+      inline-typed object arg**; key factories and `use*Mutation` stay positional.
+- [ ] List `params` are required and derive from the generated data type via `ListParams`.
+- [ ] `tenantId` is explicit in `*QueryOptions` and injected by the hook via
+      `useSelectedTenantId()`; tenant-scoped keys include it.
+- [ ] `options` is typed `Omit<UseQueryOptions<T, TError>, "queryKey" | "queryFn">` and spread
+      first.
+- [ ] One generic query per list endpoint; polling/`enabled` through `options`.
+- [ ] Detail `*QueryOptions` set no `enabled`; hooks re-assert their precondition.
+- [ ] Every `queryOptions` / `useMutation` declares `TError` (`XhandlerAxiosError` /
+      `SearchpeAxiosError`) and a generated `TData`; no `any` / `unknown`.
+- [ ] No `throw` inside a `queryFn`.

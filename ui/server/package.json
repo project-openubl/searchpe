@@ -1,0 +1,34 @@
+{
+  "name": "@openubl-ui/server",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "clean": "rimraf ./dist",
+    "clean:all": "rimraf ./dist ./node_modules",
+    "lint": "eslint --max-warnings 0 . && tsc --noEmit",
+    "lint:fix": "eslint . --fix",
+    "lint:fast": "oxlint --type-aware --deny-warnings .",
+    "lint:fast:fix": "oxlint --type-aware --deny-warnings --fix .",
+    "format": "prettier --check --ignore-path ../.prettierignore './src/**/*.{ts,tsx,js,json}'",
+    "format:fix": "prettier --write --ignore-path ../.prettierignore './src/**/*.{ts,tsx,js,json}'",
+    "format:fast": "oxfmt --check './src/**/*.{ts,tsx,js,json}'",
+    "format:fast:fix": "oxfmt './src/**/*.{ts,tsx,js,json}'",
+    "prebuild": "npm run clean",
+    "build": "cross-env NODE_ENV=production rollup -c",
+    "start:dev": "cross-env NODE_ENV=development ROLLUP_RUN=true rollup -c -w",
+    "start": "npm run build && node --enable-source-maps dist/index.js"
+  },
+  "dependencies": {
+    "ejs": "^4.0.0",
+    "express": "^5.1.0",
+    "http-proxy-middleware": "^3.0.5",
+    "http-terminator": "^3.2.0"
+  },
+  "devDependencies": {
+    "@types/ejs": "^3.1.5",
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.0.3"
+  }
+}

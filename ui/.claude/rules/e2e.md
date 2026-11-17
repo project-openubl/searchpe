@@ -1,0 +1,64 @@
+---
+paths:
+  - e2e/**
+---
+# E2E conventions (Playwright, `e2e/`)
+
+**Tests act like a user and stay stable.** Run with `npm run test:e2e` against the stack in
+`e2e/README.md`. The `e2e` workspace has **no lint script**: keep it strict by hand
+(`npx tsc --noEmit -p e2e` type-checks it).
+
+## Layering
+
+Put each scenario in the **cheapest layer that can prove it**:
+
+- **Component (Vitest)** — client-only behaviour with data mocked (labels, validation,
+  permission **gating** via `useSearchpePermissions` / `useTenantRole`).
+- **E2E (`chromium`)** — the real UI against the real backends; **one representative journey
+  per surface**. Role **enforcement** belongs to the backends' own tests.
+
+## Structure
+
+- Specs mirror `client/src/app/pages/` to **area / entity / surface**, matching each folder's
+  exact name: `searchpe/versions/version-list/version-list.spec.ts`,
+  `xhandler/companies/company-detail/company-detail.spec.ts`. A test driving both list and
+  detail goes in the `*-list` spec.
+- Cross-area specs (`navigation.spec.ts`) and `auth.setup.ts` sit at the `tests/` root.
+- Public pages (`tests/public/**`) run in the `public` project, with **no** session: they prove
+  no login is asked ([ADR 0003](../../docs/adr/0003-public-and-authenticated-routes.md)).
+- Shared infra lives in **`e2e/support/`**: `fixtures.ts`, `pom/`, `helpers/`. A spec imports
+  `test` / `expect` from `@support/fixtures` (never `@playwright/test` or a relative path).
+  Page objects are classes in `support/pom/`; list screens extend `DataViewList`.
+
+## Locators and assertions
+
+- Locate by role, label or text, as a user would, with the **Spanish** texts the UI shows
+  (`getByRole("button", { name: "Nueva versión" })`); the data-view table is
+  `getByRole("grid", { name: "Tabla de …" })`. No CSS, `#id`, `.pf-*` or XPath in specs.
+- Use web-first assertions that retry (`await expect(locator).toBeVisible()`); no
+  `page.waitForTimeout`. Wait on a real event (`page.waitForResponse`, a web-first assertion).
+- Keycloak's login form is located by label (`/username|usuario/i`), so a Spanish login theme
+  works too.
+
+## Data and capabilities
+
+- The stack is real and shared: tests create what they need through the UI or the API and never
+  depend on fixed ids. Data the stack may lack (a tenant for the e2e user, a padrón version)
+  makes the test `test.skip(condition, "reason")`, never fail.
+- searchpe is optional: its specs start with
+  `test.skip(!SEARCHPE_ENABLED, "searchpe isn't part of this stack")`.
+- Tests and scripts use SUNAT **beta** or the fake only, never production.
+- `page.route` only to delay real requests to observe a loading state; never to fake a body.
+
+## Checklist
+
+Pass/fail rubric for `/eval`. Check changed files under `e2e/`.
+
+- [ ] Each scenario sits in the cheapest layer; one representative e2e per surface.
+- [ ] Specs mirror `pages/` to area/entity/surface; public specs under `tests/public/`;
+      `test` / `expect` and page objects come from `@support/*`; list page objects extend
+      `DataViewList`.
+- [ ] Locators are role / label / text based with Spanish names; web-first assertions, no
+      `waitForTimeout`.
+- [ ] Missing stack data or an absent searchpe skips with a reason; no fixed ids; no SUNAT
+      production.

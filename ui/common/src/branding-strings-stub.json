@@ -1,0 +1,17 @@
+{
+  "application": {
+    "title": "Openubl",
+    "name": "Openubl UI",
+    "description": "Comprobantes electrónicos SUNAT y consulta del padrón RUC"
+  },
+  "about": {
+    "displayName": "Openubl",
+    "documentationUrl": "https://project-openubl.github.io"
+  },
+  "masthead": {
+    "leftTitle": {
+      "text": "Openubl"
+    },
+    "supportUrl": "https://github.com/project-openubl/searchpe/discussions"
+  }
+}

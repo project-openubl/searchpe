@@ -1,0 +1,419 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [],
+  "categories": {
+    "correctness": "off"
+  },
+  "options": {
+    "typeAware": true
+  },
+  "env": {
+    "builtin": true
+  },
+  "ignorePatterns": [
+    "**/dist",
+    "**/coverage",
+    "client/config/**",
+    "client/src/app/client/**",
+    "client/types/**",
+    "client/src/vite-env.d.ts",
+    "client/src/routeTree.gen.ts",
+    "e2e/**"
+  ],
+  "overrides": [
+    {
+      "files": ["**/*.ts", "**/*.tsx"],
+      "rules": {
+        "for-direction": "error",
+        "no-async-promise-executor": "error",
+        "no-case-declarations": "error",
+        "no-compare-neg-zero": "error",
+        "no-cond-assign": "error",
+        "no-constant-binary-expression": "error",
+        "no-constant-condition": "error",
+        "no-control-regex": "error",
+        "no-debugger": "error",
+        "no-delete-var": "error",
+        "no-dupe-else-if": "error",
+        "no-duplicate-case": "error",
+        "no-empty": "error",
+        "no-empty-character-class": "error",
+        "no-empty-pattern": "error",
+        "no-empty-static-block": "error",
+        "no-ex-assign": "error",
+        "no-extra-boolean-cast": "error",
+        "no-fallthrough": "error",
+        "no-global-assign": "error",
+        "no-invalid-regexp": "error",
+        "no-irregular-whitespace": "error",
+        "no-loss-of-precision": "error",
+        "no-misleading-character-class": "error",
+        "no-nonoctal-decimal-escape": "error",
+        "no-prototype-builtins": "error",
+        "no-regex-spaces": "error",
+        "no-self-assign": "error",
+        "no-shadow-restricted-names": "error",
+        "no-sparse-arrays": "error",
+        "no-unassigned-vars": "error",
+        "no-unsafe-finally": "error",
+        "no-unsafe-optional-chaining": "error",
+        "no-unused-labels": "error",
+        "no-unused-private-class-members": "error",
+        "no-unused-vars": [
+          "error",
+          {
+            "argsIgnorePattern": "^_",
+            "varsIgnorePattern": "^_",
+            "caughtErrorsIgnorePattern": "^_",
+            "ignoreRestSiblings": true
+          }
+        ],
+        "no-useless-backreference": "error",
+        "no-useless-catch": "error",
+        "no-useless-escape": "error",
+        "preserve-caught-error": "error",
+        "require-yield": "error",
+        "use-isnan": "error",
+        "valid-typeof": "error",
+        "no-var": "error",
+        "prefer-const": "error",
+        "prefer-rest-params": "error",
+        "prefer-spread": "error",
+        "no-array-constructor": "error",
+        "no-unused-expressions": "error",
+        "typescript/ban-ts-comment": "error",
+        "typescript/no-duplicate-enum-values": "error",
+        "typescript/no-empty-object-type": "error",
+        "typescript/no-explicit-any": "error",
+        "typescript/no-extra-non-null-assertion": "error",
+        "typescript/no-misused-new": "error",
+        "typescript/no-namespace": "error",
+        "typescript/no-non-null-asserted-optional-chain": "error",
+        "typescript/no-require-imports": "error",
+        "typescript/no-this-alias": "error",
+        "typescript/no-unnecessary-type-constraint": "error",
+        "typescript/no-unsafe-declaration-merging": "error",
+        "typescript/no-unsafe-function-type": "error",
+        "typescript/no-wrapper-object-types": "error",
+        "typescript/prefer-as-const": "error",
+        "typescript/prefer-namespace-keyword": "error",
+        "typescript/triple-slash-reference": "error",
+        "@eslint-react/error-boundaries": "error",
+        "@eslint-react/exhaustive-deps": "warn",
+        "@eslint-react/no-access-state-in-setstate": "error",
+        "@eslint-react/no-array-index-key": "warn",
+        "@eslint-react/no-children-count": "warn",
+        "@eslint-react/no-children-for-each": "warn",
+        "@eslint-react/no-children-map": "warn",
+        "@eslint-react/no-children-only": "warn",
+        "@eslint-react/no-children-to-array": "warn",
+        "@eslint-react/no-clone-element": "warn",
+        "@eslint-react/no-component-will-mount": "error",
+        "@eslint-react/no-component-will-receive-props": "error",
+        "@eslint-react/no-component-will-update": "error",
+        "@eslint-react/no-context-provider": "error",
+        "@eslint-react/no-create-ref": "error",
+        "@eslint-react/no-direct-mutation-state": "error",
+        "@eslint-react/no-forward-ref": "error",
+        "@eslint-react/no-missing-key": "error",
+        "@eslint-react/no-nested-component-definitions": "error",
+        "@eslint-react/no-nested-lazy-component-declarations": "error",
+        "@eslint-react/no-set-state-in-component-did-mount": "warn",
+        "@eslint-react/no-set-state-in-component-did-update": "warn",
+        "@eslint-react/no-set-state-in-component-will-update": "warn",
+        "@eslint-react/no-unnecessary-use-prefix": "warn",
+        "@eslint-react/no-unsafe-component-will-mount": "warn",
+        "@eslint-react/no-unsafe-component-will-receive-props": "warn",
+        "@eslint-react/no-unsafe-component-will-update": "warn",
+        "@eslint-react/no-unused-class-component-members": "warn",
+        "@eslint-react/no-use-context": "error",
+        "@eslint-react/purity": "warn",
+        "@eslint-react/rules-of-hooks": "error",
+        "@eslint-react/set-state-in-effect": "warn",
+        "@eslint-react/set-state-in-render": "error",
+        "@eslint-react/static-components": "error",
+        "@eslint-react/unsupported-syntax": "error",
+        "@eslint-react/use-memo": "error",
+        "@eslint-react/use-state": "warn",
+        "@eslint-react/jsx-no-children-prop": "warn",
+        "@eslint-react/jsx-no-children-prop-with-children": "error",
+        "@eslint-react/jsx-no-comment-textnodes": "warn",
+        "@eslint-react/jsx-no-key-after-spread": "error",
+        "@eslint-react/jsx-no-leaked-dollar": "warn",
+        "@eslint-react/jsx-no-leaked-semicolon": "warn",
+        "@eslint-react/jsx-no-namespace": "error",
+        "@eslint-react/rsc-function-definition": "error",
+        "@eslint-react/dom-no-dangerously-set-innerhtml": "warn",
+        "@eslint-react/dom-no-dangerously-set-innerhtml-with-children": "error",
+        "@eslint-react/dom-no-find-dom-node": "error",
+        "@eslint-react/dom-no-flush-sync": "error",
+        "@eslint-react/dom-no-hydrate": "error",
+        "@eslint-react/dom-no-render": "error",
+        "@eslint-react/dom-no-render-return-value": "error",
+        "@eslint-react/dom-no-script-url": "warn",
+        "@eslint-react/dom-no-unsafe-iframe-sandbox": "warn",
+        "@eslint-react/dom-no-use-form-state": "error",
+        "@eslint-react/dom-no-void-elements-with-children": "error",
+        "@eslint-react/web-api-no-leaked-event-listener": "warn",
+        "@eslint-react/web-api-no-leaked-fetch": "warn",
+        "@eslint-react/web-api-no-leaked-intersection-observer": "warn",
+        "@eslint-react/web-api-no-leaked-interval": "warn",
+        "@eslint-react/web-api-no-leaked-resize-observer": "warn",
+        "@eslint-react/web-api-no-leaked-timeout": "warn",
+        "@eslint-react/naming-convention-context-name": "warn",
+        "@eslint-react/naming-convention-id-name": "warn",
+        "@eslint-react/naming-convention-ref-name": "warn",
+        "@tanstack/query/exhaustive-deps": "error",
+        "@tanstack/query/no-rest-destructuring": "warn",
+        "@tanstack/query/stable-query-client": "error",
+        "@tanstack/query/no-unstable-deps": "error",
+        "@tanstack/query/infinite-query-property-order": "error",
+        "@tanstack/query/no-void-query-fn": "error",
+        "@tanstack/query/mutation-property-order": "error",
+        "@tanstack/query/prefer-query-options": "error",
+        "@tanstack/router/create-route-property-order": "warn",
+        "@tanstack/router/route-param-names": "error",
+        "react/only-export-components": [
+          "error",
+          {
+            "allowConstantExport": true,
+            "allowCompoundComponents": true
+          }
+        ],
+        "jsx-a11y/alt-text": "error",
+        "jsx-a11y/anchor-has-content": "error",
+        "jsx-a11y/anchor-is-valid": "error",
+        "jsx-a11y/aria-activedescendant-has-tabindex": "error",
+        "jsx-a11y/aria-props": "error",
+        "jsx-a11y/aria-proptypes": "error",
+        "jsx-a11y/aria-role": "error",
+        "jsx-a11y/aria-unsupported-elements": "error",
+        "jsx-a11y/autocomplete-valid": "error",
+        "jsx-a11y/click-events-have-key-events": "error",
+        "jsx-a11y/heading-has-content": "error",
+        "jsx-a11y/html-has-lang": "error",
+        "jsx-a11y/iframe-has-title": "error",
+        "jsx-a11y/img-redundant-alt": "error",
+        "jsx-a11y/interactive-supports-focus": [
+          "error",
+          {
+            "tabbable": [
+              "button",
+              "checkbox",
+              "link",
+              "searchbox",
+              "spinbutton",
+              "switch",
+              "textbox"
+            ]
+          }
+        ],
+        "jsx-a11y/label-has-associated-control": "error",
+        "jsx-a11y/media-has-caption": "error",
+        "jsx-a11y/mouse-events-have-key-events": "error",
+        "jsx-a11y/no-access-key": "error",
+        "jsx-a11y/no-autofocus": "error",
+        "jsx-a11y/no-distracting-elements": "error",
+        "jsx-a11y/no-interactive-element-to-noninteractive-role": [
+          "error",
+          {
+            "tr": ["none", "presentation"],
+            "canvas": ["img"]
+          }
+        ],
+        "jsx-a11y/no-noninteractive-element-interactions": [
+          "error",
+          {
+            "handlers": [
+              "onClick",
+              "onError",
+              "onLoad",
+              "onMouseDown",
+              "onMouseUp",
+              "onKeyPress",
+              "onKeyDown",
+              "onKeyUp"
+            ],
+            "alert": ["onKeyUp", "onKeyDown", "onKeyPress"],
+            "body": ["onError", "onLoad"],
+            "dialog": ["onKeyUp", "onKeyDown", "onKeyPress"],
+            "iframe": ["onError", "onLoad"],
+            "img": ["onError", "onLoad"]
+          }
+        ],
+        "jsx-a11y/no-noninteractive-element-to-interactive-role": [
+          "error",
+          {
+            "ul": [
+              "listbox",
+              "menu",
+              "menubar",
+              "radiogroup",
+              "tablist",
+              "tree",
+              "treegrid"
+            ],
+            "ol": [
+              "listbox",
+              "menu",
+              "menubar",
+              "radiogroup",
+              "tablist",
+              "tree",
+              "treegrid"
+            ],
+            "li": [
+              "menuitem",
+              "menuitemradio",
+              "menuitemcheckbox",
+              "option",
+              "row",
+              "tab",
+              "treeitem"
+            ],
+            "table": ["grid"],
+            "td": ["gridcell"],
+            "fieldset": ["radiogroup", "presentation"]
+          }
+        ],
+        "jsx-a11y/no-noninteractive-tabindex": [
+          "error",
+          {
+            "tags": [],
+            "roles": ["tabpanel"],
+            "allowExpressionValues": true
+          }
+        ],
+        "jsx-a11y/no-redundant-roles": "error",
+        "jsx-a11y/no-static-element-interactions": [
+          "error",
+          {
+            "allowExpressionValues": true,
+            "handlers": [
+              "onClick",
+              "onMouseDown",
+              "onMouseUp",
+              "onKeyPress",
+              "onKeyDown",
+              "onKeyUp"
+            ]
+          }
+        ],
+        "jsx-a11y/role-has-required-aria-props": "error",
+        "jsx-a11y/role-supports-aria-props": "error",
+        "jsx-a11y/scope": "error",
+        "jsx-a11y/tabindex-no-positive": "error",
+        "@eslint-react/no-unstable-default-props": "error",
+        "@eslint-react/no-unstable-context-value": "error",
+        "react/rules-of-hooks": "error",
+        "react/exhaustive-deps": "error",
+        "typescript/consistent-type-imports": [
+          "error",
+          {
+            "prefer": "type-imports",
+            "fixStyle": "separate-type-imports",
+            "disallowTypeAnnotations": true
+          }
+        ],
+        "typescript/no-deprecated": "error"
+      },
+      "plugins": ["typescript", "react", "jsx-a11y", "unicorn"],
+      "jsPlugins": [
+        "@eslint-react/eslint-plugin",
+        "@tanstack/eslint-plugin-query",
+        "@tanstack/eslint-plugin-router"
+      ],
+      "env": {
+        "browser": true,
+        "node": true
+      }
+    },
+    {
+      "files": ["client/src/**/*.ts", "client/src/**/*.tsx"],
+      "rules": {
+        "simple-import-sort/imports": [
+          "error",
+          {
+            "groups": [
+              ["^\\u0000?react\\u0000?$", "^\\u0000?react-"],
+              ["^\\u0000?@?\\w"],
+              ["^\\u0000?@patternfly/"],
+              ["^\\u0000?@openubl-ui/"],
+              ["^\\u0000?@app(/|$)"],
+              ["^\\u0000?\\."]
+            ]
+          }
+        ],
+        "no-console": [
+          "error",
+          {
+            "allow": ["error"]
+          }
+        ],
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@patternfly/react-icons",
+                "message": "Import the icon from its deep path: @patternfly/react-icons/dist/esm/icons/<name>-icon."
+              }
+            ]
+          }
+        ],
+        "typescript/consistent-type-definitions": ["error", "interface"]
+      },
+      "jsPlugins": ["eslint-plugin-simple-import-sort"],
+      "plugins": ["typescript"]
+    },
+    {
+      "files": [
+        "client/src/app/components/**",
+        "client/src/app/hooks/**",
+        "client/src/app/utils/**",
+        "client/src/app/context/**"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@patternfly/react-icons",
+                "message": "Import the icon from its deep path: @patternfly/react-icons/dist/esm/icons/<name>-icon."
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["@app/pages", "@app/pages/*", "**/pages/*"],
+                "message": "App-root modules never import from pages/."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["client/src/**/*.ts", "client/src/**/*.tsx"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@patternfly/react-data-view",
+                "importNames": [
+                  "useDataViewPagination",
+                  "useDataViewFilters",
+                  "useDataViewSort"
+                ],
+                "message": "Keep list state with usePersistentState (see the list-state rule)."
+              }
+            ]
+          }
+        ]
+      },
+      "plugins": ["typescript"]
+    }
+  ]
+}

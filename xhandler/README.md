@@ -45,7 +45,7 @@ TOKEN=$(curl -s http://localhost:8180/realms/xhandler/protocol/openid-connect/to
 
 Traces: `podman compose -f ../hack/compose.yaml up -d lgtm`, then start the engine with
 `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318` and open Grafana at
-http://localhost:3000.
+http://localhost:3001.
 
 Platform administration: `java -jar admin-cli/target/xhandler-admin.jar --help`.
 

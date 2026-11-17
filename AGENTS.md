@@ -9,14 +9,16 @@ xhandler platform, built and deployed together.
 searchpe/     searchpe: RUC lookup over SUNAT's padrón reducido (Quarkus, Java 25)
 xhandler/     xhandler-service: SUNAT electronic documents — app (Quarkus), engine (Rust), admin-cli,
               sdk, deploy, docs/DESIGN.md. Its own guide: xhandler/AGENTS.md
-operator/     Kubernetes operator (Go, controller-runtime, OLM bundle) for every service
+operator/     Kubernetes operator (Go, controller-runtime, OLM bundle): Searchpe and XHandler kinds
+ui/           the one UI of every service (React, PatternFly, pulp-ui-2 blueprint). Its own guide: ui/AGENTS.md
 hack/         the local stack: PostgreSQL (one database per service), Keycloak, Grafana LGTM, SUNAT fake
 scripts/      manifests used by the CI end-to-end test (OLM catalog, PostgreSQL, sample resources)
 pom.xml       Maven aggregator: searchpe (inherits it) and xhandler (its own parent)
 ```
 
 Read the guide of the directory you change: `xhandler/AGENTS.md` (the design is
-`xhandler/docs/DESIGN.md`), `operator/README.md`.
+`xhandler/docs/DESIGN.md`), `ui/AGENTS.md` (its rules load when an agent starts in `ui/`; ADRs in
+`ui/docs/adr/`), `operator/README.md`.
 
 ## Commands
 
@@ -26,6 +28,8 @@ Read the guide of the directory you change: `xhandler/AGENTS.md` (the design is
 (cd xhandler && ./mvnw verify)                  # only xhandler-service
 (cd xhandler/engine && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test)
 (cd operator && make lint verify-generated test)
+(cd ui && npm ci && npm run lint && npm run format && npm run build && npm test)
+(cd ui && npm run start:dev)                    # the UI on :3000, proxying both backends
 podman compose -f hack/compose.yaml up -d       # the local stack (Keycloak on 8180)
 ```
 
@@ -50,5 +54,5 @@ Run Maven for xhandler from `xhandler/` (`(cd xhandler && ./mvnw ...)`): it has 
   `xhandler/` follows its own guide.
 - Each service keeps its own database, migrations and conventions; nothing crosses service
   directories except through their APIs.
-- CI: `.github/workflows/ci.yml` (searchpe and the operator) and `xhandler*.yml` (xhandler-service),
-  filtered by path. Every workflow must stay green on main.
+- CI: `.github/workflows/ci.yml` (searchpe and the operator), `xhandler*.yml` (xhandler-service) and
+  `ui.yml` (the UI), the last two filtered by path. Every workflow must stay green on main.

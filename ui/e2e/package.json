@@ -1,0 +1,12 @@
+{
+  "name": "@openubl-ui/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.63.0"
+  }
+}

@@ -1,0 +1,38 @@
+# dependencies
+node_modules/
+
+# testing
+coverage/
+__screenshots__/
+.vitest-attachments/
+
+# generated files (npm run generate, which `npm ci` runs through `prepare`)
+client/src/app/client/xhandler/
+client/src/app/client/searchpe/
+routeTree.gen.ts
+.tanstack/
+
+# production
+dist/
+
+# misc
+.DS_Store
+.env*
+!.env.example
+npm-debug.log*
+.eslintcache
+
+# IDEs
+.vscode/*
+.idea/
+
+# Playwright / test artifacts
+test-results/
+e2e/test-results/
+e2e/playwright-report/
+e2e/.auth/
+.playwright-cli/
+.playwright-mcp/
+
+# Claude
+.claude/settings.local.json

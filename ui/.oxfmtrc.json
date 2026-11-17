@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "trailingComma": "all",
+  "semi": true,
+  "singleQuote": false,
+  "printWidth": 80,
+  "sortPackageJson": false,
+  "ignorePatterns": [
+    "**/node_modules/",
+    "**/coverage/",
+    "**/dist/",
+    ".vscode/",
+    ".idea/",
+    ".eslintcache/",
+    "client/src/app/client/**",
+    "client/openapi/**",
+    "**/*.gen.ts",
+    "routeTree.gen.ts",
+    "package-lock.json"
+  ]
+}

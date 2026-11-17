@@ -1,0 +1,14 @@
+node_modules
+*/node_modules
+*/dist/
+dist
+coverage
+.claude
+.cursor
+.vscode
+.idea
+e2e/test-results
+e2e/playwright-report
+e2e/.auth
+*.md
+!README.md

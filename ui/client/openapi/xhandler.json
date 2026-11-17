@@ -1,0 +1,6501 @@
+{
+  "openapi" : "3.1.0",
+  "components" : {
+    "schemas" : {
+      "AccessLink" : {
+        "type" : "object",
+        "properties" : {
+          "accessUrl" : {
+            "type" : "string"
+          }
+        }
+      },
+      "AddMember" : {
+        "type" : "object",
+        "required" : [ "kind", "subject", "role" ],
+        "properties" : {
+          "kind" : {
+            "type" : "string",
+            "pattern" : "user|client"
+          },
+          "subject" : {
+            "type" : "string",
+            "pattern" : "\\S"
+          },
+          "role" : {
+            "type" : "string",
+            "pattern" : "admin|operator|viewer"
+          }
+        }
+      },
+      "AuditEntry" : {
+        "type" : "object",
+        "properties" : {
+          "at" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "actor" : {
+            "type" : "string"
+          },
+          "action" : {
+            "type" : "string"
+          },
+          "objectType" : {
+            "type" : "string"
+          },
+          "objectId" : {
+            "type" : "string"
+          },
+          "details" : {
+            "type" : "object",
+            "additionalProperties" : { }
+          }
+        }
+      },
+      "Authorization" : {
+        "type" : "object",
+        "required" : [ "authorizedAt", "evidenceBase64" ],
+        "properties" : {
+          "authorizedAt" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "evidenceBase64" : {
+            "type" : "string",
+            "pattern" : "\\S"
+          }
+        }
+      },
+      "AuthorizationView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "authorizedAt" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "evidence" : {
+            "type" : "boolean"
+          },
+          "registeredBy" : {
+            "type" : "string"
+          },
+          "approvedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "revokedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "BillingDetails" : {
+        "type" : "object",
+        "properties" : {
+          "billingRuc" : {
+            "type" : "string",
+            "pattern" : "\\d{11}"
+          },
+          "billingName" : {
+            "type" : "string",
+            "maxLength" : 300
+          },
+          "billingEmail" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Branding" : {
+        "type" : "object",
+        "properties" : {
+          "color" : {
+            "type" : "string",
+            "pattern" : "#[0-9a-fA-F]{6}"
+          },
+          "footer" : {
+            "type" : "string",
+            "maxLength" : 300
+          },
+          "senderName" : {
+            "type" : "string",
+            "maxLength" : 200
+          }
+        }
+      },
+      "CertificateView" : {
+        "type" : "object",
+        "properties" : {
+          "subject" : {
+            "type" : "string"
+          },
+          "issuer" : {
+            "type" : "string"
+          },
+          "serial" : {
+            "type" : "string"
+          },
+          "ruc" : {
+            "type" : "string"
+          },
+          "validFrom" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "validUntil" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "rucMatches" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "Close" : {
+        "type" : "object",
+        "required" : [ "resolution" ],
+        "properties" : {
+          "resolution" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 2000
+          }
+        }
+      },
+      "CompanyView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "ruc" : {
+            "type" : "string"
+          },
+          "razonSocial" : {
+            "type" : "string"
+          },
+          "nombreComercial" : {
+            "type" : "string"
+          },
+          "sunatEnv" : {
+            "type" : "string"
+          },
+          "emissionMode" : {
+            "type" : "string"
+          },
+          "rucVerifiedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "deliveredOnEmitDefault" : {
+            "type" : "boolean"
+          },
+          "sendingPaused" : {
+            "type" : "boolean"
+          },
+          "direccion" : {
+            "type" : "string"
+          },
+          "pdfFormat" : {
+            "type" : "string"
+          },
+          "emailOnAccept" : {
+            "type" : "boolean"
+          },
+          "hasLogo" : {
+            "type" : "boolean"
+          },
+          "submissionRoute" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ConformityView" : {
+        "type" : "object",
+        "properties" : {
+          "documentId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "serieNumero" : {
+            "type" : "string"
+          },
+          "buyerRuc" : {
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "acceptedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "windowEndsAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "checkedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "checkDetail" : {
+            "type" : "string"
+          },
+          "resolvedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "suggestedCreditNote" : {
+            "type" : "object",
+            "additionalProperties" : { }
+          }
+        }
+      },
+      "CreateCompany" : {
+        "type" : "object",
+        "required" : [ "ruc", "razonSocial" ],
+        "properties" : {
+          "ruc" : {
+            "type" : "string",
+            "pattern" : "\\d{11}"
+          },
+          "razonSocial" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 300
+          },
+          "nombreComercial" : {
+            "type" : "string",
+            "maxLength" : 300
+          }
+        }
+      },
+      "CreateSeries" : {
+        "type" : "object",
+        "required" : [ "tipoComprobante", "serie" ],
+        "properties" : {
+          "tipoComprobante" : {
+            "type" : "string",
+            "pattern" : "\\d{2}"
+          },
+          "serie" : {
+            "type" : "string",
+            "pattern" : "[A-Z0-9]{4}"
+          },
+          "nextNumber" : {
+            "type" : "integer",
+            "format" : "int64",
+            "minimum" : 1
+          }
+        }
+      },
+      "CreateTenant" : {
+        "type" : "object",
+        "required" : [ "name" ],
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 200
+          },
+          "ownerKind" : {
+            "type" : "string",
+            "pattern" : "user|client"
+          },
+          "ownerSubject" : {
+            "type" : "string",
+            "maxLength" : 200
+          }
+        }
+      },
+      "CreateTenant1" : {
+        "type" : "object",
+        "required" : [ "name" ],
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 200
+          }
+        }
+      },
+      "CreateWebhook" : {
+        "type" : "object",
+        "required" : [ "url", "events" ],
+        "properties" : {
+          "url" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 2000
+          },
+          "events" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "pattern" : "\\S"
+            },
+            "minItems" : 1
+          }
+        }
+      },
+      "CredentialView" : {
+        "type" : "object",
+        "properties" : {
+          "kind" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "Customer" : {
+        "type" : "object",
+        "properties" : {
+          "tipo" : {
+            "type" : "string"
+          },
+          "numero" : {
+            "type" : "string"
+          },
+          "nombre" : {
+            "type" : "string"
+          }
+        }
+      },
+      "DeliveryView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "eventId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "eventType" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "attempts" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "nextAttemptAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "lastStatusCode" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "lastError" : {
+            "type" : "string"
+          },
+          "deliveredAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "DocumentView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "prn" : {
+            "type" : "string"
+          },
+          "companyId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "sunatEnv" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "tipoComprobante" : {
+            "type" : "string"
+          },
+          "serie" : {
+            "type" : "string"
+          },
+          "numero" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "serieNumero" : {
+            "type" : "string"
+          },
+          "fechaEmision" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "deadlineAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "holdReason" : {
+            "type" : "string"
+          },
+          "sunatCode" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "sunatDescription" : {
+            "type" : "string"
+          },
+          "sunatNotes" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "codeClass" : {
+            "type" : "string"
+          },
+          "digestValue" : {
+            "type" : "string"
+          },
+          "moneda" : {
+            "type" : "string"
+          },
+          "total" : {
+            "type" : "number"
+          },
+          "customer" : {
+            "$ref" : "#/components/schemas/Customer"
+          },
+          "labels" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          },
+          "deliveredAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "deliveredSource" : {
+            "type" : "string"
+          },
+          "attempts" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "nextAttemptAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "firstSentAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "cdrReceivedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "affectedDocumentId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "summaryDocumentId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "voidedByDocumentId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "accessUrl" : {
+            "type" : "string"
+          },
+          "qr" : {
+            "type" : "string"
+          }
+        }
+      },
+      "DomainRequest" : {
+        "type" : "object",
+        "required" : [ "domain" ],
+        "properties" : {
+          "domain" : {
+            "type" : "string",
+            "pattern" : "(?i)[a-z0-9-]+(\\.[a-z0-9-]+)+"
+          }
+        }
+      },
+      "DomainView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "domain" : {
+            "type" : "string"
+          },
+          "txtName" : {
+            "type" : "string"
+          },
+          "txtValue" : {
+            "type" : "string"
+          },
+          "verifiedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "EmailRequest" : {
+        "type" : "object",
+        "required" : [ "to" ],
+        "properties" : {
+          "to" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            },
+            "maxItems" : 10,
+            "minItems" : 1
+          },
+          "cc" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            },
+            "maxItems" : 10
+          },
+          "includeCdr" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "EmissionMode" : {
+        "type" : "object",
+        "required" : [ "emissionMode" ],
+        "properties" : {
+          "emissionMode" : {
+            "type" : "string",
+            "pattern" : "software|pse"
+          }
+        }
+      },
+      "EmitRequest" : {
+        "type" : "object",
+        "properties" : {
+          "document" : {
+            "$ref" : "#/components/schemas/JsonNode"
+          },
+          "serie" : {
+            "type" : "string"
+          },
+          "delivered" : {
+            "type" : "boolean"
+          },
+          "labels" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          }
+        }
+      },
+      "Entry" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "key" : {
+            "type" : "string"
+          },
+          "data" : {
+            "$ref" : "#/components/schemas/JsonNode"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "updatedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "EnvironmentChange" : {
+        "type" : "object",
+        "required" : [ "sunatEnv" ],
+        "properties" : {
+          "sunatEnv" : {
+            "type" : "string",
+            "pattern" : "fake|beta|production"
+          }
+        }
+      },
+      "Event" : {
+        "type" : "object",
+        "properties" : {
+          "at" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "code" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "actor" : {
+            "type" : "string"
+          },
+          "correlationId" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ExitRequest" : {
+        "type" : "object",
+        "required" : [ "confirmName" ],
+        "properties" : {
+          "confirmName" : {
+            "type" : "string",
+            "pattern" : "\\S"
+          }
+        }
+      },
+      "GreCredentials" : {
+        "type" : "object",
+        "required" : [ "username", "password", "clientId", "clientSecret" ],
+        "properties" : {
+          "username" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 100
+          },
+          "password" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 200
+          },
+          "clientId" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 200
+          },
+          "clientSecret" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 300
+          }
+        }
+      },
+      "Identity" : {
+        "type" : "object",
+        "properties" : {
+          "tipo" : {
+            "type" : "string"
+          },
+          "numero" : {
+            "type" : "string"
+          },
+          "nombre" : {
+            "type" : "string"
+          },
+          "direccion" : {
+            "type" : "string"
+          },
+          "estado" : {
+            "type" : "string"
+          },
+          "condicion" : {
+            "type" : "string"
+          },
+          "cached" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "Instant" : {
+        "type" : "string",
+        "format" : "date-time",
+        "examples" : [ "2022-03-10T16:15:50Z" ]
+      },
+      "JobView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "prn" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "priorityClass" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "unblockedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "startedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "finishedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "worker" : {
+            "type" : "string"
+          },
+          "attempt" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "reservedResources" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "createdResources" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "result" : {
+            "type" : "object",
+            "additionalProperties" : { }
+          },
+          "error" : {
+            "type" : "object",
+            "additionalProperties" : { }
+          },
+          "correlationId" : {
+            "type" : "string"
+          }
+        }
+      },
+      "JsonNode" : {
+        "type" : "object",
+        "properties" : {
+          "empty" : {
+            "type" : "boolean"
+          },
+          "valueNode" : {
+            "type" : "boolean"
+          },
+          "containerNode" : {
+            "type" : "boolean"
+          },
+          "missingNode" : {
+            "type" : "boolean"
+          },
+          "array" : {
+            "type" : "boolean"
+          },
+          "object" : {
+            "type" : "boolean"
+          },
+          "nodeType" : {
+            "$ref" : "#/components/schemas/JsonNodeType"
+          },
+          "pojo" : {
+            "type" : "boolean"
+          },
+          "number" : {
+            "type" : "boolean"
+          },
+          "integralNumber" : {
+            "type" : "boolean"
+          },
+          "floatingPointNumber" : {
+            "type" : "boolean"
+          },
+          "short" : {
+            "type" : "boolean"
+          },
+          "int" : {
+            "type" : "boolean"
+          },
+          "long" : {
+            "type" : "boolean"
+          },
+          "float" : {
+            "type" : "boolean"
+          },
+          "double" : {
+            "type" : "boolean"
+          },
+          "bigDecimal" : {
+            "type" : "boolean"
+          },
+          "bigInteger" : {
+            "type" : "boolean"
+          },
+          "textual" : {
+            "type" : "boolean"
+          },
+          "boolean" : {
+            "type" : "boolean"
+          },
+          "null" : {
+            "type" : "boolean"
+          },
+          "binary" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "JsonNodeType" : {
+        "type" : "string",
+        "enum" : [ "ARRAY", "BINARY", "BOOLEAN", "MISSING", "NULL", "NUMBER", "OBJECT", "POJO", "STRING" ]
+      },
+      "LocalDate" : {
+        "type" : "string",
+        "format" : "date",
+        "examples" : [ "2022-03-10" ]
+      },
+      "LookupCredentials" : {
+        "type" : "object",
+        "required" : [ "url" ],
+        "properties" : {
+          "url" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 2000
+          },
+          "token" : {
+            "type" : "string",
+            "maxLength" : 500
+          }
+        }
+      },
+      "LookupRequest" : {
+        "type" : "object",
+        "required" : [ "ruc", "tipoComprobante", "serie", "numero", "fechaEmision", "total", "captcha" ],
+        "properties" : {
+          "ruc" : {
+            "type" : "string",
+            "pattern" : "\\d{11}"
+          },
+          "tipoComprobante" : {
+            "type" : "string",
+            "pattern" : "\\d{2}"
+          },
+          "serie" : {
+            "type" : "string",
+            "pattern" : "[A-Z0-9]{4}"
+          },
+          "numero" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "fechaEmision" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "total" : {
+            "type" : "number"
+          },
+          "captcha" : {
+            "type" : "string",
+            "pattern" : "\\S"
+          }
+        }
+      },
+      "LookupResult" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          }
+        }
+      },
+      "MemberView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "subject" : {
+            "type" : "string"
+          },
+          "role" : {
+            "type" : "string"
+          }
+        }
+      },
+      "NewRequest" : {
+        "type" : "object",
+        "required" : [ "subjectDocType", "subjectDocNumber", "kind" ],
+        "properties" : {
+          "subjectDocType" : {
+            "type" : "string",
+            "pattern" : "[0-9A-Z]{1,2}"
+          },
+          "subjectDocNumber" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 20
+          },
+          "subjectName" : {
+            "type" : "string",
+            "maxLength" : 200
+          },
+          "kind" : {
+            "type" : "string",
+            "pattern" : "access|rectification|cancellation|opposition"
+          },
+          "details" : {
+            "type" : "string",
+            "maxLength" : 2000
+          }
+        }
+      },
+      "NotificationSettings" : {
+        "type" : "object",
+        "properties" : {
+          "notificationEmail" : {
+            "type" : "string"
+          }
+        }
+      },
+      "NotificationView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "body" : {
+            "type" : "string"
+          },
+          "documentId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "readAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "ObjectNode" : {
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/JsonNode"
+        }
+      },
+      "Ose" : {
+        "type" : "object",
+        "required" : [ "name", "invoiceUrl", "username", "password" ],
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 200
+          },
+          "invoiceUrl" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 2000
+          },
+          "perceptionUrl" : {
+            "type" : "string",
+            "maxLength" : 2000
+          },
+          "username" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 100
+          },
+          "password" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 200
+          }
+        }
+      },
+      "OseLookupRequest" : {
+        "type" : "object",
+        "required" : [ "ruc", "tipoComprobante", "serie", "numero", "captcha" ],
+        "properties" : {
+          "ruc" : {
+            "type" : "string",
+            "pattern" : "\\d{11}"
+          },
+          "tipoComprobante" : {
+            "type" : "string",
+            "pattern" : "\\d{2}"
+          },
+          "serie" : {
+            "type" : "string",
+            "pattern" : "[A-Z0-9]{4}"
+          },
+          "numero" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "captcha" : {
+            "type" : "string",
+            "pattern" : "\\S"
+          }
+        }
+      },
+      "OseLookupResult" : {
+        "type" : "object",
+        "properties" : {
+          "state" : {
+            "type" : "string"
+          },
+          "checkedAt" : {
+            "type" : "string"
+          }
+        }
+      },
+      "PageAuditEntry" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AuditEntry"
+            }
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "PageCompanyView" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CompanyView"
+            }
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "PageDeliveryView" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DeliveryView"
+            }
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "PageDocumentView" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DocumentView"
+            }
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "PageEntry" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Entry"
+            }
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "PageJobView" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/JobView"
+            }
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "PageNotificationView" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/NotificationView"
+            }
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "PageReceptionView" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ReceptionView"
+            }
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "PartnerView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "role" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Preference" : {
+        "type" : "object",
+        "required" : [ "kind" ],
+        "properties" : {
+          "kind" : {
+            "type" : "string",
+            "pattern" : "\\S"
+          },
+          "email" : {
+            "type" : "boolean"
+          },
+          "inApp" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "PublicDocument" : {
+        "type" : "object",
+        "properties" : {
+          "emisorRuc" : {
+            "type" : "string"
+          },
+          "emisorRazonSocial" : {
+            "type" : "string"
+          },
+          "tipoComprobante" : {
+            "type" : "string"
+          },
+          "serieNumero" : {
+            "type" : "string"
+          },
+          "fechaEmision" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "moneda" : {
+            "type" : "string"
+          },
+          "total" : {
+            "type" : "number"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "files" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }
+      },
+      "Queue" : {
+        "type" : "object",
+        "properties" : {
+          "priorityClass" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "waiting" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "unblocked" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "running" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "oldestUnblocked" : {
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "Rate" : {
+        "type" : "object",
+        "properties" : {
+          "day" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "compra" : {
+            "type" : "number"
+          },
+          "venta" : {
+            "type" : "number"
+          },
+          "source" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ReceptionView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "supplierRuc" : {
+            "type" : "string"
+          },
+          "tipoComprobante" : {
+            "type" : "string"
+          },
+          "serieNumero" : {
+            "type" : "string"
+          },
+          "fechaEmision" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "moneda" : {
+            "type" : "string"
+          },
+          "total" : {
+            "type" : "number"
+          },
+          "validityState" : {
+            "type" : "string"
+          },
+          "validityCheckedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "hasPdf" : {
+            "type" : "boolean"
+          },
+          "hasCdr" : {
+            "type" : "boolean"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "ReplaceRequest" : {
+        "type" : "object",
+        "properties" : {
+          "acknowledgeDifferences" : {
+            "type" : "boolean"
+          },
+          "confirmNotReceived" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "ReportRequest" : {
+        "type" : "object",
+        "required" : [ "register", "format", "period" ],
+        "properties" : {
+          "register" : {
+            "type" : "string",
+            "pattern" : "sales|purchases"
+          },
+          "format" : {
+            "type" : "string",
+            "pattern" : "csv|xlsx|ple|sire"
+          },
+          "period" : {
+            "type" : "string",
+            "pattern" : "\\d{4}(0[1-9]|1[0-2])"
+          }
+        }
+      },
+      "ReportView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "register" : {
+            "type" : "string"
+          },
+          "format" : {
+            "type" : "string"
+          },
+          "period" : {
+            "type" : "string"
+          },
+          "sunatEnv" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "fileName" : {
+            "type" : "string"
+          },
+          "rows" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "detail" : {
+            "type" : "string"
+          },
+          "jobId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "doneAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "RequestSession" : {
+        "type" : "object",
+        "required" : [ "tenantId", "reason" ],
+        "properties" : {
+          "tenantId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "reason" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 500
+          }
+        }
+      },
+      "RouteChange" : {
+        "type" : "object",
+        "required" : [ "submissionRoute" ],
+        "properties" : {
+          "submissionRoute" : {
+            "type" : "string",
+            "pattern" : "sunat|ose"
+          },
+          "ose" : {
+            "$ref" : "#/components/schemas/Ose"
+          }
+        }
+      },
+      "RouteView" : {
+        "type" : "object",
+        "properties" : {
+          "submissionRoute" : {
+            "type" : "string"
+          },
+          "oseObligated" : {
+            "type" : "boolean"
+          },
+          "oseName" : {
+            "type" : "string"
+          },
+          "oseInvoiceUrl" : {
+            "type" : "string"
+          },
+          "osePerceptionUrl" : {
+            "type" : "string"
+          }
+        }
+      },
+      "SeriesView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "sunatEnv" : {
+            "type" : "string"
+          },
+          "tipoComprobante" : {
+            "type" : "string"
+          },
+          "serie" : {
+            "type" : "string"
+          },
+          "nextNumber" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "isDefault" : {
+            "type" : "boolean"
+          },
+          "active" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "SessionView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "operator" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "requestedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "approvedBy" : {
+            "type" : "string"
+          },
+          "expiresAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "revokedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "Settings" : {
+        "type" : "object",
+        "properties" : {
+          "nombreComercial" : {
+            "type" : "string",
+            "maxLength" : 300
+          },
+          "email" : {
+            "type" : "string",
+            "maxLength" : 300
+          },
+          "deliveredOnEmitDefault" : {
+            "type" : "boolean"
+          },
+          "direccion" : {
+            "type" : "string",
+            "maxLength" : 500
+          },
+          "pdfFormat" : {
+            "type" : "string",
+            "pattern" : "a4|ticket80|ticket58"
+          },
+          "pdfOptions" : {
+            "type" : "object",
+            "additionalProperties" : { }
+          },
+          "emailOnAccept" : {
+            "type" : "boolean"
+          },
+          "emailSubject" : {
+            "type" : "string",
+            "pattern" : "[^\\r\\n]*",
+            "maxLength" : 200
+          },
+          "emailBody" : {
+            "type" : "string",
+            "maxLength" : 5000
+          }
+        }
+      },
+      "SfsRequest" : {
+        "type" : "object",
+        "required" : [ "fileName", "cab", "det" ],
+        "properties" : {
+          "fileName" : {
+            "type" : "string",
+            "pattern" : "\\S"
+          },
+          "cab" : {
+            "type" : "string",
+            "pattern" : "\\S"
+          },
+          "det" : {
+            "type" : "string",
+            "pattern" : "\\S"
+          }
+        }
+      },
+      "SireCredentials" : {
+        "type" : "object",
+        "required" : [ "username", "password", "clientId", "clientSecret" ],
+        "properties" : {
+          "username" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 100
+          },
+          "password" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 200
+          },
+          "clientId" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 200
+          },
+          "clientSecret" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 300
+          }
+        }
+      },
+      "SirePeriodView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "book" : {
+            "type" : "string"
+          },
+          "period" : {
+            "type" : "string"
+          },
+          "sunatEnv" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "detail" : {
+            "type" : "string"
+          },
+          "reconciliation" : {
+            "$ref" : "#/components/schemas/JsonNode"
+          },
+          "proposalFile" : {
+            "type" : "boolean"
+          },
+          "replacementFile" : {
+            "type" : "boolean"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "updatedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "SmtpCredentials" : {
+        "type" : "object",
+        "required" : [ "host", "username", "password", "from" ],
+        "properties" : {
+          "host" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 255
+          },
+          "port" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 65535,
+            "minimum" : 1
+          },
+          "username" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 200
+          },
+          "password" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 300
+          },
+          "from" : {
+            "type" : "string",
+            "pattern" : "\\S"
+          },
+          "startTls" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "SolCredentials" : {
+        "type" : "object",
+        "required" : [ "username", "password" ],
+        "properties" : {
+          "username" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 100
+          },
+          "password" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 200
+          }
+        }
+      },
+      "Status" : {
+        "type" : "object",
+        "properties" : {
+          "versions" : {
+            "$ref" : "#/components/schemas/Versions"
+          },
+          "workers" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Workers"
+            }
+          },
+          "database" : {
+            "type" : "boolean"
+          },
+          "storage" : {
+            "type" : "boolean"
+          },
+          "keyVault" : {
+            "type" : "boolean"
+          },
+          "engine" : {
+            "type" : "boolean"
+          },
+          "queues" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Queue"
+            }
+          }
+        }
+      },
+      "Submission" : {
+        "type" : "object",
+        "required" : [ "fileName", "contentBase64" ],
+        "properties" : {
+          "fileName" : {
+            "type" : "string",
+            "pattern" : "\\S"
+          },
+          "contentBase64" : {
+            "type" : "string",
+            "pattern" : "\\S"
+          }
+        }
+      },
+      "Suppression" : {
+        "type" : "object",
+        "properties" : {
+          "address" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "TenantSummary" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "role" : {
+            "type" : "string"
+          }
+        }
+      },
+      "TenantUsage" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "plan" : {
+            "type" : "string"
+          },
+          "productionDocuments" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "otherDocuments" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "TenantView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "plan" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "retentionYears" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "TokenRequest" : {
+        "type" : "object",
+        "required" : [ "label" ],
+        "properties" : {
+          "label" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 100
+          }
+        }
+      },
+      "UUID" : {
+        "type" : "string",
+        "format" : "uuid",
+        "pattern" : "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+      },
+      "Versions" : {
+        "type" : "object",
+        "properties" : {
+          "service" : {
+            "type" : "string"
+          },
+          "engine" : {
+            "type" : "string"
+          },
+          "xhandlerRust" : {
+            "type" : "string"
+          }
+        }
+      },
+      "VoidRequest" : {
+        "type" : "object",
+        "properties" : {
+          "motivo" : {
+            "type" : "string"
+          },
+          "notDelivered" : {
+            "type" : "boolean"
+          },
+          "reversalCommunicatedAt" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          }
+        }
+      },
+      "WebhookView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "url" : {
+            "type" : "string"
+          },
+          "events" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "active" : {
+            "type" : "boolean"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "secret" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Workers" : {
+        "type" : "object",
+        "properties" : {
+          "role" : {
+            "type" : "string"
+          },
+          "online" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      }
+    },
+    "securitySchemes" : {
+      "SecurityScheme" : {
+        "type" : "openIdConnect",
+        "description" : "Authentication"
+      }
+    }
+  },
+  "paths" : {
+    "/api/v1/exchange-rates" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "date",
+          "in" : "query",
+          "schema" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Rate"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Get",
+        "tags" : [ "Exchange Rate Resource" ]
+      }
+    },
+    "/api/v1/ose/documents" : {
+      "post" : {
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/Submission"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Submit",
+        "tags" : [ "Ose Rest Resource" ]
+      }
+    },
+    "/api/v1/ose/documents/{ruc}-{tipo}-{serie}-{numero}/cdr" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "numero",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }, {
+          "name" : "ruc",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "serie",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "tipo",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          }
+        },
+        "summary" : "Cdr",
+        "tags" : [ "Ose Rest Resource" ]
+      }
+    },
+    "/api/v1/partners" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/PartnerView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Mine",
+        "tags" : [ "Partner Resource" ]
+      }
+    },
+    "/api/v1/partners/{partnerId}/branding" : {
+      "put" : {
+        "parameters" : [ {
+          "name" : "partnerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/Branding"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : { }
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Branding",
+        "tags" : [ "Partner Resource" ]
+      }
+    },
+    "/api/v1/partners/{partnerId}/tenants" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "partnerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "month",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/TenantUsage"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Tenants",
+        "tags" : [ "Partner Resource" ]
+      },
+      "post" : {
+        "parameters" : [ {
+          "name" : "partnerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateTenant"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Create Tenant",
+        "tags" : [ "Partner Resource" ]
+      }
+    },
+    "/api/v1/public/documents/{token}" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "token",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PublicDocument"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Get",
+        "tags" : [ "Public Document Resource" ]
+      }
+    },
+    "/api/v1/public/documents/{token}/{kind}" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "kind",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "token",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          }
+        },
+        "summary" : "File",
+        "tags" : [ "Public Document Resource" ]
+      }
+    },
+    "/api/v1/public/lago/webhooks" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "X-Lago-Signature",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/octet-stream" : {
+              "schema" : {
+                "type" : "string",
+                "format" : "binary"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          }
+        },
+        "summary" : "Receive",
+        "tags" : [ "Webhook" ]
+      }
+    },
+    "/api/v1/public/lookup" : {
+      "post" : {
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LookupRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LookupResult"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Lookup",
+        "tags" : [ "Public Lookup Resource" ]
+      }
+    },
+    "/api/v1/public/lookup/ose" : {
+      "post" : {
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/OseLookupRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OseLookupResult"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Ose",
+        "tags" : [ "Public Lookup Resource" ]
+      }
+    },
+    "/api/v1/public/nubefact/{companyId}" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/JsonNode"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Call",
+        "tags" : [ "Nubefact Resource" ]
+      }
+    },
+    "/api/v1/status" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Status"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Status",
+        "tags" : [ "Status Resource" ]
+      }
+    },
+    "/api/v1/support/sessions" : {
+      "post" : {
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RequestSession"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Request",
+        "tags" : [ "Support Request Resource" ]
+      }
+    },
+    "/api/v1/tenants" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/TenantSummary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary" : "List",
+        "tags" : [ "Tenant Resource" ]
+      },
+      "post" : {
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateTenant1"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Create",
+        "tags" : [ "Tenant Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TenantView"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Get",
+        "tags" : [ "Tenant Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/audit" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageAuditEntry"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "List",
+        "tags" : [ "Audit Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/billing" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : { }
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Get",
+        "tags" : [ "Billing Resource" ]
+      },
+      "put" : {
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BillingDetails"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : { }
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Details",
+        "tags" : [ "Billing Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageCompanyView"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "List",
+        "tags" : [ "Company Resource" ]
+      },
+      "post" : {
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateCompany"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Create",
+        "tags" : [ "Company Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CompanyView"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Get",
+        "tags" : [ "Company Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/adapter-tokens" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "additionalProperties" : { }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary" : "List Tokens",
+        "tags" : [ "Adapter Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/adapter-tokens/nubefact" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TokenRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Create Token",
+        "tags" : [ "Adapter Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/adapter-tokens/{tokenId}" : {
+      "delete" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tokenId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          }
+        },
+        "summary" : "Revoke Token",
+        "tags" : [ "Adapter Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/catalogs/{kind}" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "kind",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "q",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageEntry"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "List",
+        "tags" : [ "Catalog Resource" ]
+      },
+      "post" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "kind",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ObjectNode"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Create",
+        "tags" : [ "Catalog Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/catalogs/{kind}/{id}" : {
+      "put" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "kind",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ObjectNode"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Entry"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Update",
+        "tags" : [ "Catalog Resource" ]
+      },
+      "get" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "kind",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Entry"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Get",
+        "tags" : [ "Catalog Resource" ]
+      },
+      "delete" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "kind",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          }
+        },
+        "summary" : "Delete",
+        "tags" : [ "Catalog Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/certificate" : {
+      "put" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "file" : {
+                    "type" : "string",
+                    "format" : "binary"
+                  },
+                  "password" : {
+                    "type" : "string"
+                  }
+                }
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CertificateView"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Upload",
+        "tags" : [ "Certificate Resource" ]
+      },
+      "get" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CertificateView"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Get",
+        "tags" : [ "Certificate Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/conformity" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "state",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/ConformityView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary" : "List",
+        "tags" : [ "Conformity Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/conformity/export" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "state",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          }
+        },
+        "summary" : "Export",
+        "tags" : [ "Conformity Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/credentials" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/CredentialView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary" : "List",
+        "tags" : [ "Credential Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/credentials/gre" : {
+      "put" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/GreCredentials"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CredentialView"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Put Gre",
+        "tags" : [ "Credential Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/credentials/lookup" : {
+      "put" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LookupCredentials"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CredentialView"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Put Lookup",
+        "tags" : [ "Credential Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/credentials/sire" : {
+      "put" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SireCredentials"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CredentialView"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Put Sire",
+        "tags" : [ "Credential Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/credentials/smtp" : {
+      "put" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SmtpCredentials"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CredentialView"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Put Smtp",
+        "tags" : [ "Credential Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/credentials/sol" : {
+      "put" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SolCredentials"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CredentialView"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Put Sol",
+        "tags" : [ "Credential Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/documents" : {
+      "post" : {
+        "summary" : "Emite un documento: lo numera, valida y firma; SUNAT lo recibe después",
+        "operationId" : "emitDocument",
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Correlation-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/EmitRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Document Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/documents/sfs" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SfsRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Sfs",
+        "tags" : [ "Adapter Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/documents/ubl" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "X-Correlation-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/xml" : {
+              "schema" : {
+                "type" : "string",
+                "format" : "binary"
+              }
+            },
+            "text/xml" : {
+              "schema" : {
+                "type" : "string",
+                "format" : "binary"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          }
+        },
+        "summary" : "Upload Ubl",
+        "tags" : [ "Adapter Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/environment" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/EnvironmentChange"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CompanyView"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Environment",
+        "tags" : [ "Company Environment Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/logo" : {
+      "put" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "image/png" : {
+              "schema" : {
+                "type" : "string",
+                "format" : "binary"
+              }
+            },
+            "image/jpeg" : {
+              "schema" : {
+                "type" : "string",
+                "format" : "binary"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CompanyView"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Logo",
+        "tags" : [ "Company Environment Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/lookup/{tipo}/{numero}" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "numero",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tipo",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Identity"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Lookup",
+        "tags" : [ "Identity Lookup" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/pse" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/AuthorizationView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary" : "List",
+        "tags" : [ "Pse Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/pse/authorization" : {
+      "delete" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : { }
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Revoke",
+        "tags" : [ "Pse Resource" ]
+      },
+      "post" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/Authorization"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuthorizationView"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Authorize",
+        "tags" : [ "Pse Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/pse/mode" : {
+      "put" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/EmissionMode"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CompanyView"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Mode",
+        "tags" : [ "Pse Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/receptions" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "xml" : {
+                    "type" : "string",
+                    "format" : "binary"
+                  },
+                  "pdf" : {
+                    "type" : "string",
+                    "format" : "binary"
+                  },
+                  "cdr" : {
+                    "type" : "string",
+                    "format" : "binary"
+                  }
+                }
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Receive",
+        "tags" : [ "Reception Resource" ]
+      },
+      "get" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "from",
+          "in" : "query",
+          "schema" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "to",
+          "in" : "query",
+          "schema" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageReceptionView"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "List",
+        "tags" : [ "Reception Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/receptions/{receptionId}/files/{kind}" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "kind",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "receptionId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          }
+        },
+        "summary" : "File",
+        "tags" : [ "Reception Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/reports" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/ReportView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary" : "List",
+        "tags" : [ "Report Resource" ]
+      },
+      "post" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReportRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Create",
+        "tags" : [ "Report Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/reports/{reportId}" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "reportId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReportView"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Get",
+        "tags" : [ "Report Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/reports/{reportId}/file" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "reportId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          }
+        },
+        "summary" : "File",
+        "tags" : [ "Report Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/route" : {
+      "put" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RouteChange"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RouteView"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Set",
+        "tags" : [ "Route Resource" ]
+      },
+      "get" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RouteView"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Get",
+        "tags" : [ "Route Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/series" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/SeriesView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Series",
+        "tags" : [ "Company Resource" ]
+      },
+      "post" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateSeries"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Create Series",
+        "tags" : [ "Company Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/settings" : {
+      "put" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/Settings"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CompanyView"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Settings",
+        "tags" : [ "Company Environment Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/sire/{book}/{period}" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "book",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "period",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SirePeriodView"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Get",
+        "tags" : [ "Sire Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/sire/{book}/{period}/files/{kind}" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "book",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "kind",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "period",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          }
+        },
+        "summary" : "File",
+        "tags" : [ "Sire Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/sire/{book}/{period}/proposal" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "book",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "period",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          }
+        },
+        "summary" : "Request Proposal",
+        "tags" : [ "Sire Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/sire/{book}/{period}/replace" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "book",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "period",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReplaceRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Replace",
+        "tags" : [ "Sire Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/verify" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CompanyView"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Verify",
+        "tags" : [ "Company Environment Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/data-subject-requests" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "additionalProperties" : { }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary" : "List",
+        "tags" : [ "Data Subject Requests" ]
+      },
+      "post" : {
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/NewRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : { }
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Create",
+        "tags" : [ "Data Subject Requests" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/data-subject-requests/{id}/close" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/Close"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : { }
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Close",
+        "tags" : [ "Data Subject Requests" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/data-subject-requests/{id}/personal-data" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : { }
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Personal Data",
+        "tags" : [ "Data Subject Requests" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/documents" : {
+      "get" : {
+        "operationId" : "listDocuments",
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "company_id",
+          "in" : "query",
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "from",
+          "in" : "query",
+          "schema" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          }
+        }, {
+          "name" : "hold_reason",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "label",
+          "in" : "query",
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "serie",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "status",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "tipo_comprobante",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "to",
+          "in" : "query",
+          "schema" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageDocumentView"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "List",
+        "tags" : [ "Document Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/documents/{documentId}" : {
+      "get" : {
+        "operationId" : "getDocument",
+        "parameters" : [ {
+          "name" : "documentId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DocumentView"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Get",
+        "tags" : [ "Document Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/documents/{documentId}/access-link" : {
+      "post" : {
+        "operationId" : "createDocumentAccessLink",
+        "parameters" : [ {
+          "name" : "documentId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AccessLink"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Access Link",
+        "tags" : [ "Document Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/documents/{documentId}/access-links/revoke" : {
+      "post" : {
+        "operationId" : "revokeDocumentAccessLinks",
+        "parameters" : [ {
+          "name" : "documentId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          }
+        },
+        "summary" : "Revoke Access Links",
+        "tags" : [ "Document Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/documents/{documentId}/conformity" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "documentId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConformityView"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Document",
+        "tags" : [ "Conformity Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/documents/{documentId}/delivered" : {
+      "post" : {
+        "operationId" : "markDocumentDelivered",
+        "parameters" : [ {
+          "name" : "documentId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DocumentView"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Delivered",
+        "tags" : [ "Document Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/documents/{documentId}/email" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "documentId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/EmailRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Send",
+        "tags" : [ "Document Email Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/documents/{documentId}/events" : {
+      "get" : {
+        "summary" : "Línea de tiempo del documento",
+        "operationId" : "listDocumentEvents",
+        "parameters" : [ {
+          "name" : "documentId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/Event"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "Document Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/documents/{documentId}/files/{kind}" : {
+      "get" : {
+        "operationId" : "downloadDocumentFile",
+        "parameters" : [ {
+          "name" : "documentId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "kind",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          }
+        },
+        "summary" : "File",
+        "tags" : [ "Document Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/documents/{documentId}/hold" : {
+      "post" : {
+        "operationId" : "holdDocument",
+        "parameters" : [ {
+          "name" : "documentId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DocumentView"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Hold",
+        "tags" : [ "Document Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/documents/{documentId}/release" : {
+      "post" : {
+        "operationId" : "releaseDocument",
+        "parameters" : [ {
+          "name" : "documentId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DocumentView"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Release",
+        "tags" : [ "Document Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/documents/{documentId}/retry" : {
+      "post" : {
+        "summary" : "Reintenta el envío ahora (exception: reenvía con el mismo número)",
+        "operationId" : "retryDocument",
+        "parameters" : [ {
+          "name" : "documentId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DocumentView"
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "Document Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/documents/{documentId}/void" : {
+      "post" : {
+        "summary" : "Anula un documento aceptado y no entregado (RA, RC o RR)",
+        "operationId" : "voidDocument",
+        "parameters" : [ {
+          "name" : "documentId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "X-Correlation-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/VoidRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "tags" : [ "Document Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/documents/{documentId}/void/cancel" : {
+      "post" : {
+        "operationId" : "cancelVoid",
+        "parameters" : [ {
+          "name" : "documentId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DocumentView"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Cancel Void",
+        "tags" : [ "Document Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/email-suppressions" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/Suppression"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary" : "List",
+        "tags" : [ "Email Suppressions" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/email-suppressions/{address}" : {
+      "delete" : {
+        "parameters" : [ {
+          "name" : "address",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          }
+        },
+        "summary" : "Remove",
+        "tags" : [ "Email Suppressions" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/exit" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ExitRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : { }
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Exit",
+        "tags" : [ "Tenant Exit" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/exports" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "additionalProperties" : { }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Exports",
+        "tags" : [ "Tenant Exit" ]
+      },
+      "post" : {
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          }
+        },
+        "summary" : "Export",
+        "tags" : [ "Tenant Exit" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/exports/{exportId}/parts/{index}" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "exportId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "index",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          }
+        },
+        "summary" : "Part",
+        "tags" : [ "Tenant Exit" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/jobs" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "name",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "state",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageJobView"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "List",
+        "tags" : [ "Job Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/jobs/{jobId}" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "jobId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/JobView"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Get",
+        "tags" : [ "Job Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/jobs/{jobId}/cancel" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "jobId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/JobView"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Cancel",
+        "tags" : [ "Job Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/members" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/MemberView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary" : "List",
+        "tags" : [ "Member Resource" ]
+      },
+      "post" : {
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AddMember"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Add",
+        "tags" : [ "Member Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/notification-preferences" : {
+      "put" : {
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/Preference"
+                }
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/Preference"
+                  }
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Set Preferences",
+        "tags" : [ "Notification Resource" ]
+      },
+      "get" : {
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/Preference"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Preferences",
+        "tags" : [ "Notification Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/notification-settings" : {
+      "put" : {
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/NotificationSettings"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : { }
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Settings",
+        "tags" : [ "Notification Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/notifications" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "unread",
+          "in" : "query",
+          "schema" : {
+            "type" : "boolean"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageNotificationView"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "List",
+        "tags" : [ "Notification Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/notifications/read-all" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          }
+        },
+        "summary" : "Read All",
+        "tags" : [ "Notification Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/notifications/{id}/read" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          }
+        },
+        "summary" : "Read",
+        "tags" : [ "Notification Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/sender-domains" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/DomainView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary" : "List",
+        "tags" : [ "Sender Domain Resource" ]
+      },
+      "post" : {
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DomainRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Add",
+        "tags" : [ "Sender Domain Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/sender-domains/{domain}/verify" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "domain",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DomainView"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Verify",
+        "tags" : [ "Sender Domain Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/support-sessions" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/SessionView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary" : "List",
+        "tags" : [ "Support Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/support-sessions/{sessionId}/approve" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "sessionId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SessionView"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Approve",
+        "tags" : [ "Support Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/support-sessions/{sessionId}/revoke" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "sessionId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SessionView"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Revoke",
+        "tags" : [ "Support Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/webhooks" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/WebhookView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary" : "List",
+        "tags" : [ "Webhook Resource" ]
+      },
+      "post" : {
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateWebhook"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Create",
+        "tags" : [ "Webhook Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/webhooks/{webhookId}" : {
+      "delete" : {
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "webhookId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          }
+        },
+        "summary" : "Delete",
+        "tags" : [ "Webhook Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/webhooks/{webhookId}/deliveries" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "webhookId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "status",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageDeliveryView"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Deliveries",
+        "tags" : [ "Webhook Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/webhooks/{webhookId}/deliveries/{deliveryId}/redeliver" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "deliveryId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "webhookId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DeliveryView"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Redeliver",
+        "tags" : [ "Webhook Resource" ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/webhooks/{webhookId}/test" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "webhookId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DeliveryView"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Test",
+        "tags" : [ "Webhook Resource" ]
+      }
+    },
+    "/ol-ti-itcpfegem/billService" : {
+      "post" : {
+        "requestBody" : {
+          "content" : {
+            "text/xml" : {
+              "schema" : {
+                "type" : "string",
+                "format" : "binary"
+              }
+            },
+            "application/soap+xml" : {
+              "schema" : {
+                "type" : "string",
+                "format" : "binary"
+              }
+            },
+            "application/xml" : {
+              "schema" : {
+                "type" : "string",
+                "format" : "binary"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "text/xml" : { }
+            }
+          }
+        },
+        "summary" : "Handle",
+        "tags" : [ "Ose Soap Sunat Path" ]
+      }
+    },
+    "/ose/billService" : {
+      "post" : {
+        "requestBody" : {
+          "content" : {
+            "text/xml" : {
+              "schema" : {
+                "type" : "string",
+                "format" : "binary"
+              }
+            },
+            "application/soap+xml" : {
+              "schema" : {
+                "type" : "string",
+                "format" : "binary"
+              }
+            },
+            "application/xml" : {
+              "schema" : {
+                "type" : "string",
+                "format" : "binary"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "text/xml" : { }
+            }
+          }
+        },
+        "summary" : "Handle",
+        "tags" : [ "Ose Soap Resource" ]
+      }
+    }
+  },
+  "info" : {
+    "title" : "xhandler-service API",
+    "version" : "v1",
+    "description" : "Comprobantes electrónicos SUNAT: emisión, envío, entrega y consulta."
+  },
+  "servers" : [ {
+    "url" : "http://localhost:8080",
+    "description" : "Auto generated value"
+  }, {
+    "url" : "http://0.0.0.0:8080",
+    "description" : "Auto generated value"
+  } ]
+}
