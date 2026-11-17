@@ -24,7 +24,10 @@ public class DatabaseRoleCheck {
     private final DataSource dataSource;
     private final boolean enabled;
 
-    public DatabaseRoleCheck(DataSource dataSource, @ConfigProperty(name = "xhandler.db.check-login-role", defaultValue = "true") boolean enabled) {
+    public DatabaseRoleCheck(DataSource dataSource, @ConfigProperty(name = "xhandler.db.check-login-role", defaultValue = "true") boolean enabled,
+            @ConfigProperty(name = "xhandler.migrate-only", defaultValue = "false") boolean migrateOnly) {
+        // The migration Job logs in as the owner on purpose and exits right after migrating
+        enabled = enabled && !migrateOnly;
         this.dataSource = dataSource;
         this.enabled = enabled;
     }

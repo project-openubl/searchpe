@@ -1,0 +1,99 @@
+# Network policies (DESIGN.md §16): deny by default; the pods reach only what
+# they need. Tenant-supplied hosts (webhooks, SMTP, lookup URLs, third-party
+# OSEs) are reached only on public addresses: private, link-local, CGNAT and
+# metadata ranges are excluded here, on top of the app's and the engine's own
+# checks. SUNAT and third-party OSEs go through the egress proxy (static IPs).
+# Labels of the neighbours (gateway, monitoring, database, collector) come from
+# the environment's overlay if they differ.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: xhandler-default-deny
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: xhandler-service
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: xhandler-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: xhandler-service
+  policyTypes: [Ingress]
+  ingress:
+    # The gateway reaches the api pods
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: envoy-gateway-system
+      ports:
+        - { port: 8080, protocol: TCP }
+    # Prometheus scrapes /q/metrics on every pod
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - { port: 8080, protocol: TCP }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: xhandler-egress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: xhandler-service
+  policyTypes: [Egress]
+  egress:
+    # DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - { port: 53, protocol: UDP }
+        - { port: 53, protocol: TCP }
+    # PostgreSQL (CloudNativePG cluster "xhandler-db")
+    - to:
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: xhandler-db
+      ports:
+        - { port: 5432, protocol: TCP }
+    # OpenTelemetry collector
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: otel-collector
+      ports:
+        - { port: 4317, protocol: TCP }
+        - { port: 4318, protocol: TCP }
+    # Egress proxy (SUNAT, third-party OSEs)
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: egress-proxy
+      ports:
+        - { port: 3128, protocol: TCP }
+    # Public internet only: Keycloak, S3, Lago, webhooks (443), tenant SMTP (25, 465, 587, 2525), the HSM's network port
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 100.64.0.0/10
+              - 169.254.0.0/16
+              - 127.0.0.0/8
+      ports:
+        - { port: 443, protocol: TCP }
+        - { port: 25, protocol: TCP }
+        - { port: 465, protocol: TCP }
+        - { port: 587, protocol: TCP }
+        - { port: 2525, protocol: TCP }

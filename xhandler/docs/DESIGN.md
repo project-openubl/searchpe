@@ -868,6 +868,13 @@ One row generator feeds CSV, Excel, SIRE and legacy PLE. Reports run as jobs (`2
 
 This satisfies the processor's 2-year limit (DS 016-2024-JUS art. 31.2) while the tenant keeps the copies it is legally required to hold.
 
+How it runs (P11):
+
+- Export: `POST /api/v1/tenants/{t}/exports` (ADMIN) → a job writes one ZIP per issue month (XML, CDR, PDF and a JSON per document) plus an index; parts are downloaded one by one (audited).
+- Exit: `POST /api/v1/tenants/{t}/exit` (OWNER, the organization's name typed, an export from the last 30 days) suspends the tenant and sets `delete_after` 2 years ahead (none with the archive plan). Platform admins can cancel it before then, set the archive plan, and set `audit_hold` (`/api/admin/v1/data-protection/tenants/{t}/…`).
+- Deletion: the daily `tenants.exit-deletion` job deletes the tenant's files, then every row of every table with a `tenant_id` (a SECURITY DEFINER function, in as many passes as foreign keys need; OSE users only lose their billing link), keeps the tenant row as deleted and writes `tenant_deletion` (counts per table and files deleted) as evidence.
+- Retention: the daily `retention.purge` job deletes documents whose issue year is more than `retention_years` behind (with their events, files, links, deliveries, signature log entries and conformity rows), never under `audit_hold`. Moving old files to an archive tier is an object-storage lifecycle rule.
+
 ---
 
 ## 14. Billing (Lago)
@@ -950,7 +957,7 @@ This satisfies the processor's 2-year limit (DS 016-2024-JUS art. 31.2) while th
   - request sizes are limited.
 - Audit logs of personal-data access, kept at least 2 years; access reviews every six months.
 - Weekly backups with restore tests; Postgres point-in-time recovery; disaster-recovery drills.
-- Data-subject request workflow: forwarded to the tenant within 3 days, with tracked deadlines.
+- Data-subject request workflow: forwarded to the tenant within 3 days, with tracked deadlines. In the service (P11): `data_subject_request`; platform admins register requests that reach the platform (`POST /api/admin/v1/data-protection/tenants/{t}/data-subject-requests`, forwarded to the tenant at once by notification); tenants register their own, see what the platform holds about the person (`…/{id}/personal-data`: the documents issued to that identity document) and close them with their answer. Terms: 20 days for access, 10 for rectification, cancellation and opposition (calendar days, a conservative reading); the tenant is reminded 2 days before and overdue requests are logged for the platform.
 - Breach runbook: notify tenants immediately, and support the controller's 48-hour notice to the ANPD and CNSD.
 - Sub-processor list published; the data processing agreement and signing-authorization clause in the tenant contract.
 - Libro de Reclamaciones link in xhandler-ui.
@@ -1066,7 +1073,7 @@ Infrastructure I1 (dev/staging) ─── I2 (production HA: sync replication, m
 | **P9** Tax compliance | SIRE, negociable, reports | Done: SIRE automation (proposal, reconciliation, replacement with SHA-256, tickets, deadline calendar and alerts), conformity tracking (8-day window, polling, webhooks, reminders, guided credit note 13, factoring export), CSV/Excel/SIRE/legacy PLE reports from one row generator, amounts by tax stored per document and reception. Engine: SIRE and conformity clients (R2) and the fake's SIRE and conformity APIs. | SIRE round trip against the fake (SIRE has no beta; production round trip pending C-track credentials); conformity tracked end to end against the stub |
 | **P10** OSE | Become an operator | Done: SOAP billService (sendBill, sendSummary, sendPack, getStatus, getStatusCdr) at SUNAT's path with WS-Security auth (`ose_client`, lockout), association and blocked lists (imported), REST and SFTP intake, ZIP hardening, the engine's validation, CDR-OSE signed with the OSE key, `ose_submission` with the forwarding job (priority 1, delay timer and oldest-pending gauge, alerts at 45 minutes), 1-month purge, public validity API, the OSE validation billing line; engine OSE forwarding client and the fake's OSE service. Pending: certificate/PSE-link checks against SUNAT's lists, automatic list sync, the full rule set (R3). | Done: an external system switches by changing only the URL (SOAP tests at SUNAT's path); forwarding measured. Pending: forwarding under load (load script in P11), SUNAT's OSE tests (C3) |
 | **M3** | **OSE ready** | Feeds C3 | |
-| **P11** GA hardening | Enterprise operations (with the infrastructure track) | Postgres HA + PITR (CloudNativePG), multi-zone, DR drills (Postgres failover, zone loss, HSM restart, region failover; §25.1), backup restore tests, OWASP pen test, load tests at §25 figures including outage + drain, data protection workflows (data-subject requests, breach runbook, exit export and deletion, archive plan), runbooks, SLO dashboards | SLOs met over a soak period; pen-test findings closed; ISO 27001 evidence complete |
+| **P11** GA hardening | Enterprise operations (with the infrastructure track) | Done in this repository: api and worker deployments (zone spread, PDBs, rolling with no unavailability), NetworkPolicies and the egress proxy, the migration Job (`xhandler.migrate-only`), a CloudNativePG example (synchronous standby, PITR, weekly backups), SLO alerts and dashboard (`deploy/monitoring/`, with database-backed gauges for documents and jobs), runbooks for every alert plus DR, breach and data protection (`docs/runbooks/`), k6 load tests including outage + drain (`hack/load/`), and the data protection workflows (data-subject requests, export, exit and deletion with evidence, retention purge, audit hold, archive plan). With the infrastructure track: running the DR drills and restore tests, the OWASP pen test, the load tests at §25 figures and the soak. | Pending (infrastructure track): SLOs met over a soak period; pen-test findings closed; ISO 27001 evidence complete |
 
 ### 21.2 xhandler-rust
 
@@ -1304,7 +1311,7 @@ P11 load tests run at these figures, including an outage followed by a drain.
 | Alerting and on-call | Alertmanager → an on-call pager (PagerDuty or Opsgenie); runbooks linked from every alert, including "documents stuck in needs_attention" and "OSE 1-hour SLA at risk" |
 | API gateway (rate limits, bot protection, CAPTCHA on public endpoints) | Envoy Gateway (Kubernetes Gateway API) |
 | Platform secrets and the HSM PIN | External Secrets Operator from the platform vault; the HSM PIN is never in images or Git |
-| Egress proxy (§16) | A dedicated proxy deployment (Envoy) plus Kubernetes NetworkPolicies |
+| Egress proxy (§16) | A dedicated proxy deployment plus Kubernetes NetworkPolicies. The base ships Squid (`deploy/base/egress-proxy.yaml`: CONNECT to public port 443 only) for SUNAT and third-party OSEs through `HTTPS_PROXY`; the pods' NetworkPolicy allows public addresses only on 443 and the SMTP ports, on top of the app's and the engine's own checks. Static egress IPs come from the cluster's NAT. |
 | Database HA | A Postgres operator (CloudNativePG) with point-in-time recovery to S3 |
 
 ### 26.5 Email deliverability

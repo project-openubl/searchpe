@@ -1,0 +1,68 @@
+# PostgreSQL for xhandler-service with CloudNativePG (DESIGN.md §25.1): an
+# example for the infrastructure project, not part of the base.
+#
+# - RPO = 0: synchronous replication; a commit is acknowledged once it is on
+#   another zone (ANY 1 of the standbys).
+# - Automatic failover in seconds; the app reconnects (§10.4, §25.1).
+# - Point-in-time recovery to object storage; weekly restore tests (§16).
+# - Roles: the schema owner (migrations only) and a login that is a member of
+#   xhandler_app (see hack/postgres/init.sql); the app refuses to run as owner.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: xhandler-db
+spec:
+  instances: 3
+  imageName: ghcr.io/cloudnative-pg/postgresql:18
+  primaryUpdateStrategy: unsupervised
+  postgresql:
+    synchronous:
+      method: any
+      number: 1
+      dataDurability: required
+    parameters:
+      max_connections: "400"
+      shared_buffers: 4GB
+      # Lock and statement safety nets for the app's own timeouts (§10.8)
+      idle_in_transaction_session_timeout: 60s
+      wal_compression: "on"
+  affinity:
+    topologyKey: topology.kubernetes.io/zone
+    enablePodAntiAffinity: true
+    podAntiAffinityType: required
+  storage:
+    size: 500Gi
+    storageClass: gp3-encrypted
+  walStorage:
+    size: 100Gi
+    storageClass: gp3-encrypted
+  bootstrap:
+    initdb:
+      database: xhandler
+      owner: xhandler_owner
+      postInitApplicationSQLRefs:
+        configMapRefs:
+          - name: xhandler-db-roles
+            key: init.sql
+  backup:
+    retentionPolicy: 35d
+    barmanObjectStore:
+      destinationPath: s3://xhandler-db-backups/
+      s3Credentials:
+        inheritFromIAMRole: true
+      wal:
+        compression: gzip
+      data:
+        compression: gzip
+  monitoring:
+    enablePodMonitor: true
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: xhandler-db-weekly
+spec:
+  schedule: "0 0 3 * * 0"
+  backupOwnerReference: self
+  cluster:
+    name: xhandler-db

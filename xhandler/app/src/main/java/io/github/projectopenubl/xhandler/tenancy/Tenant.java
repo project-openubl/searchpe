@@ -30,6 +30,10 @@ public class Tenant extends PanacheEntityBase {
     public String billingRuc;
     public String billingName;
     public String billingEmail;
+    /** Exit (DESIGN.md §13): kept past the exit period instead of deleted */
+    public boolean archivePlan;
+    public Instant exitRequestedAt;
+    public Instant deleteAfter;
 
     @CreationTimestamp
     public Instant createdAt;

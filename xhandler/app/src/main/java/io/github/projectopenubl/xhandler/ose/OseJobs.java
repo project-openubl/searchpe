@@ -68,7 +68,8 @@ public final class OseJobs {
             this.environment = environment;
             this.url = url;
             this.delay = Timer.builder("xhandler.ose.forward_delay").description("From CDR-OSE to SUNAT's acknowledgement (limit: 1 hour)")
-                    .publishPercentiles(0.5, 0.99, 1.0).register(metrics);
+                    .publishPercentileHistogram().serviceLevelObjectives(Duration.ofMinutes(30), Duration.ofMinutes(45), Duration.ofHours(1))
+                    .register(metrics);
             Gauge.builder("xhandler.ose.forward_oldest_seconds", this, Forwarder::oldestPending)
                     .description("Age of the oldest CDR-OSE not yet forwarded").register(metrics);
         }

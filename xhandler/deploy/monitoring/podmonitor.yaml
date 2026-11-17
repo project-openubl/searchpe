@@ -1,0 +1,13 @@
+# Both roles expose /q/metrics; the workers have no Service, so pods are scraped directly
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: xhandler-service
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: xhandler-service
+  podMetricsEndpoints:
+    - port: http
+      path: /q/metrics
+      interval: 30s
