@@ -45,7 +45,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
@@ -63,7 +62,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -96,9 +94,17 @@ public class VersionService {
 
     private static final String CREATE_PARTITION_SQL = "create table CONTRIBUYENTE_VERSION_%1$s partition of CONTRIBUYENTE for values from (%1$s) TO (%2$s)";
     private static final String DELETE_PARTITION_SQL = "drop table if exists CONTRIBUYENTE_VERSION_%1$s";
-    private static final String CREATE_INDEX_SQL = "create index ix_contribuyente_ruc_version_%1$s on CONTRIBUYENTE using hash (ruc) where version_id=%1$s";
-    private static final String DELETE_INDEX_SQL = "drop index if exists ix_contribuyente_ruc_version_%1$s";
-    private static final String SELECT_INDEX_WATCH_SQL = "select count(*) from pg_stat_progress_create_index";
+    /**
+     * Built on the version's own partition. Building it on the partitioned parent table would also scan every other
+     * partition, and leave an empty index on each of them.
+     */
+    private static final String CREATE_INDEX_SQL = "create index ix_contribuyente_version_%1$s_ruc on CONTRIBUYENTE_VERSION_%1$s using hash (ruc)";
+    private static final String ANALYZE_PARTITION_SQL = "analyze CONTRIBUYENTE_VERSION_%1$s";
+    /**
+     * Versions imported before indexes were built on the partition have their index on the parent table, which doesn't
+     * go away with the partition. Until it is dropped, new partitions also inherit an empty copy of it.
+     */
+    private static final String DELETE_LEGACY_INDEX_SQL = "drop index if exists ix_contribuyente_ruc_version_%1$s";
 
     /**
      * Longest time an import may run. Past it, the import is abandoned and the cleanup job considers the version stale.
@@ -148,12 +154,12 @@ public class VersionService {
     @Transactional
     public void deleteVersion(Long versionId) {
         String deletePartitionQuery = String.format(DELETE_PARTITION_SQL, versionId);
-        String deletePartitionIndex = String.format(DELETE_INDEX_SQL, versionId);
+        String deleteLegacyIndexQuery = String.format(DELETE_LEGACY_INDEX_SQL, versionId);
         VersionEntity.getEntityManager()
                 .createNativeQuery(deletePartitionQuery)
                 .executeUpdate();
         VersionEntity.getEntityManager()
-                .createNativeQuery(deletePartitionIndex)
+                .createNativeQuery(deleteLegacyIndexQuery)
                 .executeUpdate();
 
         ContribuyenteEntity.delete("id.versionId", versionId);
@@ -207,7 +213,7 @@ public class VersionService {
      * Runs the import and guarantees that, whatever happens, the version doesn't stay in an in-progress status and the
      * executor (including the status watcher) is shut down.
      */
-    private void initImport(Long versionId, ScheduledExecutorService executorService) {
+    private void initImport(Long versionId, ExecutorService executorService) {
         try {
             runImport(versionId, executorService);
             LOGGER.infof("Import of Version %s finished successfully", versionId);
@@ -227,7 +233,7 @@ public class VersionService {
         }
     }
 
-    private void runImport(Long versionId, ScheduledExecutorService executorService) throws IOException {
+    private void runImport(Long versionId, ExecutorService executorService) throws IOException {
         File zipFile = null;
         File unzippedFolder = null;
         try {
@@ -251,7 +257,7 @@ public class VersionService {
             deleteWorkspaceFiles(zipFile, unzippedFolder);
         }
 
-        createIndex(versionId, executorService);
+        preparePartitionForQueries(versionId);
         updateVersion(versionId, version -> version.status = Status.COMPLETED);
         // No transaction here: updateVersion already committed, so the AFTER_SUCCESS observer runs immediately
         activeVersionChangedEvent.fire(() -> versionId);
@@ -291,35 +297,14 @@ public class VersionService {
         }
     }
 
-    private void createIndex(Long versionId, ScheduledExecutorService executorService) {
-        LOGGER.infof("Indexing version %s", versionId);
-
+    /**
+     * Indexes the version's partition and refreshes its planner statistics. CREATE INDEX is synchronous, so the
+     * partition is ready to query when this returns.
+     */
+    private void preparePartitionForQueries(Long versionId) {
+        LOGGER.infof("Indexing and analyzing the partition of version %s", versionId);
         executeUpdate(String.format(CREATE_INDEX_SQL, versionId));
-        boolean waitIndexProcessing = true;
-        do {
-            ScheduledFuture<Long> schedule = executorService.schedule(() -> {
-                try (
-                        Connection connection = dataSource.getConnection();
-                        Statement statement = connection.createStatement()
-                ) {
-                    ResultSet resultSet = statement.executeQuery(SELECT_INDEX_WATCH_SQL);
-                    long numberOfIndexesInProgress = 0;
-                    while (resultSet.next()) {
-                        numberOfIndexesInProgress = resultSet.getLong(1);
-                    }
-                    resultSet.close();
-                    return numberOfIndexesInProgress;
-                } catch (SQLException e) {
-                    throw new RuntimeException(e);
-                }
-            }, watchDelay, TimeUnit.SECONDS);
-
-            try {
-                waitIndexProcessing = schedule.get() > 0;
-            } catch (InterruptedException | ExecutionException e) {
-                throw new RuntimeException(e);
-            }
-        } while (waitIndexProcessing);
+        executeUpdate(String.format(ANALYZE_PARTITION_SQL, versionId));
     }
 
     /**

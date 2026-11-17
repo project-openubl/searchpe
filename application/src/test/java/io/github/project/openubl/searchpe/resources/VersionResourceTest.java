@@ -25,6 +25,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.awaitility.Awaitility.await;
@@ -209,6 +210,13 @@ public class VersionResourceTest extends AbstractBaseTest {
                         "[0].id", is(version.getId().intValue()),
                         "[0].status", is("COMPLETED")
                 );
-    }
 
+        // Only the new partition is indexed
+        assertEquals(
+                List.of("ix_contribuyente_version_" + version.getId() + "_ruc"),
+                indexNamesOf("contribuyente_version_" + version.getId())
+        );
+        // Partition of the previously active version, seeded by V9999.0.1__test.sql
+        assertEquals(List.of(), indexNamesOf("contribuyente_version_3"));
+    }
 }

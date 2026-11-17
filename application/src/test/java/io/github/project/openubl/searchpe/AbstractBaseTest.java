@@ -131,4 +131,12 @@ public abstract class AbstractBaseTest {
             return version.status == status;
         }));
     }
+
+    protected List<String> indexNamesOf(String table) {
+        return QuarkusTransaction.requiringNew().call(() -> VersionEntity.getEntityManager()
+                .createNativeQuery("select indexname from pg_indexes where tablename = :table order by indexname", String.class)
+                .setParameter("table", table)
+                .getResultList()
+        );
+    }
 }
