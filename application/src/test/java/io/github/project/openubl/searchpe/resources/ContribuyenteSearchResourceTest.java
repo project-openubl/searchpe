@@ -24,6 +24,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.awaitility.Awaitility.await;
@@ -33,6 +34,7 @@ import static org.hamcrest.Matchers.matchesPattern;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.startsWith;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @QuarkusTest
@@ -46,9 +48,9 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
 
     /**
      * Imports the padrón served by {@link io.github.project.openubl.searchpe.resources.config.SunatServer} into a new
-     * version and waits until the import completes.
+     * version, waits until the import completes and returns the version id.
      */
-    private void importNewVersion() {
+    private Long importNewVersion() {
         VersionDto version = givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
@@ -70,6 +72,8 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
                             .extract().body().as(VersionDto.class);
                     return watchedVersion.getStatus() == Status.COMPLETED;
                 });
+
+        return version.getId();
     }
 
     @Test
@@ -89,6 +93,19 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
                         // Ñ is written as a Unicode escape so the assertion does not depend on the encoding of this file
                         "nombre", is("COMPA\u00d1IA MINERA MILPO S.A.A.")
                 );
+    }
+
+    /**
+     * VersionResourceTest#createVersion covers the advanced search being disabled, where only the RUC is indexed.
+     */
+    @Test
+    public void importIndexesNombreForTheAdvancedSearch() {
+        Long versionId = importNewVersion();
+
+        assertEquals(
+                List.of("ix_contribuyente_version_" + versionId + "_nombre", "ix_contribuyente_version_" + versionId + "_ruc"),
+                indexNamesOf("contribuyente_version_" + versionId)
+        );
     }
 
     @Test
