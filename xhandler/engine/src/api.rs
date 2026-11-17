@@ -1,38 +1,75 @@
 //! HTTP API of the engine (DESIGN.md §4.1). Stateless: every request carries
-//! what it needs, and nothing is stored.
+//! what it needs, and nothing is stored. The only state is [`Config`], read
+//! once at startup and never changed.
 
-use axum::extract::{DefaultBodyLimit, Json};
+mod documents;
+mod sunat;
+
+use std::sync::Arc;
+
+use axum::extract::{DefaultBodyLimit, FromRequest, Json, Request};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Router;
 use base64::Engine as _;
 use chrono::{FixedOffset, NaiveDate, Utc};
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use tracing::Instrument;
 use xhandler::prelude::*;
 
+pub use sunat::{Environment, SendResponse, SunatStatus};
+
 /// SUNAT's public demo key and certificate, accepted only by SUNAT beta.
-const BETA_PRIVATE_KEY: &str = include_str!("../resources/beta/private.key");
-const BETA_CERTIFICATE: &str = include_str!("../resources/beta/public.cer");
-/// SUNAT beta's public SOL user.
-const BETA_USERNAME: &str = "12345678959MODDATOS";
-const BETA_PASSWORD: &str = "MODDATOS";
+pub(crate) const BETA_PRIVATE_KEY: &str = include_str!("../resources/beta/private.key");
+pub(crate) const BETA_CERTIFICATE: &str = include_str!("../resources/beta/public.cer");
 
 /// Peru has no daylight saving time: America/Lima is always UTC-5.
 const LIMA_OFFSET_SECONDS: i32 = 5 * 3600;
 
 const MAX_BODY_BYTES: usize = 10 * 1024 * 1024;
 
+/// Where the engine reaches the SUNAT fake (`environment: "fake"`)
+pub const DEFAULT_SUNAT_FAKE_URL: &str = "http://127.0.0.1:8099";
+
+/// Startup configuration, immutable afterwards
+#[derive(Clone, Debug)]
+pub struct Config {
+    /// Base URL of the SUNAT fake: `XHANDLER_SUNAT_FAKE_URL`
+    pub sunat_fake_url: String,
+}
+
+impl Config {
+    pub fn from_env() -> Self {
+        Self {
+            sunat_fake_url: std::env::var("XHANDLER_SUNAT_FAKE_URL")
+                .unwrap_or_else(|_| DEFAULT_SUNAT_FAKE_URL.to_string()),
+        }
+    }
+}
+
 pub fn router() -> Router {
+    router_with(Config::from_env())
+}
+
+pub fn router_with(config: Config) -> Router {
     Router::new()
         .route("/health", get(|| async { "ok" }))
+        .route("/v1/info", get(info))
         .route("/v1/build", post(build))
         .route("/v1/sign", post(sign))
         .route("/v1/sign/prepare", post(sign_prepare))
         .route("/v1/sign/finalize", post(sign_finalize))
-        .route("/v1/send", post(send))
+        .route("/v1/send", post(sunat::send))
+        .route("/v1/verify-ticket", post(sunat::verify_ticket))
+        .route("/v1/status-cdr", post(sunat::status_cdr))
+        .route("/v1/validity", post(sunat::validity))
+        .route("/v1/validity/file", post(sunat::validity_file))
+        .route("/v1/validate", post(documents::validate))
+        .route("/v1/inspect", post(documents::inspect))
+        .route("/v1/cdr", post(documents::cdr))
         .layer(DefaultBodyLimit::max(MAX_BODY_BYTES))
+        .with_state(Arc::new(config))
 }
 
 // --- errors -----------------------------------------------------------------
@@ -42,6 +79,8 @@ pub fn router() -> Router {
 pub enum ErrorKind {
     /// The document can't be built, signed or sent as it is
     InvalidDocument,
+    InvalidCertificate,
+    WrongPassword,
     /// The request itself is incomplete or contradictory
     InvalidRequest,
     Other,
@@ -54,7 +93,7 @@ pub struct ApiError {
 }
 
 impl ApiError {
-    fn new(kind: ErrorKind, message: impl ToString) -> Self {
+    pub(crate) fn new(kind: ErrorKind, message: impl ToString) -> Self {
         Self {
             kind,
             message: message.to_string(),
@@ -75,6 +114,40 @@ impl IntoResponse for ApiError {
     }
 }
 
+/// `Json` whose rejections (bad JSON, missing fields) are `invalid_request`
+/// errors in the engine's format
+pub struct ApiJson<T>(pub T);
+
+impl<T: DeserializeOwned, S: Send + Sync> FromRequest<S> for ApiJson<T> {
+    type Rejection = ApiError;
+
+    async fn from_request(request: Request, state: &S) -> Result<Self, Self::Rejection> {
+        match Json::<T>::from_request(request, state).await {
+            Ok(Json(value)) => Ok(Self(value)),
+            Err(rejection) => Err(ApiError::new(
+                ErrorKind::InvalidRequest,
+                rejection.body_text(),
+            )),
+        }
+    }
+}
+
+// --- info -------------------------------------------------------------------
+
+#[derive(Serialize)]
+pub struct InfoResponse {
+    pub engine_version: &'static str,
+    /// The xhandler-rust revision pinned in Cargo.toml (build.rs)
+    pub xhandler_rust_rev: &'static str,
+}
+
+async fn info() -> Json<InfoResponse> {
+    Json(InfoResponse {
+        engine_version: env!("CARGO_PKG_VERSION"),
+        xhandler_rust_rev: env!("XHANDLER_RUST_REV"),
+    })
+}
+
 // --- build ------------------------------------------------------------------
 
 #[derive(Deserialize)]
@@ -92,7 +165,7 @@ pub struct BuildResponse {
     pub enriched_json: serde_json::Value,
 }
 
-async fn build(Json(request): Json<BuildRequest>) -> Result<Json<BuildResponse>, ApiError> {
+async fn build(ApiJson(request): ApiJson<BuildRequest>) -> Result<Json<BuildResponse>, ApiError> {
     let mut document = request.document;
     let fecha_emision = request.fecha_emision.unwrap_or_else(lima_today);
     document
@@ -106,9 +179,12 @@ async fn build(Json(request): Json<BuildRequest>) -> Result<Json<BuildResponse>,
     Ok(Json(BuildResponse { xml, enriched_json }))
 }
 
-fn lima_today() -> NaiveDate {
-    let lima = FixedOffset::west_opt(LIMA_OFFSET_SECONDS).expect("valid offset");
-    Utc::now().with_timezone(&lima).date_naive()
+pub(crate) fn lima_offset() -> FixedOffset {
+    FixedOffset::west_opt(LIMA_OFFSET_SECONDS).expect("valid offset")
+}
+
+pub(crate) fn lima_today() -> NaiveDate {
+    Utc::now().with_timezone(&lima_offset()).date_naive()
 }
 
 // --- sign -------------------------------------------------------------------
@@ -131,7 +207,7 @@ pub struct SignPrepareResponse {
 }
 
 async fn sign_prepare(
-    Json(request): Json<SignPrepareRequest>,
+    ApiJson(request): ApiJson<SignPrepareRequest>,
 ) -> Result<Json<SignPrepareResponse>, ApiError> {
     blocking(move || {
         let prepared = prepare(request.xml)?;
@@ -159,7 +235,7 @@ pub struct SignResponse {
 }
 
 async fn sign_finalize(
-    Json(request): Json<SignFinalizeRequest>,
+    ApiJson(request): ApiJson<SignFinalizeRequest>,
 ) -> Result<Json<SignResponse>, ApiError> {
     blocking(move || {
         let decode = |value: &str, what: &str| {
@@ -190,7 +266,7 @@ pub struct SignRequest {
     pub demo_key: bool,
 }
 
-async fn sign(Json(request): Json<SignRequest>) -> Result<Json<SignResponse>, ApiError> {
+async fn sign(ApiJson(request): ApiJson<SignRequest>) -> Result<Json<SignResponse>, ApiError> {
     if !request.demo_key {
         return Err(ApiError::new(
             ErrorKind::InvalidRequest,
@@ -221,7 +297,7 @@ fn prepare(xml: String) -> Result<PreparedSignature, ApiError> {
 }
 
 /// Runs CPU-bound work (C14N, RSA) off the async workers, in the caller's span.
-async fn blocking<T: Send + 'static>(
+pub(crate) async fn blocking<T: Send + 'static>(
     work: impl FnOnce() -> Result<T, ApiError> + Send + 'static,
 ) -> Result<Json<T>, ApiError> {
     let span = tracing::Span::current();
@@ -232,7 +308,7 @@ async fn blocking<T: Send + 'static>(
 }
 
 /// True when the XML is signed with SUNAT's beta demo certificate.
-fn signed_with_demo_key(xml: &str) -> bool {
+pub(crate) fn signed_with_demo_key(xml: &str) -> bool {
     let certificate: String = BETA_CERTIFICATE
         .lines()
         .filter(|line| !line.starts_with("-----"))
@@ -241,207 +317,8 @@ fn signed_with_demo_key(xml: &str) -> bool {
     xml.contains(&certificate)
 }
 
-// --- send -------------------------------------------------------------------
-
-#[derive(Deserialize, Clone, Copy, Debug, PartialEq)]
-#[serde(rename_all = "snake_case")]
-pub enum Environment {
-    Beta,
-    Production,
-}
-
-#[derive(Deserialize)]
-pub struct SendRequest {
-    pub xml: String,
-    pub environment: Environment,
-    /// SOL credentials. Required in production; beta uses SUNAT's public user.
-    pub credentials: Option<SolCredentials>,
-}
-
-#[derive(Deserialize)]
-pub struct SolCredentials {
-    pub username: String,
-    pub password: String,
-}
-
-/// What SUNAT answered. The service decides what each outcome means
-/// (DESIGN.md §9.2).
-#[derive(Serialize, Debug, PartialEq)]
-#[serde(rename_all = "snake_case")]
-pub enum SunatStatus {
-    Accepted,
-    Rejected,
-    Exception,
-    InProgress,
-    /// No usable answer, and SUNAT may have received the document (timeout,
-    /// HTTP error, unreadable answer): ask SUNAT before resending.
-    Unknown,
-    /// The request never reached SUNAT (connection refused, DNS, TLS, rate
-    /// limited at SUNAT's front proxy): safe to resend.
-    NotDelivered,
-}
-
-impl From<Status> for SunatStatus {
-    fn from(status: Status) -> Self {
-        match status {
-            Status::Accepted => Self::Accepted,
-            Status::Rejected => Self::Rejected,
-            Status::Exception => Self::Exception,
-            Status::InProgress => Self::InProgress,
-            Status::Unknown => Self::Unknown,
-        }
-    }
-}
-
-#[derive(Serialize, Debug, PartialEq)]
-pub struct SendResponse {
-    pub status: SunatStatus,
-    /// SUNAT's numeric code (CDR ResponseCode or fault code)
-    pub code: Option<u32>,
-    pub description: Option<String>,
-    pub notes: Vec<String>,
-    /// CDR zip in base64
-    pub cdr_zip: Option<String>,
-    pub ticket: Option<String>,
-}
-
-impl SendResponse {
-    fn new(status: SunatStatus) -> Self {
-        Self {
-            status,
-            code: None,
-            description: None,
-            notes: Vec::new(),
-            cdr_zip: None,
-            ticket: None,
-        }
-    }
-
-    fn with_description(status: SunatStatus, description: impl ToString) -> Self {
-        Self {
-            description: Some(description.to_string()),
-            ..Self::new(status)
-        }
-    }
-}
-
-async fn send(Json(request): Json<SendRequest>) -> Result<Json<SendResponse>, ApiError> {
-    if request.environment == Environment::Production && signed_with_demo_key(&request.xml) {
-        return Err(ApiError::new(
-            ErrorKind::InvalidRequest,
-            "the document is signed with SUNAT's beta demo key; SUNAT production would reject it",
-        ));
-    }
-    let credentials = match (request.credentials, request.environment) {
-        (Some(c), _) => credentials(c.username, c.password),
-        (None, Environment::Beta) => credentials(BETA_USERNAME.into(), BETA_PASSWORD.into()),
-        (None, Environment::Production) => {
-            return Err(ApiError::new(
-                ErrorKind::InvalidRequest,
-                "credentials are required in production",
-            ))
-        }
-    };
-    let urls = match request.environment {
-        Environment::Beta => Urls::beta(),
-        Environment::Production => Urls::production(),
-    };
-
-    // Everything that can be checked before contacting SUNAT is checked here,
-    // so any error after this point happened while talking to SUNAT.
-    let file = UblFile::from(request.xml.as_str());
-    let metadata = file
-        .metadata()
-        .map_err(|e| ApiError::new(ErrorKind::InvalidDocument, e))?;
-    if metadata.digest_value.is_none() {
-        return Err(ApiError::new(
-            ErrorKind::InvalidDocument,
-            "the document is not signed",
-        ));
-    }
-
-    let sender = FileSender { urls, credentials };
-    let span =
-        tracing::info_span!("sunat.send", otel.kind = "client", environment = ?request.environment);
-    let result = sender.send_file(&file).instrument(span).await;
-    to_send_response(result).map(Json)
-}
-
-fn credentials(username: String, password: String) -> Credentials {
-    Credentials {
-        username,
-        password,
-        client_id: None,
-        client_secret: None,
-        token: None,
-    }
-}
-
-/// Maps xsender's result to the engine's answer. Errors after the request may
-/// have reached SUNAT are `Unknown`, never safe to resend blindly
-/// (DESIGN.md §9.2.1).
-fn to_send_response(
-    result: Result<SendFileResponseWrapper, FileSenderError>,
-) -> Result<SendResponse, ApiError> {
-    let wrapper = match result {
-        Ok(wrapper) => wrapper,
-        Err(FileSenderError::TargetDiscovery | FileSenderError::NoDespatchUrl) => {
-            return Err(ApiError::new(
-                ErrorKind::InvalidDocument,
-                "SUNAT has no service for this document type in this environment",
-            ))
-        }
-        Err(FileSenderError::SunatClient(error)) => {
-            return Ok(match error {
-                SunatClientError::HttpClient(e) if e.is_connect() => {
-                    SendResponse::with_description(SunatStatus::NotDelivered, e)
-                }
-                SunatClientError::RateLimited => {
-                    SendResponse::with_description(SunatStatus::NotDelivered, error)
-                }
-                SunatClientError::Templating(e) => {
-                    return Err(ApiError::new(ErrorKind::Other, e));
-                }
-                // Timeouts, HTTP errors, unreadable answers, and any variant
-                // xsender adds later: SUNAT may have the document.
-                _ => {
-                    tracing::warn!(error = %error, "no usable answer from SUNAT");
-                    SendResponse::with_description(SunatStatus::Unknown, error)
-                }
-            });
-        }
-        // Zip or parsing errors here come from reading SUNAT's answer (the
-        // request was checked before sending): SUNAT may have the document.
-        Err(error @ (FileSenderError::Zip(_) | FileSenderError::Any(_))) => {
-            tracing::warn!(error = %error, "unreadable answer from SUNAT");
-            return Ok(SendResponse::with_description(SunatStatus::Unknown, error));
-        }
-    };
-
-    Ok(match wrapper.response {
-        SendFileAggregatedResponse::Cdr(cdr_zip, metadata) => SendResponse {
-            status: Status::from_code_str(&metadata.response_code).into(),
-            code: metadata.response_code.trim().parse().ok(),
-            description: Some(metadata.description),
-            notes: metadata.notes,
-            cdr_zip: Some(cdr_zip),
-            ticket: None,
-        },
-        SendFileAggregatedResponse::Ticket(ticket) => SendResponse {
-            ticket: Some(ticket),
-            ..SendResponse::new(SunatStatus::InProgress)
-        },
-        SendFileAggregatedResponse::Fault(fault) => SendResponse {
-            status: fault.status().into(),
-            code: fault.sunat_code(),
-            description: Some(fault.message),
-            ..SendResponse::new(SunatStatus::Unknown)
-        },
-    })
-}
-
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use axum::body::Body;
     use axum::http::Request;
@@ -450,7 +327,7 @@ mod tests {
 
     const INVOICE: &str = include_str!("../../examples/invoice.json");
 
-    async fn post(uri: &str, body: serde_json::Value) -> (StatusCode, serde_json::Value) {
+    pub async fn post(uri: &str, body: serde_json::Value) -> (StatusCode, serde_json::Value) {
         let request = Request::post(uri)
             .header("content-type", "application/json")
             .body(Body::from(body.to_string()))
@@ -461,11 +338,11 @@ mod tests {
         (status, serde_json::from_slice(&bytes).unwrap())
     }
 
-    fn invoice() -> serde_json::Value {
+    pub fn invoice() -> serde_json::Value {
         serde_json::from_str(INVOICE).unwrap()
     }
 
-    async fn build_invoice() -> serde_json::Value {
+    pub async fn build_invoice() -> serde_json::Value {
         let (status, body) = post(
             "/v1/build",
             serde_json::json!({ "document": invoice(), "fecha_emision": "2026-11-15" }),
@@ -475,7 +352,7 @@ mod tests {
         body
     }
 
-    async fn sign_with_demo_key(xml: serde_json::Value) -> serde_json::Value {
+    pub async fn sign_with_demo_key(xml: serde_json::Value) -> serde_json::Value {
         let (status, body) = post(
             "/v1/sign",
             serde_json::json!({ "xml": xml, "demo_key": true }),
@@ -483,6 +360,25 @@ mod tests {
         .await;
         assert_eq!(status, StatusCode::OK, "{body}");
         body
+    }
+
+    #[tokio::test]
+    async fn info_reports_versions() {
+        let request = Request::get("/v1/info").body(Body::empty()).unwrap();
+        let response = router().oneshot(request).await.unwrap();
+        let bytes = response.into_body().collect().await.unwrap().to_bytes();
+        let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(body["engine_version"], env!("CARGO_PKG_VERSION"));
+        let rev = body["xhandler_rust_rev"].as_str().unwrap();
+        assert_eq!(rev.len(), 40, "{rev}");
+        assert!(include_str!("../Cargo.toml").contains(&format!("rev = \"{rev}\"")));
+    }
+
+    #[tokio::test]
+    async fn bad_json_is_an_invalid_request() {
+        let (status, body) = post("/v1/sign", serde_json::json!({ "demo_key": true })).await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(body["kind"], "invalid_request");
     }
 
     #[tokio::test]
@@ -588,186 +484,5 @@ mod tests {
         .await;
         assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
         assert_eq!(body["kind"], "invalid_request");
-    }
-
-    #[tokio::test]
-    async fn send_requires_credentials_in_production() {
-        let (status, body) = post(
-            "/v1/send",
-            serde_json::json!({ "xml": "<x/>", "environment": "production" }),
-        )
-        .await;
-        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
-        assert_eq!(body["kind"], "invalid_request");
-    }
-
-    #[tokio::test]
-    async fn send_refuses_demo_key_in_production() {
-        let signed = sign_with_demo_key(build_invoice().await["xml"].clone()).await;
-        let (status, body) = post(
-            "/v1/send",
-            serde_json::json!({
-                "xml": signed["xml"],
-                "environment": "production",
-                "credentials": { "username": "20123456789USER", "password": "x" },
-            }),
-        )
-        .await;
-        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
-        assert_eq!(body["kind"], "invalid_request");
-    }
-
-    #[tokio::test]
-    async fn send_rejects_unsigned_document_before_contacting_sunat() {
-        let (status, body) = post(
-            "/v1/send",
-            serde_json::json!({ "xml": build_invoice().await["xml"], "environment": "beta" }),
-        )
-        .await;
-        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
-        assert_eq!(body["kind"], "invalid_document");
-    }
-
-    fn wrapper(response: SendFileAggregatedResponse) -> SendFileResponseWrapper {
-        SendFileResponseWrapper {
-            response,
-            send_file_target: SendFileTarget::Soap(String::new(), SoapFileTargetAction::Bill),
-            verify_ticket_target: None,
-        }
-    }
-
-    fn cdr(code: &str) -> SendFileAggregatedResponse {
-        SendFileAggregatedResponse::Cdr(
-            "UEsDBA==".into(),
-            CdrMetadata {
-                response_code: code.into(),
-                description: "descripcion".into(),
-                notes: vec![],
-            },
-        )
-    }
-
-    #[test]
-    fn maps_cdr() {
-        let response = to_send_response(Ok(wrapper(cdr("0")))).unwrap();
-        assert_eq!(response.status, SunatStatus::Accepted);
-        assert_eq!(response.code, Some(0));
-        assert_eq!(response.cdr_zip.as_deref(), Some("UEsDBA=="));
-
-        let observed = to_send_response(Ok(wrapper(cdr("4252")))).unwrap();
-        assert_eq!(
-            (observed.status, observed.code),
-            (SunatStatus::Accepted, Some(4252))
-        );
-        let rejected = to_send_response(Ok(wrapper(cdr("2335")))).unwrap();
-        assert_eq!(
-            (rejected.status, rejected.code),
-            (SunatStatus::Rejected, Some(2335))
-        );
-    }
-
-    #[test]
-    fn maps_ticket() {
-        let response = to_send_response(Ok(wrapper(SendFileAggregatedResponse::Ticket(
-            "123".into(),
-        ))))
-        .unwrap();
-        assert_eq!(response.status, SunatStatus::InProgress);
-        assert_eq!(response.ticket.as_deref(), Some("123"));
-    }
-
-    #[test]
-    fn maps_fault_codes() {
-        let fault = |code: &str| {
-            SendFileAggregatedResponse::Fault(SunatFault {
-                code: code.into(),
-                message: "msg".into(),
-                http_status: Some(500),
-            })
-        };
-        let exception = to_send_response(Ok(wrapper(fault("soap-env:Client.0111")))).unwrap();
-        assert_eq!(
-            (exception.status, exception.code),
-            (SunatStatus::Exception, Some(111))
-        );
-        let rejected = to_send_response(Ok(wrapper(fault("env:Client.2335")))).unwrap();
-        assert_eq!(
-            (rejected.status, rejected.code),
-            (SunatStatus::Rejected, Some(2335))
-        );
-        let unknown = to_send_response(Ok(wrapper(fault("env:Client")))).unwrap();
-        assert_eq!((unknown.status, unknown.code), (SunatStatus::Unknown, None));
-    }
-
-    #[test]
-    fn errors_after_sending_are_unknown() {
-        let status = |error: FileSenderError| to_send_response(Err(error)).unwrap().status;
-        assert_eq!(
-            status(FileSenderError::SunatClient(SunatClientError::Response(
-                503
-            ))),
-            SunatStatus::Unknown
-        );
-        assert_eq!(
-            status(FileSenderError::SunatClient(SunatClientError::Any(
-                anyhow::anyhow!("bad soap")
-            ))),
-            SunatStatus::Unknown
-        );
-        assert_eq!(
-            status(FileSenderError::Any(anyhow::anyhow!("bad cdr"))),
-            SunatStatus::Unknown
-        );
-    }
-
-    #[test]
-    fn rate_limited_is_not_delivered() {
-        let response = to_send_response(Err(FileSenderError::SunatClient(
-            SunatClientError::RateLimited,
-        )))
-        .unwrap();
-        assert_eq!(response.status, SunatStatus::NotDelivered);
-    }
-
-    #[tokio::test]
-    async fn connection_refused_is_not_delivered() {
-        // Nothing listens on the discard port on localhost
-        let error = reqwest::Client::new()
-            .get("http://127.0.0.1:9/")
-            .send()
-            .await
-            .unwrap_err();
-        let response = to_send_response(Err(FileSenderError::SunatClient(
-            SunatClientError::HttpClient(error),
-        )))
-        .unwrap();
-        assert_eq!(response.status, SunatStatus::NotDelivered);
-    }
-
-    #[test]
-    fn unknown_target_is_invalid_document() {
-        let error = to_send_response(Err(FileSenderError::TargetDiscovery)).unwrap_err();
-        assert_eq!(error.kind, ErrorKind::InvalidDocument);
-    }
-
-    /// Sends a document to SUNAT beta. Needs network access:
-    /// `cargo test -- --ignored`.
-    #[tokio::test]
-    #[ignore]
-    async fn send_to_sunat_beta_is_accepted() {
-        let mut document = invoice();
-        let numero = Utc::now().timestamp() % 99_999_999;
-        document["spec"]["serie_numero"] = format!("F001-{numero}").into();
-        let (_, built) = post("/v1/build", serde_json::json!({ "document": document })).await;
-        let signed = sign_with_demo_key(built["xml"].clone()).await;
-        let (status, body) = post(
-            "/v1/send",
-            serde_json::json!({ "xml": signed["xml"], "environment": "beta" }),
-        )
-        .await;
-        assert_eq!(status, StatusCode::OK, "{body}");
-        assert_eq!(body["status"], "accepted", "{body}");
-        assert_eq!(body["code"], 0, "{body}");
-        assert!(body["cdr_zip"].is_string());
     }
 }

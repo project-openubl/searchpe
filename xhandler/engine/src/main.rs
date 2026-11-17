@@ -1,10 +1,10 @@
 //! xhandler-engine: the Rust sidecar of xhandler-service (DESIGN.md §4).
 
-mod api;
 mod telemetry;
 
 use tower_http::trace::{DefaultOnResponse, TraceLayer};
 use tracing::Level;
+use xhandler_engine::{api, xsd};
 
 /// Listens on localhost by default: the engine is a sidecar reached only by
 /// the Quarkus container of the same pod.
@@ -69,6 +69,8 @@ fn health_check(addr: &str) -> bool {
 
 async fn serve() -> anyhow::Result<()> {
     let addr = addr();
+    // Compile the XSD schemas and start the validation pool before serving
+    tokio::task::spawn_blocking(xsd::init).await?;
     let app = api::router().layer(
         TraceLayer::new_for_http()
             .make_span_with(telemetry::request_span)
