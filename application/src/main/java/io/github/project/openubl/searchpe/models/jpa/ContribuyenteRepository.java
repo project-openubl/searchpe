@@ -22,7 +22,6 @@ import io.github.project.openubl.searchpe.models.SearchResultBean;
 import io.github.project.openubl.searchpe.models.SortBean;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteId;
-import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.utils.DataHelper;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
@@ -30,35 +29,33 @@ import io.quarkus.panache.common.Parameters;
 import io.quarkus.panache.common.Sort;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.transaction.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-@Transactional
 @ApplicationScoped
 public class ContribuyenteRepository implements PanacheRepositoryBase<ContribuyenteEntity, ContribuyenteId> {
 
     public static final String[] SORT_BY_FIELDS = {"nombre"};
 
-    public Optional<ContribuyenteEntity> findByRuc(VersionEntity version, String ruc) {
+    public Optional<ContribuyenteEntity> findByRuc(long versionId, String ruc) {
         Parameters parameters = Parameters
-                .with("versionId", version.id)
+                .with("versionId", versionId)
                 .and("ruc", ruc);
-        return VersionEntity.find("From ContribuyenteEntity as c where c.id.versionId = :versionId and c.id.ruc = :ruc", parameters)
+        return find("From ContribuyenteEntity as c where c.id.versionId = :versionId and c.id.ruc = :ruc", parameters)
                 .singleResultOptional();
     }
 
-    public Optional<ContribuyenteEntity> findByDni(VersionEntity version, String dni) {
-        return DataHelper.getRucFromDni(dni).flatMap(ruc -> findByRuc(version, ruc));
+    public Optional<ContribuyenteEntity> findByDni(long versionId, String dni) {
+        return DataHelper.getRucFromDni(dni).flatMap(ruc -> findByRuc(versionId, ruc));
     }
 
-    public SearchResultBean<ContribuyenteEntity> list(VersionEntity version, FilterBean filterBean, PageBean pageBean, List<SortBean> sortBy) {
+    public SearchResultBean<ContribuyenteEntity> list(long versionId, FilterBean filterBean, PageBean pageBean, List<SortBean> sortBy) {
         Sort sort = Sort.by();
         sortBy.forEach(f -> sort.and(f.getFieldName(), f.isAsc() ? Sort.Direction.Ascending : Sort.Direction.Descending));
 
         StringBuilder queryBuilder = new StringBuilder("From ContribuyenteEntity as c where ");
-        Parameters parameters = Parameters.with("versionId", version.id);
+        Parameters parameters = Parameters.with("versionId", versionId);
 
         List<String> queryConditions = new ArrayList<>();
 
@@ -83,8 +80,7 @@ public class ContribuyenteRepository implements PanacheRepositoryBase<Contribuye
 
         queryBuilder.append(String.join(" and ", queryConditions));
 
-        PanacheQuery<ContribuyenteEntity> query = VersionEntity
-                .find(queryBuilder.toString(), sort, parameters)
+        PanacheQuery<ContribuyenteEntity> query = find(queryBuilder.toString(), sort, parameters)
                 .range(pageBean.getOffset(), pageBean.getOffset() + pageBean.getLimit() - 1);
 
         return SearchResultBean.<ContribuyenteEntity>builder()

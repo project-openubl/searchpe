@@ -123,6 +123,15 @@ public class VersionResourceTest extends AbstractBaseTest {
     public void deleteVersion() {
         int versionId = 3;
 
+        // Given the active version id is cached
+        givenAuth("alice")
+                .header("Content-Type", "application/json")
+                .when()
+                .get("/" + versionId)
+                .then()
+                .statusCode(200)
+                .body("active", is(true));
+
         // When
         givenAuth("alice")
                 .header("Content-Type", "application/json")
@@ -154,7 +163,9 @@ public class VersionResourceTest extends AbstractBaseTest {
                         "size()", is(1),
                         "[0].id", is(2),
                         "[0].status", is("COMPLETED"),
-                        "[0].records", is(5_000_000)
+                        "[0].records", is(5_000_000),
+                        // Right away, not when the cached id expires
+                        "[0].active", is(true)
                 );
     }
 
