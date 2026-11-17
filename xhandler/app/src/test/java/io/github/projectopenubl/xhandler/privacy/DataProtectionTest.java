@@ -51,6 +51,9 @@ class DataProtectionTest {
     @Inject
     EntityManager em;
 
+    @Inject
+    io.github.projectopenubl.xhandler.storage.FileStore files;
+
     @AfterEach
     void tearDown() {
         EngineStub.reset();
@@ -134,19 +137,30 @@ class DataProtectionTest {
         assertEquals(0, count(tenant, "SELECT count(*) FROM xhandler.document WHERE id = :p", old));
         assertEquals(1, count(tenant, "SELECT count(*) FROM xhandler.document WHERE id = :p", current));
 
-        // Exit needs a fresh export and the name typed
+        // Exit waits for documents still going to SUNAT
         String base = "/api/v1/tenants/" + tenant;
+        UUID pending = docs.pending(tenant, company, "fake:bill", d -> d.holdReason = "operator").id();
+        as("alice").body(Map.of("confirm_name", name)).post(base + "/exit").then().statusCode(409).body("kind", equalTo("pending_documents"));
+        docs.update(tenant, pending, d -> d.status = "accepted");
+        // and needs a fresh export (one an hour) and the name typed
         as("alice").body(Map.of("confirm_name", name)).post(base + "/exit").then().statusCode(409).body("kind", equalTo("export_required"));
         String export = as("alice").post(base + "/exports").then().statusCode(202).extract().path("id");
+        as("alice").post(base + "/exports").then().statusCode(409).body("kind", equalTo("export_recent"));
         await().atMost(Duration.ofSeconds(30)).until(() -> "done".equals(
                 as("alice").get(base + "/exports").then().extract().path("find { it.id == '" + export + "' }.status")));
         List<String> names = entries(as("alice").get(base + "/exports/" + export + "/parts/1").then().statusCode(200).extract().asByteArray());
         assertTrue(names.stream().anyMatch(n -> n.endsWith(".xml")) && names.stream().anyMatch(n -> n.endsWith(".json"))
                 && names.stream().anyMatch(n -> n.endsWith(".pdf")), names.toString());
+        // Named like SUNAT, with the issuer's RUC: two companies never collide
+        String ruc = as("alice").get(base + "/companies/" + company).then().extract().path("ruc");
+        assertTrue(names.stream().anyMatch(n -> n.startsWith("fake/" + ruc + "-01-")), names.toString());
         as("alice").body(Map.of("confirm_name", "otro")).post(base + "/exit").then().statusCode(422);
-        as("alice").body(Map.of("confirm_name", name)).post(base + "/exit").then().statusCode(200).body("status", equalTo("suspended"));
-        // Suspended: its members no longer reach it
-        as("bob").get(base).then().statusCode(404);
+        as("alice").body(Map.of("confirm_name", name)).post(base + "/exit").then().statusCode(200).body("status", equalTo("exited"));
+        // Exited: still readable (exports, data-subject requests) but no new documents
+        as("alice").get(base + "/exports").then().statusCode(200);
+        as("alice").body(Map.of("document", Map.of("kind", "Invoice", "spec", Map.of("cliente", Map.of("tipo_documento_identidad", "6",
+                        "numero_documento_identidad", "20111111111", "nombre", "X"), "detalles", List.of()))))
+                .post(base + "/companies/" + company + "/documents").then().statusCode(409).body("kind", equalTo("tenant_exited"));
 
         // After the exit period its data is deleted, with evidence
         sql("UPDATE xhandler.tenant SET delete_after = now() - interval '1 day' WHERE id = :t", Map.of("t", tenant));
@@ -155,6 +169,11 @@ class DataProtectionTest {
         assertEquals(0, count(tenant, "SELECT count(*) FROM xhandler.company WHERE tenant_id = :p", tenant));
         assertEquals(1, count(tenant, "SELECT count(*) FROM xhandler.tenant_deletion WHERE tenant_id = :p", tenant));
         assertEquals(1, count(tenant, "SELECT count(*) FROM xhandler.tenant WHERE id = :p AND deleted_at IS NOT NULL", tenant));
+        assertTrue(files.list(io.github.projectopenubl.xhandler.storage.FileStore.keyOf(tenant, "")).isEmpty(), "every file of the tenant is gone");
+        assertEquals("(eliminada)", QuarkusTransaction.requiringNew().call(() -> {
+            em.createNativeQuery("SELECT set_config('app.tenant_id', :t, true)").setParameter("t", tenant.toString()).getSingleResult();
+            return (String) em.createNativeQuery("SELECT name FROM xhandler.tenant WHERE id = :p").setParameter("p", tenant).getSingleResult();
+        }));
         as("olga").post("/api/admin/v1/data-protection/tenants/" + tenant + "/exit/cancel").then().statusCode(404);
     }
 

@@ -18,7 +18,7 @@ xhandler-admin endpoint-status        # breakers, caps, holds per SUNAT endpoint
 - **Exceptions from one tenant's credentials** (codes 0101–0106, 0111, 0154): the tenant was
   notified; nothing to do unless it asks for support. Never resend with other credentials.
 - **Documents unknown for long**: the reconciler asks SUNAT (status/CDR) with backoff. If the
-  consult service itself is down, they wait; `xhandler-admin retry document <id>` forces an
+  consult service itself is down, they wait; `xhandler-admin retry <id>` forces an
   attempt after it's back (an ambiguous document is checked, never blindly resent).
 - **Stuck in progress after a crash**: `POST /api/admin/v1/repair/requeue-stuck` (idempotent;
   fencing prevents duplicates).

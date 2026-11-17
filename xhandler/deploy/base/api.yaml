@@ -28,6 +28,8 @@ spec:
         - maxSkew: 1
           topologyKey: topology.kubernetes.io/zone
           whenUnsatisfiable: DoNotSchedule
+          # A lost zone's tainted nodes don't count: replacements schedule in the others
+          nodeTaintsPolicy: Honor
           labelSelector:
             matchLabels:
               app.kubernetes.io/name: xhandler-service
@@ -59,7 +61,7 @@ spec:
             - name: HTTPS_PROXY
               value: http://egress-proxy:3128
             - name: NO_PROXY
-              value: localhost,127.0.0.1,otel-collector
+              value: localhost,127.0.0.1,otel-collector,.svc,.cluster.local
           # The engine listens on localhost only, which kubelet HTTP probes
           # can't reach: probe with the binary itself.
           startupProbe:

@@ -12,16 +12,18 @@ public class OseSoapSunatPath {
 
     private final OseClients clients;
     private final OseIntake intake;
+    private final io.micrometer.core.instrument.MeterRegistry metrics;
 
-    public OseSoapSunatPath(OseClients clients, OseIntake intake) {
+    public OseSoapSunatPath(OseClients clients, OseIntake intake, io.micrometer.core.instrument.MeterRegistry metrics) {
         this.clients = clients;
         this.intake = intake;
+        this.metrics = metrics;
     }
 
     @POST
     @Consumes({"text/xml", "application/soap+xml", "application/xml"})
     @Produces("text/xml")
     public Response handle(byte[] body) {
-        return OseSoapResource.answer(clients, intake, body);
+        return OseSoapResource.answer(clients, intake, metrics, body);
     }
 }

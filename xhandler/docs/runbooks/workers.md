@@ -10,6 +10,8 @@ kubectl top pods -l app.kubernetes.io/component=worker
 
 ## Actions
 
+- **`ops.snapshot` stopped** (gauges NaN, `DatabaseGaugesMissing`): the snapshot is a scheduled job;
+  check the workers first.
 - **Workers crash-looping**: `kubectl logs --previous`. A lost lock connection makes a worker exit
   on purpose (§10.4) and Kubernetes restarts it; repeated exits point at the database (see
   [database-failover.md](database-failover.md)).

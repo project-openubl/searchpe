@@ -17,7 +17,8 @@ spec:
             summary: "A CDR-OSE has waited {{ $value | humanizeDuration }} to be forwarded to SUNAT (limit: 1 hour)"
             runbook_url: https://github.com/project-openubl/xhandler-service/blob/main/docs/runbooks/ose-forwarding.md
         - alert: OseForwardingLate
-          expr: histogram_quantile(1.0, sum(rate(xhandler_ose_forward_delay_seconds_bucket[15m])) by (le)) > 3600
+          # Forwards acknowledged after the 1-hour bucket (le="3600.0" is a service-level boundary of the timer)
+          expr: (sum(increase(xhandler_ose_forward_delay_seconds_count[15m])) - sum(increase(xhandler_ose_forward_delay_seconds_bucket{le="3600.0"}[15m]))) > 0
           for: 5m
           labels: { severity: page }
           annotations:
@@ -25,9 +26,12 @@ spec:
             runbook_url: https://github.com/project-openubl/xhandler-service/blob/main/docs/runbooks/ose-forwarding.md
         - alert: OseIntakeErrors
           # 99.96% availability for OSE intake
+          # Only our own failures (fault 0109): wrong passwords, bad ZIPs and invalid documents are SOAP
+          # faults too (HTTP 500 by SOAP's rules) but they are the client's
           expr: |
-            sum(rate(http_server_requests_seconds_count{uri=~"/ose/billService|/ol-ti-itcpfegem/billService|/api/v1/ose/documents",status=~"5..",outcome="SERVER_ERROR"}[5m]))
-              / clamp_min(sum(rate(http_server_requests_seconds_count{uri=~"/ose/billService|/ol-ti-itcpfegem/billService|/api/v1/ose/documents"}[5m])), 1) > 0.0004
+            sum(rate(xhandler_ose_faults_total{code="0109"}[5m]))
+              / (sum(rate(http_server_requests_seconds_count{uri=~"/ose/billService|/ol-ti-itcpfegem/billService|/api/v1/ose/documents"}[5m])) > 0)
+              > 0.0004
           for: 10m
           labels: { severity: page }
           annotations:
@@ -47,7 +51,7 @@ spec:
           for: 30m
           labels: { severity: ticket }
           annotations:
-            summary: "{{ $value }} documents in exception or unknown for over an hour"
+            summary: "{{ $value }} production documents in exception (last day) or unknown for over an hour"
             runbook_url: https://github.com/project-openubl/xhandler-service/blob/main/docs/runbooks/documents-stuck.md
         - alert: SunatBacklogGrowing
           expr: deriv(max(xhandler_documents_pending)[30m:1m]) > 5
@@ -66,16 +70,18 @@ spec:
             summary: "The oldest waiting job is {{ $value | humanizeDuration }} old: workers can't keep up or are down"
             runbook_url: https://github.com/project-openubl/xhandler-service/blob/main/docs/runbooks/workers.md
         - alert: ApiErrorRate
+          # SOAP faults (OSE intake) answer 500 by protocol and are excluded
           expr: |
-            sum(rate(http_server_requests_seconds_count{outcome="SERVER_ERROR"}[5m]))
-              / clamp_min(sum(rate(http_server_requests_seconds_count[5m])), 1) > 0.01
+            sum(rate(http_server_requests_seconds_count{outcome="SERVER_ERROR",uri!~"/ose/billService|/ol-ti-itcpfegem/billService"}[5m]))
+              / (sum(rate(http_server_requests_seconds_count[5m])) > 0) > 0.01
           for: 10m
           labels: { severity: page }
           annotations:
             summary: "More than 1% of API requests fail with 5xx"
             runbook_url: https://github.com/project-openubl/xhandler-service/blob/main/docs/runbooks/workers.md
         - alert: DatabaseGaugesMissing
-          # The gauges read the database: NaN means it doesn't answer
+          # The gauges read a snapshot the ops.snapshot job writes every 30 s: NaN means the database
+          # doesn't answer or the job stopped
           expr: max(xhandler_jobs_waiting) != max(xhandler_jobs_waiting) or absent(xhandler_jobs_waiting)
           for: 5m
           labels: { severity: page }

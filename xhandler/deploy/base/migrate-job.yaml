@@ -27,13 +27,17 @@ spec:
         - name: migrate
           image: xhandler-service
           env:
-            - name: XHANDLER_ROLE
-              value: migrate
             - name: QUARKUS_FLYWAY_MIGRATE_AT_START
               value: "true"
-            # Only migrate, then exit (MigrateOnly; the role check is skipped for this login)
-            - name: XHANDLER_MIGRATE_ONLY
+            # Run the init tasks (Flyway) and exit before the application starts: no workers,
+            # no HTTP server, no role check (this login is the owner on purpose)
+            - name: QUARKUS_INIT_AND_EXIT
               value: "true"
+            - name: XHANDLER_ROLE
+              value: migrate
+            - name: QUARKUS_OIDC_AUTH_SERVER_URL
+              valueFrom:
+                configMapKeyRef: { name: xhandler-config, key: oidc-auth-server-url }
             - name: QUARKUS_DATASOURCE_JDBC_URL
               valueFrom:
                 secretKeyRef: { name: xhandler-db-owner, key: jdbc-url }
@@ -55,3 +59,30 @@ spec:
       volumes:
         - name: tmp
           emptyDir: {}
+---
+# The migration pod reaches DNS and the database only
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: xhandler-migrate
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: xhandler-migrate
+  policyTypes: [Ingress, Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+        - ipBlock:
+            cidr: 169.254.20.10/32
+      ports:
+        - { port: 53, protocol: UDP }
+        - { port: 53, protocol: TCP }
+    - to:
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: xhandler-db
+      ports:
+        - { port: 5432, protocol: TCP }

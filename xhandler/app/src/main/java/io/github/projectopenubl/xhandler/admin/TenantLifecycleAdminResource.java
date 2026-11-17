@@ -55,6 +55,13 @@ public class TenantLifecycleAdminResource {
         access.enterAsPlatform(tenantId);
         boolean archive = body != null && Boolean.TRUE.equals(body.get("archive_plan"));
         update(tenantId, "archive_plan = :v", archive);
+        if (!archive) {
+            // An exited tenant that drops the archive plan gets its deletion date (the 2-year limit)
+            em.createNativeQuery("""
+                            UPDATE xhandler.tenant SET delete_after = greatest(exit_requested_at + interval '730 days', now() + interval '30 days')
+                            WHERE id = :id AND status = 'exited' AND delete_after IS NULL AND deleted_at IS NULL""")
+                    .setParameter("id", tenantId).executeUpdate();
+        }
         AdminResource.PLATFORM_AUDIT.infof("admin %s set archive_plan=%s on tenant %s", who, archive, tenantId);
         return Map.of("tenant_id", tenantId, "archive_plan", archive);
     }
@@ -68,7 +75,7 @@ public class TenantLifecycleAdminResource {
         access.enterAsPlatform(tenantId);
         int changed = em.createNativeQuery("""
                         UPDATE xhandler.tenant SET exit_requested_at = NULL, delete_after = NULL, status = 'active', updated_at = now()
-                        WHERE id = :id AND exit_requested_at IS NOT NULL AND deleted_at IS NULL""").setParameter("id", tenantId).executeUpdate();
+                        WHERE id = :id AND status = 'exited' AND deleted_at IS NULL""").setParameter("id", tenantId).executeUpdate();
         if (changed == 0) {
             throw ApiException.notFound();
         }

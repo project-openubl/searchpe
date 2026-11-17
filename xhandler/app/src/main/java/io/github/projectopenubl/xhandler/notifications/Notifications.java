@@ -48,8 +48,10 @@ public class Notifications {
     public void publish(UUID tenantId, String kind, String title, String body, UUID documentId) {
         List<?> preference = em.createNativeQuery("SELECT email, in_app FROM xhandler.notification_preference WHERE kind = :k")
                 .setParameter("k", kind).getResultList();
-        boolean email = preference.isEmpty() || Boolean.TRUE.equals(((Object[]) preference.get(0))[0]);
-        boolean inApp = preference.isEmpty() || Boolean.TRUE.equals(((Object[]) preference.get(0))[1]);
+        // Legal notices (data-subject requests) can't be muted
+        boolean mandatory = kind.startsWith("privacy.");
+        boolean email = mandatory || preference.isEmpty() || Boolean.TRUE.equals(((Object[]) preference.get(0))[0]);
+        boolean inApp = mandatory || preference.isEmpty() || Boolean.TRUE.equals(((Object[]) preference.get(0))[1]);
         if (inApp) {
             em.createNativeQuery("""
                             INSERT INTO xhandler.notification (id, tenant_id, kind, title, body, document_id)

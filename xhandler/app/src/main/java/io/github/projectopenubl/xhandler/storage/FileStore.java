@@ -19,6 +19,9 @@ public interface FileStore {
     /** Retention and exit deletions only (§13). */
     void delete(String key);
 
+    /** Every key under a prefix (a tenant's {@code tenant/{id}/}): exit deletions find even unreferenced files. */
+    java.util.List<String> list(String prefix);
+
     /** Whether the store answers (for /api/v1/status). */
     boolean healthy();
 

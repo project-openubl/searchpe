@@ -208,6 +208,11 @@ public class EmitService {
 
     /** The company may emit this document type now: active, and authorized when it emits as PSE (§3.2). */
     public void checkCompany(Company company, String tipo) {
+        io.github.projectopenubl.xhandler.tenancy.Tenant tenant = io.github.projectopenubl.xhandler.tenancy.Tenant.findById(company.tenantId);
+        if (tenant != null && "exited".equals(tenant.status)) {
+            // Readable until its data is deleted, but it left: no new documents (§13)
+            throw ApiException.conflict("tenant_exited", "La organización dejó la plataforma: no puede emitir comprobantes.");
+        }
         if (!company.active) {
             throw ApiException.conflict("company_inactive", "La empresa está desactivada.");
         }

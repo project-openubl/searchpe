@@ -92,6 +92,10 @@ public class VoidingService {
         }
         // Lock order (§10.8 rule 4): company → daily counter → documents
         Company company = Company.findById(original.companyId, LockModeType.PESSIMISTIC_READ);
+        io.github.projectopenubl.xhandler.tenancy.Tenant tenant = io.github.projectopenubl.xhandler.tenancy.Tenant.findById(tenantId);
+        if (tenant != null && "exited".equals(tenant.status)) {
+            throw ApiException.conflict("tenant_exited", "La organización dejó la plataforma: no puede anular comprobantes.");
+        }
         check(original, request);
         String motivo = request.motivo().strip();
         LocalDate fecha = original.fechaEmision;

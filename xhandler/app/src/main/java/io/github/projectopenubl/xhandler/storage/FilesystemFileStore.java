@@ -50,6 +50,23 @@ public class FilesystemFileStore implements FileStore {
     }
 
     @Override
+    public java.util.List<String> list(String prefix) {
+        if (!prefix.matches("tenant/[0-9a-f-]{36}/")) {
+            throw new IllegalArgumentException("invalid storage prefix");
+        }
+        Path dir = root.resolve(prefix).normalize();
+        if (!Files.isDirectory(dir)) {
+            return java.util.List.of();
+        }
+        try (java.util.stream.Stream<Path> files = Files.walk(dir)) {
+            return files.filter(Files::isRegularFile).filter(f -> !f.getFileName().toString().startsWith(".upload"))
+                    .map(f -> root.relativize(f).toString().replace('\\', '/')).toList();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    @Override
     public void delete(String key) {
         try {
             Files.deleteIfExists(path(key));

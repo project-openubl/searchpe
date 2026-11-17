@@ -2,8 +2,11 @@
 // documents made by make-ose-docs.sh (each number is sent once; SUNAT's rules forbid reuse).
 //
 //   ./hack/load/make-ose-docs.sh 20123456789 5000 /tmp/ose-docs
+// Prerequisites: an OSE user for the RUC (POST /api/admin/v1/ose/clients) and the RUC in the
+// association list (PUT /api/admin/v1/ose/association).
+//
 //   k6 run -e URL=... -e OSE_USER=... -e OSE_PASSWORD=... -e DOCS=/tmp/ose-docs -e COUNT=5000 \
-//          -e RATE=50 hack/load/ose-intake.js
+//          -e VUS=50 hack/load/ose-intake.js
 //
 // Then watch forwarding: xhandler_ose_forward_oldest_seconds must stay well under 3600.
 import http from 'k6/http';

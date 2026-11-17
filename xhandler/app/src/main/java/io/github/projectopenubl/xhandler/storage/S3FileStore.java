@@ -62,6 +62,56 @@ public class S3FileStore implements FileStore {
         }
     }
 
+    /** ListObjectsV2, page by page. */
+    @Override
+    public java.util.List<String> list(String prefix) {
+        java.util.List<String> keys = new java.util.ArrayList<>();
+        String token = null;
+        java.util.regex.Pattern keyPattern = java.util.regex.Pattern.compile("<Key>([^<]+)</Key>");
+        java.util.regex.Pattern next = java.util.regex.Pattern.compile("<NextContinuationToken>([^<]+)</NextContinuationToken>");
+        do {
+            java.util.TreeMap<String, String> query = new java.util.TreeMap<>();
+            query.put("list-type", "2");
+            query.put("prefix", prefix);
+            if (token != null) {
+                query.put("continuation-token", token);
+            }
+            StringBuilder canonical = new StringBuilder();
+            for (var e : query.entrySet()) {
+                if (!canonical.isEmpty()) {
+                    canonical.append('&');
+                }
+                canonical.append(encode(e.getKey())).append('=').append(encode(e.getValue()));
+            }
+            HttpResponse<byte[]> response = send("GET", "", null, canonical.toString());
+            if (response.statusCode() != 200) {
+                throw new StorageException("S3 LIST failed with HTTP " + response.statusCode());
+            }
+            String body = new String(response.body(), StandardCharsets.UTF_8);
+            java.util.regex.Matcher m = keyPattern.matcher(body);
+            while (m.find()) {
+                keys.add(m.group(1).replace("&amp;", "&"));
+            }
+            java.util.regex.Matcher t = next.matcher(body);
+            token = body.contains("<IsTruncated>true</IsTruncated>") && t.find() ? t.group(1) : null;
+        } while (token != null);
+        return keys;
+    }
+
+    /** AWS's URI encoding: unreserved characters stay, everything else (including '/') is %XX. */
+    private static String encode(String value) {
+        StringBuilder out = new StringBuilder();
+        for (byte b : value.getBytes(StandardCharsets.UTF_8)) {
+            char c = (char) (b & 0xff);
+            if (Character.isLetterOrDigit(c) && c < 128 || c == '-' || c == '_' || c == '.' || c == '~') {
+                out.append(c);
+            } else {
+                out.append('%').append(String.format("%02X", b & 0xff));
+            }
+        }
+        return out.toString();
+    }
+
     @Override
     public boolean healthy() {
         try {
@@ -73,11 +123,15 @@ public class S3FileStore implements FileStore {
     }
 
     private HttpResponse<byte[]> send(String method, String key, byte[] body) {
+        return send(method, key, body, "");
+    }
+
+    private HttpResponse<byte[]> send(String method, String key, byte[] body, String query) {
         byte[] payload = body == null ? new byte[0] : body;
         String payloadHash = FileStore.sha256(payload);
         URI endpoint = URI.create(config.endpoint());
         String path = "/" + config.bucket() + (key.isEmpty() ? "" : "/" + key);
-        URI uri = endpoint.resolve(path);
+        URI uri = endpoint.resolve(path + (query.isEmpty() ? "" : "?" + query));
         ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
         String amzDate = AMZ_DATE.format(now);
         String host = endpoint.getPort() == -1 ? endpoint.getHost() : endpoint.getHost() + ":" + endpoint.getPort();
@@ -89,7 +143,7 @@ public class S3FileStore implements FileStore {
                 .method(method, body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofByteArray(body));
         if (config.accessKey().isPresent() && config.secretKey().isPresent()) {
             String scope = DATE.format(now) + "/" + config.region() + "/s3/aws4_request";
-            String canonical = method + "\n" + path + "\n\n"
+            String canonical = method + "\n" + path + "\n" + query + "\n"
                     + "host:" + host + "\n" + "x-amz-content-sha256:" + payloadHash + "\n" + "x-amz-date:" + amzDate + "\n\n"
                     + "host;x-amz-content-sha256;x-amz-date\n" + payloadHash;
             String toSign = "AWS4-HMAC-SHA256\n" + amzDate + "\n" + scope + "\n"

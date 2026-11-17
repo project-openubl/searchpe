@@ -356,7 +356,7 @@
     },
     {
       "id": 12,
-      "title": "Job run time p99 by job",
+      "title": "Job run time p99",
       "type": "timeseries",
       "gridPos": {
         "x": 12,
@@ -376,8 +376,8 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.99, sum(rate(xhandler_jobs_run_seconds_bucket[5m])) by (le, job))",
-          "legendFormat": "{{job}}",
+          "expr": "histogram_quantile(0.99, sum(rate(xhandler_jobs_run_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p99",
           "refId": "A"
         }
       ]

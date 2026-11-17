@@ -26,6 +26,6 @@ service, NetworkPolicies and credentials.
 
 1. Restore the latest backup to a new cluster (`bootstrap.recovery` from the object store) at a
    point in time.
-2. Run `xhandler-admin migration-status` against it and count documents per day for the last week
-   against production's numbers.
+2. Point a throwaway deployment of the service (or `psql`) at it: check `flyway_schema_history` matches
+   production's, and count documents per day for the last week against production's numbers.
 3. Record the result and the duration (RTO evidence), then delete the restored cluster.

@@ -82,9 +82,13 @@ public class DataSubjectRequests {
                 .setParameter("due", now.plus(term(request.kind()))).setParameter("by", scope.actor().auditName()).executeUpdate();
         notifications.publish(scope.tenantId(), "privacy.request", "Solicitud de derechos de datos personales",
                 "Se registró una solicitud de " + kindName(request.kind()) + " de datos personales. Respóndala antes del "
-                        + now.plus(term(request.kind())) + ".", null);
+                        + lima(now.plus(term(request.kind()))) + ".", null);
         auditor.record(scope, "privacy.request_registered", "data_subject_request", id, Map.of("kind", request.kind(), "channel", channel));
         return id;
+    }
+
+    static String lima(Instant at) {
+        return java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy").format(at.atZone(java.time.ZoneId.of("America/Lima")));
     }
 
     static String kindName(String kind) {
@@ -217,7 +221,7 @@ public class DataSubjectRequests {
                             .setParameter("id", d.id()).executeUpdate();
                     if (first == 1) {
                         notifications.publish(d.tenant(), "privacy.deadline", "Solicitud de datos personales por vencer",
-                                "Una solicitud de derechos de datos personales vence el " + d.dueAt() + ".", null);
+                                "Una solicitud de derechos de datos personales vence el " + lima(d.dueAt()) + ".", null);
                     }
                     return first == 1;
                 });

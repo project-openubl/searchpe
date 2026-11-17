@@ -34,23 +34,36 @@ public class OseSoapResource {
 
     private final OseClients clients;
     private final OseIntake intake;
+    private final io.micrometer.core.instrument.MeterRegistry metrics;
 
-    public OseSoapResource(OseClients clients, OseIntake intake) {
+    public OseSoapResource(OseClients clients, OseIntake intake, io.micrometer.core.instrument.MeterRegistry metrics) {
         this.clients = clients;
         this.intake = intake;
+        this.metrics = metrics;
     }
 
     @POST
     @Consumes({"text/xml", "application/soap+xml", "application/xml"})
     @Produces("text/xml")
     public Response handle(byte[] body) {
-        return answer(clients, intake, body);
+        return answer(clients, intake, metrics, body);
     }
 
     record Request(String operation, String username, String password, Map<String, String> fields) {
         String field(String name) {
             return fields.getOrDefault(name, "");
         }
+    }
+
+    static Response answer(OseClients clients, OseIntake intake, io.micrometer.core.instrument.MeterRegistry metrics, byte[] body) {
+        Response response = answer(clients, intake, body);
+        if (response.getStatus() == 500) {
+            String xml = new String((byte[]) response.getEntity(), java.nio.charset.StandardCharsets.UTF_8);
+            int at = xml.indexOf("Client.");
+            String code = at < 0 ? "?" : xml.substring(at + 7, Math.min(xml.length(), at + 11));
+            metrics.counter("xhandler.ose.faults", "code", code).increment();
+        }
+        return response;
     }
 
     static Response answer(OseClients clients, OseIntake intake, byte[] body) {
@@ -178,6 +191,7 @@ public class OseSoapResource {
         return Response.ok(xml.getBytes(StandardCharsets.UTF_8)).type("text/xml; charset=utf-8").build();
     }
 
+    /** A SOAP fault; counted by code (xhandler.ose.faults): client mistakes (0102, 0156...) aren't outages, 0109 is ours. */
     static Response fault(String code, String message) {
         String xml = OPEN + "<soap-env:Fault><faultcode>soap-env:Client." + code + "</faultcode><faultstring>" + escape(message)
                 + "</faultstring></soap-env:Fault>" + CLOSE;
