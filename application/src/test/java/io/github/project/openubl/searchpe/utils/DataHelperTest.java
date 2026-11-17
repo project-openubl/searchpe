@@ -28,7 +28,6 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Optional;
@@ -51,10 +50,8 @@ public class DataHelperTest {
     @Test
     public void testBuildContribuyenteEntity() throws IOException {
         File downloadedFile = fileService.downloadFile();
-        File unzippedFolder = fileService.unzip(downloadedFile);
-        File txtFile = fileService.getFirstTxtFileFound(unzippedFolder.listFiles());
 
-        try (BufferedReader br = new BufferedReader(new FileReader(txtFile, DataHelper.PADRON_CHARSET))) {
+        try (BufferedReader br = fileService.openPadron(downloadedFile)) {
             String line;
             boolean skip = true;
 

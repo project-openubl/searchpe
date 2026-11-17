@@ -16,21 +16,26 @@
  */
 package io.github.project.openubl.searchpe.services;
 
-import io.github.project.openubl.searchpe.utils.FileHelper;
+import io.github.project.openubl.searchpe.utils.DataHelper;
 import org.apache.commons.io.FilenameUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.UUID;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 @ApplicationScoped
 public class FileService {
@@ -82,39 +87,28 @@ public class FileService {
         return targetZipFile.toFile();
     }
 
-    public File unzip(File file) throws IOException {
-        File workingDirectoryFile = new File(workingDirectory);
-        Path workingDirectoryPath = workingDirectoryFile.toPath();
-
-        String fileNameWithoutExtension = FilenameUtils.removeExtension(file.getName());
-        Path unzipFolderPath = workingDirectoryPath.resolve(fileNameWithoutExtension);
-
-        LOGGER.infof("Unzip %s into %s", file.toString(), unzipFolderPath.toString());
-        FileHelper.unzipFile(file, unzipFolderPath);
-        LOGGER.infof("Unzip finished successfully");
-
-        return unzipFolderPath.toFile();
-    }
-
-    public File getFirstTxtFileFound(File[] files) throws IOException {
-        LOGGER.infof("Searching for *.txt file");
-
-        File txtFile = null;
-        if (files != null) {
-            for (File file : files) {
-                String extension = FilenameUtils.getExtension(file.getName());
-                if (extension.equalsIgnoreCase("txt")) {
-                    txtFile = file;
-                    break;
+    /**
+     * Opens the first {@code .txt} entry of the downloaded zip, which is the padrón, without extracting it to disk.
+     *
+     * @return a reader decoding the padrón with {@link DataHelper#PADRON_CHARSET}; closing it closes the zip
+     */
+    public BufferedReader openPadron(File zipFile) throws IOException {
+        ZipInputStream zip = new ZipInputStream(new BufferedInputStream(Files.newInputStream(zipFile.toPath())));
+        boolean handedOver = false;
+        try {
+            ZipEntry entry;
+            while ((entry = zip.getNextEntry()) != null) {
+                if (!entry.isDirectory() && "txt".equalsIgnoreCase(FilenameUtils.getExtension(entry.getName()))) {
+                    LOGGER.infof("Reading %s from %s", entry.getName(), zipFile);
+                    handedOver = true;
+                    return new BufferedReader(new InputStreamReader(zip, DataHelper.PADRON_CHARSET));
                 }
             }
+            throw new IOException("Could not find any *.txt file in " + zipFile);
+        } finally {
+            if (!handedOver) {
+                zip.close();
+            }
         }
-        if (txtFile == null) {
-            throw new IllegalStateException("Could not find any *.txt file to read");
-        }
-
-        LOGGER.infof("%s found", txtFile.toString());
-        return txtFile;
     }
-
 }
