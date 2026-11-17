@@ -36,8 +36,10 @@ services:
 
   # SUNAT fake (DESIGN.md §15.2) for `environment: fake`; the engine finds it
   # at XHANDLER_SUNAT_FAKE_URL (default http://127.0.0.1:8099). Without a
-  # container: (cd engine && cargo run --bin sunat-fake)
+  # container: (cd engine && cargo run --bin sunat-fake). Builds the engine
+  # image, so it only starts with `--profile fake`.
   sunat-fake:
+    profiles: ["fake"]
     build: ../engine
     entrypoint: ["/usr/local/bin/sunat-fake", "--addr", "0.0.0.0:8099"]
     ports:

@@ -83,7 +83,16 @@ public class DocumentControl {
     @Transactional(Transactional.TxType.MANDATORY)
     public Document retry(TenantScope scope, UUID documentId) {
         Document doc = lock(documentId);
-        if (!RETRY_FROM.contains(doc.status) || doc.summaryDocumentId != null) {
+        if (doc.summaryDocumentId != null) {
+            // In a resumen diario: only once that summary failed. It leaves the summary and goes
+            // to SUNAT again (past D+5 that means a new resumen diario, §9.2.4)
+            Document summary = Document.findById(doc.summaryDocumentId);
+            if (summary != null && !"rejected".equals(summary.status) && !"exception".equals(summary.status)) {
+                throw ApiException.conflict("document_in_summary", "El documento sigue el resultado de su resumen diario.");
+            }
+            doc.summaryDocumentId = null;
+        }
+        if (!RETRY_FROM.contains(doc.status)) {
             throw ApiException.conflict("document_not_retryable", "El documento no se puede reenviar en su estado actual.");
         }
         retryLocked(scope, doc);

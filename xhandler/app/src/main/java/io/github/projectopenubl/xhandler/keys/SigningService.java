@@ -19,23 +19,35 @@ public class SigningService {
 
     private final Engine engine;
     private final KeyVault vault;
+    private final HsmExecutor hsm;
 
-    public SigningService(Engine engine, KeyVault vault) {
+    public SigningService(Engine engine, KeyVault vault, HsmExecutor hsm) {
         this.engine = engine;
         this.vault = vault;
+        this.hsm = hsm;
     }
 
-    /** Must run with the company's tenant open (reads its signing key). */
-    public EngineModels.SignResponse sign(Company company, String xml) {
+    /** A signed document; {@code signingKeyId} is null for SUNAT's demo key. */
+    public record Signed(String xml, String digestValue, java.util.UUID signingKeyId) {}
+
+    /**
+     * Must run with the company's tenant open (reads its signing key). Beta and the SUNAT fake
+     * accept SUNAT's public demo key when the company has no certificate; production never does.
+     */
+    public Signed sign(Company company, String xml) {
         Optional<SigningKey> key = SigningKey.active(company.id);
         if (key.isEmpty()) {
-            if ("beta".equals(company.sunatEnv)) {
-                return engine.signWithDemoKey(xml);
+            if (!"production".equals(company.sunatEnv)) {
+                EngineModels.SignResponse demo = engine.signWithDemoKey(xml);
+                return new Signed(demo.xml(), demo.digestValue(), null);
             }
             throw ApiException.invalid("no_certificate", "La empresa no tiene un certificado digital.", null);
         }
         EngineModels.SignPrepareResponse prepared = engine.signPrepare(xml);
-        byte[] signature = vault.sign(key.get().keyRef, Base64.getDecoder().decode(prepared.dataToSign()));
-        return engine.signFinalize(xml, signature, key.get().certificate);
+        String keyRef = key.get().keyRef;
+        byte[] data = Base64.getDecoder().decode(prepared.dataToSign());
+        byte[] signature = hsm.call(() -> vault.sign(keyRef, data));
+        EngineModels.SignResponse signed = engine.signFinalize(xml, signature, key.get().certificate);
+        return new Signed(signed.xml(), signed.digestValue(), key.get().id);
     }
 }

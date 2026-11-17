@@ -21,11 +21,14 @@ public class Company extends PanacheEntityBase {
     public String ruc;
     public String razonSocial;
     public String nombreComercial;
-    /** beta or production */
-    public String sunatEnv = "beta";
+    /** fake (the sandbox every company starts on, DESIGN.md §26.2), beta or production */
+    public String sunatEnv = "fake";
     /** software or pse */
     public String emissionMode = "software";
     public Instant rucVerifiedAt;
+    public String email;
+    /** Default of {@code delivered} on emit (usually true for POS, DESIGN.md §9.3) */
+    public boolean deliveredOnEmitDefault = true;
     public boolean active = true;
     /** Holds SUNAT attempts for all its documents (DESIGN.md §24.1) */
     public boolean sendingPaused;

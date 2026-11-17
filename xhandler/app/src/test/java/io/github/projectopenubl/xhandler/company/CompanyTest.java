@@ -24,14 +24,14 @@ class CompanyTest {
     io.github.projectopenubl.xhandler.tenancy.TenantAccess access;
 
     @Test
-    void new_company_starts_in_beta_with_default_series() {
+    void new_company_starts_in_the_sandbox_with_default_series() {
         UUID tenant = tenantOf("alice");
         String ruc = randomRuc();
         UUID company = createCompany("alice", tenant, ruc);
 
         as("alice").get("/api/v1/tenants/" + tenant + "/companies/" + company).then().statusCode(200)
                 .body("ruc", equalTo(ruc))
-                .body("sunat_env", equalTo("beta"))
+                .body("sunat_env", equalTo("fake"))
                 .body("emission_mode", equalTo("software"));
         as("alice").get("/api/v1/tenants/" + tenant + "/companies/" + company + "/series").then().statusCode(200)
                 .body("$", hasSize(10))

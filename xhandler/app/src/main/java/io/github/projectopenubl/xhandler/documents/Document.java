@@ -83,6 +83,7 @@ public class Document extends PanacheEntityBase {
     public int sameOutcomeCount;
     public Instant progressAt;
     public Instant deliveredAt;
+    public Instant deadlineAlertedAt;
     public String deliveredSource;
 
     @JdbcTypeCode(SqlTypes.JSON)

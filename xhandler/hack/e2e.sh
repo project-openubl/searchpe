@@ -4,7 +4,10 @@
 #       engine, and one trace spans app -> engine -> SUNAT.
 #   P1: through the real API with a Keycloak token: sign up, create a company,
 #       upload its certificate, then sign through the key vault (engine
-#       prepare -> vault -> engine finalize) and send.
+#       prepare -> vault -> engine finalize).
+#   P3: emit through POST /documents (numbered, validated, signed, stored),
+#       the reconciler and a worker send it to SUNAT beta, and the document
+#       ends accepted; the attempt's trace spans app -> engine -> SUNAT.
 #
 # Needs: cargo, java 25, podman (or docker) compose, curl, jq, network access.
 set -euo pipefail
@@ -52,8 +55,7 @@ PIDS+=($!)
 wait_for http://localhost:8090/health "engine"
 
 echo "==> app"
-# The skeleton endpoint is a build-time switch: production builds don't include it
-(cd "$ROOT" && ./mvnw -B -q package -DskipTests -Dxhandler.dev-endpoints.enabled=true)
+(cd "$ROOT" && ./mvnw -B -q package -DskipTests)
 QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://localhost:5432/xhandler \
 QUARKUS_DATASOURCE_USERNAME=xhandler_login \
 QUARKUS_DATASOURCE_PASSWORD=xhandler_login \
@@ -64,6 +66,9 @@ XHANDLER_VAULT_KIND=software \
 XHANDLER_VAULT_SOFTWARE_ALLOW_IN_PRODUCTION=true \
 XHANDLER_VAULT_SOFTWARE_CURRENT_MASTER_KEY=e2e \
 XHANDLER_VAULT_SOFTWARE_MASTER_KEYS_E2E="$(head -c 32 /dev/urandom | base64)" \
+XHANDLER_STORAGE_KIND=filesystem \
+XHANDLER_STORAGE_DIR="$WORK/files" \
+XHANDLER_STORAGE_S3_ALLOW_FILESYSTEM_IN_PRODUCTION=true \
   java -jar "$ROOT/app/target/quarkus-app/quarkus-run.jar" >"$WORK/app.log" 2>&1 &
 PIDS+=($!)
 wait_for http://localhost:8080/q/health/ready "app"
@@ -80,34 +85,47 @@ COMPANY=$(api -X POST "http://localhost:8080/api/v1/tenants/$TENANT/companies" -
 api -X PUT "http://localhost:8080/api/v1/tenants/$TENANT/companies/$COMPANY/certificate" \
   -F "file=@$PFX" -F password=password | jq -c '{ruc, ruc_matches}'
 
-echo "==> build, sign through the vault, send to SUNAT beta"
-NUMERO=$(( $(date +%s) % 99999999 ))
-jq --arg sn "F001-$NUMERO" --arg ruc "$RUC" '.spec.serie_numero = $sn | .spec.proveedor.ruc = $ruc' \
-  "$ROOT/examples/invoice.json" >"$WORK/invoice.json"
-TRACE_ID=$(od -An -tx1 -N16 /dev/urandom | tr -d ' \n')
-api -X POST "http://localhost:8080/api/v1/tenants/$TENANT/companies/$COMPANY/dev/documents" \
-  -H 'content-type: application/json' \
-  -H "traceparent: 00-$TRACE_ID-$(od -An -tx1 -N8 /dev/urandom | tr -d ' \n')-01" \
-  --data @"$WORK/invoice.json" | tee "$WORK/result.json" | jq '{digest_value, status: .sunat.status, code: .sunat.code, description: .sunat.description}'
+echo "==> switch to SUNAT beta, with a series of our own"
+# SUNAT beta's demo RUC is shared by everyone: start numbering somewhere unused
+api -X POST "http://localhost:8080/api/v1/tenants/$TENANT/companies/$COMPANY/environment" -H 'content-type: application/json' \
+  -d '{"sunat_env":"beta"}' | jq -c '{sunat_env}'
+SERIE="F$(( RANDOM % 900 + 100 ))"
+api -X POST "http://localhost:8080/api/v1/tenants/$TENANT/companies/$COMPANY/series" -H 'content-type: application/json' \
+  -d "{\"tipo_comprobante\":\"01\",\"serie\":\"$SERIE\",\"next_number\":$(( $(date +%s) % 99999999 ))}" | jq -c '{serie, next_number}'
 
-STATUS=$(jq -r '.sunat.status' "$WORK/result.json")
-if [[ "$STATUS" != "accepted" ]]; then
-  echo "FAIL: SUNAT status is $STATUS" >&2
+echo "==> emit: numbered, validated and signed through the vault; sent by a worker"
+jq --arg serie "$SERIE" '{document: (.spec |= (del(.serie_numero) | del(.proveedor))), serie: $serie}' \
+  "$ROOT/examples/invoice.json" >"$WORK/emit.json"
+api -X POST "http://localhost:8080/api/v1/tenants/$TENANT/companies/$COMPANY/documents" \
+  -H 'content-type: application/json' -H "Idempotency-Key: $(uuidgen 2>/dev/null || date +%s%N)" \
+  --data @"$WORK/emit.json" | tee "$WORK/emitted.json" | jq -c '{serie_numero, status, digest_value}'
+DOCUMENT=$(jq -r .id "$WORK/emitted.json")
+
+STATUS=pending_send
+for _ in $(seq 1 90); do
+  STATUS=$(api "http://localhost:8080/api/v1/tenants/$TENANT/documents/$DOCUMENT" | tee "$WORK/document.json" | jq -r .status)
+  case "$STATUS" in pending_send|in_progress|unknown) sleep 2 ;; *) break ;; esac
+done
+jq -c '{serie_numero, status, sunat_code, sunat_description}' "$WORK/document.json"
+if [[ "$STATUS" != "accepted" && "$STATUS" != "accepted_with_observations" ]]; then
+  echo "FAIL: document status is $STATUS" >&2
   exit 1
 fi
 
-echo "==> trace $TRACE_ID"
+echo "==> trace of the attempt"
+QUERY=$(jq -rn --arg id "$DOCUMENT" '"{ span.xhandler.document_id = \"" + $id + "\" }" | @uri')
 for _ in $(seq 1 30); do
-  if curl -fsS "http://localhost:3200/api/traces/$TRACE_ID" -o "$WORK/trace.json" 2>/dev/null; then
+  TRACE_ID=$(curl -fsS "http://localhost:3200/api/search?q=$QUERY" 2>/dev/null | jq -r '.traces[0].traceID // empty')
+  if [[ -n "$TRACE_ID" ]] && curl -fsS "http://localhost:3200/api/traces/$TRACE_ID" -o "$WORK/trace.json" 2>/dev/null; then
     SERVICES=$(jq -r '[.batches[]?.resource.attributes[]? | select(.key=="service.name") | .value.stringValue] | unique | join(",")' "$WORK/trace.json")
     SUNAT_SPAN=$(jq -r '[.batches[]?.scopeSpans[]?.spans[]?.name] | map(select(. == "sunat.send")) | length' "$WORK/trace.json")
     if [[ "$SERVICES" == *xhandler-engine* && "$SERVICES" == *xhandler-service* && "$SUNAT_SPAN" -ge 1 ]]; then
-      echo "services: $SERVICES; sunat.send spans: $SUNAT_SPAN"
+      echo "trace $TRACE_ID; services: $SERVICES; sunat.send spans: $SUNAT_SPAN"
       echo "PASS"
       exit 0
     fi
   fi
   sleep 2
 done
-echo "FAIL: trace $TRACE_ID does not span xhandler-service -> xhandler-engine -> sunat.send" >&2
+echo "FAIL: no trace of the attempt spans xhandler-service -> xhandler-engine -> sunat.send" >&2
 exit 1

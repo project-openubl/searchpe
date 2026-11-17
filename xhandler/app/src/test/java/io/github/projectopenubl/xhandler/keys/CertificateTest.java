@@ -33,7 +33,8 @@ class CertificateTest {
 
     private static final File VALID = new File("src/test/resources/certificates/valid-20123456789.pfx");
     private static final File EXPIRED = new File("src/test/resources/certificates/expired-10467793549.pfx");
-    private static final String INVOICE = "{\"kind\":\"Invoice\",\"spec\":{\"serie_numero\":\"F001-1\"}}";
+    private static final String INVOICE = "{\"document\":{\"kind\":\"Invoice\",\"spec\":{\"cliente\":{\"tipo_documento_identidad\":\"6\","
+            + "\"numero_documento_identidad\":\"12121212121\",\"nombre\":\"Cliente\"},\"detalles\":[]}}}";
 
     @BeforeEach
     void reset() {
@@ -64,8 +65,8 @@ class CertificateTest {
                 .then().body("ruc_verified_at", org.hamcrest.Matchers.nullValue());
 
         // Signing goes engine prepare -> vault -> engine finalize; the key never reaches the engine
-        as("alice").body(INVOICE).post("/api/v1/tenants/" + tenant + "/companies/" + company + "/dev/documents")
-                .then().statusCode(200).body("digest_value", equalTo("digest-123"));
+        as("alice").body(INVOICE).post("/api/v1/tenants/" + tenant + "/companies/" + company + "/documents")
+                .then().statusCode(201).body("digest_value", equalTo("digest-123"));
 
         JsonNode finalize = new ObjectMapper().readTree(EngineStub.lastBody("/v1/sign/finalize"));
         X509Certificate certificate = (X509Certificate) CertificateFactory.getInstance("X.509")
@@ -82,12 +83,12 @@ class CertificateTest {
     }
 
     @Test
-    void beta_company_without_certificate_signs_with_the_demo_key() {
+    void sandbox_company_without_certificate_signs_with_the_demo_key() {
         UUID tenant = tenantOf("alice");
         UUID company = createCompany("alice", tenant, randomRuc());
 
-        as("alice").body(INVOICE).post("/api/v1/tenants/" + tenant + "/companies/" + company + "/dev/documents")
-                .then().statusCode(200).body("digest_value", equalTo("digest-demo"));
+        as("alice").body(INVOICE).post("/api/v1/tenants/" + tenant + "/companies/" + company + "/documents")
+                .then().statusCode(201).body("digest_value", org.hamcrest.Matchers.startsWith("digest-"));
         assertTrue(EngineStub.lastBody("/v1/sign").contains("\"demo_key\":true"));
     }
 

@@ -61,4 +61,27 @@ public final class PlatformJobs {
             return Map.of("purged", purged);
         }
     }
+
+    /** Idempotency keys are kept 24 hours (§11.1). */
+    @ApplicationScoped
+    public static class IdempotencyPurge implements JobHandler {
+
+        private final EntityManager em;
+
+        public IdempotencyPurge(EntityManager em) {
+            this.em = em;
+        }
+
+        @Override
+        public String name() {
+            return "platform.idempotency-purge";
+        }
+
+        @Override
+        public Map<String, Object> run(JobContext context) {
+            int purged = QuarkusTransaction.requiringNew().call(() -> ((Number) em.createNativeQuery(
+                    "SELECT xhandler.purge_idempotency_keys(interval '24 hours')").getSingleResult()).intValue());
+            return Map.of("purged", purged);
+        }
+    }
 }

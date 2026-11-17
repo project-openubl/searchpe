@@ -101,9 +101,12 @@ public class AttemptHandler implements JobHandler {
         return "document.attempt";
     }
 
+    /** One span per attempt, tagged with the document, so its trace (→ engine → SUNAT) can be found. */
     @Override
+    @io.opentelemetry.instrumentation.annotations.WithSpan("document.attempt")
     public Map<String, Object> run(JobContext context) {
         UUID documentId = context.uuidArg("document_id");
+        io.opentelemetry.api.trace.Span.current().setAttribute("xhandler.document_id", documentId.toString());
         Object begun = QuarkusTransaction.requiringNew().call(() -> begin(context, documentId));
         if (begun instanceof String skipped) {
             return Map.of("skipped", skipped);

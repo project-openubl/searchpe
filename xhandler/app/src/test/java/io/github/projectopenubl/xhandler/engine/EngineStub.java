@@ -110,18 +110,21 @@ public class EngineStub implements QuarkusTestResourceLifecycleManager {
             return;
         }
         switch (path) {
-            case "/v1/build" -> {
-                if (body.contains("\"serie_numero\"")) {
-                    respond(exchange, 200, "{\"xml\":\"<Invoice/>\",\"enriched_json\":{\"kind\":\"Invoice\"}}");
-                } else {
-                    respond(exchange, 422, "{\"kind\":\"invalid_document\",\"message\":\"missing field `serie_numero`\"}");
-                }
-            }
+            case "/v1/build" -> build(exchange, body);
             case "/v1/validate" -> respond(exchange, 200, "{\"valid\":true,\"errors\":[],\"observations\":[]}");
-            case "/v1/sign" -> respond(exchange, 200, "{\"xml\":\"<Invoice signed-with-demo-key/>\",\"digest_value\":\"digest-demo\"}");
+            case "/v1/sign" -> {
+                // Echoes the document with a signature, so the signed XML keeps its serie-número
+                String xml = JSON.readTree(body).path("xml").asText() + "<ds:Signature/>";
+                respond(exchange, 200, JSON.writeValueAsString(java.util.Map.of("xml", xml, "digest_value", "digest-" + Math.abs(xml.hashCode()))));
+            }
+            case "/v1/inspect" -> respond(exchange, 200, inspect(JSON.readTree(body).path("xml").asText()));
             // data_to_sign = base64("data-to-sign")
             case "/v1/sign/prepare" -> respond(exchange, 200, "{\"data_to_sign\":\"ZGF0YS10by1zaWdu\",\"digest_value\":\"digest-123\"}");
-            case "/v1/sign/finalize" -> respond(exchange, 200, "{\"xml\":\"<Invoice signed/>\",\"digest_value\":\"digest-123\"}");
+            case "/v1/sign/finalize" -> {
+                String xml = JSON.readTree(body).path("xml").asText();
+                String signed = xml.startsWith("<Invoice/>") || xml.isEmpty() ? "<Invoice signed/>" : xml + "<ds:Signature/>";
+                respond(exchange, 200, JSON.writeValueAsString(java.util.Map.of("xml", signed, "digest_value", "digest-123")));
+            }
             case "/v1/send" -> respond(exchange, 200, """
                     {"status":"accepted","code":0,"code_class":null,"description":"La Factura numero F001-1, ha sido aceptada",\
                     "notes":[],"cdr_zip":"UEsDBA==","ticket":null}""");
@@ -132,6 +135,45 @@ public class EngineStub implements QuarkusTestResourceLifecycleManager {
             case "/v1/info" -> respond(exchange, 200, "{\"engine_version\":\"0.0.0-stub\",\"xhandler_rust_rev\":\"stub\"}");
             default -> respond(exchange, 404, "{\"kind\":\"other\",\"message\":\"not found\"}");
         }
+    }
+
+    static final com.fasterxml.jackson.databind.ObjectMapper JSON = new com.fasterxml.jackson.databind.ObjectMapper();
+
+    /** {@code <Kind><cbc:ID>serie-numero</cbc:ID></Kind>}; enriched JSON is the document itself. */
+    private static void build(HttpExchange exchange, String body) throws IOException {
+        var document = JSON.readTree(body).path("document");
+        var spec = document.path("spec");
+        String kind = document.path("kind").asText();
+        String id;
+        if (kind.equals("SummaryDocuments") || kind.equals("VoidedDocuments") || kind.equals("Reversion")) {
+            String prefix = kind.equals("SummaryDocuments") ? "RC" : kind.equals("VoidedDocuments") ? "RA" : "RR";
+            id = prefix + "-" + spec.path("fecha_emision").asText().replace("-", "") + "-" + spec.path("numero").asText();
+        } else if (spec.hasNonNull("serie_numero")) {
+            id = spec.get("serie_numero").asText();
+        } else {
+            respond(exchange, 422, "{\"kind\":\"invalid_document\",\"message\":\"missing field `serie_numero`\"}");
+            return;
+        }
+        String xml = "<" + kind + "><cbc:ID>" + id + "</cbc:ID><ruc>" + spec.path("proveedor").path("ruc").asText() + "</ruc></" + kind + ">";
+        var answer = JSON.createObjectNode();
+        answer.put("xml", xml);
+        answer.set("enriched_json", document);
+        respond(exchange, 200, JSON.writeValueAsString(answer));
+    }
+
+    private static String inspect(String xml) throws IOException {
+        int start = xml.indexOf("<cbc:ID>");
+        String id = start < 0 ? null : xml.substring(start + 8, xml.indexOf("</cbc:ID>"));
+        var answer = JSON.createObjectNode();
+        answer.put("document_type", xml.substring(1, xml.indexOf('>')));
+        answer.put("serie_numero", id);
+        answer.put("moneda", "PEN");
+        answer.put("total", "1180.00");
+        answer.put("customer_tipo", "6");
+        answer.put("customer_numero", "12121212121");
+        answer.put("signed", xml.contains("Signature"));
+        answer.put("sha256", "0");
+        return JSON.writeValueAsString(answer);
     }
 
     private static void respond(HttpExchange exchange, int status, String json) throws IOException {
