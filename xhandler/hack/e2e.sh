@@ -43,7 +43,8 @@ wait_for() { # url, name
 }
 
 echo "==> dependencies (postgres, keycloak, lgtm)"
-$COMPOSE -f "$ROOT/../hack/compose.yaml" up -d
+# Only what this flow needs from the shared stack (the cleanup stops the stack: see above)
+$COMPOSE -f "$ROOT/../hack/compose.yaml" up -d postgres keycloak lgtm
 wait_for http://localhost:3000/api/health "grafana"
 wait_for http://localhost:8180/realms/xhandler/.well-known/openid-configuration "keycloak"
 

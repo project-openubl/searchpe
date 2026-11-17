@@ -30,12 +30,22 @@ podman compose -f hack/compose.yaml up -d       # the local stack (Keycloak on 8
 ```
 
 Both Quarkus apps default to port 8080: run one of them with `-Dquarkus.http.port=8081` when
-running both. Against the local stack, searchpe uses the shared realm:
-`QUARKUS_OIDC_AUTH_SERVER_URL=http://localhost:8180/realms/xhandler`, client `searchpe`, secret `secret`.
+running both. Against the local stack, searchpe uses its database and the shared realm:
+
+```bash
+QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://localhost:5432/searchpe \
+QUARKUS_DATASOURCE_USERNAME=searchpe QUARKUS_DATASOURCE_PASSWORD=searchpe \
+QUARKUS_OIDC_AUTH_SERVER_URL=http://localhost:8180/realms/xhandler \
+QUARKUS_OIDC_CLIENT_ID=searchpe QUARKUS_OIDC_CREDENTIALS_SECRET=secret ./mvnw quarkus:dev -pl searchpe
+```
+
+Run Maven for xhandler from `xhandler/` (`(cd xhandler && ./mvnw ...)`): it has its own wrapper.
 
 ## Conventions
 
 - Conventional Commits with a scope when it helps (`feat(operator):`, `fix(searchpe):`, `ci:`).
+- Changes land on `main` directly or through pull requests; either way the required checks of
+  `.github/workflows/` must pass.
 - Java in `searchpe/` carries the license header of `tools/copyright.txt` (`mvn license:format`);
   `xhandler/` follows its own guide.
 - Each service keeps its own database, migrations and conventions; nothing crosses service

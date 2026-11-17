@@ -39,6 +39,7 @@ nb-configuration.xml
 .env
 
 # Distribution
-!application/src/main/distribution/*
+!searchpe/src/main/distribution/*
+!searchpe/src/main/distribution/bin/
 
-application/workspace/*
+searchpe/workspace/

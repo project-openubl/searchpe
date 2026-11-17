@@ -4,9 +4,9 @@ name: xhandler
 on:
   push:
     branches: [main]
-    paths: ["xhandler/**", "hack/**", ".github/workflows/xhandler.yml"]
+    paths: ["xhandler/**", "hack/**", ".github/workflows/xhandler*.yml"]
   pull_request:
-    paths: ["xhandler/**", "hack/**", ".github/workflows/xhandler.yml"]
+    paths: ["xhandler/**", "hack/**", ".github/workflows/xhandler*.yml"]
 
 env:
   CI: true

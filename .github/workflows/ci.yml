@@ -7,13 +7,10 @@ on:
       - main
     paths-ignore:
       - "README.md"
-      - "xhandler/**"
-      - ".github/workflows/xhandler*.yml"
+  # No path filter on xhandler/: these jobs are required checks, so they must report on every PR
   pull_request:
     paths-ignore:
       - "README.md"
-      - "xhandler/**"
-      - ".github/workflows/xhandler*.yml"
 
 # A new push to a pull request cancels the run of the previous one
 concurrency:

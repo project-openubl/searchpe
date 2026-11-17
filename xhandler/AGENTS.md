@@ -84,4 +84,4 @@ java -jar admin-cli/target/xhandler-admin.jar --help   # xhandler-admin (after .
   - never send to production from tests or scripts.
 - **Commits**:
   - Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `ci:`, `chore:`).
-  - Commits go straight to `main` (no PRs in this repo). Each phase (DESIGN.md §21) is followed by a senior-engineer review.
+  - Changes land on `main` directly or through pull requests (root AGENTS.md). Each phase (DESIGN.md §21) is followed by a senior-engineer review.

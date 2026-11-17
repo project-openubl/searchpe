@@ -20,24 +20,9 @@ updates:
       github-actions:
         update-types: ["minor", "patch"]
 
-  # Maintain dependencies for pom.xml
+  # Maintain dependencies for pom.xml (the reactor: searchpe and xhandler)
   - package-ecosystem: "maven"
     directory: "/"
-    schedule:
-      interval: "weekly"
-    cooldown:
-      default-days: 7
-      semver-major-days: 14
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    groups:
-      maven:
-        update-types: ["minor", "patch"]
-
-  # Maintain dependencies for xhandler/pom.xml
-  - package-ecosystem: "maven"
-    directory: "/xhandler"
     schedule:
       interval: "weekly"
     cooldown:

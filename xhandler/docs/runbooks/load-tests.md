@@ -1,6 +1,6 @@
 # Load tests (DESIGN.md §25)
 
-Run in staging against the SUNAT fake (the repository root's `hack/compose.yaml` profile `sunat-fake`, or its
+Run in staging against the SUNAT fake (the repository root's `hack/compose.yaml` profile `fake`, or its
 deployment), never against SUNAT beta or production. Scripts are in `hack/load/` (k6).
 
 ## 1. Sustained emit

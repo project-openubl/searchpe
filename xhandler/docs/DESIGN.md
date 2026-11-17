@@ -1036,7 +1036,7 @@ xhandler-service/
 ├── docs/
 │   ├── DESIGN.md
 │   └── research/                regulatory research
-└── .github/workflows/           CI: Java, Rust, images, e2e against SUNAT beta
+(CI lives at the repository root: .github/workflows/xhandler*.yml — Java, Rust, images, e2e against SUNAT beta)
 ```
 
 ---
