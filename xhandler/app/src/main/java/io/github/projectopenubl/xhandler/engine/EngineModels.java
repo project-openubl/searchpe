@@ -134,6 +134,22 @@ public final class EngineModels {
             String gravada, String igv, String exonerada, String inafecta, String exportacion, String gratuita, String ivapBase,
             String ivap, String isc, String icbper, String otros) {}
 
+    // --- OSE forwarding (§11.4) ---
+
+    public record OseCredentials(String username, String password) {
+        @Override
+        public String toString() {
+            return "OseCredentials[username=" + username + "]";
+        }
+    }
+
+    /** {@code operation}: send_bill (comprobantes) or send_summary (resúmenes, bajas). */
+    public record OseForwardRequest(
+            Environment environment, String url, OseCredentials credentials, String name, String xml, String cdrXml, String operation) {}
+
+    /** {@code status}: accepted, rejected, unknown, not_delivered. */
+    public record OseForwardResponse(String status, String code, String description) {}
+
     // --- SIRE and conformity (§11.7, §11.8) ---
 
     /** The tenant's SUNAT API client plus its SOL user (RUC + user). */

@@ -81,6 +81,52 @@ public class PublicLookupResource {
         });
     }
 
+    public record OseLookupRequest(
+            @NotBlank @Pattern(regexp = "\\d{11}") String ruc,
+            @NotBlank @Pattern(regexp = "\\d{2}") String tipoComprobante,
+            @NotBlank @Pattern(regexp = "[A-Z0-9]{4}") String serie,
+            @NotNull Long numero,
+            @NotBlank String captcha) {}
+
+    /** {@code state}: con_cdr, con_inconsistencia, no_encontrado; {@code checked_at}: when the OSE checked it. */
+    public record OseLookupResult(String state, String checkedAt) {}
+
+    /**
+     * The OSE's public validity query (RS 242-2018, RS 117-2017 art. 7.15): during the retention
+     * period, whether a factura or nota got a CDR-OSE or an inconsistency notice, and for boletas
+     * whether and when they were checked. Status only.
+     */
+    @POST
+    @jakarta.ws.rs.Path("/ose")
+    public OseLookupResult ose(@Valid OseLookupRequest request) {
+        if (!captchaValid(request.captcha())) {
+            throw new ApiException(403, "captcha_failed", "Verificación CAPTCHA inválida.");
+        }
+        return QuarkusTransaction.requiringNew().call(() -> {
+            int hits = ((Number) em.createNativeQuery("""
+                            INSERT INTO xhandler.public_lookup_counter (bucket, key, hits) VALUES (date_trunc('hour', now()), :k, 1)
+                            ON CONFLICT (bucket, key) DO UPDATE SET hits = public_lookup_counter.hits + 1 RETURNING hits""")
+                    .setParameter("k", "ose:" + request.ruc()).getSingleResult()).intValue();
+            if (hits > perRucPerHour) {
+                throw new ApiException(429, "too_many_requests", "Demasiadas consultas para este RUC. Intente más tarde.");
+            }
+            @SuppressWarnings("unchecked")
+            java.util.List<Object[]> rows = em.createNativeQuery("""
+                            SELECT result, cdr_issued_at, received_at FROM xhandler.ose_submission
+                            WHERE issuer_ruc = :r AND tipo = :t AND serie = :s AND numero = :n
+                            ORDER BY (result = 'cdr') DESC, received_at DESC LIMIT 1""")
+                    .setParameter("r", request.ruc()).setParameter("t", request.tipoComprobante()).setParameter("s", request.serie())
+                    .setParameter("n", request.numero()).getResultList();
+            if (rows.isEmpty()) {
+                return new OseLookupResult("no_encontrado", null);
+            }
+            Object[] r = rows.get(0);
+            boolean cdr = "cdr".equals(r[0]);
+            return new OseLookupResult(cdr ? "con_cdr" : "con_inconsistencia",
+                    String.valueOf(io.github.projectopenubl.xhandler.status.StatusResource.toInstant(cdr ? r[1] : r[2])));
+        });
+    }
+
     /** hCaptcha/Turnstile-style verification (POST secret + response, JSON {"success": true}). */
     private boolean captchaValid(String token) {
         if (testMode) {

@@ -174,6 +174,12 @@ public class EngineStub implements QuarkusTestResourceLifecycleManager {
             case "/v1/sire/ticket" -> respond(exchange, 200,
                     "{\"state\":\"ok\",\"ticket_state\":\"pending\",\"description\":\"En proceso\",\"files\":[]}");
             case "/v1/conformity" -> respond(exchange, 200, "{\"state\":\"ok\",\"conformity\":\"pending\",\"description\":\"Pendiente\"}");
+            case "/v1/cdr" -> {
+                String id = between(JSON.readTree(body).path("xml").asText(), "<cbc:ID>", "</cbc:ID>", "?");
+                respond(exchange, 200, JSON.writeValueAsString(java.util.Map.of("xml",
+                        "<ApplicationResponse><cbc:ResponseCode>0</cbc:ResponseCode><cbc:Reference>" + id + "</cbc:Reference></ApplicationResponse>")));
+            }
+            case "/v1/ose/forward" -> respond(exchange, 200, "{\"status\":\"accepted\",\"code\":\"0\",\"description\":\"Recibido\"}");
             case "/v1/info" -> respond(exchange, 200, "{\"engine_version\":\"0.0.0-stub\",\"xhandler_rust_rev\":\"stub\"}");
             default -> respond(exchange, 404, "{\"kind\":\"other\",\"message\":\"not found\"}");
         }

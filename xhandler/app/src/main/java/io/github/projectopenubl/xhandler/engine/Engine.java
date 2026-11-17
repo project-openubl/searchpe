@@ -82,6 +82,10 @@ public class Engine {
         return call(() -> client.validityFile(new EngineModels.ValidityFileRequest(xml, environment, credentials)));
     }
 
+    public EngineModels.OseForwardResponse oseForward(EngineModels.OseForwardRequest request) {
+        return call(() -> client.oseForward(request));
+    }
+
     public EngineModels.SireTicketResponse sireProposal(EngineModels.SireProposalRequest request) {
         return call(() -> client.sireProposal(request));
     }

@@ -56,6 +56,10 @@ public interface EngineClient {
     EngineModels.ValidityResponse validity(EngineModels.ValidityRequest request);
 
     @POST
+    @Path("/ose/forward")
+    EngineModels.OseForwardResponse oseForward(EngineModels.OseForwardRequest request);
+
+    @POST
     @Path("/sire/proposal")
     EngineModels.SireTicketResponse sireProposal(EngineModels.SireProposalRequest request);
 
