@@ -1,0 +1,28 @@
+# The XHandler of the CI e2e: the UI (served through the Ingress, proxying to the Searchpe) is
+# what's checked. The api and worker wait on a migration that needs an HSM, S3 and Keycloak.
+kind: XHandler
+apiVersion: xhandler.openubl.io/v1alpha1
+metadata:
+  name: xhandler
+spec:
+  uiImage: localhost:5000/xhandler-ui:0.0.0
+  hostname: xhandler.local
+  db:
+    url: jdbc:postgresql://postgresql-primary.openubl.svc:5432/searchpedb
+    usernameSecret:
+      name: postgresql-pguser-foo
+      key: user
+    passwordSecret:
+      name: postgresql-pguser-foo
+      key: password
+    ownerUsernameSecret:
+      name: postgresql-pguser-foo
+      key: user
+    ownerPasswordSecret:
+      name: postgresql-pguser-foo
+      key: password
+  oidc:
+    serverUrl: http://keycloak.invalid/realms/openubl
+    clientId: xhandler-service
+  ui:
+    searchpeRef: searchpe
