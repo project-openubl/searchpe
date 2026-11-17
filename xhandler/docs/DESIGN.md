@@ -847,9 +847,11 @@ This satisfies the processor's 2-year limit (DS 016-2024-JUS art. 31.2) while th
 - If Lago is unreachable, emits continue on cached entitlements for up to 24 hours (§11.1), and usage events wait in the outbox.
 - The service writes usage events (documents accepted per type, OSE validations, receptions, storage) to `usage_event_outbox` in the business transaction. A job delivers them to Lago.
 - Entitlements (plan, quotas) are synced from Lago and cached (`entitlement`). Quotas are enforced at emit: production documents per month, beta and the sandbox per day (Lima), counted from the documents themselves (no hot counter row). Plans (`plan`: free, starter, business, enterprise) live in the service; prices and invoices in Lago. A plan set by a platform admin (contracts outside Lago) isn't overwritten by the sync. Notices at 80% and 100% (§26.6).
+- Quotas are soft by design: usage is counted from committed documents, so concurrent emits around the limit can overshoot it by at most the emits in flight (permits × pods); a per-tenant lock would serialize every emit of a tenant. Quotas apply to new documents only: an idempotent replay always gets its stored answer, and the platform's own invoices never count. Unknown plan codes are refused; a Lago plan the service doesn't know never downgrades a customer.
+- Plans follow Lago's `subscription.*` webhooks as they happen; the periodic sync refreshes Lago customers as a safety net. A usage event Lago refuses is set aside (with its error) so the others keep flowing.
 - Usage events go to Lago's batch API with the outbox row id as `transaction_id` (Lago deduplicates).
-- Partners see their tenants' usage (`GET /api/v1/partners/{p}/tenants?month=`). Partner members (admin or viewer, set by the platform) act on their partner's tenants through the normal API, create tenants (`POST /api/v1/partners/{p}/tenants`) and brand PDFs and emails (`PUT …/branding`).
-- **The platform's own subscription invoices are issued as real comprobantes through xhandler-service**, because Lago's invoices are not comprobantes. Lago's `invoice.created` webhook (HMAC-signed, `X-Lago-Signature`) becomes a factura (a boleta without a billing RUC) from the platform's issuing company (admin API `billing/issuer`) to the tenant's billing details, emailed to its billing address; idempotent per Lago invoice.
+- Partners see their tenants' usage (`GET /api/v1/partners/{p}/tenants?month=`). Partner members (admin or viewer, set and removed by the platform through SECURITY DEFINER functions; the app role can't write partners) act on their partner's tenants through the normal API, with the more privileged of their tenant and partner roles, create tenants (`POST /api/v1/partners/{p}/tenants`) and brand PDFs and emails (`PUT …/branding`).
+- **The platform's own subscription invoices are issued as real comprobantes through xhandler-service**, because Lago's invoices are not comprobantes. Lago's `invoice.created` webhook (HMAC-signed, `X-Lago-Signature`) becomes a factura (a boleta without a billing RUC) from the platform's issuing company (admin API `billing/issuer`) to the tenant's billing details, emailed to its billing address; idempotent per Lago invoice (also beyond the idempotency window: the job looks for the invoice's label first). The comprobante's total must match what Lago charged (Lago amounts are before the 18% IGV, which must be set up as a Lago tax), or the job fails for a person to look at.
 
 ---
 
@@ -1249,7 +1251,7 @@ P11 load tests run at these figures, including an outage followed by a drain.
 
 ### 26.2 Developer experience
 
-- A public API reference generated from the OpenAPI spec (`/q/openapi`, `/q/swagger-ui`, public).
+- A public API reference generated from the OpenAPI spec (`/q/openapi`, `/q/swagger-ui`, public). The admin API is left out of it and of the SDKs.
 - SDKs generated for **TypeScript and Java** in v1 (`sdk/generate.sh`, CI workflow `sdk.yml`); other languages later, from the same OpenAPI spec. Publishing them to npm and Maven Central is part of the release process.
 - Quickstarts in Spanish: `docs/quickstarts/`.
 - **Sandbox**: every new tenant starts on the **SUNAT fake**, with deterministic answers (accepted, rejected, 1033, outage). SUNAT beta is opt-in and uses the tenant's own SOL user. The shared demo credential would give every free tenant a single slot (N = 1), about one document per second for the whole platform.

@@ -68,17 +68,20 @@ public class TenantAccess {
                 .setParameter("kind", actor.kind())
                 .setParameter("subject", actor.subject())
                 .getSingleResult();
-        if (role != null) {
-            return Role.fromDb(role.toString());
-        }
-        // Partners manage their tenants (DESIGN.md §1.2): partner admins administer, viewers see
+        // Partners manage their tenants (DESIGN.md §1.2): partner admins administer, viewers see.
+        // The more privileged of the tenant and partner roles applies.
         Object partnerRole = em.createNativeQuery("SELECT xhandler.partner_role(:tenant, :kind, :subject)")
                 .setParameter("tenant", tenantId)
                 .setParameter("kind", actor.kind())
                 .setParameter("subject", actor.subject())
                 .getSingleResult();
-        if (partnerRole != null) {
-            return Role.fromDb(partnerRole.toString());
+        Role tenantRole = role == null ? null : Role.fromDb(role.toString());
+        Role viaPartner = partnerRole == null ? null : Role.fromDb(partnerRole.toString());
+        if (tenantRole != null || viaPartner != null) {
+            if (tenantRole == null) {
+                return viaPartner;
+            }
+            return viaPartner != null && viaPartner.ordinal() < tenantRole.ordinal() ? viaPartner : tenantRole;
         }
         if (actor.platformSupport()) {
             Object active = em.createNativeQuery("SELECT xhandler.has_support_session(:tenant, :operator)")

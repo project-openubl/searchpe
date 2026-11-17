@@ -57,9 +57,13 @@ public final class SelfInvoicing {
         private final JobStore jobs;
         private final EntityManager em;
         private final ObjectMapper json;
+        private final TenantAccess access;
+        private final Entitlements entitlements;
 
         public Webhook(@ConfigProperty(name = "xhandler.lago.webhook-secret") Optional<String> secret, JobStore jobs, EntityManager em,
-                ObjectMapper json) {
+                ObjectMapper json, TenantAccess access, Entitlements entitlements) {
+            this.access = access;
+            this.entitlements = entitlements;
             this.secret = secret;
             this.jobs = jobs;
             this.em = em;
@@ -72,12 +76,26 @@ public final class SelfInvoicing {
                 throw new ApiException(401, "invalid_signature", "Firma inválida.");
             }
             JsonNode event = json.readTree(body);
-            if (!"invoice.created".equals(event.path("webhook_type").asText())) {
+            String type = event.path("webhook_type").asText();
+            if (type.startsWith("subscription.")) {
+                // Plans follow Lago's subscriptions as they change; the periodic sync is the safety net
+                JsonNode subscription = event.path("subscription");
+                UUID tenant = tenantId(subscription.path("external_customer_id").asText());
+                String plan = "terminated".equals(subscription.path("status").asText()) ? "free" : subscription.path("plan_code").asText();
+                QuarkusTransaction.requiringNew().run(() -> {
+                    access.enterAsPlatform(tenant);
+                    if (entitlements.known(plan)) {
+                        entitlements.setPlan(tenant, plan, "lago");
+                    }
+                });
+                return Response.noContent().build();
+            }
+            if (!"invoice.created".equals(type)) {
                 return Response.noContent().build();
             }
             JsonNode invoice = event.path("invoice");
             String lagoId = invoice.path("lago_id").asText();
-            UUID tenant = UUID.fromString(invoice.path("customer").path("external_id").asText());
+            UUID tenant = tenantId(invoice.path("customer").path("external_id").asText());
             QuarkusTransaction.requiringNew().run(() -> {
                 int inserted = em.createNativeQuery(
                                 "INSERT INTO xhandler.lago_invoice (lago_invoice_id, tenant_id) VALUES (:id, :t) ON CONFLICT DO NOTHING")
@@ -88,6 +106,14 @@ public final class SelfInvoicing {
                 }
             });
             return Response.noContent().build();
+        }
+
+        static UUID tenantId(String value) {
+            try {
+                return UUID.fromString(value);
+            } catch (IllegalArgumentException e) {
+                throw ApiException.invalid("invalid_request", "external_id no es un tenant.", null);
+            }
         }
 
         /** Lago's HMAC mode: base64(HMAC-SHA256(body, secret)). */
@@ -145,8 +171,24 @@ public final class SelfInvoicing {
             Buyer buyer = QuarkusTransaction.requiringNew().call(() -> {
                 access.enterAsPlatform(customer);
                 Tenant tenant = Tenant.findById(customer);
+                if (tenant == null) {
+                    throw new IllegalStateException("tenant " + customer + " of Lago invoice " + lagoId + " doesn't exist");
+                }
                 return new Buyer(tenant.billingRuc, tenant.billingName != null ? tenant.billingName : tenant.name, tenant.billingEmail);
             });
+            // Already issued (a retry after the idempotency window): link it, never issue twice
+            Optional<UUID> existing = QuarkusTransaction.requiringNew().call(() -> {
+                access.enterAsPlatform(issuer.tenant());
+                return io.github.projectopenubl.xhandler.documents.Document.<io.github.projectopenubl.xhandler.documents.Document>find(
+                                "companyId = ?1 and function('jsonb_extract_path_text', labels, 'lago_invoice') = ?2", issuer.company(), lagoId)
+                        .firstResultOptional().map(d -> d.id);
+            });
+            if (existing.isPresent()) {
+                QuarkusTransaction.requiringNew().run(() -> em.createNativeQuery(
+                                "UPDATE xhandler.lago_invoice SET document_id = :d WHERE lago_invoice_id = :id")
+                        .setParameter("d", existing.get()).setParameter("id", lagoId).executeUpdate());
+                return Map.of("document_id", existing.get().toString(), "already_issued", true);
+            }
             Map<String, Object> spec = new HashMap<>();
             boolean factura = buyer.ruc() != null;
             spec.put("tipo_comprobante", factura ? "01" : "03");
@@ -154,17 +196,41 @@ public final class SelfInvoicing {
             spec.put("cliente", factura
                     ? Map.of("tipo_documento_identidad", "6", "numero_documento_identidad", buyer.ruc(), "nombre", buyer.name())
                     : Map.of("tipo_documento_identidad", "0", "numero_documento_identidad", "-", "nombre", buyer.name()));
+            // Lago amounts are before IGV; the comprobante adds 18%. Coupons go as one net line.
             List<Map<String, Object>> detalles = new ArrayList<>();
+            long feesCents = 0;
             for (JsonNode fee : invoice.path("fees")) {
-                BigDecimal amount = BigDecimal.valueOf(fee.path("amount_cents").asLong()).movePointLeft(2).setScale(2, RoundingMode.HALF_UP);
-                if (amount.signum() <= 0) {
-                    continue;
-                }
-                detalles.add(Map.of("descripcion", fee.path("item").path("name").asText("Suscripción xhandler"), "cantidad", 1,
-                        "precio", amount));
+                feesCents += fee.path("amount_cents").asLong();
             }
-            if (detalles.isEmpty()) {
+            long couponsCents = invoice.path("coupons_amount_cents").asLong(0);
+            long netCents = feesCents - couponsCents;
+            if (netCents <= 0) {
                 return Map.of("skipped", "nothing to invoice");
+            }
+            if (couponsCents == 0) {
+                for (JsonNode fee : invoice.path("fees")) {
+                    long cents = fee.path("amount_cents").asLong();
+                    if (cents > 0) {
+                        detalles.add(Map.of("descripcion", fee.path("item").path("name").asText("Suscripción xhandler"), "cantidad", 1,
+                                "precio", BigDecimal.valueOf(cents).movePointLeft(2)));
+                    }
+                }
+            } else {
+                detalles.add(Map.of("descripcion", "Suscripción xhandler (con descuento)", "cantidad", 1,
+                        "precio", BigDecimal.valueOf(netCents).movePointLeft(2)));
+            }
+            BigDecimal expected = BigDecimal.valueOf(netCents).movePointLeft(2).multiply(new BigDecimal("1.18")).setScale(2, RoundingMode.HALF_UP);
+            if (invoice.has("total_amount_cents")) {
+                BigDecimal charged = BigDecimal.valueOf(invoice.path("total_amount_cents").asLong()).movePointLeft(2);
+                if (expected.subtract(charged).abs().compareTo(new BigDecimal("0.05")) > 0) {
+                    // A person must look: the comprobante must match what was charged
+                    throw new IllegalStateException("Lago invoice " + lagoId + " charged " + charged + " but its comprobante would total "
+                            + expected + " (is the 18% IGV tax set up in Lago?)");
+                }
+            }
+            if (!factura && expected.compareTo(new BigDecimal("700")) > 0) {
+                throw new IllegalStateException("tenant " + customer + " has no billing RUC and invoice " + lagoId
+                        + " is above S/ 700: a boleta must identify the buyer");
             }
             spec.put("detalles", detalles);
             spec.put("observaciones", "Factura Lago " + invoice.path("number").asText(lagoId));

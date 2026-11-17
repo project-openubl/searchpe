@@ -44,8 +44,18 @@ public class LagoClient {
         HttpResponse<String> response = http.send(request("/api/v1/events/batch")
                         .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(Map.of("events", events)))).build(),
                 HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() / 100 == 4) {
+            throw new Rejected("HTTP " + response.statusCode() + ": " + response.body());
+        }
         if (response.statusCode() / 100 != 2) {
             throw new IOException("Lago answered HTTP " + response.statusCode() + " to the usage batch");
+        }
+    }
+
+    /** Lago refused the events themselves (4xx): resending the same batch won't help. */
+    public static class Rejected extends IOException {
+        public Rejected(String message) {
+            super(message);
         }
     }
 

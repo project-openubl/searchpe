@@ -36,8 +36,11 @@ public class Entitlements implements EmitQuota {
     private final EntityManager em;
     private final Notifications notifications;
     private final io.github.projectopenubl.xhandler.tenancy.TenantAccess access;
+    private final String defaultPlan;
 
-    public Entitlements(EntityManager em, Notifications notifications, io.github.projectopenubl.xhandler.tenancy.TenantAccess access) {
+    public Entitlements(EntityManager em, Notifications notifications, io.github.projectopenubl.xhandler.tenancy.TenantAccess access,
+            @org.eclipse.microprofile.config.inject.ConfigProperty(name = "xhandler.billing.default-plan", defaultValue = "free") String defaultPlan) {
+        this.defaultPlan = defaultPlan;
         this.em = em;
         this.notifications = notifications;
         this.access = access;
@@ -81,7 +84,7 @@ public class Entitlements implements EmitQuota {
         @SuppressWarnings("unchecked")
         List<Object[]> rows = em.createNativeQuery("SELECT plan_code, source, synced_at FROM xhandler.entitlement WHERE tenant_id = :t")
                 .setParameter("t", tenantId).getResultList();
-        String code = rows.isEmpty() ? "free" : (String) rows.get(0)[0];
+        String code = rows.isEmpty() ? defaultPlan : (String) rows.get(0)[0];
         String source = rows.isEmpty() ? "default" : (String) rows.get(0)[1];
         Instant syncedAt = rows.isEmpty() ? null : io.github.projectopenubl.xhandler.status.StatusResource.toInstant(rows.get(0)[2]);
         boolean stale = "lago".equals(source) && syncedAt != null && syncedAt.isBefore(Instant.now().minus(STALE_AFTER));
@@ -113,9 +116,18 @@ public class Entitlements implements EmitQuota {
         return new Plan((String) r[0], (String) r[1], (Integer) r[2], (Integer) r[3], (Integer) r[4], (Boolean) r[5], (Boolean) r[6]);
     }
 
-    /** Sets a tenant's plan (from Lago, or by a platform admin). */
+    /** Whether the service knows this plan code. */
+    @Transactional(Transactional.TxType.MANDATORY)
+    public boolean known(String code) {
+        return !em.createNativeQuery("SELECT 1 FROM xhandler.plan WHERE code = :c").setParameter("c", code).getResultList().isEmpty();
+    }
+
+    /** Sets a tenant's plan (from Lago, or by a platform admin). Unknown codes are refused, never mapped to free. */
     @Transactional(Transactional.TxType.MANDATORY)
     public void setPlan(UUID tenantId, String code, String source) {
+        if (!known(code)) {
+            throw ApiException.invalid("unknown_plan", "Plan desconocido: " + code + ".", null);
+        }
         em.createNativeQuery("""
                         INSERT INTO xhandler.entitlement (tenant_id, plan_code, source, synced_at) VALUES (:t, :c, :s, now())
                         ON CONFLICT (tenant_id) DO UPDATE SET plan_code = excluded.plan_code, source = excluded.source, synced_at = now()""")

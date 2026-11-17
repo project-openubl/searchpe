@@ -119,19 +119,12 @@ public class EmitService {
                 || !request.document().path("spec").isObject()) {
             throw ApiException.invalid("invalid_request", "Envíe el documento como {\"document\": {\"kind\": ..., \"spec\": {...}}}.", null);
         }
-        // Authorize before touching the idempotency table; the quota check needs the environment
+        // Authorize before touching the idempotency table
         QuarkusTransaction.requiringNew().run(() -> {
             if (platform) {
                 access.enterAsPlatform(tenantId);
             } else {
                 access.enter(tenantId, Role.OPERATOR);
-            }
-            Company company = Company.findById(companyId);
-            if (company == null || company.deletedAt != null) {
-                throw ApiException.notFound();
-            }
-            for (EmitQuota q : quota) {
-                q.checkEmit(tenantId, company.sunatEnv);
             }
         });
         UUID claim = null;
@@ -145,6 +138,20 @@ public class EmitService {
         UUID owned = claim;
         boolean acquired = false;
         try {
+            // Quotas only for a new document: a replay returns the stored answer above, whatever the
+            // usage now; the platform's own invoices never count (§14)
+            if (!platform) {
+                QuarkusTransaction.requiringNew().run(() -> {
+                    access.enter(tenantId, Role.OPERATOR);
+                    Company company = Company.findById(companyId);
+                    if (company == null || company.deletedAt != null) {
+                        throw ApiException.notFound();
+                    }
+                    for (EmitQuota q : quota) {
+                        q.checkEmit(tenantId, company.sunatEnv);
+                    }
+                });
+            }
             acquired = permits.tryAcquire(permitTimeoutMillis, TimeUnit.MILLISECONDS);
             if (!acquired) {
                 throw new ApiException(503, "busy", "El servicio está ocupado. Intente nuevamente en unos segundos.");

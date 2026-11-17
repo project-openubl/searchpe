@@ -33,6 +33,9 @@ import java.util.UUID;
 @Path("/api/admin/v1")
 public class AdminResource {
 
+    /** Platform-level admin actions (not tied to one tenant's audit log) go to this logger. */
+    static final org.jboss.logging.Logger PLATFORM_AUDIT = org.jboss.logging.Logger.getLogger("xhandler.audit.platform");
+
     public record DocumentState(UUID id, UUID tenantId, String serieNumero, String status, String holdReason, Instant nextAttemptAt,
             int attempts) {}
 
@@ -179,8 +182,9 @@ public class AdminResource {
             throw ApiException.invalid("invalid_request", "Indique el nombre del partner.", null);
         }
         UUID id = io.github.projectopenubl.xhandler.api.Ids.newId();
-        em.createNativeQuery("INSERT INTO xhandler.partner (id, name) VALUES (:id, :n)").setParameter("id", id).setParameter("n", name.strip())
-                .executeUpdate();
+        em.createNativeQuery("SELECT xhandler.create_partner(:id, :n)").setParameter("id", id).setParameter("n", name.strip())
+                .getSingleResult();
+        PLATFORM_AUDIT.infof("admin %s created partner %s (%s)", admin.require(), id, name.strip());
         return Map.of("id", id, "name", name.strip());
     }
 
@@ -195,10 +199,28 @@ public class AdminResource {
         if (subject == null || !java.util.Set.of("user", "client").contains(kind) || !java.util.Set.of("admin", "viewer").contains(role)) {
             throw ApiException.invalid("invalid_request", "Indique subject, kind (user|client) y role (admin|viewer).", null);
         }
-        em.createNativeQuery("INSERT INTO xhandler.partner_member (partner_id, kind, subject, role) VALUES (:p, :k, :s, :r) "
-                        + "ON CONFLICT (partner_id, kind, subject) DO UPDATE SET role = excluded.role")
-                .setParameter("p", partnerId).setParameter("k", kind).setParameter("s", subject).setParameter("r", role).executeUpdate();
+        Object set = em.createNativeQuery("SELECT xhandler.set_partner_member(:p, :k, :s, :r)")
+                .setParameter("p", partnerId).setParameter("k", kind).setParameter("s", subject).setParameter("r", role).getSingleResult();
+        if (!Boolean.TRUE.equals(set)) {
+            throw ApiException.notFound();
+        }
+        PLATFORM_AUDIT.infof("admin %s set %s:%s as %s of partner %s", admin.require(), kind, subject, role, partnerId);
         return Map.of("partner_id", partnerId, "kind", kind, "subject", subject, "role", role);
+    }
+
+    @jakarta.ws.rs.DELETE
+    @Path("/partners/{partnerId}/members/{kind}/{subject}")
+    @Transactional
+    public jakarta.ws.rs.core.Response removePartnerMember(@PathParam("partnerId") UUID partnerId, @PathParam("kind") String kind,
+            @PathParam("subject") String subject) {
+        String who = admin.require();
+        Object removed = em.createNativeQuery("SELECT xhandler.remove_partner_member(:p, :k, :s)")
+                .setParameter("p", partnerId).setParameter("k", kind).setParameter("s", subject).getSingleResult();
+        if (!Boolean.TRUE.equals(removed)) {
+            throw ApiException.notFound();
+        }
+        PLATFORM_AUDIT.infof("admin %s removed %s:%s from partner %s", who, kind, subject, partnerId);
+        return jakarta.ws.rs.core.Response.noContent().build();
     }
 
     /** The company that issues the platform's own invoices (self-invoicing, §14). */
@@ -212,11 +234,19 @@ public class AdminResource {
         if (tenant == null || company == null) {
             throw ApiException.invalid("invalid_request", "Indique tenant_id y company_id.", null);
         }
-        UUID tenantId = UUID.fromString(tenant);
+        UUID tenantId;
+        UUID companyId;
+        try {
+            tenantId = UUID.fromString(tenant);
+            companyId = UUID.fromString(company);
+        } catch (IllegalArgumentException e) {
+            throw ApiException.invalid("invalid_request", "tenant_id y company_id deben ser UUID.", null);
+        }
         access.enterAsPlatform(tenantId);
-        if (Company.findById(UUID.fromString(company)) == null) {
+        if (Company.findById(companyId) == null) {
             throw ApiException.notFound();
         }
+        PLATFORM_AUDIT.infof("admin %s set the billing issuer to company %s of tenant %s", admin.require(), companyId, tenantId);
         for (Map.Entry<String, String> e : Map.of(io.github.projectopenubl.xhandler.billing.SelfInvoicing.ISSUER_TENANT, tenant,
                 io.github.projectopenubl.xhandler.billing.SelfInvoicing.ISSUER_COMPANY, company).entrySet()) {
             em.createNativeQuery("INSERT INTO xhandler.platform_setting (key, value) VALUES (:k, :v) "

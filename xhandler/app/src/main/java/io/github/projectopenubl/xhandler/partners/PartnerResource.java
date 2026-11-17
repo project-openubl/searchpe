@@ -83,7 +83,12 @@ public class PartnerResource {
     @Transactional
     public List<TenantUsage> tenants(@PathParam("partnerId") UUID partnerId, @QueryParam("month") String month) {
         require(partnerId, "viewer");
-        YearMonth period = month == null ? YearMonth.now(io.github.projectopenubl.xhandler.documents.Deadlines.LIMA) : YearMonth.parse(month);
+        YearMonth period;
+        try {
+            period = month == null ? YearMonth.now(io.github.projectopenubl.xhandler.documents.Deadlines.LIMA) : YearMonth.parse(month);
+        } catch (java.time.format.DateTimeParseException e) {
+            throw ApiException.invalid("invalid_request", "month debe tener el formato AAAA-MM.", null);
+        }
         Instant from = period.atDay(1).atStartOfDay(io.github.projectopenubl.xhandler.documents.Deadlines.LIMA).toInstant();
         Instant to = period.plusMonths(1).atDay(1).atStartOfDay(io.github.projectopenubl.xhandler.documents.Deadlines.LIMA).toInstant();
         @SuppressWarnings("unchecked")
@@ -101,8 +106,8 @@ public class PartnerResource {
     public Map<String, Object> branding(@PathParam("partnerId") UUID partnerId, @Valid Branding branding) {
         require(partnerId, "admin");
         try {
-            em.createNativeQuery("UPDATE xhandler.partner SET branding = CAST(:b AS jsonb), updated_at = now() WHERE id = :p")
-                    .setParameter("b", json.writeValueAsString(branding)).setParameter("p", partnerId).executeUpdate();
+            em.createNativeQuery("SELECT xhandler.set_partner_branding(:p, CAST(:b AS jsonb))")
+                    .setParameter("b", json.writeValueAsString(branding)).setParameter("p", partnerId).getSingleResult();
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
             throw new IllegalStateException(e);
         }

@@ -69,10 +69,30 @@ public final class BillingJobs {
                     events.add(Map.of("transaction_id", e.id().toString(), "external_subscription_id", e.tenant().toString(),
                             "code", e.type().replace('.', '_'), "timestamp", e.at().getEpochSecond(), "properties", properties));
                 }
-                lago.sendEvents(events);
-                List<UUID> ids = batch.stream().map(Event::id).toList();
-                QuarkusTransaction.requiringNew().run(() -> em.createNativeQuery("SELECT xhandler.mark_usage_sent(CAST(:ids AS uuid[]))")
-                        .setParameter("ids", "{" + String.join(",", ids.stream().map(UUID::toString).toList()) + "}").getSingleResult());
+                List<UUID> ids;
+                try {
+                    lago.sendEvents(events);
+                    ids = batch.stream().map(Event::id).toList();
+                } catch (LagoClient.Rejected rejected) {
+                    // One bad event must not block the rest: send them one by one, set the bad ones aside
+                    ids = new ArrayList<>();
+                    for (int i = 0; i < events.size(); i++) {
+                        UUID eventId = batch.get(i).id();
+                        try {
+                            lago.sendEvents(List.of(events.get(i)));
+                            ids.add(eventId);
+                        } catch (LagoClient.Rejected bad) {
+                            LOG.errorf("Lago refused usage event %s: %s", eventId, bad.getMessage());
+                            QuarkusTransaction.requiringNew().run(() -> em.createNativeQuery("SELECT xhandler.mark_usage_failed(:id, :e)")
+                                    .setParameter("id", eventId).setParameter("e", bad.getMessage()).getSingleResult());
+                        }
+                    }
+                }
+                List<UUID> sentIds = ids;
+                if (!sentIds.isEmpty()) {
+                    QuarkusTransaction.requiringNew().run(() -> em.createNativeQuery("SELECT xhandler.mark_usage_sent(CAST(:ids AS uuid[]))")
+                            .setParameter("ids", "{" + String.join(",", sentIds.stream().map(UUID::toString).toList()) + "}").getSingleResult());
+                }
                 sent += batch.size();
                 if (batch.size() < BATCH) {
                     return Map.of("sent", sent);
@@ -119,6 +139,11 @@ public final class BillingJobs {
                     String plan = lago.activePlan(tenant.toString()).orElse("free");
                     QuarkusTransaction.requiringNew().run(() -> {
                         access.enterAsPlatform(tenant);
+                        if (!entitlements.known(plan)) {
+                            // Never downgrade a paying customer because of an unmapped Lago plan
+                            LOG.errorf("Lago plan %s of tenant %s is not in the plan table: keeping its current plan", plan, tenant);
+                            return;
+                        }
                         entitlements.setPlan(tenant, plan, "lago");
                     });
                     synced++;

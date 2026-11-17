@@ -43,9 +43,12 @@ public class DocumentEmailJob implements JobHandler {
     private final EmailSender sender;
     private final EntityManager em;
     private final io.github.projectopenubl.xhandler.webhooks.Egress egress;
+    private final io.github.projectopenubl.xhandler.billing.Entitlements entitlements;
 
     public DocumentEmailJob(TenantAccess access, DocumentPdf pdf, FileStore files, AccessLinks links, CredentialService credentials,
-            EmailSender sender, EntityManager em, io.github.projectopenubl.xhandler.webhooks.Egress egress) {
+            EmailSender sender, EntityManager em, io.github.projectopenubl.xhandler.webhooks.Egress egress,
+            io.github.projectopenubl.xhandler.billing.Entitlements entitlements) {
+        this.entitlements = entitlements;
         this.egress = egress;
         this.access = access;
         this.pdf = pdf;
@@ -102,7 +105,10 @@ public class DocumentEmailJob implements JobHandler {
             }
             String subject = subject(company.emailSubject, doc, company);
             String body = HtmlSanitizer.sanitize(render(company.emailBody, DEFAULT_BODY, doc, company, link));
-            EmailSender.Smtp smtp = credentials.read(scope, company, "smtp", "email:" + doc.id).map(EmailSender::smtp).orElse(null);
+            // The plan may have changed since the SMTP server was saved (downgrade, stale entitlement)
+            EmailSender.Smtp smtp = entitlements.usage(doc.tenantId).plan().customSmtp()
+                    ? credentials.read(scope, company, "smtp", "email:" + doc.id).map(EmailSender::smtp).orElse(null)
+                    : null;
             return new Prepared(new EmailSender.Message(sender(company), company.email, recipients, ccKept, subject, body, attachments),
                     smtp, skipped);
         });
