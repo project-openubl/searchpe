@@ -19,7 +19,11 @@
 //
 // Environment:
 //   - RELATED_IMAGE_SEARCHPE (required): the Searchpe image of the resources that don't set one.
-//   - SEARCHPE_IMAGE_PULL_POLICY: its pull policy, Always by default.
+//   - RELATED_IMAGE_XHANDLER, RELATED_IMAGE_XHANDLER_ENGINE, RELATED_IMAGE_XHANDLER_UI and
+//     RELATED_IMAGE_EGRESS_PROXY: the xhandler-service, engine, UI and egress proxy images of the
+//     XHandler resources that don't set one. An XHandler that needs a missing one isn't deployed:
+//     its Ready condition says why.
+//   - SEARCHPE_IMAGE_PULL_POLICY: the pull policy of every image, Always by default.
 //   - WATCH_NAMESPACE: the namespace whose resources it reconciles. Every namespace when empty,
 //     which needs the permissions of its role in every namespace.
 package main
@@ -38,6 +42,7 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	"github.com/project-openubl/searchpe/operator/api/v1alpha1"
+	xhandlerv1alpha1 "github.com/project-openubl/searchpe/operator/api/xhandler/v1alpha1"
 	"github.com/project-openubl/searchpe/operator/internal/controller"
 )
 
@@ -74,6 +79,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	xhandlerConfig := controller.XHandlerConfig{
+		Image:            os.Getenv("RELATED_IMAGE_XHANDLER"),
+		EngineImage:      os.Getenv("RELATED_IMAGE_XHANDLER_ENGINE"),
+		UIImage:          os.Getenv("RELATED_IMAGE_XHANDLER_UI"),
+		EgressProxyImage: os.Getenv("RELATED_IMAGE_EGRESS_PROXY"),
+		ImagePullPolicy:  config.ImagePullPolicy,
+	}
+
 	scheme := runtime.NewScheme()
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
 		log.Error(err, "Unable to register the Kubernetes types")
@@ -81,6 +94,10 @@ func main() {
 	}
 	if err := v1alpha1.AddToScheme(scheme); err != nil {
 		log.Error(err, "Unable to register the Searchpe types")
+		os.Exit(1)
+	}
+	if err := xhandlerv1alpha1.AddToScheme(scheme); err != nil {
+		log.Error(err, "Unable to register the XHandler types")
 		os.Exit(1)
 	}
 
@@ -104,7 +121,12 @@ func main() {
 	}
 	reconciler := &controller.SearchpeReconciler{Client: mgr.GetClient(), Config: config}
 	if err := reconciler.SetupWithManager(mgr); err != nil {
-		log.Error(err, "Unable to create the controller")
+		log.Error(err, "Unable to create the Searchpe controller")
+		os.Exit(1)
+	}
+	xhandlerReconciler := &controller.XHandlerReconciler{Client: mgr.GetClient(), Config: xhandlerConfig}
+	if err := xhandlerReconciler.SetupWithManager(mgr); err != nil {
+		log.Error(err, "Unable to create the XHandler controller")
 		os.Exit(1)
 	}
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

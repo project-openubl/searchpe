@@ -1,2 +1,3 @@
 resources:
   - bases/searchpe.openubl.io_searchpes.yaml
+  - bases/xhandler.openubl.io_xhandlers.yaml

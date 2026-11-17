@@ -5,6 +5,10 @@ SHELL = /usr/bin/env bash -o pipefail
 # The images of docker-build, deploy and bundle
 IMG ?= ghcr.io/project-openubl/searchpe/searchpe-operator:nightly
 SEARCHPE_IMAGE ?= ghcr.io/project-openubl/searchpe/searchpe:nightly
+XHANDLER_IMAGE ?= ghcr.io/project-openubl/searchpe/xhandler-service:nightly
+XHANDLER_ENGINE_IMAGE ?= ghcr.io/project-openubl/searchpe/xhandler-engine:nightly
+XHANDLER_UI_IMAGE ?= ghcr.io/project-openubl/searchpe/xhandler-ui:nightly
+EGRESS_PROXY_IMAGE ?= docker.io/ubuntu/squid:6.6-24.04_edge
 # The version of the bundle, X.Y.Z (the validators of the catalogs reject 0.0.0)
 VERSION ?= 0.0.1
 BUNDLE_IMG ?= ghcr.io/project-openubl/searchpe/searchpe-operator-bundle:v$(VERSION)
@@ -26,11 +30,18 @@ GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint-$(GOLANGCI_LINT_VERSION)
 SETUP_ENVTEST ?= $(LOCALBIN)/setup-envtest-$(ENVTEST_VERSION)
 OPERATOR_SDK ?= $(LOCALBIN)/operator-sdk-$(OPERATOR_SDK_VERSION)
 
-# manifests: the kustomization of directory $(1), with the images IMG and SEARCHPE_IMAGE
+# manifests: the kustomization of directory $(1), with the image IMG of the operator and the
+# images of its resources
 define manifests
-go tool kustomize build $(1) | IMG=$(IMG) SEARCHPE_IMAGE=$(SEARCHPE_IMAGE) go tool yq '\
+go tool kustomize build $(1) | IMG=$(IMG) SEARCHPE_IMAGE=$(SEARCHPE_IMAGE) XHANDLER_IMAGE=$(XHANDLER_IMAGE) \
+	XHANDLER_ENGINE_IMAGE=$(XHANDLER_ENGINE_IMAGE) XHANDLER_UI_IMAGE=$(XHANDLER_UI_IMAGE) \
+	EGRESS_PROXY_IMAGE=$(EGRESS_PROXY_IMAGE) go tool yq '\
 	(select(.kind == "Deployment") | .spec.template.spec.containers[0].image) = strenv(IMG) | \
 	(select(.kind == "Deployment") | .spec.template.spec.containers[0].env[] | select(.name == "RELATED_IMAGE_SEARCHPE") | .value) = strenv(SEARCHPE_IMAGE) | \
+	(select(.kind == "Deployment") | .spec.template.spec.containers[0].env[] | select(.name == "RELATED_IMAGE_XHANDLER") | .value) = strenv(XHANDLER_IMAGE) | \
+	(select(.kind == "Deployment") | .spec.template.spec.containers[0].env[] | select(.name == "RELATED_IMAGE_XHANDLER_ENGINE") | .value) = strenv(XHANDLER_ENGINE_IMAGE) | \
+	(select(.kind == "Deployment") | .spec.template.spec.containers[0].env[] | select(.name == "RELATED_IMAGE_XHANDLER_UI") | .value) = strenv(XHANDLER_UI_IMAGE) | \
+	(select(.kind == "Deployment") | .spec.template.spec.containers[0].env[] | select(.name == "RELATED_IMAGE_EGRESS_PROXY") | .value) = strenv(EGRESS_PROXY_IMAGE) | \
 	(select(.kind == "ClusterServiceVersion") | .metadata.annotations.containerImage) = strenv(IMG)'
 endef
 
@@ -66,7 +77,12 @@ test: $(SETUP_ENVTEST) ## Run the tests, against an API server
 
 .PHONY: run
 run: ## Run the operator against the cluster of the current kubeconfig
-	RELATED_IMAGE_SEARCHPE=$${RELATED_IMAGE_SEARCHPE:-ghcr.io/project-openubl/searchpe/searchpe:nightly} go run ./cmd
+	RELATED_IMAGE_SEARCHPE=$${RELATED_IMAGE_SEARCHPE:-$(SEARCHPE_IMAGE)} \
+	RELATED_IMAGE_XHANDLER=$${RELATED_IMAGE_XHANDLER:-$(XHANDLER_IMAGE)} \
+	RELATED_IMAGE_XHANDLER_ENGINE=$${RELATED_IMAGE_XHANDLER_ENGINE:-$(XHANDLER_ENGINE_IMAGE)} \
+	RELATED_IMAGE_XHANDLER_UI=$${RELATED_IMAGE_XHANDLER_UI:-$(XHANDLER_UI_IMAGE)} \
+	RELATED_IMAGE_EGRESS_PROXY=$${RELATED_IMAGE_EGRESS_PROXY:-$(EGRESS_PROXY_IMAGE)} \
+		go run ./cmd
 
 .PHONY: docker-build
 docker-build: ## Build the operator image IMG
@@ -89,7 +105,7 @@ undeploy: ## Delete what deploy deployed
 	go tool kustomize build config/default | kubectl delete --ignore-not-found -f -
 
 .PHONY: bundle
-bundle: generate $(OPERATOR_SDK) ## Generate the OLM bundle of VERSION in bundle/, deploying IMG and SEARCHPE_IMAGE
+bundle: generate $(OPERATOR_SDK) ## Generate the OLM bundle of VERSION in bundle/, deploying IMG and the *_IMAGE images
 	$(call manifests,config/manifests) | $(OPERATOR_SDK) generate bundle --overwrite --version $(VERSION) \
 		--package searchpe-operator --channels alpha --default-channel alpha --output-dir bundle
 	$(OPERATOR_SDK) bundle validate bundle

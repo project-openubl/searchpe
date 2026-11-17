@@ -40,6 +40,14 @@ spec:
                   fieldPath: metadata.namespace
             - name: RELATED_IMAGE_SEARCHPE
               value: searchpe
+            - name: RELATED_IMAGE_XHANDLER
+              value: xhandler-service
+            - name: RELATED_IMAGE_XHANDLER_ENGINE
+              value: xhandler-engine
+            - name: RELATED_IMAGE_XHANDLER_UI
+              value: xhandler-ui
+            - name: RELATED_IMAGE_EGRESS_PROXY
+              value: egress-proxy
           livenessProbe:
             httpGet:
               path: /healthz

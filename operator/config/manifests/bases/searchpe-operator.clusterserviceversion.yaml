@@ -9,7 +9,7 @@ metadata:
     categories: Application Runtime
     # make bundle sets the image of the operator
     containerImage: searchpe-operator
-    description: Searchpe is an enterprise solution for managing natural and legal entities in your organization. Valid for Peru.
+    description: Searchpe, to manage the natural and legal entities of Peru, and xhandler-service, multi-tenant SUNAT electronic documents.
     repository: https://github.com/project-openubl/searchpe
   labels:
     operatorframework.io/arch.amd64: supported
@@ -24,18 +24,129 @@ spec:
         version: v1alpha1
         displayName: Searchpe
         description: A deployment of the Searchpe server
+      - kind: XHandler
+        name: xhandlers.xhandler.openubl.io
+        version: v1alpha1
+        displayName: XHandler
+        description: A deployment of xhandler-service, its UI and its database migrations
+        resources:
+          - kind: Deployment
+            version: v1
+          - kind: Service
+            version: v1
+          - kind: Job
+            version: v1
+          - kind: Ingress
+            version: v1
+          - kind: PodDisruptionBudget
+            version: v1
+          - kind: NetworkPolicy
+            version: v1
+          - kind: ConfigMap
+            version: v1
+        specDescriptors:
+          - path: image
+            displayName: Image
+            description: Custom xhandler-service image
+          - path: engineImage
+            displayName: Engine image
+            description: Custom image of the engine sidecar
+          - path: uiImage
+            displayName: UI image
+            description: Custom image of the UI
+          - path: api.instances
+            displayName: API instances
+            description: Number of instances of the api role
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:podCount
+          - path: worker.instances
+            displayName: Worker instances
+            description: Number of instances of the worker role
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:podCount
+          - path: db.url
+            displayName: Database JDBC URL
+            description: The full database JDBC URL
+          - path: db.usernameSecret
+            displayName: Database username secret
+            description: The username the app logs in with, a non-owner member of xhandler_app
+          - path: db.passwordSecret
+            displayName: Database password secret
+            description: The password the app logs in with
+          - path: db.ownerUsernameSecret
+            displayName: Schema owner username secret
+            description: The username of the schema owner, used by the migration Job only
+          - path: db.ownerPasswordSecret
+            displayName: Schema owner password secret
+            description: The password of the schema owner, used by the migration Job only
+          - path: oidc.serverUrl
+            displayName: OIDC server URL
+            description: The URL of the OIDC realm
+          - path: oidc.clientId
+            displayName: OIDC client id
+            description: The OIDC client id
+          - path: vault.pkcs11Library
+            displayName: PKCS#11 module
+            description: Path of the PKCS#11 module of the HSM
+          - path: storage.bucket
+            displayName: S3 bucket
+            description: The bucket of the files
+          - path: hostname
+            displayName: Hostname
+            description: Hostname the ingress serves
+          - path: ingress.enabled
+            displayName: Ingress
+            description: Expose the deployment through an ingress
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+          - path: egressProxy.enabled
+            displayName: Egress proxy
+            description: Run an egress proxy for SUNAT, third-party OSEs and webhooks
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+          - path: networkPolicies.enabled
+            displayName: Network policies
+            description: Deny the pods everything they don't need
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+          - path: ui.enabled
+            displayName: UI
+            description: Run the UI
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+          - path: ui.searchpeRef
+            displayName: Searchpe
+            description: Name of the Searchpe the UI looks RUCs and DNIs up in
+        statusDescriptors:
+          - path: conditions
+            displayName: Conditions
+            description: Migrated and Ready
+            x-descriptors:
+              - urn:alm:descriptor:io.kubernetes.conditions
   description: |
-    Searchpe is an enterprise solution for managing natural and legal entities in your organization. Valid for Peru.
+    This operator runs two services of the [Openubl community](https://project-openubl.github.io/), valid for Peru:
 
-    Searchpe is a project within the [Openubl community](https://project-openubl.github.io/).
+    * **Searchpe**, an enterprise solution for managing natural and legal entities in your organization.
+    * **xhandler-service**, a multi-tenant service for SUNAT electronic documents: it builds, signs, sends,
+      tracks, delivers and reports facturas, boletas, notas, guías and more, and can act as an OSE.
 
     ### Install
-    Once you have successfully installed the Operator, proceed to deploy components by creating the required Searchpe CR.
+    Once you have successfully installed the Operator, proceed to deploy components by creating the required CRs.
 
-    By default, the Operator installs the following components on a target cluster:
+    A **Searchpe** CR deploys:
 
-    * Server, to manage the natual and legal entities.
-    * UI, the web console to manage the application.
+    * Server, to manage the natural and legal entities, and its web console.
+
+    An **XHandler** CR deploys:
+
+    * The database migrations, as a Job per image, before the new pods start.
+    * The api and worker roles: the Quarkus application with the Rust engine as a sidecar.
+    * UI, the web console, which can look RUCs and DNIs up in a Searchpe.
+    * Optionally, an egress proxy for SUNAT and third-party OSEs, and network policies.
+
+    xhandler-service needs PostgreSQL (an owner role for the migrations and a non-owner member of
+    xhandler_app for the application), an OIDC server (Keycloak), an HSM reachable through PKCS#11 and an
+    S3-compatible bucket.
 
     ### Documentation
     Documentation can be found on our [website](https://project-openubl.github.io/).
@@ -65,6 +176,8 @@ spec:
     spec:
       deployments: null
   keywords:
+    - xhandler
+    - facturacion electronica
     - sunat
     - openubl
     - searchpe
@@ -77,7 +190,7 @@ spec:
     - name: OpenUbl
       email: projectopenubl+subscribe@googlegroups.com
   maturity: alpha
-  minKubeVersion: 1.25.0
+  minKubeVersion: 1.29.0
   provider:
     name: OpenUbl
   version: 0.0.0

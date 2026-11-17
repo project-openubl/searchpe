@@ -8,6 +8,18 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - configmaps
+  - services
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - watch
+- apiGroups:
+  - ""
+  resources:
   - events
   verbs:
   - create
@@ -16,7 +28,6 @@ rules:
   - ""
   resources:
   - secrets
-  - services
   verbs:
   - create
   - get
@@ -29,6 +40,18 @@ rules:
   - deployments
   verbs:
   - create
+  - delete
+  - get
+  - list
+  - patch
+  - watch
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - create
+  - delete
   - get
   - list
   - patch
@@ -49,6 +72,18 @@ rules:
   - networking.k8s.io
   resources:
   - ingresses
+  - networkpolicies
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - watch
+- apiGroups:
+  - policy
+  resources:
+  - poddisruptionbudgets
   verbs:
   - create
   - delete
@@ -69,4 +104,26 @@ rules:
   resources:
   - searchpes/finalizers
   verbs:
+  - update
+- apiGroups:
+  - xhandler.openubl.io
+  resources:
+  - xhandlers
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - xhandler.openubl.io
+  resources:
+  - xhandlers/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - xhandler.openubl.io
+  resources:
+  - xhandlers/status
+  verbs:
+  - get
+  - patch
   - update

@@ -1,0 +1,47 @@
+apiVersion: xhandler.openubl.io/v1alpha1
+kind: XHandler
+metadata:
+  name: xhandler
+spec:
+  hostname: xhandler.example.com
+  tls:
+    secret: xhandler-tls
+  db:
+    url: jdbc:postgresql://xhandler-db-rw:5432/xhandler
+    usernameSecret:
+      name: xhandler-db-app
+      key: username
+    passwordSecret:
+      name: xhandler-db-app
+      key: password
+    ownerUsernameSecret:
+      name: xhandler-db-owner
+      key: username
+    ownerPasswordSecret:
+      name: xhandler-db-owner
+      key: password
+  oidc:
+    serverUrl: https://keycloak.example.com/realms/xhandler
+    clientId: xhandler-service
+    credentialsSecret:
+      name: xhandler-oidc
+      key: secret
+  vault:
+    pkcs11Library: /opt/hsm/libsofthsm2.so
+    pkcs11PinSecret:
+      name: xhandler-hsm
+      key: pin
+  storage:
+    s3Endpoint: https://s3.us-east-1.amazonaws.com
+    bucket: xhandler
+    region: us-east-1
+    accessKeySecret:
+      name: xhandler-s3
+      key: access-key
+    secretKeySecret:
+      name: xhandler-s3
+      key: secret-key
+  egressProxy:
+    enabled: true
+  ui:
+    searchpeRef: searchpe

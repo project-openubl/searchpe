@@ -34,6 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
 	"github.com/project-openubl/searchpe/operator/api/v1alpha1"
+	xhandlerv1alpha1 "github.com/project-openubl/searchpe/operator/api/xhandler/v1alpha1"
 )
 
 // The API server of the tests, started by TestMain. It has no controllers: the tests reconcile
@@ -65,6 +66,9 @@ func runTests(m *testing.M) int {
 		panic(err)
 	}
 	if err := v1alpha1.AddToScheme(scheme); err != nil {
+		panic(err)
+	}
+	if err := xhandlerv1alpha1.AddToScheme(scheme); err != nil {
 		panic(err)
 	}
 	k8sClient, err = client.New(restConfig, client.Options{Scheme: scheme})
