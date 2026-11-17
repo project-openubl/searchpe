@@ -61,6 +61,12 @@ spec:
             - name: QUARKUS_DATASOURCE_JDBC_URL
               value: "jdbc:postgresql://{{ include "searchpe.fullname" . }}-db:{{ .Values.database.port }}/{{ .Values.database.database }}"
             {{- end }}
+            - name: QUARKUS_HTTP_AUTH_SESSION_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: encryption-key
+                  name: {{ include "searchpe.fullname" . }}-session
+                  optional: false
           envFrom:
             {{- with .Values.extraEnvFrom }}
             {{- tpl . $ | nindent 12 }}
