@@ -1,13 +1,16 @@
-name: SDKs
+name: xhandler SDKs
 
 on:
   push:
     branches: [main]
-    paths: ["app/src/main/java/**", "sdk/**", ".github/workflows/sdk.yml"]
+    paths: ["xhandler/app/src/main/java/**", "xhandler/sdk/**", ".github/workflows/xhandler-sdk.yml"]
 
 jobs:
   generate:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: xhandler
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-java@v5
@@ -24,6 +27,6 @@ jobs:
         with:
           name: sdks
           path: |
-            sdk/typescript
-            sdk/java
-            app/target/openapi
+            xhandler/sdk/typescript
+            xhandler/sdk/java
+            xhandler/app/target/openapi

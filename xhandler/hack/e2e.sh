@@ -29,7 +29,7 @@ cleanup() {
     done
   fi
   for pid in "${PIDS[@]}"; do kill "$pid" 2>/dev/null || true; done
-  $COMPOSE -f "$ROOT/hack/compose.yaml" down >/dev/null 2>&1 || true
+  $COMPOSE -f "$ROOT/../hack/compose.yaml" down >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
@@ -43,7 +43,7 @@ wait_for() { # url, name
 }
 
 echo "==> dependencies (postgres, keycloak, lgtm)"
-$COMPOSE -f "$ROOT/hack/compose.yaml" up -d
+$COMPOSE -f "$ROOT/../hack/compose.yaml" up -d
 wait_for http://localhost:3000/api/health "grafana"
 wait_for http://localhost:8180/realms/xhandler/.well-known/openid-configuration "keycloak"
 

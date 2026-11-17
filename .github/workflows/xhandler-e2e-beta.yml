@@ -1,6 +1,6 @@
 # End-to-end against SUNAT beta. SUNAT beta is flaky, so this runs nightly and
 # on demand instead of gating pull requests (DESIGN.md §15.2).
-name: E2E (SUNAT beta)
+name: xhandler E2E (SUNAT beta)
 
 on:
   schedule:
@@ -17,8 +17,8 @@ jobs:
           distribution: temurin
           java-version: "25"
           cache: maven
-      - run: cd engine && (rustup show active-toolchain || rustup toolchain install)
+      - run: cd xhandler/engine && (rustup show active-toolchain || rustup toolchain install)
       - uses: Swatinem/rust-cache@v2.9.3
         with:
-          workspaces: engine
-      - run: COMPOSE="docker compose" ./hack/e2e.sh
+          workspaces: xhandler/engine
+      - run: COMPOSE="docker compose" ./xhandler/hack/e2e.sh

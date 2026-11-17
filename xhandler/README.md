@@ -30,7 +30,7 @@ Podman or Docker.
 Then sign up with a Keycloak token (dev realm users: alice/alice, bob/bob; platform admin
 olga/olga), create a company and emit (see `hack/e2e.sh` for the whole flow, including the
 switch to SUNAT beta). In dev mode Keycloak runs from Dev Services on a random port (see the
-Dev UI); with `podman compose -f hack/compose.yaml up -d` it is on 8180, as below:
+Dev UI); with `podman compose -f ../hack/compose.yaml up -d` it is on 8180, as below:
 
 ```bash
 TOKEN=$(curl -s http://localhost:8180/realms/xhandler/protocol/openid-connect/token \
@@ -43,7 +43,7 @@ TOKEN=$(curl -s http://localhost:8180/realms/xhandler/protocol/openid-connect/to
 - Health: http://localhost:8080/q/health
 - Metrics: http://localhost:8080/q/metrics
 
-Traces: `podman compose -f hack/compose.yaml up -d lgtm`, then start the engine with
+Traces: `podman compose -f ../hack/compose.yaml up -d lgtm`, then start the engine with
 `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318` and open Grafana at
 http://localhost:3000.
 

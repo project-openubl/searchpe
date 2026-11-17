@@ -1,0 +1,53 @@
+# The local stack for every service in this repository:
+#   PostgreSQL with one database per service (xhandler, searchpe), Keycloak with
+#   the shared dev realm, Grafana LGTM, and the SUNAT fake (profile "fake").
+# Each Quarkus app also runs alone with `quarkus:dev` (Dev Services start what it needs).
+#
+#   podman compose -f hack/compose.yaml up -d            # or: docker compose ...
+#   podman compose -f hack/compose.yaml --profile fake up -d
+services:
+  postgres:
+    image: docker.io/library/postgres:18
+    environment:
+      POSTGRES_DB: xhandler
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      # Runs in order: xhandler's roles (DESIGN.md §6), then searchpe's database
+      - ../xhandler/hack/postgres/init.sql:/docker-entrypoint-initdb.d/10-xhandler.sql:Z
+      - ./postgres/searchpe.sql:/docker-entrypoint-initdb.d/20-searchpe.sql:Z
+    ports:
+      - "5432:5432"
+
+  # Keycloak with the shared dev realm "xhandler": users alice, bob, carol, dave, olga;
+  # clients xhandler-service, acme-erp, xhandler-admin and searchpe
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.4
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    volumes:
+      - ../xhandler/deploy/keycloak/xhandler-realm-dev.json:/opt/keycloak/data/import/xhandler-realm.json:Z
+    ports:
+      - "8180:8080"
+
+  # Grafana + Tempo + Prometheus + Loki with an OpenTelemetry collector
+  # (http://localhost:3000). OTLP: gRPC 4317, HTTP 4318. Tempo API: 3200.
+  lgtm:
+    image: docker.io/grafana/otel-lgtm:0.41.0
+    ports:
+      - "3000:3000"
+      - "3200:3200"
+      - "4317:4317"
+      - "4318:4318"
+
+  # SUNAT fake (xhandler DESIGN.md §15.2) for `environment: fake`; the engine finds it
+  # at XHANDLER_SUNAT_FAKE_URL (default http://127.0.0.1:8099). Builds the engine
+  # image, so it only starts with `--profile fake`.
+  sunat-fake:
+    profiles: ["fake"]
+    build: ../xhandler/engine
+    entrypoint: ["/usr/local/bin/sunat-fake", "--addr", "0.0.0.0:8099"]
+    ports:
+      - "8099:8099"

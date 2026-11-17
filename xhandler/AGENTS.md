@@ -1,6 +1,8 @@
 # AGENTS.md
 
-Guidance for AI coding agents (and humans) working in **xhandler-service**.
+Guidance for AI coding agents (and humans) working in **xhandler-service**, the `xhandler/`
+directory of this repository (see the root [AGENTS.md](../AGENTS.md) for the other services).
+Paths and commands below are relative to `xhandler/`.
 
 ## What
 
@@ -10,7 +12,7 @@ everything except the SUNAT documents themselves. Those are handled by a Rust si
 
 **The design is the source of truth: [docs/DESIGN.md](docs/DESIGN.md).** Read the
 relevant section before changing behavior. A design change updates DESIGN.md in the same
-PR. Regulatory background is in [docs/research/](docs/research/README.md).
+commit. Regulatory background is in [docs/research/](docs/research/README.md).
 
 ## Layout
 
@@ -19,7 +21,7 @@ app/              Quarkus application (Java 25, Maven)
 admin-cli/        xhandler-admin: Picocli client of the admin API
 engine/           Rust sidecar: build, sign, send (axum; xhandler-rust pinned by rev)
 deploy/base/      Kustomize base: one pod = app + engine sidecar
-hack/             compose.yaml (PostgreSQL, Grafana LGTM) and e2e.sh
+hack/             e2e.sh and PostgreSQL roles (the stack itself is the root ../hack/compose.yaml)
 examples/         Sample documents (xbuilder JSON)
 docs/             DESIGN.md and research
 ```

@@ -91,6 +91,7 @@
 
     <modules>
         <module>searchpe</module>
+        <module>xhandler</module>
     </modules>
 
     <build>

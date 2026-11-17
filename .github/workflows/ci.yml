@@ -7,9 +7,13 @@ on:
       - main
     paths-ignore:
       - "README.md"
+      - "xhandler/**"
+      - ".github/workflows/xhandler*.yml"
   pull_request:
     paths-ignore:
       - "README.md"
+      - "xhandler/**"
+      - ".github/workflows/xhandler*.yml"
 
 # A new push to a pull request cancels the run of the previous one
 concurrency:
@@ -28,7 +32,7 @@ jobs:
           distribution: temurin
           cache: maven
       - name: Maven
-        run: mvn verify
+        run: mvn verify -pl searchpe
 
   native-tests:
     name: Native Tests
@@ -41,7 +45,7 @@ jobs:
           distribution: temurin
           cache: maven
       - name: Build with Maven
-        run: mvn verify -Dquarkus.native.container-build=true -P native
+        run: mvn verify -pl searchpe -Dquarkus.native.container-build=true -P native
 
   ui-tests:
     name: UI Tests

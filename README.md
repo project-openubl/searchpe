@@ -3,12 +3,14 @@
 
 [![Project Chat](https://img.shields.io/badge/zulip-join_chat-brightgreen.svg?style=for-the-badge&logo=zulip)](https://projectopenubl.zulipchat.com/)
 
-# Searchpe
+# xhandler platform
 
-Microservicio que expone los datos provenientes del `padrón reducido` de la SUNAT.
+Todos los servicios de xhandler, construidos y desplegados juntos:
 
-- [Searchpe](./searchpe)
-- [Operator](./operator)
+- [Searchpe](./searchpe): microservicio que expone los datos del `padrón reducido` de la SUNAT.
+- [xhandler-service](./xhandler): servicio multi-tenant de comprobantes electrónicos SUNAT
+  (diseño: [xhandler/docs/DESIGN.md](./xhandler/docs/DESIGN.md)).
+- [Operator](./operator): operador de Kubernetes para todos los servicios.
 
 ## Links
 
