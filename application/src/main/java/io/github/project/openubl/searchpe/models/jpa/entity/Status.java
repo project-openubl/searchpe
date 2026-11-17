@@ -19,6 +19,9 @@ package io.github.project.openubl.searchpe.models.jpa.entity;
 public enum Status {
     SCHEDULED,
     DOWNLOADING,
+    /**
+     * No longer used: the padrón is read straight from the zip. Kept because versions imported before can have it.
+     */
     UNZIPPING,
     IMPORTING,
     INDEXING,

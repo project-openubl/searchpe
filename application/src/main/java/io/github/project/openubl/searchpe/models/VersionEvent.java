@@ -23,10 +23,6 @@ public interface VersionEvent {
         Long getVersion();
     }
 
-    interface UnzippingFileEvent {
-        Long getVersion();
-    }
-
     interface ImportingDataEvent {
         Long getVersion();
     }

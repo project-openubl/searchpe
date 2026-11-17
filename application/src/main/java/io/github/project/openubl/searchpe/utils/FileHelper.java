@@ -16,21 +16,13 @@
  */
 package io.github.project.openubl.searchpe.utils;
 
-import org.jboss.logging.Logger;
-
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 public class FileHelper {
-
-    private static final Logger logger = Logger.getLogger(FileHelper.class);
 
     private FileHelper() {
         // Just utils
@@ -55,54 +47,5 @@ public class FileHelper {
                 }
             }
         }
-    }
-
-    /**
-     * Unzip file
-     *
-     * @param zipFile         file to unzip
-     * @param destinationPath folder where zipFile will be unzipped
-     * @throws IOException if the zip cannot be read or one of its entries would be extracted outside
-     *                     {@code destinationPath}
-     */
-    public static void unzipFile(File zipFile, Path destinationPath) throws IOException {
-        if (!zipFile.exists() || zipFile.isDirectory()) {
-            throw new IOException("Zip file not found or is a directory");
-        }
-
-        Path destinationDirectory = destinationPath.toAbsolutePath().normalize();
-        Files.createDirectories(destinationDirectory);
-
-        try (
-                InputStream is = Files.newInputStream(zipFile.toPath());
-                ZipInputStream zis = new ZipInputStream(is)
-        ) {
-            ZipEntry zipEntry;
-            while ((zipEntry = zis.getNextEntry()) != null) {
-                Path entryPath = resolveZipEntry(destinationDirectory, zipEntry);
-                logger.debugf("Unzipping to %s", entryPath);
-
-                if (zipEntry.isDirectory()) {
-                    Files.createDirectories(entryPath);
-                } else {
-                    Files.createDirectories(entryPath.getParent());
-                    Files.copy(zis, entryPath, StandardCopyOption.REPLACE_EXISTING);
-                }
-            }
-        } finally {
-            logger.debug("Unzip finished");
-        }
-    }
-
-    /**
-     * Resolves where a zip entry must be extracted, rejecting entries such as {@code ../../etc/passwd} that would
-     * escape the destination directory ("zip slip").
-     */
-    private static Path resolveZipEntry(Path destinationDirectory, ZipEntry zipEntry) throws IOException {
-        Path entryPath = destinationDirectory.resolve(zipEntry.getName()).normalize();
-        if (!entryPath.startsWith(destinationDirectory) || entryPath.equals(destinationDirectory)) {
-            throw new IOException("Zip entry is outside of the target directory: " + zipEntry.getName());
-        }
-        return entryPath;
     }
 }

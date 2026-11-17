@@ -19,17 +19,12 @@ package io.github.project.openubl.searchpe.services;
 import io.github.project.openubl.searchpe.models.VersionEvent;
 import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
-import io.github.project.openubl.searchpe.models.jpa.entity.EstadoContribuyente;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
-import io.github.project.openubl.searchpe.utils.DataHelper;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.runtime.StartupEvent;
-import org.apache.commons.io.FileUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
-import org.postgresql.copy.CopyManager;
-import org.postgresql.core.BaseConnection;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
@@ -37,27 +32,18 @@ import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import javax.sql.DataSource;
 import jakarta.transaction.Transactional;
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.EnumSet;
-import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.CancellationException;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -70,36 +56,14 @@ public class VersionService {
 
     private static final Logger LOGGER = Logger.getLogger(VersionService.class);
 
-    private static final String TABLE_COLUMNS = new StringBuilder()
-            .append("version_id").append(",")
-            .append("ruc").append(",")
-            .append("dni").append(",")
-            .append("nombre").append(",")
-            .append("estado").append(",")
-            .append("condicion_domicilio").append(",")
-            .append("ubigeo").append(",")
-            .append("tipo_via").append(",")
-            .append("nombre_via").append(",")
-            .append("codigo_zona").append(",")
-            .append("tipo_zona").append(",")
-            .append("numero").append(",")
-            .append("interior").append(",")
-            .append("lote").append(",")
-            .append("departamento").append(",")
-            .append("manzana").append(",")
-            .append("kilometro")
-            .toString();
-
-    private static final String CSV_HEADER = TABLE_COLUMNS + System.lineSeparator();
-
-    private static final String CREATE_PARTITION_SQL = "create table CONTRIBUYENTE_VERSION_%1$s partition of CONTRIBUYENTE for values from (%1$s) TO (%2$s)";
-    private static final String DELETE_PARTITION_SQL = "drop table if exists CONTRIBUYENTE_VERSION_%1$s";
+    private static final String CREATE_PARTITION_SQL = "create table " + ContribuyenteEntity.VERSION_PARTITION_TABLE + " partition of CONTRIBUYENTE for values from (%1$s) TO (%2$s)";
+    private static final String DELETE_PARTITION_SQL = "drop table if exists " + ContribuyenteEntity.VERSION_PARTITION_TABLE;
     /**
      * Built on the version's own partition. Building it on the partitioned parent table would also scan every other
      * partition, and leave an empty index on each of them.
      */
-    private static final String CREATE_INDEX_SQL = "create index ix_contribuyente_version_%1$s_ruc on CONTRIBUYENTE_VERSION_%1$s using hash (ruc)";
-    private static final String ANALYZE_PARTITION_SQL = "analyze CONTRIBUYENTE_VERSION_%1$s";
+    private static final String CREATE_INDEX_SQL = "create index ix_contribuyente_version_%1$s_ruc on " + ContribuyenteEntity.VERSION_PARTITION_TABLE + " using hash (ruc)";
+    private static final String ANALYZE_PARTITION_SQL = "analyze " + ContribuyenteEntity.VERSION_PARTITION_TABLE;
     /**
      * Versions imported before indexes were built on the partition have their index on the parent table, which doesn't
      * go away with the partition. Until it is dropped, new partitions also inherit an empty copy of it.
@@ -118,12 +82,6 @@ public class VersionService {
             Status.SCHEDULED, Status.DOWNLOADING, Status.UNZIPPING, Status.IMPORTING, Status.INDEXING
     );
 
-    @ConfigProperty(name = "searchpe.sunat.filter")
-    Optional<List<EstadoContribuyente>> sunatFilter;
-
-    @ConfigProperty(name = "searchpe.sunat.chunkSize")
-    int chunkSize;
-
     @ConfigProperty(name = "searchpe.sunat.watchDelay")
     int watchDelay;
 
@@ -137,13 +95,13 @@ public class VersionService {
     FileService fileService;
 
     @Inject
+    PadronImporter padronImporter;
+
+    @Inject
     VersionRepository versionRepository;
 
     @Inject
     Event<VersionEvent.DownloadingEvent> downloadingVersionEvent;
-
-    @Inject
-    Event<VersionEvent.UnzippingFileEvent> unzippingVersionEvent;
 
     @Inject
     Event<VersionEvent.ImportingDataEvent> importingVersionEvent;
@@ -169,7 +127,8 @@ public class VersionService {
 
     @Transactional(Transactional.TxType.NEVER)
     public void importPadronReducidoIntoVersion(Long versionId) {
-        ScheduledExecutorService executorService = Executors.newScheduledThreadPool(5);
+        // The import task and the status watcher, plus the threads the importer copies chunks with
+        ScheduledExecutorService executorService = Executors.newScheduledThreadPool(2 + PadronImporter.REQUIRED_THREADS);
 
         LOGGER.info("Init import task");
         Future<?> importTask = executorService.submit(() -> initImport(versionId, executorService));
@@ -218,7 +177,7 @@ public class VersionService {
             runImport(versionId, executorService);
             LOGGER.infof("Import of Version %s finished successfully", versionId);
         } catch (Exception e) {
-            if (e instanceof CancellationException || Thread.currentThread().isInterrupted()) {
+            if (e instanceof CancellationException || e instanceof InterruptedException || Thread.currentThread().isInterrupted()) {
                 LOGGER.infof("Import of Version %s was cancelled", versionId);
             } else if (e instanceof IncompletePadronException) {
                 LOGGER.error(e.getMessage());
@@ -233,28 +192,23 @@ public class VersionService {
         }
     }
 
-    private void runImport(Long versionId, ExecutorService executorService) throws IOException {
+    private void runImport(Long versionId, ExecutorService executorService) throws IOException, InterruptedException {
         File zipFile = null;
-        File unzippedFolder = null;
         try {
             downloadingVersionEvent.fire(() -> versionId);
             zipFile = fileService.downloadFile();
 
-            unzippingVersionEvent.fire(() -> versionId);
-            unzippedFolder = fileService.unzip(zipFile);
-            File txtFile = fileService.getFirstTxtFileFound(unzippedFolder.listFiles());
-
             executeUpdate(String.format(CREATE_PARTITION_SQL, versionId, versionId + 1));
 
             importingVersionEvent.fire(() -> versionId);
-            int totalRowsImported = processTxtFile(versionId, txtFile, executorService);
+            int totalRowsImported = padronImporter.importPadron(versionId, zipFile, executorService);
             checkRecordCount(versionId, totalRowsImported);
             updateVersion(versionId, version -> {
                 version.status = Status.INDEXING;
                 version.records = totalRowsImported;
             });
         } finally {
-            deleteWorkspaceFiles(zipFile, unzippedFolder);
+            deleteDownloadedFile(zipFile);
         }
 
         preparePartitionForQueries(versionId);
@@ -352,152 +306,19 @@ public class VersionService {
         ));
     }
 
-    private void deleteWorkspaceFiles(File zipFile, File unzippedFolder) {
+    private void deleteDownloadedFile(File zipFile) {
+        if (zipFile == null) {
+            return;
+        }
         try {
-            if (zipFile != null) {
-                Files.deleteIfExists(zipFile.toPath());
-            }
-            if (unzippedFolder != null) {
-                FileUtils.deleteDirectory(unzippedFolder);
-            }
+            Files.deleteIfExists(zipFile.toPath());
         } catch (IOException e) {
-            LOGGER.warn("Could not delete the import workspace files", e);
+            LOGGER.warn("Could not delete the downloaded padrón " + zipFile, e);
         }
     }
 
     private void shutdownExecutorService(ExecutorService executorService) {
         executorService.shutdownNow();
-    }
-
-    private int processTxtFile(Long versionId, File txtFile, ExecutorService executorService) throws IOException {
-        int totalCount = 0;
-        int batchCount = 0;
-
-        List<Future<?>> futures = new ArrayList<>();
-
-        Path csvPath = txtFile.getParentFile().toPath().resolve(UUID.randomUUID() + ".csv");
-        File csvFile = csvPath.toFile();
-        csvFile.createNewFile();
-        FileWriter csvFileWriter = new FileWriter(csvFile, DataHelper.PADRON_CHARSET);
-        csvFileWriter.write(CSV_HEADER);
-
-        String row;
-
-        try (
-                FileReader fileReader = new FileReader(txtFile, DataHelper.PADRON_CHARSET);
-                BufferedReader br = new BufferedReader(fileReader)
-        ) {
-            String line;
-            boolean skip = true;
-            int batchSize = chunkSize;
-
-            while ((line = br.readLine()) != null) {
-                if (skip) {
-                    skip = false;
-                    continue;
-                }
-
-                String[] columns = DataHelper.readLine(line, 15);
-
-                Optional<ContribuyenteEntity> contribuyenteOptional = DataHelper.buildContribuyenteEntity(versionId, columns);
-                if (contribuyenteOptional.isEmpty()) {
-                    continue;
-                }
-                ContribuyenteEntity contribuyente = contribuyenteOptional.get();
-                Optional<EstadoContribuyente> estadoContribuyente = EstadoContribuyente.fromString(contribuyente.estado);
-                if (sunatFilter.isPresent()) {
-                    boolean shouldBeSaved = estadoContribuyente.isPresent() && sunatFilter.get().contains(estadoContribuyente.get());
-                    if (!shouldBeSaved && contribuyente.getDni() == null) {
-                        continue;
-                    }
-                }
-
-                row = new StringBuilder()
-                        .append("\"").append(contribuyente.getId().getVersionId()).append("\"").append(",")
-                        .append("\"").append(Objects.toString(contribuyente.getId().getRuc(), "")).append("\"").append(",")
-                        .append("\"").append(Objects.toString(contribuyente.getDni(), "")).append("\"").append(",")
-                        .append("\"").append(Objects.toString(contribuyente.getNombre(), "")).append("\"").append(",")
-                        .append("\"").append(Objects.toString(contribuyente.getEstado(), "")).append("\"").append(",")
-                        .append("\"").append(Objects.toString(contribuyente.getCondicionDomicilio(), "")).append("\"").append(",")
-                        .append("\"").append(Objects.toString(contribuyente.getUbigeo(), "")).append("\"").append(",")
-                        .append("\"").append(Objects.toString(contribuyente.getTipoVia(), "")).append("\"").append(",")
-                        .append("\"").append(Objects.toString(contribuyente.getNombreVia(), "")).append("\"").append(",")
-                        .append("\"").append(Objects.toString(contribuyente.getCodigoZona(), "")).append("\"").append(",")
-                        .append("\"").append(Objects.toString(contribuyente.getTipoZona(), "")).append("\"").append(",")
-                        .append("\"").append(Objects.toString(contribuyente.getNumero(), "")).append("\"").append(",")
-                        .append("\"").append(Objects.toString(contribuyente.getInterior(), "")).append("\"").append(",")
-                        .append("\"").append(Objects.toString(contribuyente.getLote(), "")).append("\"").append(",")
-                        .append("\"").append(Objects.toString(contribuyente.getDepartamento(), "")).append("\"").append(",")
-                        .append("\"").append(Objects.toString(contribuyente.getManzana(), "")).append("\"").append(",")
-                        .append("\"").append(Objects.toString(contribuyente.getKilometro(), "")).append("\"")
-                        .append(System.lineSeparator())
-                        .toString();
-                csvFileWriter.write(row);
-
-                totalCount = totalCount + 1;
-                batchCount = batchCount + 1;
-
-                // Time to save data
-                if (batchCount >= batchSize) {
-                    csvFileWriter.close();
-                    File csvFileToImport = csvFile;
-                    Future<?> future = executorService.submit(() -> importCSVFile(versionId, csvFileToImport));
-                    futures.add(future);
-
-                    // Reset
-                    batchCount = 0;
-
-                    // Create new chunk file
-                    csvPath = txtFile.getParentFile().toPath().resolve(UUID.randomUUID() + ".csv");
-                    csvFile = csvPath.toFile();
-                    csvFile.createNewFile();
-                    csvFileWriter = new FileWriter(csvFile, DataHelper.PADRON_CHARSET);
-                    csvFileWriter.write(CSV_HEADER);
-                }
-            }
-        }
-
-        csvFileWriter.close();
-        File fileToImport = csvFile;
-        Future<?> future = executorService.submit(() -> importCSVFile(versionId, fileToImport));
-        futures.add(future);
-
-        try {
-            for (Future f : futures) {
-                f.get();
-            }
-        } catch (InterruptedException | ExecutionException e) {
-            LOGGER.error(e);
-            throw new RuntimeException(e);
-        }
-
-        return totalCount;
-    }
-
-    private void importCSVFile(Long versionId, File csvFile) {
-        try (
-                FileReader fileReader = new FileReader(csvFile, DataHelper.PADRON_CHARSET);
-                BufferedReader bufferedReader = new BufferedReader(fileReader);
-
-                Connection connection = dataSource.getConnection()
-        ) {
-            BaseConnection baseConnection = connection.unwrap(BaseConnection.class);
-            CopyManager copyManager = new CopyManager(baseConnection);
-
-            String sql = "COPY contribuyente (" + TABLE_COLUMNS + ") FROM STDIN (FORMAT csv, HEADER true, DELIMITER ',', FORCE_NULL (" + TABLE_COLUMNS + "))";
-            long rowsInserted = copyManager.copyIn(sql, bufferedReader);
-
-            // Bulk update, so concurrent chunks don't fail each other on the entity's optimistic lock. It only
-            // reports progress: the final count is set once all chunks are imported.
-            QuarkusTransaction.requiringNew().run(() -> VersionEntity.update(
-                    "records = records + ?1, updatedAt = ?2 where id = ?3",
-                    (int) rowsInserted, new Date(), versionId
-            ));
-        } catch (IOException | SQLException e) {
-            throw new IllegalStateException("Could not import " + csvFile, e);
-        }
-
-        csvFile.delete();
     }
 
     private void executeUpdate(String query) {

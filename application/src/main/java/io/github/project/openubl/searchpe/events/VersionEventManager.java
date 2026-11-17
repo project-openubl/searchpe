@@ -64,10 +64,6 @@ public class VersionEventManager {
         updateStatus(event.getVersion(), Status.DOWNLOADING);
     }
 
-    public void onUnzipping(@Observes VersionEvent.UnzippingFileEvent event) {
-        updateStatus(event.getVersion(), Status.UNZIPPING);
-    }
-
     public void onImportingData(@Observes VersionEvent.ImportingDataEvent event) {
         updateStatus(event.getVersion(), Status.IMPORTING);
     }
