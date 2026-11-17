@@ -16,6 +16,7 @@
  */
 package io.github.project.openubl.searchpe.jobs.ingest;
 
+import io.github.project.openubl.searchpe.jobs.CronJobScheduler;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.narayana.jta.RunOptions;
 import io.quarkus.runtime.StartupEvent;
@@ -37,8 +38,6 @@ import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import java.util.UUID;
 
-import static org.quartz.CronScheduleBuilder.cronSchedule;
-
 @ApplicationScoped
 @RegisterForReflection
 public class IngestDataScheduler {
@@ -50,6 +49,9 @@ public class IngestDataScheduler {
 
     @Inject
     Scheduler quartz;
+
+    @Inject
+    CronJobScheduler cronJobScheduler;
 
     @ConfigProperty(name = "searchpe.scheduled.cron")
     String cronRegex;
@@ -89,24 +91,7 @@ public class IngestDataScheduler {
                     .storeDurably()
                     .build();
 
-            try {
-                if (!quartz.checkExists(cronJobDetail.getKey())) {
-                    quartz.addJob(cronJobDetail, false);
-                }
-
-                Trigger cronTrigger = TriggerBuilder
-                        .newTrigger()
-                        .forJob(cronJobKey)
-                        .withIdentity(TriggerKey.triggerKey(IngestDataScheduler.class.getName(), "version"))
-                        .withSchedule(cronSchedule(cronRegex))
-                        .build();
-                if (!quartz.checkExists(cronTrigger.getKey())) {
-                    quartz.scheduleJob(cronTrigger);
-                }
-            } catch (SchedulerException e) {
-                logger.error(e);
-                throw new RuntimeException(e);
-            }
+            cronJobScheduler.schedule(cronJobDetail, TriggerKey.triggerKey(IngestDataScheduler.class.getName(), "version"), cronRegex);
         });
     }
 
