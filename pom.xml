@@ -91,7 +91,6 @@
 
     <modules>
         <module>application</module>
-        <module>operator</module>
     </modules>
 
     <build>
