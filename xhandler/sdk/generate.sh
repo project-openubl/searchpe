@@ -11,7 +11,7 @@ cat > "$ROOT/sdk/typescript/package.json" <<JSON
 { "name": "@xhandler/sdk", "version": "0.1.0", "license": "Apache-2.0", "type": "module", "main": "src/index.ts" }
 JSON
 
-docker run --rm -v "$ROOT:/work" -u "$(id -u):$(id -g)" openapitools/openapi-generator-cli:v7.27.0 generate \
+docker run --rm -v "$ROOT:/work:Z" -u "$(id -u):$(id -g)" docker.io/openapitools/openapi-generator-cli:v7.27.0 generate \
   -i "/work/${SPEC#"$ROOT/"}" -g java -o /work/sdk/java \
   --additional-properties=library=native,groupId=io.github.project-openubl,artifactId=xhandler-sdk,apiPackage=io.github.projectopenubl.xhandler.sdk.api,modelPackage=io.github.projectopenubl.xhandler.sdk.model,invokerPackage=io.github.projectopenubl.xhandler.sdk
 echo "SDKs in sdk/typescript and sdk/java"
