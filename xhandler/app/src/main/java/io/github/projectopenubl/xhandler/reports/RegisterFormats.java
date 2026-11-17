@@ -87,7 +87,7 @@ public final class RegisterFormats {
     private static String quote(String value) {
         String v = value == null ? "" : value;
         // Spreadsheet formula injection: a leading =, +, - or @ in text is neutralized
-        if (!v.isEmpty() && "=+@".indexOf(v.charAt(0)) >= 0 || v.startsWith("-") && !v.matches("-?\\d+(\\.\\d+)?")) {
+        if (!v.isEmpty() && "=+@\t\r".indexOf(v.charAt(0)) >= 0 || v.startsWith("-") && !v.matches("-?\\d+(\\.\\d+)?")) {
             v = "'" + v;
         }
         return v.contains(",") || v.contains("\"") || v.contains("\n") || v.contains("'") ? "\"" + v.replace("\"", "\"\"") + "\"" : v;
@@ -146,10 +146,13 @@ public final class RegisterFormats {
     public static File ple(String register, String ruc, String period, List<Row> rows) {
         boolean sales = "sales".equals(register);
         String book = sales ? "140100" : "080100";
-        String name = "LE" + ruc + period + "00" + book + "00" + (rows.isEmpty() ? "0" : "1") + "111.txt";
+        // LE + RUC + YYYYMM00 + book + oportunidad (00) + operaciones (1) + contenido (1/0) + moneda (1 PEN) + PLE (1)
+        String name = "LE" + ruc + period + "00" + book + "00" + "1" + (rows.isEmpty() ? "0" : "1") + "11.txt";
         StringBuilder out = new StringBuilder();
         int correlative = 1;
-        for (Row r : rows) {
+        for (Row original : rows) {
+            // PLE amounts are in soles; moneda and tipo de cambio stay as information
+            Row r = inSoles(original);
             List<String> f = new ArrayList<>();
             f.add(period + "00");
             f.add(r.serie() + "-" + r.numero());
@@ -220,6 +223,20 @@ public final class RegisterFormats {
             out.append(String.join("|", f)).append("|\r\n");
         }
         return new File(name, "text/plain; charset=utf-8", out.toString().getBytes(StandardCharsets.UTF_8));
+    }
+
+    static Row inSoles(Row r) {
+        if ("PEN".equals(r.moneda())) {
+            return r;
+        }
+        if (r.tipoCambio() == null) {
+            throw new IllegalStateException("no tipo de cambio for " + r.key() + " in " + r.moneda());
+        }
+        Map<String, BigDecimal> amounts = new LinkedHashMap<>();
+        r.amounts().forEach((k, v) -> amounts.put(k, v.multiply(r.tipoCambio()).setScale(2, RoundingMode.HALF_UP)));
+        return new Row(r.fecha(), r.tipo(), r.serie(), r.numero(), r.partyTipo(), r.partyNumero(), r.partyNombre(), r.moneda(), r.tipoCambio(),
+                amounts, r.total().multiply(r.tipoCambio()).setScale(2, RoundingMode.HALF_UP), r.voided(), r.affectedFecha(), r.affectedTipo(),
+                r.affectedSerie(), r.affectedNumero(), r.amountsMissing());
     }
 
     /** SIRE's replacement of the proposal: the TXT in SUNAT's layout, zipped. */
@@ -340,8 +357,12 @@ public final class RegisterFormats {
             ZipEntry entry;
             while ((entry = zip.getNextEntry()) != null) {
                 if (!entry.isDirectory()) {
-                    // A proposal is at most a few MB; refuse anything absurd (zip bombs)
-                    byte[] content = zip.readNBytes(64 * 1024 * 1024);
+                    // A proposal is at most a few MB; refuse anything larger rather than read part of it
+                    int limit = 32 * 1024 * 1024;
+                    byte[] content = zip.readNBytes(limit + 1);
+                    if (content.length > limit) {
+                        throw new IllegalStateException("the proposal is larger than " + limit + " bytes");
+                    }
                     return new String(content, StandardCharsets.UTF_8);
                 }
             }

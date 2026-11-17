@@ -94,6 +94,7 @@ public class ReportResource {
     public ReportView get(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId,
             @PathParam("reportId") UUID reportId) {
         access.enter(tenantId, Role.VIEWER);
+        CompanyResource.find(companyId);
         ReportView view = view(reportId);
         if (view == null || !companyId.equals(companyOf(reportId))) {
             throw ApiException.notFound();
@@ -107,6 +108,7 @@ public class ReportResource {
     public Response file(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId,
             @PathParam("reportId") UUID reportId) {
         TenantScope scope = access.enter(tenantId, Role.VIEWER);
+        CompanyResource.find(companyId);
         @SuppressWarnings("unchecked")
         List<Object[]> rows = em.createNativeQuery("SELECT file_ref, file_name, format FROM xhandler.report WHERE id = :id AND company_id = :c")
                 .setParameter("id", reportId).setParameter("c", companyId).getResultList();

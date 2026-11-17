@@ -127,9 +127,11 @@ class TaxComplianceTest {
         String id = as("alice").post(sireBase + "/proposal").then().statusCode(202).body("status", equalTo("requested")).extract().path("id");
         await().atMost(Duration.ofSeconds(20)).until(() -> "credentials".equals(as("alice").get(sireBase).then().extract().path("status")));
 
+        // Saving them resumes the period by itself
         as("alice").body(Map.of("username", ruc + "SIRE", "password", "x", "client_id", "id", "client_secret", "secret"))
                 .put(base + "/credentials/sire").then().statusCode(200);
-        as("alice").post(sireBase + "/proposal").then().statusCode(202);
+        as("alice").get(sireBase).then().body("status", equalTo("requested"));
+        sire.poll(tenant, UUID.fromString(id));
         await().atMost(Duration.ofSeconds(20)).until(() -> EngineStub.requests().stream().anyMatch(r -> r.path().equals("/v1/sire/proposal")));
 
         // SUNAT's proposal: the factura (same total), not the boleta, plus one it has that isn't stored
@@ -152,8 +154,22 @@ class TaxComplianceTest {
                 .body("reconciliation.missing_locally", hasItem("01-F999-1"))
                 .body("reconciliation.sunat_count", equalTo(2)).body("proposal_file", equalTo(true));
 
-        // An admin submits the stored rows; SUNAT accepts the replacement
-        as("alice").post(sireBase + "/replace").then().statusCode(202).body("status", equalTo("submitting"));
+        // The stored rows don't match SUNAT's proposal: submitting them needs an explicit acknowledgement
+        as("alice").contentType("application/json").body(Map.of()).post(sireBase + "/replace").then().statusCode(409)
+                .body("kind", equalTo("sire_differences"));
+        // The answer to the replacement is lost: unknown, and nothing is resent without confirmation
+        EngineStub.on("/v1/sire/replace", body -> EngineStub.Reply.ok("{\"state\":\"unknown\",\"ticket\":null,\"description\":\"timeout\"}"));
+        as("alice").body(Map.of("acknowledge_differences", true)).post(sireBase + "/replace").then().statusCode(202)
+                .body("status", equalTo("submitting"));
+        await().atMost(Duration.ofSeconds(20)).until(() -> "unknown".equals(as("alice").get(sireBase).then().extract().path("status")));
+        as("alice").body(Map.of("acknowledge_differences", true)).post(sireBase + "/replace").then().statusCode(409)
+                .body("kind", equalTo("sire_unknown"));
+        as("alice").post(sireBase + "/proposal").then().statusCode(409).body("kind", equalTo("sire_unknown"));
+
+        // Checked in SOL that SUNAT didn't get it: an admin sends it again and SUNAT accepts it
+        EngineStub.on("/v1/sire/replace", body -> EngineStub.Reply.ok("{\"state\":\"ok\",\"ticket\":\"REPLACE-1\",\"description\":null}"));
+        as("alice").body(Map.of("acknowledge_differences", true, "confirm_not_received", true)).post(sireBase + "/replace").then()
+                .statusCode(202).body("status", equalTo("submitting"));
         await().atMost(Duration.ofSeconds(20)).until(() -> "submitted".equals(as("alice").get(sireBase).then().extract().path("status")));
         String replacement = EngineStub.lastBody("/v1/sire/replace");
         assertTrue(replacement.contains("\"book\":\"rvie\"") && replacement.contains("\"period\":\"" + period + "\""), replacement);

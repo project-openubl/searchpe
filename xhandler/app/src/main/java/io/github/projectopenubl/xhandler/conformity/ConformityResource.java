@@ -135,7 +135,7 @@ public class ConformityResource {
     }
 
     private static String quote(String value) {
-        String v = !value.isEmpty() && "=+-@".indexOf(value.charAt(0)) >= 0 ? "'" + value : value;
+        String v = !value.isEmpty() && "=+-@\t\r".indexOf(value.charAt(0)) >= 0 ? "'" + value : value;
         return "\"" + v.replace("\"", "\"\"") + "\"";
     }
 }

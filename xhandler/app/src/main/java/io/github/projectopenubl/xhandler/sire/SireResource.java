@@ -38,6 +38,13 @@ public class SireResource {
             UUID id, String book, String period, String sunatEnv, String status, String detail, JsonNode reconciliation,
             boolean proposalFile, boolean replacementFile, Instant createdAt, Instant updatedAt) {}
 
+    /**
+     * {@code acknowledgeDifferences}: submit although the stored rows don't match SUNAT's proposal
+     * (what SUNAT has and the platform doesn't is left out). {@code confirmNotReceived}: after an
+     * unknown outcome, the user checked in SOL that SUNAT didn't get the earlier replacement.
+     */
+    public record ReplaceRequest(Boolean acknowledgeDifferences, Boolean confirmNotReceived) {}
+
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private final TenantAccess access;
@@ -45,8 +52,10 @@ public class SireResource {
     private final EntityManager em;
     private final FileStore files;
     private final Auditor auditor;
+    private final RegisterRows registers;
 
-    public SireResource(TenantAccess access, Jobs jobs, EntityManager em, FileStore files, Auditor auditor) {
+    public SireResource(TenantAccess access, Jobs jobs, EntityManager em, FileStore files, Auditor auditor, RegisterRows registers) {
+        this.registers = registers;
         this.access = access;
         this.jobs = jobs;
         this.em = em;
@@ -73,27 +82,35 @@ public class SireResource {
         if ("beta".equals(company.sunatEnv)) {
             throw ApiException.conflict("sire_not_available", "SUNAT no tiene ambiente de pruebas para SIRE.");
         }
-        UUID id = Ids.newId();
-        @SuppressWarnings("unchecked")
-        List<Object[]> existing = em.createNativeQuery("""
+        int created = em.createNativeQuery("""
+                        INSERT INTO xhandler.sire_period (id, tenant_id, company_id, sunat_env, book, period, status, requested_by)
+                        VALUES (:id, :t, :c, :env, :b, :p, 'requested', :by) ON CONFLICT (company_id, sunat_env, book, period) DO NOTHING""")
+                .setParameter("id", Ids.newId()).setParameter("t", tenantId).setParameter("c", companyId).setParameter("env", company.sunatEnv)
+                .setParameter("b", book).setParameter("p", period).setParameter("by", scope.actor().auditName()).executeUpdate();
+        Object[] existing = (Object[]) em.createNativeQuery("""
                         SELECT id, status FROM xhandler.sire_period WHERE company_id = :c AND sunat_env = :env AND book = :b AND period = :p FOR UPDATE""")
                 .setParameter("c", companyId).setParameter("env", company.sunatEnv).setParameter("b", book).setParameter("p", period)
-                .getResultList();
-        if (existing.isEmpty()) {
-            em.createNativeQuery("""
-                            INSERT INTO xhandler.sire_period (id, tenant_id, company_id, sunat_env, book, period, status, requested_by)
-                            VALUES (:id, :t, :c, :env, :b, :p, 'requested', :by)""")
-                    .setParameter("id", id).setParameter("t", tenantId).setParameter("c", companyId).setParameter("env", company.sunatEnv)
-                    .setParameter("b", book).setParameter("p", period).setParameter("by", scope.actor().auditName()).executeUpdate();
-        } else {
-            id = (UUID) existing.get(0)[0];
-            String status = (String) existing.get(0)[1];
+                .getSingleResult();
+        UUID id = (UUID) existing[0];
+        if (created == 0) {
+            String status = (String) existing[1];
             if ("submitting".equals(status) || "submitted".equals(status)) {
                 throw ApiException.conflict("sire_in_progress", "El reemplazo está en proceso en SUNAT; espere su resultado.");
             }
+            if ("unknown".equals(status)) {
+                throw ApiException.conflict("sire_unknown",
+                        "No sabemos si SUNAT recibió el último reemplazo. Verifíquelo y confirme antes de continuar.");
+            }
+            if ("accepted".equals(status) || "proposal_ready".equals(status)) {
+                // Starting over discards SUNAT's acceptance or an admin's review
+                if (!scope.role().allows(Role.ADMIN)) {
+                    throw ApiException.forbidden();
+                }
+            }
             em.createNativeQuery("""
-                            UPDATE xhandler.sire_period SET status = 'requested', proposal_ticket = NULL, reconciliation = NULL, detail = NULL,
-                                requested_by = :by, updated_at = now() WHERE id = :id""")
+                            UPDATE xhandler.sire_period SET status = 'requested', proposal_ticket = NULL, proposal_ref = NULL, reconciliation = NULL,
+                                detail = NULL, resume_status = NULL, poll_attempts = 0, next_poll_at = now(), requested_by = :by, updated_at = now()
+                            WHERE id = :id""")
                     .setParameter("by", scope.actor().auditName()).setParameter("id", id).executeUpdate();
         }
         jobs.enqueue(scope, SireJobs.Request.NAME, 3, Map.of("sire_period_id", id.toString()), List.of("sire:" + id), null);
@@ -106,20 +123,52 @@ public class SireResource {
     @Path("/replace")
     @Transactional
     public Response replace(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId, @PathParam("book") String book,
-            @PathParam("period") String period) {
+            @PathParam("period") String period, ReplaceRequest request) {
         check(book, period);
         TenantScope scope = access.enter(tenantId, Role.ADMIN);
         Company company = CompanyResource.find(companyId);
         UUID id = find(companyId, company.sunatEnv, book, period);
-        int moved = em.createNativeQuery("""
-                        UPDATE xhandler.sire_period SET status = 'submitting', detail = NULL, updated_at = now()
-                        WHERE id = :id AND status IN ('proposal_ready', 'error') AND proposal_ref IS NOT NULL""")
-                .setParameter("id", id).executeUpdate();
-        if (moved == 0) {
+        boolean acknowledge = request != null && Boolean.TRUE.equals(request.acknowledgeDifferences());
+        boolean confirmed = request != null && Boolean.TRUE.equals(request.confirmNotReceived());
+        Object[] row = (Object[]) em.createNativeQuery("SELECT status, cast(reconciliation AS text) FROM xhandler.sire_period WHERE id = :id FOR UPDATE")
+                .setParameter("id", id).getSingleResult();
+        String status = (String) row[0];
+        if ("unknown".equals(status) && !confirmed) {
+            throw ApiException.conflict("sire_unknown",
+                    "No sabemos si SUNAT recibió el último reemplazo. Verifique en SUNAT Operaciones en Línea y confirme que no lo recibió.");
+        }
+        if (row[1] == null || !List.of("proposal_ready", "error", "unknown").contains(status)) {
             throw ApiException.conflict("sire_proposal_missing", "Solicite primero la propuesta de SUNAT y revise la conciliación.");
         }
+        boolean matches;
+        try {
+            matches = JSON.readTree((String) row[1]).path("matches").asBoolean(false);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalStateException(e);
+        }
+        if (!matches && !acknowledge) {
+            // The replacement is built from the stored rows only: what SUNAT has and the platform doesn't would be dropped
+            throw ApiException.conflict("sire_differences",
+                    "La propuesta de SUNAT no coincide con los comprobantes registrados. Revise la conciliación y confirme las diferencias.");
+        }
+        long unresolved = "rvie".equals(book) ? registers.unresolved(companyId, company.sunatEnv, period) : 0;
+        if (unresolved > 0) {
+            throw ApiException.conflict("sire_unresolved_documents",
+                    "Hay " + unresolved + " comprobantes del periodo sin respuesta definitiva de SUNAT. Espere a que se resuelvan.");
+        }
+        List<RegisterRows.Row> rows = "rvie".equals(book) ? registers.sales(companyId, company.sunatEnv, period) : registers.purchases(companyId, period);
+        long missing = rows.stream().filter(RegisterRows.Row::amountsMissing).count();
+        if (missing > 0) {
+            throw ApiException.conflict("amounts_pending",
+                    missing + " comprobantes aún no tienen el desglose de impuestos; se completa en unos minutos.");
+        }
+        em.createNativeQuery("""
+                        UPDATE xhandler.sire_period SET status = 'submitting', submitting_since = now(), replacement_ticket = NULL, detail = NULL,
+                            poll_attempts = 0, next_poll_at = now(), updated_at = now() WHERE id = :id""")
+                .setParameter("id", id).executeUpdate();
         jobs.enqueue(scope, SireJobs.Replace.NAME, 3, Map.of("sire_period_id", id.toString()), List.of("sire:" + id), null);
-        auditor.record(scope, "sire.replacement_submitted", "company", companyId, Map.of("book", book, "period", period));
+        auditor.record(scope, "sire.replacement_submitted", "company", companyId, Map.of("book", book, "period", period,
+                "acknowledged_differences", String.valueOf(!matches), "confirmed_not_received", String.valueOf(confirmed)));
         return Response.status(202).entity(view(id)).build();
     }
 

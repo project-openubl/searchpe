@@ -146,6 +146,7 @@ public class UblUploadService {
             doc.moneda = identity.moneda();
             doc.total = identity.total() == null ? null : new BigDecimal(identity.total());
             doc.amounts = Document.amountsOf(identity.amounts());
+            doc.paymentTerms = "01".equals(tipo) ? (identity.paymentTerms() == null ? "contado" : identity.paymentTerms()) : null;
             doc.status = "pending_send";
             doc.digestValue = digest;
             doc.endpoint = route.endpoint();

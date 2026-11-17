@@ -47,6 +47,8 @@ use xhandler::prelude::UblFile;
 
 use crate::cdr::escape;
 
+#[path = "sunat_fake_ose.rs"]
+mod ose;
 #[path = "sunat_fake_sire.rs"]
 mod sire;
 
@@ -95,6 +97,8 @@ pub fn router(options: Options) -> Router {
             get(gre_ticket),
         )
         .route("/fake/sire", get(sire::submitted))
+        .route("/fake/ose-forwards", get(ose::forwards))
+        .route("/ol-ti-itcpgem-ose/billService", post(ose::bill_service))
         .route(
             "/v1/contribuyente/migeigv/libros/rvie/propuesta/web/propuesta/{period}/exportapropuesta",
             get(sire::export_rvie),
@@ -140,6 +144,7 @@ struct Inner {
     /// Bearer token → SOL username (SIRE answers per RUC)
     tokens: HashMap<String, String>,
     sire: sire::SireState,
+    ose: ose::OseState,
 }
 
 #[derive(Default, Clone, Copy, PartialEq, Deserialize, Serialize, Debug)]

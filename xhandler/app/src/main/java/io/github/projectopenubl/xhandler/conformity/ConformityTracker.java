@@ -60,8 +60,15 @@ public class ConformityTracker implements JobHandler {
     /** Inside the transaction that recorded SUNAT's acceptance: no I/O, one insert. SIRE has no beta. */
     void onAccepted(@Observes DocumentStatusChanged change) {
         Document d = change.document();
+        if ("voided".equals(d.status) && "01".equals(d.tipoComprobante)) {
+            // A voided factura is no longer negotiable: stop following it
+            em.createNativeQuery("UPDATE xhandler.conformity SET state = 'closed', resolved_at = now() WHERE document_id = :d AND state = 'pending'")
+                    .setParameter("d", d.id).executeUpdate();
+            return;
+        }
+        // Facturas negociables are between companies: the buyer is identified by RUC
         if (!"01".equals(d.tipoComprobante) || !"credito".equals(d.paymentTerms) || !Document.ACCEPTED.contains(d.status)
-                || Document.ACCEPTED.contains(change.previousStatus()) || "beta".equals(d.sunatEnv)) {
+                || Document.ACCEPTED.contains(change.previousStatus()) || "beta".equals(d.sunatEnv) || !"6".equals(d.customerTipo)) {
             return;
         }
         Instant now = Instant.now();
@@ -117,8 +124,8 @@ public class ConformityTracker implements JobHandler {
             return new Call(doc.id, io.github.projectopenubl.xhandler.status.StatusResource.toInstant(c[1]),
                     io.github.projectopenubl.xhandler.status.StatusResource.toInstant(c[2]), doc.sunatEnv, request);
         });
-        remindIfClosing(tenantId, conformityId, call.documentId(), call.windowEnds(), call.remindedAt());
         if (call.request() == null) {
+            remindIfClosing(tenantId, conformityId, call.documentId(), call.windowEnds(), call.remindedAt());
             stamp(tenantId, conformityId, "Registre las credenciales de la API SIRE para consultar la conformidad.");
             return false;
         }
@@ -126,12 +133,14 @@ public class ConformityTracker implements JobHandler {
         try {
             response = engine.conformity(call.request());
         } catch (EngineException e) {
-            stamp(tenantId, conformityId, "El motor no respondió; se reintentará.");
+            stamp(tenantId, conformityId, "El servicio no respondió; se reintentará.");
+            remindIfClosing(tenantId, conformityId, call.documentId(), call.windowEnds(), call.remindedAt());
             return false;
         }
         if (!"ok".equals(response.state())) {
             stamp(tenantId, conformityId, "unauthorized".equals(response.state()) ? "SUNAT rechazó las credenciales de la API SIRE."
                     : "SUNAT no respondió; se reintentará.");
+            remindIfClosing(tenantId, conformityId, call.documentId(), call.windowEnds(), call.remindedAt());
             return false;
         }
         String state = switch (response.conformity()) {
@@ -141,7 +150,9 @@ public class ConformityTracker implements JobHandler {
             default -> null;
         };
         if (state == null) {
-            stamp(tenantId, conformityId, response.description());
+            // Still pending at SUNAT (checked first, so no reminder goes out after the buyer answered)
+            stamp(tenantId, conformityId, "pending".equals(response.conformity()) ? "" : "SUNAT aún no registra el comprobante.");
+            remindIfClosing(tenantId, conformityId, call.documentId(), call.windowEnds(), call.remindedAt());
             return false;
         }
         resolve(tenantId, conformityId, call.documentId(), state);

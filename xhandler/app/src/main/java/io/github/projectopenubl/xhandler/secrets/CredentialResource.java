@@ -31,9 +31,11 @@ public class CredentialResource {
     private final CredentialService credentials;
     private final io.github.projectopenubl.xhandler.webhooks.Egress egress;
     private final io.github.projectopenubl.xhandler.billing.Entitlements entitlements;
+    private final io.github.projectopenubl.xhandler.sire.SireService sire;
 
     public CredentialResource(TenantAccess access, CredentialService credentials, io.github.projectopenubl.xhandler.webhooks.Egress egress,
-            io.github.projectopenubl.xhandler.billing.Entitlements entitlements) {
+            io.github.projectopenubl.xhandler.billing.Entitlements entitlements, io.github.projectopenubl.xhandler.sire.SireService sire) {
+        this.sire = sire;
         this.entitlements = entitlements;
         this.access = access;
         this.credentials = credentials;
@@ -93,6 +95,8 @@ public class CredentialResource {
         Company company = CompanyResource.find(companyId);
         Credential stored = credentials.store(scope, company, "sire", Map.of("username", request.username(), "password",
                 request.password(), "client_id", request.clientId(), "client_secret", request.clientSecret()), mask(request.username()));
+        // SIRE periods waiting for credentials resume where they stopped
+        sire.resumeAfterCredentials(company.id);
         return new CredentialView(stored.kind, stored.label, Instant.now());
     }
 

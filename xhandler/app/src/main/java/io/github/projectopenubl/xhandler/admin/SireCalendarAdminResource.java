@@ -37,6 +37,9 @@ public class SireCalendarAdminResource {
     @Transactional
     public Map<String, Object> load(@Valid List<@Valid Entry> entries) {
         String who = admin.require();
+        if (entries == null || entries.isEmpty()) {
+            throw io.github.projectopenubl.xhandler.api.ApiException.invalid("invalid_request", "Envíe al menos una fecha del cronograma.", null);
+        }
         for (Entry e : entries) {
             em.createNativeQuery("""
                             INSERT INTO xhandler.sire_calendar (period, ruc_last_digit, due_date) VALUES (:p, :d, :due)

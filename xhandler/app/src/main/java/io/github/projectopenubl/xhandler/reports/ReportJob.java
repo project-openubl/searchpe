@@ -41,6 +41,17 @@ public class ReportJob implements JobHandler {
     @Override
     public Map<String, Object> run(JobContext context) {
         UUID reportId = context.uuidArg("report_id");
+        try {
+            return generate(context, reportId);
+        } catch (RuntimeException e) {
+            // Whatever failed, the report must not stay pending
+            org.jboss.logging.Logger.getLogger(ReportJob.class).errorf(e, "report %s failed", reportId);
+            finish(context.tenantId(), reportId, "failed", null, null, null, "No se pudo generar el reporte.");
+            return Map.of("status", "failed");
+        }
+    }
+
+    private Map<String, Object> generate(JobContext context, UUID reportId) {
         record Input(String register, String format, String period, String ruc, String razonSocial, List<RegisterRows.Row> rows) {}
         Input input = QuarkusTransaction.requiringNew().call(() -> {
             access.enterAsPlatform(context.tenantId());
@@ -53,6 +64,13 @@ public class ReportJob implements JobHandler {
                     : registers.purchases(company.id, (String) r[4]);
             return new Input(register, (String) r[3], (String) r[4], company.ruc, company.razonSocial, rows);
         });
+        long missing = input.rows().stream().filter(RegisterRows.Row::amountsMissing).count();
+        if (missing > 0) {
+            // Never zeros instead of the real bases: the backfill job completes them (§11.9)
+            finish(context.tenantId(), reportId, "failed", null, null, null,
+                    missing + " comprobantes aún no tienen el desglose de impuestos; se completa en unos minutos. Vuelva a generar el reporte.");
+            return Map.of("status", "failed", "missing_amounts", missing);
+        }
         RegisterFormats.File file;
         try {
             file = switch (input.format()) {
@@ -62,9 +80,9 @@ public class ReportJob implements JobHandler {
                 default -> RegisterFormats.sire("sales".equals(input.register()) ? "rvie" : "rce", input.ruc(), input.razonSocial(),
                         input.period(), input.rows());
             };
-        } catch (RuntimeException e) {
-            org.jboss.logging.Logger.getLogger(ReportJob.class).errorf(e, "report %s failed", reportId);
-            finish(context.tenantId(), reportId, "failed", null, null, null, "No se pudo generar el reporte.");
+        } catch (IllegalStateException e) {
+            finish(context.tenantId(), reportId, "failed", null, null, null,
+                    "Falta el tipo de cambio de algún comprobante en moneda extranjera.");
             return Map.of("status", "failed");
         }
         FileStore.Stored stored = files.put(context.tenantId(), file.content());

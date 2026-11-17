@@ -40,6 +40,8 @@ pub struct Facts {
     /// First cac:BillingReference of a note: (serie-numero, catalog 1 type)
     pub affected_id: Option<String>,
     pub affected_type: Option<String>,
+    /// cac:PaymentTerms/cbc:PaymentMeansID of the FormaPago terms: Contado or Credito
+    pub payment_means: Option<String>,
 }
 
 impl Facts {
@@ -207,6 +209,11 @@ fn close(facts: &mut Facts, path: &[String], text: &str, scheme_id: &mut Option<
         | [_, "TotalInvoiceAmount"] => set(&mut facts.total),
         [_, "DiscrepancyResponse", "ResponseCode"] => set(&mut facts.note_type),
         [_, "BillingReference", "InvoiceDocumentReference", "ID"] => set(&mut facts.affected_id),
+        [_, "PaymentTerms", "PaymentMeansID"]
+            if text.eq_ignore_ascii_case("contado") || text.eq_ignore_ascii_case("credito") =>
+        {
+            set(&mut facts.payment_means)
+        }
         [_, "BillingReference", "InvoiceDocumentReference", "DocumentTypeCode"] => {
             set(&mut facts.affected_type)
         }
@@ -265,6 +272,8 @@ pub struct InspectResponse {
     pub amounts: Amounts,
     pub affected_serie_numero: Option<String>,
     pub affected_tipo: Option<String>,
+    /// contado or credito (facturas); `None` when the document doesn't say
+    pub payment_terms: Option<String>,
 }
 
 /// Document-level amounts by tax (catalog 5 codes), as decimal strings; `None` when absent
@@ -337,6 +346,7 @@ pub fn inspect(xml: &str) -> Result<InspectResponse, String> {
         amounts: amounts(&facts.tax_subtotals),
         affected_serie_numero: facts.affected_id.clone(),
         affected_tipo: facts.affected_type.clone(),
+        payment_terms: facts.payment_means.as_ref().map(|m| m.to_lowercase()),
         digest_value: facts.digest_value,
         document_type: facts.document_type,
         sha256,
@@ -432,5 +442,10 @@ mod tests {
         assert_eq!(response.amounts.inafecta, None);
         assert_eq!(response.affected_serie_numero.as_deref(), Some("F001-3"));
         assert_eq!(response.affected_tipo.as_deref(), Some("01"));
+        let credit = r#"<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"><cbc:ID>F001-1</cbc:ID><cac:PaymentTerms><cbc:ID>FormaPago</cbc:ID><cbc:PaymentMeansID>Credito</cbc:PaymentMeansID></cac:PaymentTerms><cac:PaymentTerms><cbc:ID>FormaPago</cbc:ID><cbc:PaymentMeansID>Cuota001</cbc:PaymentMeansID></cac:PaymentTerms></Invoice>"#;
+        assert_eq!(
+            inspect(credit).unwrap().payment_terms.as_deref(),
+            Some("credito")
+        );
     }
 }

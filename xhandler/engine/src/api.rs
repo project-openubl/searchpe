@@ -3,6 +3,7 @@
 //! once at startup and never changed.
 
 mod documents;
+mod ose;
 mod sire;
 mod sunat;
 
@@ -69,9 +70,14 @@ pub fn router_with(config: Config) -> Router {
         .route("/v1/validate", post(documents::validate))
         .route("/v1/inspect", post(documents::inspect))
         .route("/v1/cdr", post(documents::cdr))
+        .route("/v1/ose/forward", post(ose::forward))
         .route("/v1/sire/proposal", post(sire::proposal))
         .route("/v1/sire/ticket", post(sire::ticket))
-        .route("/v1/sire/replace", post(sire::replace))
+        .route(
+            "/v1/sire/replace",
+            // A register's replacement can be larger than a document
+            post(sire::replace).layer(DefaultBodyLimit::max(4 * MAX_BODY_BYTES)),
+        )
         .route("/v1/conformity", post(sire::conformity))
         .layer(DefaultBodyLimit::max(MAX_BODY_BYTES))
         .with_state(Arc::new(config))

@@ -126,7 +126,8 @@ public final class EngineModels {
             String sha256,
             Amounts amounts,
             String affectedSerieNumero,
-            String affectedTipo) {}
+            String affectedTipo,
+            String paymentTerms) {}
 
     /** Document-level amounts by tax (catalog 5), decimal strings; null when absent. */
     public record Amounts(
@@ -136,7 +137,13 @@ public final class EngineModels {
     // --- SIRE and conformity (§11.7, §11.8) ---
 
     /** The tenant's SUNAT API client plus its SOL user (RUC + user). */
-    public record ApiCredentials(String clientId, String clientSecret, String username, String password) {}
+    public record ApiCredentials(String clientId, String clientSecret, String username, String password) {
+        /** Never the secrets, whatever logs a request. */
+        @Override
+        public String toString() {
+            return "ApiCredentials[clientId=" + clientId + ", username=" + username + "]";
+        }
+    }
 
     public record SireProposalRequest(Environment environment, ApiCredentials credentials, String book, String period) {}
 

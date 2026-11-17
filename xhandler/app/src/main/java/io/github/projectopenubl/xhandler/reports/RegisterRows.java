@@ -46,7 +46,8 @@ public class RegisterRows {
             LocalDate affectedFecha,
             String affectedTipo,
             String affectedSerie,
-            Long affectedNumero) {
+            Long affectedNumero,
+            boolean amountsMissing) {
 
         public String key() {
             return tipo + "-" + serie + "-" + numero;
@@ -73,7 +74,10 @@ public class RegisterRows {
         @SuppressWarnings("unchecked")
         List<Object[]> rows = em.createNativeQuery("""
                         SELECT d.fecha_emision, d.tipo_comprobante, d.serie, d.numero, d.customer_tipo, d.customer_numero, d.customer_nombre,
-                               d.moneda, d.tipo_cambio, cast(d.amounts AS text), d.total, d.status,
+                               d.moneda,
+                               coalesce(d.tipo_cambio, CASE WHEN d.moneda = 'USD' THEN (SELECT r.venta FROM xhandler.exchange_rate r
+                                   WHERE r.day <= d.fecha_emision ORDER BY r.day DESC LIMIT 1) END),
+                               cast(d.amounts AS text), d.total, d.status,
                                a.fecha_emision, a.tipo_comprobante, a.serie, a.numero
                         FROM xhandler.document d LEFT JOIN xhandler.document a ON a.id = d.affected_document_id
                         WHERE d.company_id = :c AND d.sunat_env = :env AND d.tipo_comprobante IN ('01', '03', '07', '08')
@@ -101,7 +105,9 @@ public class RegisterRows {
         @SuppressWarnings("unchecked")
         List<Object[]> rows = em.createNativeQuery("""
                         SELECT fecha_emision, tipo_comprobante, serie, numero, supplier_ruc, supplier_name, moneda, cast(amounts AS text), total,
-                               affected_serie_numero, affected_tipo
+                               affected_serie_numero, affected_tipo,
+                               CASE WHEN moneda = 'USD' THEN (SELECT r.venta FROM xhandler.exchange_rate r
+                                   WHERE r.day <= reception.fecha_emision ORDER BY r.day DESC LIMIT 1) END
                         FROM xhandler.reception
                         WHERE company_id = :c AND fecha_emision BETWEEN :from AND :to AND tipo_comprobante IN ('01', '03', '07', '08')
                           AND validity_state NOT IN ('not_found', 'voided', 'rejected')
@@ -122,7 +128,8 @@ public class RegisterRows {
                 }
             }
             out.add(row(date(r[0]), (String) r[1], (String) r[2], ((Number) r[3]).longValue(), "6", (String) r[4], (String) r[5],
-                    (String) r[6], null, (String) r[7], (BigDecimal) r[8], false, null, (String) r[10], affectedSerie, affectedNumero));
+                    (String) r[6], (BigDecimal) r[11], (String) r[7], (BigDecimal) r[8], false, null, (String) r[10], affectedSerie,
+                    affectedNumero));
         }
         return out;
     }
@@ -132,7 +139,8 @@ public class RegisterRows {
             LocalDate affectedFecha, String affectedTipo, String affectedSerie, Long affectedNumero) {
         Map<String, BigDecimal> amounts = new LinkedHashMap<>();
         BigDecimal sign = "07".equals(tipo) ? BigDecimal.ONE.negate() : BigDecimal.ONE;
-        if (!voided && amountsJson != null) {
+        boolean missing = !voided && (amountsJson == null || amountsJson.contains("\"_error\""));
+        if (!voided && !missing) {
             try {
                 for (Map.Entry<String, String> e : JSON.readValue(amountsJson, MAP).entrySet()) {
                     if (AMOUNTS.contains(e.getKey())) {
@@ -145,7 +153,22 @@ public class RegisterRows {
         }
         BigDecimal signedTotal = voided || total == null ? BigDecimal.ZERO : total.multiply(sign);
         return new Row(fecha, tipo, serie, numero, partyTipo, partyNumero, partyNombre, moneda == null ? "PEN" : moneda, tipoCambio,
-                amounts, signedTotal, voided, affectedFecha, affectedTipo, affectedSerie, affectedNumero);
+                amounts, signedTotal, voided, affectedFecha, affectedTipo, affectedSerie, affectedNumero, missing);
+    }
+
+    /**
+     * Documents of the period without a final answer yet (or stuck in exception): a register built
+     * now would leave them out.
+     */
+    @Transactional(Transactional.TxType.MANDATORY)
+    public long unresolved(UUID companyId, String sunatEnv, String period) {
+        YearMonth month = month(period);
+        return ((Number) em.createNativeQuery("""
+                        SELECT count(*) FROM xhandler.document
+                        WHERE company_id = :c AND sunat_env = :env AND tipo_comprobante IN ('01', '03', '07', '08')
+                          AND fecha_emision BETWEEN :from AND :to AND status IN ('pending_send', 'in_progress', 'unknown', 'exception')""")
+                .setParameter("c", companyId).setParameter("env", sunatEnv).setParameter("from", month.atDay(1))
+                .setParameter("to", month.atEndOfMonth()).getSingleResult()).longValue();
     }
 
     public static YearMonth month(String period) {

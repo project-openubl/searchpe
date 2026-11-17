@@ -112,7 +112,12 @@ pub enum CallState {
     Unauthorized,
     /// SUNAT answered with an error, or not at all: retry later
     Unavailable,
+    /// A replacement may have reached SUNAT (the answer was lost): check before sending again
+    Unknown,
 }
+
+/// Every handler answers within this budget, below the app's read timeout for the engine
+const BUDGET: Duration = Duration::from_secs(100);
 
 fn client() -> Result<reqwest::Client, ApiError> {
     reqwest::Client::builder()
@@ -124,6 +129,17 @@ fn client() -> Result<reqwest::Client, ApiError> {
 enum Failure {
     Unauthorized(String),
     Unavailable(String),
+    Unknown(String),
+}
+
+/// Runs a SUNAT exchange within the handler's budget
+async fn budgeted<T>(
+    work: impl std::future::Future<Output = Result<T, Failure>>,
+    on_timeout: Failure,
+) -> Result<T, Failure> {
+    tokio::time::timeout(BUDGET, work)
+        .await
+        .unwrap_or(Err(on_timeout))
 }
 
 async fn token(
@@ -154,7 +170,13 @@ async fn token(
         .text()
         .await
         .map_err(|e| Failure::Unavailable(e.to_string()))?;
-    if status.is_client_error() {
+    // Only a refusal of the client or the user is a credentials problem; 429, scope or
+    // maintenance answers are retried
+    let refused = (status.as_u16() == 400 || status.as_u16() == 401)
+        && ["invalid_grant", "invalid_client", "unauthorized_client"]
+            .iter()
+            .any(|e| body.contains(e));
+    if refused {
         return Err(Failure::Unauthorized(format!(
             "SUNAT refused the API credentials: {}",
             truncate(&body)
@@ -237,6 +259,7 @@ impl TicketResponse {
         let (state, description) = match failure {
             Failure::Unauthorized(d) => (CallState::Unauthorized, d),
             Failure::Unavailable(d) => (CallState::Unavailable, d),
+            Failure::Unknown(d) => (CallState::Unknown, d),
         };
         Self {
             state,
@@ -268,7 +291,11 @@ pub(super) async fn proposal(
         };
         let (status, body) = get_json(&http, &token, &url).await?;
         ticket_of(status, &body)
-    }
+    };
+    let result = budgeted(
+        result,
+        Failure::Unavailable("no answer within the time budget".into()),
+    )
     .await;
     Ok(Json(match result {
         Ok(ticket) => TicketResponse {
@@ -341,12 +368,18 @@ pub(super) async fn ticket(
             "{}/v1/contribuyente/migeigv/libros/rvierce/gestionprocesosmasivos/web/masivo",
             apis.sire
         );
-        let url = format!(
-            "{base}/consultaestadotickets?perIni={p}&perFin={p}&page=1&perPage=20&numTicket={t}",
-            p = request.period,
-            t = request.ticket
-        );
-        let (status, body) = get_json(&http, &token, &url).await?;
+        let url = reqwest::Url::parse_with_params(
+            &format!("{base}/consultaestadotickets"),
+            &[
+                ("perIni", request.period.as_str()),
+                ("perFin", request.period.as_str()),
+                ("page", "1"),
+                ("perPage", "20"),
+                ("numTicket", request.ticket.as_str()),
+            ],
+        )
+        .map_err(|e| Failure::Unavailable(e.to_string()))?;
+        let (status, body) = get_json(&http, &token, url.as_str()).await?;
         if !(200..300).contains(&status) {
             return Err(Failure::Unavailable(format!(
                 "ticket state answered {status}"
@@ -356,14 +389,20 @@ pub(super) async fn ticket(
         let mut files = Vec::new();
         if ticket_state == TicketState::Done {
             for (name, kind) in reports {
-                let url = format!(
-                    "{base}/archivoreporte?nomArchivoReporte={name}&codTipoArchivoReporte={kind}&codLibro={libro}&perTribu={p}&codProceso=&numTicket={t}",
-                    libro = request.book.code(),
-                    p = request.period,
-                    t = request.ticket
-                );
+                let url = reqwest::Url::parse_with_params(
+                    &format!("{base}/archivoreporte"),
+                    &[
+                        ("nomArchivoReporte", name.as_str()),
+                        ("codTipoArchivoReporte", kind.as_str()),
+                        ("codLibro", request.book.code()),
+                        ("perTribu", request.period.as_str()),
+                        ("codProceso", ""),
+                        ("numTicket", request.ticket.as_str()),
+                    ],
+                )
+                .map_err(|e| Failure::Unavailable(e.to_string()))?;
                 let response = http
-                    .get(&url)
+                    .get(url)
                     .bearer_auth(&token)
                     .send()
                     .await
@@ -385,7 +424,11 @@ pub(super) async fn ticket(
             }
         }
         Ok((ticket_state, description, files))
-    }
+    };
+    let result = budgeted(
+        result,
+        Failure::Unavailable("no answer within the time budget".into()),
+    )
     .await;
     Ok(Json(match result {
         Ok((ticket_state, description, files)) => SireTicketResponse {
@@ -504,20 +547,42 @@ pub(super) async fn replace(
             .body(body)
             .send()
             .await
-            .map_err(|e| Failure::Unavailable(e.to_string()))?;
+            // Only a refused connection proves SUNAT never got it
+            .map_err(|e| {
+                if e.is_connect() {
+                    Failure::Unavailable(e.to_string())
+                } else {
+                    Failure::Unknown(e.to_string())
+                }
+            })?;
         let status = response.status().as_u16();
         let text = response
             .text()
             .await
-            .map_err(|e| Failure::Unavailable(e.to_string()))?;
+            .map_err(|e| Failure::Unknown(e.to_string()))?;
         if status == 401 || status == 403 {
             return Err(Failure::Unauthorized(truncate(&text)));
+        }
+        if (400..500).contains(&status) {
+            // SUNAT refused the request itself: it was not taken
+            return Err(Failure::Unavailable(format!(
+                "SUNAT answered {status}: {}",
+                truncate(&text)
+            )));
         }
         ticket_of(
             status,
             &serde_json::from_str(&text).unwrap_or(serde_json::Value::Null),
         )
-    }
+        .map_err(|f| match f {
+            Failure::Unavailable(d) => Failure::Unknown(d),
+            other => other,
+        })
+    };
+    let result = budgeted(
+        result,
+        Failure::Unknown("no answer within the time budget".into()),
+    )
     .await;
     Ok(Json(match result {
         Ok(ticket) => TicketResponse {
@@ -608,7 +673,11 @@ pub(super) async fn conformity(
         );
         let (status, body) = get_json(&http, &token, &url).await?;
         Ok(conformity_of(status, &body))
-    }
+    };
+    let result = budgeted(
+        result,
+        Failure::Unavailable("no answer within the time budget".into()),
+    )
     .await;
     Ok(Json(match result {
         Ok((conformity, description)) => ConformityResponse {

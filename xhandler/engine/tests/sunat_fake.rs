@@ -550,3 +550,40 @@ async fn sire_round_trip_and_conformity() {
         .await;
     assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
 }
+
+#[tokio::test]
+async fn ose_forwards_document_and_cdr() {
+    let s = setup().await;
+    let xml = s.signed(invoice("F001-31"), None).await;
+    let (status, cdr) = s
+        .post(
+            "/v1/cdr",
+            json!({ "xml": xml, "ose_ruc": "20999999999", "description": "La Factura numero F001-31, ha sido aceptada",
+                    "issued_at": "2026-11-15T10:00:00-05:00" }),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{cdr}");
+    let (status, signed_cdr) = s
+        .post("/v1/sign", json!({ "xml": cdr["xml"], "demo_key": true }))
+        .await;
+    assert_eq!(status, StatusCode::OK, "{signed_cdr}");
+    let forward = |name: &str| {
+        json!({ "environment": "fake", "credentials": { "username": "20999999999OSEUSER1", "password": "x" },
+                "name": name, "xml": xml, "cdr_xml": signed_cdr["xml"] })
+    };
+    let (status, body) = s
+        .post("/v1/ose/forward", forward("12345678912-01-F001-31"))
+        .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(body["status"], "accepted", "{body}");
+    let forwards = s.admin("GET", "/fake/ose-forwards", None).await;
+    assert_eq!(forwards[0]["name"], "12345678912-01-F001-31", "{forwards}");
+
+    let (status, _) = s.post("/v1/ose/forward", forward("bad name")).await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    // Outside the fake, SUNAT's OSE URL must be given and https
+    let mut production = forward("12345678912-01-F001-31");
+    production["environment"] = json!("production");
+    let (status, _) = s.post("/v1/ose/forward", production).await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+}

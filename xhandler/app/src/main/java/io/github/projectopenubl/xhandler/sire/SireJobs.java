@@ -136,8 +136,11 @@ public final class SireJobs {
                 boolean sent = QuarkusTransaction.requiringNew().call(() -> {
                     access.enterAsPlatform(d.tenant());
                     String title = "SIRE: registro de ventas " + d.period() + " de " + d.ruc() + " vence el " + d.dueDate();
-                    if (!em.createNativeQuery("SELECT 1 FROM xhandler.notification WHERE kind = 'sire.deadline' AND title = :t")
-                            .setParameter("t", title).getResultList().isEmpty()) {
+                    int first = em.createNativeQuery("""
+                                    INSERT INTO xhandler.sire_deadline_notice (tenant_id, company_id, period) VALUES (:t, :c, :p)
+                                    ON CONFLICT (company_id, period) DO NOTHING""")
+                            .setParameter("t", d.tenant()).setParameter("c", d.company()).setParameter("p", d.period()).executeUpdate();
+                    if (first == 0) {
                         return false;
                     }
                     notifications.publish(d.tenant(), "sire.deadline", title,
