@@ -93,9 +93,42 @@ public class Document extends PanacheEntityBase {
     @Column(columnDefinition = "jsonb")
     public Map<String, String> labels = Map.of();
 
+    /** Amounts by tax from the signed XML (registers, §11.9): gravada, igv, exonerada… */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    public Map<String, String> amounts;
+
+    /** contado / credito (facturas negociables, §11.8); null when unknown. */
+    public String paymentTerms;
+
     public String deviceId;
     public Instant createdAt;
     public Instant updatedAt;
+
+    /** The engine's amounts as stored on documents and receptions (absent taxes left out). */
+    public static Map<String, String> amountsOf(io.github.projectopenubl.xhandler.engine.EngineModels.Amounts a) {
+        if (a == null) {
+            return null;
+        }
+        Map<String, String> m = new java.util.LinkedHashMap<>();
+        java.util.function.BiConsumer<String, String> put = (k, v) -> {
+            if (v != null) {
+                m.put(k, v);
+            }
+        };
+        put.accept("gravada", a.gravada());
+        put.accept("igv", a.igv());
+        put.accept("exonerada", a.exonerada());
+        put.accept("inafecta", a.inafecta());
+        put.accept("exportacion", a.exportacion());
+        put.accept("gratuita", a.gratuita());
+        put.accept("ivap_base", a.ivapBase());
+        put.accept("ivap", a.ivap());
+        put.accept("isc", a.isc());
+        put.accept("icbper", a.icbper());
+        put.accept("otros", a.otros());
+        return m;
+    }
 
     public String serieNumero() {
         return serie + "-" + numero;

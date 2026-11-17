@@ -26,6 +26,9 @@ opentelemetry-otlp = "0.33"
 opentelemetry_sdk = "0.33"
 quick-xml = "0.39"
 regex = "1"
+# SUNAT's REST APIs for SIRE and conformity (§11.7, §11.8): the same version
+# and features as xhandler-rust, so no new crates
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "charset", "http2"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.11"
@@ -39,7 +42,5 @@ url = "2"
 zip = { version = "7", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
-# Same version as xhandler-rust uses, to build a real connection error in tests
-reqwest = { version = "0.12", default-features = false }
 http-body-util = "0.1"
 tower = { version = "0.5", features = ["util"] }

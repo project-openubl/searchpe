@@ -56,6 +56,22 @@ public interface EngineClient {
     EngineModels.ValidityResponse validity(EngineModels.ValidityRequest request);
 
     @POST
+    @Path("/sire/proposal")
+    EngineModels.SireTicketResponse sireProposal(EngineModels.SireProposalRequest request);
+
+    @POST
+    @Path("/sire/ticket")
+    EngineModels.SireTicketStatus sireTicket(EngineModels.SireTicketRequest request);
+
+    @POST
+    @Path("/sire/replace")
+    EngineModels.SireTicketResponse sireReplace(EngineModels.SireReplaceRequest request);
+
+    @POST
+    @Path("/conformity")
+    EngineModels.ConformityResponse conformity(EngineModels.ConformityRequest request);
+
+    @POST
     @Path("/validity/file")
     EngineModels.ValidityResponse validityFile(EngineModels.ValidityFileRequest request);
 

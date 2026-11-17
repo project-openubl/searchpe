@@ -82,6 +82,22 @@ public class Engine {
         return call(() -> client.validityFile(new EngineModels.ValidityFileRequest(xml, environment, credentials)));
     }
 
+    public EngineModels.SireTicketResponse sireProposal(EngineModels.SireProposalRequest request) {
+        return call(() -> client.sireProposal(request));
+    }
+
+    public EngineModels.SireTicketStatus sireTicket(EngineModels.SireTicketRequest request) {
+        return call(() -> client.sireTicket(request));
+    }
+
+    public EngineModels.SireTicketResponse sireReplace(EngineModels.SireReplaceRequest request) {
+        return call(() -> client.sireReplace(request));
+    }
+
+    public EngineModels.ConformityResponse conformity(EngineModels.ConformityRequest request) {
+        return call(() -> client.conformity(request));
+    }
+
     /** Builds an unsigned OSE CDR for a received document (OSE role, R4). */
     public String cdr(String xml, String oseRuc, String responseCode, String description, List<EngineModels.CdrNote> notes,
             java.time.Instant issuedAt) {

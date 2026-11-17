@@ -123,7 +123,41 @@ public final class EngineModels {
             String customerNumero,
             String digestValue,
             boolean signed,
-            String sha256) {}
+            String sha256,
+            Amounts amounts,
+            String affectedSerieNumero,
+            String affectedTipo) {}
+
+    /** Document-level amounts by tax (catalog 5), decimal strings; null when absent. */
+    public record Amounts(
+            String gravada, String igv, String exonerada, String inafecta, String exportacion, String gratuita, String ivapBase,
+            String ivap, String isc, String icbper, String otros) {}
+
+    // --- SIRE and conformity (§11.7, §11.8) ---
+
+    /** The tenant's SUNAT API client plus its SOL user (RUC + user). */
+    public record ApiCredentials(String clientId, String clientSecret, String username, String password) {}
+
+    public record SireProposalRequest(Environment environment, ApiCredentials credentials, String book, String period) {}
+
+    /** {@code state}: ok, unauthorized (fix the credentials), unavailable (retry later). */
+    public record SireTicketResponse(String state, String ticket, String description) {}
+
+    public record SireTicketRequest(Environment environment, ApiCredentials credentials, String book, String period, String ticket) {}
+
+    public record SireFile(String name, String contentBase64) {}
+
+    /** {@code ticketState}: pending, done, error. */
+    public record SireTicketStatus(String state, String ticketState, String description, List<SireFile> files) {}
+
+    public record SireReplaceRequest(
+            Environment environment, ApiCredentials credentials, String book, String period, String fileName, String zipBase64) {}
+
+    public record ConformityRequest(
+            Environment environment, ApiCredentials credentials, String ruc, String tipoComprobante, String serie, long numero) {}
+
+    /** {@code conformity}: pending, agreed, objected, silent_agreement, not_found, unknown. */
+    public record ConformityResponse(String state, String conformity, String description) {}
 
     public record CdrNote(String code, String message) {}
 

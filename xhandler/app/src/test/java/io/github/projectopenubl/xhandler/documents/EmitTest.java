@@ -252,7 +252,9 @@ class EmitTest {
             Map<String, Object> delivered = new HashMap<>(invoice(Map.of()));
             delivered.put("delivered", true);
             String id = emit(delivered, null).path("id");
-            await().atMost(WAIT).until(() -> receiver.types().contains("document.rejected_after_delivery"));
+            // Two events, two deliveries: either may arrive first
+            await().atMost(WAIT).until(() -> receiver.types().contains("document.rejected_after_delivery")
+                    && receiver.types().contains("document.rejected"));
             WebhookReceiver.Received rejected = receiver.received().stream()
                     .filter(r -> r.body().contains("\"document.rejected\"")).findFirst().orElseThrow();
             assertTrue(rejected.body().contains(id));

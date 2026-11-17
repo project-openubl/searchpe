@@ -33,6 +33,13 @@ pub struct Facts {
     pub note_type: Option<String>,
     /// ds:DigestValue of the signature; `None` when unsigned
     pub digest_value: Option<String>,
+    /// Document-level cac:TaxSubtotal entries: (catalog 5 tax code, taxable amount, tax amount)
+    pub tax_subtotals: Vec<(String, String, String)>,
+    /// TaxableAmount and TaxAmount of the cac:TaxSubtotal being read (parser state)
+    pub pending_subtotal: (String, String),
+    /// First cac:BillingReference of a note: (serie-numero, catalog 1 type)
+    pub affected_id: Option<String>,
+    pub affected_type: Option<String>,
 }
 
 impl Facts {
@@ -199,6 +206,20 @@ fn close(facts: &mut Facts, path: &[String], text: &str, scheme_id: &mut Option<
         [_, "LegalMonetaryTotal" | "RequestedMonetaryTotal", "PayableAmount"]
         | [_, "TotalInvoiceAmount"] => set(&mut facts.total),
         [_, "DiscrepancyResponse", "ResponseCode"] => set(&mut facts.note_type),
+        [_, "BillingReference", "InvoiceDocumentReference", "ID"] => set(&mut facts.affected_id),
+        [_, "BillingReference", "InvoiceDocumentReference", "DocumentTypeCode"] => {
+            set(&mut facts.affected_type)
+        }
+        [_, "TaxTotal", "TaxSubtotal", "TaxableAmount"] => {
+            facts.pending_subtotal.0 = text.to_string()
+        }
+        [_, "TaxTotal", "TaxSubtotal", "TaxAmount"] => facts.pending_subtotal.1 = text.to_string(),
+        [_, "TaxTotal", "TaxSubtotal", "TaxCategory", "TaxScheme", "ID"] => {
+            let (taxable, amount) = std::mem::take(&mut facts.pending_subtotal);
+            facts
+                .tax_subtotals
+                .push((text.to_string(), taxable, amount));
+        }
         [.., "DigestValue"] if inside("Signature") => set(&mut facts.digest_value),
         [.., "ID" | "CustomerAssignedAccountID"]
             if inside("AccountingSupplierParty")
@@ -240,6 +261,61 @@ pub struct InspectResponse {
     pub signed: bool,
     /// Lowercase hex SHA-256 of the bytes sent to SUNAT
     pub sha256: String,
+    /// Amounts by tax (registers of sales and purchases, §11.9)
+    pub amounts: Amounts,
+    pub affected_serie_numero: Option<String>,
+    pub affected_tipo: Option<String>,
+}
+
+/// Document-level amounts by tax (catalog 5 codes), as decimal strings; `None` when absent
+#[derive(Serialize, Debug, PartialEq, Default)]
+pub struct Amounts {
+    /// 1000: base gravada
+    pub gravada: Option<String>,
+    pub igv: Option<String>,
+    /// 9997
+    pub exonerada: Option<String>,
+    /// 9998
+    pub inafecta: Option<String>,
+    /// 9995
+    pub exportacion: Option<String>,
+    /// 9996: gratuitas
+    pub gratuita: Option<String>,
+    /// 1016: base IVAP and the IVAP
+    pub ivap_base: Option<String>,
+    pub ivap: Option<String>,
+    /// 2000
+    pub isc: Option<String>,
+    /// 7152
+    pub icbper: Option<String>,
+    /// 9999
+    pub otros: Option<String>,
+}
+
+fn amounts(subtotals: &[(String, String, String)]) -> Amounts {
+    let mut a = Amounts::default();
+    let some = |s: &str| (!s.is_empty()).then(|| s.to_string());
+    for (code, taxable, amount) in subtotals {
+        match code.as_str() {
+            "1000" => {
+                a.gravada = some(taxable);
+                a.igv = some(amount);
+            }
+            "1016" => {
+                a.ivap_base = some(taxable);
+                a.ivap = some(amount);
+            }
+            "9997" => a.exonerada = some(taxable),
+            "9998" => a.inafecta = some(taxable),
+            "9995" => a.exportacion = some(taxable),
+            "9996" => a.gratuita = some(taxable),
+            "2000" => a.isc = some(amount),
+            "7152" => a.icbper = some(amount),
+            "9999" => a.otros = some(amount),
+            _ => {}
+        }
+    }
+    a
 }
 
 pub fn inspect(xml: &str) -> Result<InspectResponse, String> {
@@ -258,6 +334,9 @@ pub fn inspect(xml: &str) -> Result<InspectResponse, String> {
         customer_tipo: facts.customer_tipo.clone(),
         customer_numero: facts.customer_numero.clone(),
         signed: facts.digest_value.is_some(),
+        amounts: amounts(&facts.tax_subtotals),
+        affected_serie_numero: facts.affected_id.clone(),
+        affected_tipo: facts.affected_type.clone(),
         digest_value: facts.digest_value,
         document_type: facts.document_type,
         sha256,
@@ -334,5 +413,24 @@ mod tests {
         assert_eq!(facts.billing_references, 2);
         assert_eq!(facts.note_type.as_deref(), Some("01"));
         assert_eq!(facts.tipo_comprobante().as_deref(), Some("07"));
+    }
+    #[test]
+    fn amounts_by_tax_and_the_affected_document() {
+        let xml = r#"<CreditNote xmlns="urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
+  <cbc:ID>FC01-7</cbc:ID>
+  <cac:BillingReference><cac:InvoiceDocumentReference><cbc:ID>F001-3</cbc:ID><cbc:DocumentTypeCode>01</cbc:DocumentTypeCode></cac:InvoiceDocumentReference></cac:BillingReference>
+  <cac:TaxTotal><cbc:TaxAmount currencyID="PEN">18.00</cbc:TaxAmount>
+    <cac:TaxSubtotal><cbc:TaxableAmount currencyID="PEN">100.00</cbc:TaxableAmount><cbc:TaxAmount currencyID="PEN">18.00</cbc:TaxAmount><cac:TaxCategory><cac:TaxScheme><cbc:ID>1000</cbc:ID></cac:TaxScheme></cac:TaxCategory></cac:TaxSubtotal>
+    <cac:TaxSubtotal><cbc:TaxableAmount currencyID="PEN">50.00</cbc:TaxableAmount><cbc:TaxAmount currencyID="PEN">0.00</cbc:TaxAmount><cac:TaxCategory><cac:TaxScheme><cbc:ID>9997</cbc:ID></cac:TaxScheme></cac:TaxCategory></cac:TaxSubtotal>
+  </cac:TaxTotal>
+  <cac:CreditNoteLine><cac:TaxTotal><cac:TaxSubtotal><cbc:TaxableAmount>999</cbc:TaxableAmount><cac:TaxCategory><cac:TaxScheme><cbc:ID>1000</cbc:ID></cac:TaxScheme></cac:TaxCategory></cac:TaxSubtotal></cac:TaxTotal></cac:CreditNoteLine>
+</CreditNote>"#;
+        let response = inspect(xml).unwrap();
+        assert_eq!(response.amounts.gravada.as_deref(), Some("100.00"));
+        assert_eq!(response.amounts.igv.as_deref(), Some("18.00"));
+        assert_eq!(response.amounts.exonerada.as_deref(), Some("50.00"));
+        assert_eq!(response.amounts.inafecta, None);
+        assert_eq!(response.affected_serie_numero.as_deref(), Some("F001-3"));
+        assert_eq!(response.affected_tipo.as_deref(), Some("01"));
     }
 }

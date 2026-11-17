@@ -300,6 +300,8 @@ public class EmitService {
         doc.customerNombre = DocumentTypes.customerName(spec);
         doc.moneda = identity.moneda();
         doc.total = identity.total() == null ? null : new BigDecimal(identity.total());
+        doc.amounts = Document.amountsOf(identity.amounts());
+        doc.paymentTerms = paymentTerms(tipo, spec);
         doc.status = "pending_send";
         doc.digestValue = signed.digestValue();
         doc.endpoint = route.endpoint();
@@ -376,6 +378,17 @@ public class EmitService {
             throw ApiException.invalid("invalid_document", "Una boleta mayor a S/ 700 debe identificar al comprador.",
                     "2514: equivalente S/ " + pen.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString());
         }
+    }
+
+    /** Facturas on credit (cuotas, or forma_pago.tipo Credito) are facturas negociables (§11.8). */
+    static String paymentTerms(String tipo, ObjectNode spec) {
+        if (!"01".equals(tipo)) {
+            return null;
+        }
+        JsonNode forma = spec.path("forma_pago");
+        boolean credito = forma.path("cuotas").isArray() && !forma.path("cuotas").isEmpty()
+                || "credito".equalsIgnoreCase(forma.path("tipo").asText(""));
+        return credito ? "credito" : "contado";
     }
 
     private boolean pseAuthorized(Company company) {

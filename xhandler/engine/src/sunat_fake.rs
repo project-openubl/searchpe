@@ -47,6 +47,9 @@ use xhandler::prelude::UblFile;
 
 use crate::cdr::escape;
 
+#[path = "sunat_fake_sire.rs"]
+mod sire;
+
 /// RUC SUNAT signs its CDRs with
 const SUNAT_RUC: &str = "20131312955";
 const MARKER: &str = "xhandler-fake:";
@@ -91,6 +94,31 @@ pub fn router(options: Options) -> Router {
             "/v1/contribuyente/gem/comprobantes/envios/{ticket}",
             get(gre_ticket),
         )
+        .route("/fake/sire", get(sire::submitted))
+        .route(
+            "/v1/contribuyente/migeigv/libros/rvie/propuesta/web/propuesta/{period}/exportapropuesta",
+            get(sire::export_rvie),
+        )
+        .route(
+            "/v1/contribuyente/migeigv/libros/rce/propuesta/web/propuesta/{period}/exportacioncomprobantepropuesta",
+            get(sire::export_rce),
+        )
+        .route(
+            "/v1/contribuyente/migeigv/libros/rvierce/gestionprocesosmasivos/web/masivo/consultaestadotickets",
+            get(sire::ticket_state),
+        )
+        .route(
+            "/v1/contribuyente/migeigv/libros/rvierce/gestionprocesosmasivos/web/masivo/archivoreporte",
+            get(sire::report_file),
+        )
+        .route(
+            "/v1/contribuyente/migeigv/libros/{book}/propuesta/web/propuesta/{period}/reemplazarpropuesta",
+            post(sire::replace),
+        )
+        .route(
+            "/v1/contribuyente/facturanegociable/comprobantes/{key}/conformidad",
+            get(sire::conformity),
+        )
         // Every other POST is SOAP: the operation is read from the body
         .fallback(soap)
         .with_state(fake)
@@ -109,6 +137,9 @@ struct Inner {
     received: BTreeMap<String, Received>,
     tickets: HashMap<String, TicketEntry>,
     next_ticket: u64,
+    /// Bearer token → SOL username (SIRE answers per RUC)
+    tokens: HashMap<String, String>,
+    sire: sire::SireState,
 }
 
 #[derive(Default, Clone, Copy, PartialEq, Deserialize, Serialize, Debug)]
@@ -130,6 +161,9 @@ struct Received {
     received_at: String,
     #[serde(skip)]
     cdr_zip: String,
+    /// Facts the SIRE proposal and the conformity consult answer with
+    #[serde(flatten)]
+    facts: Box<sire::Facts>,
 }
 
 struct TicketEntry {
@@ -398,6 +432,7 @@ fn process(fake: &Fake, doc: &Doc) -> Processed {
             &description,
             &notes,
         ),
+        facts: Box::new(sire::Facts::of(&doc.text, accepted)),
     };
     inner.received.insert(doc.key.clone(), received.clone());
     tracing::info!(key = %doc.key, ?scenario, code, "fake received a document");
@@ -803,6 +838,7 @@ async fn gre_token(
         ))[..16]
             .to_owned()
     );
+    fake.inner().tokens.insert(token.clone(), username.clone());
     Json(serde_json::json!({ "access_token": token, "token_type": "JWT", "expires_in": 3600 }))
         .into_response()
 }

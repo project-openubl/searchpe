@@ -462,3 +462,91 @@ async fn fake_reset_forgets_everything() {
     let received = s.admin("GET", "/fake/received", None).await;
     assert!(received.as_array().unwrap().is_empty());
 }
+
+fn api_credentials() -> Value {
+    json!({ "client_id": "xhandler-fake-client", "client_secret": "xhandler-fake-secret",
+            "username": "12345678912USUARIO1", "password": "secret" })
+}
+
+#[tokio::test]
+async fn sire_round_trip_and_conformity() {
+    use base64::Engine as _;
+    use std::io::{Read, Write};
+    let s = setup().await;
+    s.send(&s.signed(invoice("F001-21"), None).await).await;
+    let period = chrono::Local::now().format("%Y%m").to_string();
+
+    // SUNAT's proposal lists the document the fake accepted
+    let (status, body) = s
+        .post(
+            "/v1/sire/proposal",
+            json!({ "environment": "fake", "credentials": api_credentials(), "book": "rvie", "period": period }),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(body["state"], "ok", "{body}");
+    let ticket = body["ticket"].as_str().unwrap().to_string();
+    let (_, body) = s
+        .post(
+            "/v1/sire/ticket",
+            json!({ "environment": "fake", "credentials": api_credentials(), "book": "rvie", "period": period, "ticket": ticket }),
+        )
+        .await;
+    assert_eq!(body["ticket_state"], "done", "{body}");
+    let zip = base64::engine::general_purpose::STANDARD
+        .decode(body["files"][0]["content_base64"].as_str().unwrap())
+        .unwrap();
+    let mut archive = zip::ZipArchive::new(std::io::Cursor::new(zip)).unwrap();
+    let mut text = String::new();
+    archive
+        .by_index(0)
+        .unwrap()
+        .read_to_string(&mut text)
+        .unwrap();
+    assert!(text.lines().any(|l| l.contains("|01|F001|21|")), "{text}");
+
+    // A replacement goes up with its hash and gets a ticket
+    let mut writer = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    writer
+        .start_file("LE.txt", zip::write::SimpleFileOptions::default())
+        .unwrap();
+    writer.write_all(text.as_bytes()).unwrap();
+    let replacement = writer.finish().unwrap().into_inner();
+    let (_, body) = s
+        .post(
+            "/v1/sire/replace",
+            json!({ "environment": "fake", "credentials": api_credentials(), "book": "rvie", "period": period,
+                    "file_name": "LE.zip", "zip_base64": base64::engine::general_purpose::STANDARD.encode(replacement) }),
+        )
+        .await;
+    assert_eq!(body["state"], "ok", "{body}");
+    let submitted = s.admin("GET", "/fake/sire", None).await;
+    assert_eq!(submitted[0]["rows"], 1, "{submitted}");
+
+    // Conformity of the factura: pending until the buyer answers; unknown documents are not found
+    let conformity = |numero: u32| {
+        json!({ "environment": "fake", "credentials": api_credentials(), "ruc": "12345678912",
+                "tipo_comprobante": "01", "serie": "F001", "numero": numero })
+    };
+    let (_, body) = s.post("/v1/conformity", conformity(21)).await;
+    assert_eq!(body["conformity"], "pending", "{body}");
+    let (_, body) = s.post("/v1/conformity", conformity(22)).await;
+    assert_eq!(body["conformity"], "not_found", "{body}");
+
+    // Bad API credentials, and no SIRE in beta
+    let (_, body) = s
+        .post(
+            "/v1/sire/proposal",
+            json!({ "environment": "fake", "credentials": { "client_id": "x", "client_secret": "", "username": "u", "password": "p" },
+                    "book": "rce", "period": period }),
+        )
+        .await;
+    assert_eq!(body["state"], "unauthorized", "{body}");
+    let (status, _) = s
+        .post(
+            "/v1/sire/proposal",
+            json!({ "environment": "beta", "credentials": api_credentials(), "book": "rvie", "period": period }),
+        )
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+}

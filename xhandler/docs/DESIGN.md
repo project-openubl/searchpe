@@ -790,6 +790,14 @@ For each company and period:
 
 PLE files are generated only to adjust old periods.
 
+How it runs:
+
+- Credential kind `sire`: the API client (client_id/secret) plus the SOL user with the SIRE profile. One OAuth password grant per engine call (the engine stays stateless).
+- `sire_period` per company, environment, register (`rvie`, `rce`) and period: `requested` → `proposal_ready` (proposal stored and reconciled: what SUNAT lacks, what it has that isn't stored, different totals) → `submitting` → `submitted` → `accepted`, plus `error` and `credentials`. Requests and replacements are jobs; the `sire.poll` job (every 5 minutes) follows the tickets. Every change is a compare-and-set on the row.
+- The replacement is generated from the stored rows (§11.9) in SUNAT's layout, zipped, and sent with its SHA-256. Submitting is ADMIN.
+- The deadline calendar (`sire_calendar`, by period and RUC last digit) is loaded by platform admins (`PUT /api/admin/v1/sire/calendar`); the daily `sire.deadlines` job notifies 3 days before an unaccepted sales register is due.
+- SIRE has no beta: production, or the SUNAT fake (whose proposals come from the documents it received). The REST paths follow SUNAT's SIRE manual and are verified against the fake only until a production round trip (C-track).
+
 ### 11.8 Factura negociable
 
 - Credit facturas carry FormaPago, cuotas and the net pending amount (already in xbuilder).
@@ -797,9 +805,14 @@ PLE files are generated only to adjust old periods.
 - An objection leads to a guided credit note type 13.
 - An export is provided for factoring. There is no CAVALI integration.
 
+How it runs: emits record `payment_terms` (`credito` when `forma_pago` has cuotas or `tipo: Credito`). When SUNAT accepts a credit factura (production or fake), a `conformity` row opens the 8-day window. The hourly `conformity.poll` job asks SUNAT with the company's `sire` credentials (no credentials: the row records why and waits), records `agreed`, `objected` or `silent_agreement`, publishes `document.conformity_<state>` webhooks and notifications, and reminds 2 days before the window closes (`document.conformity_reminder`). `GET /documents/{id}/conformity` suggests the credit note type 13 for an objection; `GET /companies/{id}/conformity/export` is the CSV for factoring.
+
 ### 11.9 Reports
 
 One row generator feeds CSV, Excel, SIRE and legacy PLE. Reports run as jobs (`202` + job link).
+
+- Sales come from the company's documents (01, 03, 07, 08; accepted, voiding or voided) by issue date; purchases from its receptions SUNAT didn't report as voided, rejected or nonexistent. Amounts by tax come from the signed XML (the engine's inspect reads the document-level TaxSubtotals) and are stored with each document and reception. Credit notes are negative; voided documents keep their row with zero amounts (estado 2 in PLE).
+- `POST …/companies/{id}/reports` `{register: sales|purchases, format: csv|xlsx|ple|sire, period: YYYYMM}` → `202`; `GET …/reports/{id}` and `…/file`. CSV is UTF-8 with a BOM and neutralizes formula injection; Excel is a minimal OOXML workbook written by the service; PLE is 14.1 (sales) or 8.1 (purchases) with SUNAT's file name.
 
 ---
 
@@ -1036,7 +1049,7 @@ Infrastructure I1 (dev/staging) ─── I2 (production HA: sync replication, m
 | **P7** PSE mode | Sign for tenants | Done: the platform's PSE certificate imported into the vault (`platform_key`, separate from tenant keys); a pool of platform SOL users (`platform_credential`, sealed, reads logged) that PSE documents are spread over, each a credential slot; PSE authorization tracking per company (registered by the tenant with evidence — a PDF or image of the SOL screen, RUC verified — and counted only once a platform admin approves it; PSE mode needs an approved authorization and is refused for companies sending through an OSE; revocation waits until no PSE document is pending, is notified, and goes back to software mode); GRE are never signed as PSE; signatures log the platform key used; key rotation re-wraps platform keys and credentials; platform certificates expiring within 30 days alert; the emission mode recorded on each document; the engine's validation gate before signing (as for every document, P3); the rejected-CDR rate per half-year (Lima calendar; per comprobante by creation, summaries and GRE excluded) against the 10%/5% limits — 5% when the PSE registration date is not configured — (report job, metric read from the database, admin API, logged breach); attempts counted per pool member. Platform documents in PSE mode in test environments sign with the PSE key when there is one, else the demo key. | Done: PSE-signed documents accepted against the fake with the platform's certificate and SOL user; rejected rate reported; per-credential attempt counts measured |
 | **M2** | **PSE ready** | Feeds C2 | |
 | **P8** Adapters and reception | More inputs | Done: UBL XML upload (validated, signed if unsigned, client numbering), SFS TXT (.CAB/.NOT + .DET), the Nubefact-compatible API with per-company tokens, supplier reception with validity checks (now and by a job) and file downloads. | Done: golden-file tests per adapter; uploads, SFS and Nubefact documents accepted against the fake; receptions validated and stored |
-| **P9** Tax compliance | SIRE, negociable, reports | SIRE automation, conformity tracking, CSV/Excel, legacy PLE | SIRE round trip against SUNAT; conformity tracked end to end |
+| **P9** Tax compliance | SIRE, negociable, reports | Done: SIRE automation (proposal, reconciliation, replacement with SHA-256, tickets, deadline calendar and alerts), conformity tracking (8-day window, polling, webhooks, reminders, guided credit note 13, factoring export), CSV/Excel/SIRE/legacy PLE reports from one row generator, amounts by tax stored per document and reception. Engine: SIRE and conformity clients (R2) and the fake's SIRE and conformity APIs. | SIRE round trip against the fake (SIRE has no beta; production round trip pending C-track credentials); conformity tracked end to end against the stub |
 | **P10** OSE | Become an operator | SOAP billService (incl. sendPack) with WS-Security auth (`ose_client`), association-list checks, REST/SFTP intake with input hardening, full xvalidator validation, blocked lists, OSE CDR with its own key, `ose_submission` + 1-hour forwarding class with SLA metric, 1-month retention, public validity API, separate billing line | An external system switches by changing only the URL; forwarding under 1 hour under load; ready for SUNAT's tests |
 | **M3** | **OSE ready** | Feeds C3 | |
 | **P11** GA hardening | Enterprise operations (with the infrastructure track) | Postgres HA + PITR (CloudNativePG), multi-zone, DR drills (Postgres failover, zone loss, HSM restart, region failover; §25.1), backup restore tests, OWASP pen test, load tests at §25 figures including outage + drain, data protection workflows (data-subject requests, breach runbook, exit export and deletion, archive plan), runbooks, SLO dashboards | SLOs met over a soak period; pen-test findings closed; ISO 27001 evidence complete |

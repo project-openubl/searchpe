@@ -169,6 +169,11 @@ public class EngineStub implements QuarkusTestResourceLifecycleManager {
             case "/v1/status-cdr" -> respond(exchange, 200, "{\"status\":\"not_found\",\"code\":\"0011\",\"description\":\"no existe\",\"cdr_zip\":null}");
             case "/v1/validity/file" -> respond(exchange, 200, "{\"state\":\"matches\",\"code\":\"0001\",\"description\":\"coincide\"}");
             case "/v1/validity" -> respond(exchange, 200, "{\"state\":\"valid\",\"code\":\"0001\",\"description\":\"válido\"}");
+            case "/v1/sire/proposal" -> respond(exchange, 200, "{\"state\":\"ok\",\"ticket\":\"PROPOSAL-1\",\"description\":null}");
+            case "/v1/sire/replace" -> respond(exchange, 200, "{\"state\":\"ok\",\"ticket\":\"REPLACE-1\",\"description\":null}");
+            case "/v1/sire/ticket" -> respond(exchange, 200,
+                    "{\"state\":\"ok\",\"ticket_state\":\"pending\",\"description\":\"En proceso\",\"files\":[]}");
+            case "/v1/conformity" -> respond(exchange, 200, "{\"state\":\"ok\",\"conformity\":\"pending\",\"description\":\"Pendiente\"}");
             case "/v1/info" -> respond(exchange, 200, "{\"engine_version\":\"0.0.0-stub\",\"xhandler_rust_rev\":\"stub\"}");
             default -> respond(exchange, 404, "{\"kind\":\"other\",\"message\":\"not found\"}");
         }
@@ -226,6 +231,9 @@ public class EngineStub implements QuarkusTestResourceLifecycleManager {
         answer.put("digest_value", xml.contains("Signature") ? "digest-uploaded" : null);
         answer.put("moneda", between(xml, "<moneda>", "</moneda>", "PEN"));
         answer.put("total", "1180.00");
+        var amounts = answer.putObject("amounts");
+        amounts.put("gravada", "1000.00");
+        amounts.put("igv", "180.00");
         String[] cliente = between(xml, "<cliente>", "</cliente>", "6|12121212121").split("\\|", -1);
         answer.put("customer_tipo", cliente[0]);
         answer.put("customer_numero", cliente.length > 1 ? cliente[1] : "");

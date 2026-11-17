@@ -77,6 +77,25 @@ public class CredentialResource {
         return new CredentialView(stored.kind, stored.label, Instant.now());
     }
 
+    /**
+     * SUNAT's REST APIs for SIRE and factura negociable conformity (DESIGN.md §3.3, §11.7): the API
+     * client created in SOL plus a SOL user with the SIRE profile (RUC + user).
+     */
+    public record SireCredentials(@NotBlank @Size(max = 100) String username, @NotBlank @Size(max = 200) String password,
+            @NotBlank @Size(max = 200) String clientId, @NotBlank @Size(max = 300) String clientSecret) {}
+
+    @PUT
+    @Path("/sire")
+    @Transactional
+    public CredentialView putSire(
+            @PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId, @Valid SireCredentials request) {
+        TenantScope scope = access.enter(tenantId, Role.ADMIN);
+        Company company = CompanyResource.find(companyId);
+        Credential stored = credentials.store(scope, company, "sire", Map.of("username", request.username(), "password",
+                request.password(), "client_id", request.clientId(), "client_secret", request.clientSecret()), mask(request.username()));
+        return new CredentialView(stored.kind, stored.label, Instant.now());
+    }
+
     /** The tenant's own SMTP server for document emails (DESIGN.md §11.6). */
     public record SmtpCredentials(@NotBlank @Size(max = 255) String host, @jakarta.validation.constraints.Min(1)
             @jakarta.validation.constraints.Max(65535) int port, @NotBlank @Size(max = 200) String username,

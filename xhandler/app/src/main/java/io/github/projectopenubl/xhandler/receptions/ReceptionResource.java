@@ -94,8 +94,11 @@ public class ReceptionResource {
             try {
                 em.createNativeQuery("""
                                 INSERT INTO xhandler.reception (id, tenant_id, company_id, supplier_ruc, tipo_comprobante, serie, numero, fecha_emision,
-                                    moneda, total, digest_value, xml_ref, pdf_ref, cdr_ref)
-                                VALUES (:id, :t, :c, :ruc, :tipo, :serie, :numero, :fecha, :moneda, :total, :digest, :xml, :pdf, :cdr)""")
+                                    moneda, total, digest_value, xml_ref, pdf_ref, cdr_ref, amounts, affected_serie_numero, affected_tipo)
+                                VALUES (:id, :t, :c, :ruc, :tipo, :serie, :numero, :fecha, :moneda, :total, :digest, :xml, :pdf, :cdr,
+                                    cast(:amounts AS jsonb), :affected, :affectedTipo)""")
+                        .setParameter("amounts", amountsJson(identity))
+                        .setParameter("affected", identity.affectedSerieNumero()).setParameter("affectedTipo", identity.affectedTipo())
                         .setParameter("id", receptionId).setParameter("t", tenantId).setParameter("c", companyId)
                         .setParameter("ruc", identity.ruc()).setParameter("tipo", identity.tipoComprobante()).setParameter("serie", identity.serie())
                         .setParameter("numero", identity.numero())
@@ -172,6 +175,17 @@ public class ReceptionResource {
                 : "application/zip").header("Content-Disposition", "attachment; filename=\"" + receptionId + "." + ("cdr".equals(kind) ? "zip" : kind) + "\"")
                 .header("X-Content-Type-Options", "nosniff").build();
     }
+
+    private String amountsJson(EngineModels.InspectResponse identity) {
+        try {
+            var amounts = io.github.projectopenubl.xhandler.documents.Document.amountsOf(identity.amounts());
+            return amounts == null ? null : JSON.writeValueAsString(amounts);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private static final com.fasterxml.jackson.databind.ObjectMapper JSON = new com.fasterxml.jackson.databind.ObjectMapper();
 
     private ReceptionView find(UUID id) {
         @SuppressWarnings("unchecked")
