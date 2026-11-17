@@ -43,3 +43,6 @@ nb-configuration.xml
 !searchpe/src/main/distribution/bin/
 
 searchpe/workspace/
+
+# Rust binaries of the engine (the Eclipse rule bin/ above would hide them)
+!xhandler/engine/src/bin/

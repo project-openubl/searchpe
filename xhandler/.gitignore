@@ -53,3 +53,6 @@ engine/target/
 # Generated SDKs (sdk/generate.sh)
 sdk/typescript/
 sdk/java/
+
+# Rust binaries of the engine (the Eclipse rule bin/ above would hide them)
+!engine/src/bin/
