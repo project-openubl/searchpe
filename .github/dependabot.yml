@@ -73,7 +73,7 @@ updates:
 
   # Maintain dependencies from package.json
   - package-ecosystem: "npm"
-    directory: "/application/src/main/webapp"
+    directory: "/searchpe/src/main/webapp"
     schedule:
       interval: "weekly"
     cooldown:

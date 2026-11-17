@@ -112,7 +112,7 @@ jobs:
             -Dquarkus.container-image.tag="$TAG-$ARCH" \
             -Dquarkus.jib.platforms="linux/$ARCH" \
             -P native,ui \
-            -pl application
+            -pl searchpe
       - name: Build ${{ env.IMAGE }}
         if: ${{ !steps.pushed.outputs.pushed && matrix.image == 'searchpe-operator' }}
         env:
@@ -192,10 +192,10 @@ jobs:
       - run: mkdir dist
       - name: Distribution and OpenAPI schema
         run: |
-          mvn -B package -DskipTests -P ui,distribution -pl application \
+          mvn -B package -DskipTests -P ui,distribution -pl searchpe \
             -Dquarkus.smallrye-openapi.store-schema-directory=target/openapi
-          cp "application/target/distributions/searchpe-$VERSION.tar.gz" "application/target/distributions/searchpe-$VERSION.zip" dist/
-          cp application/target/openapi/openapi.yaml dist/
+          cp "searchpe/target/distributions/searchpe-$VERSION.tar.gz" "searchpe/target/distributions/searchpe-$VERSION.zip" dist/
+          cp searchpe/target/openapi/openapi.yaml dist/
       - uses: actions/setup-go@v7
         with:
           go-version-file: operator/go.mod

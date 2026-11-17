@@ -22,7 +22,7 @@ jobs:
           distribution: temurin
           cache: maven
       - name: Maven
-        run: mvn test -f application -Dtest=DataHelperTest -Dsearchpe.sunat.padronReducidoUrl=http://www2.sunat.gob.pe/padron_reducido_ruc.zip
+        run: mvn test -f searchpe -Dtest=DataHelperTest -Dsearchpe.sunat.padronReducidoUrl=http://www2.sunat.gob.pe/padron_reducido_ruc.zip
 
   application-container:
     needs: [ linux-jvm-tests ]
@@ -46,7 +46,7 @@ jobs:
           -Dquarkus.container-image.name=searchpe/searchpe \
           -Dquarkus.container-image.tag=nightly \
           -P native,ui \
-          -pl application
+          -pl searchpe
       - name: Save container image
         run: docker save -o searchpe-container-image.tar ghcr.io/project-openubl/searchpe/searchpe:nightly
       - name: Upload container image

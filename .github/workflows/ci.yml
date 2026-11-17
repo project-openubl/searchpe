@@ -53,12 +53,12 @@ jobs:
         with:
           node-version: 26
       - name: Build
-        working-directory: application/src/main/webapp
+        working-directory: searchpe/src/main/webapp
         run: |
           npm install
           npm run build
       - name: Test
-        working-directory: application/src/main/webapp
+        working-directory: searchpe/src/main/webapp
         run: npm run test -- --coverage
 
   operator-tests:
@@ -105,7 +105,7 @@ jobs:
           -Dquarkus.container-image.name=searchpe \
           -Dquarkus.container-image.tag=0.0.0 \
           -P native,ui \
-          -pl application
+          -pl searchpe
       - name: Save container image
         run: docker save -o searchpe-application-container-image.tar localhost:5000/searchpe:0.0.0
       - name: Upload container image
@@ -285,7 +285,7 @@ jobs:
         timeout-minutes: 20
         uses: cypress-io/github-action@v7
         with:
-          working-directory: application/src/main/webapp
+          working-directory: searchpe/src/main/webapp
           record: false
           browser: chrome
         env:
@@ -305,9 +305,9 @@ jobs:
         if: failure()
         with:
           name: container-screenshots
-          path: application/src/main/webapp/cypress/screenshots
+          path: searchpe/src/main/webapp/cypress/screenshots
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: container-videos
-          path: application/src/main/webapp/cypress/videos
+          path: searchpe/src/main/webapp/cypress/videos
