@@ -6,7 +6,8 @@ name: Release
 #
 # The tag is the version: the poms on main keep a development version and every job sets the
 # tag's. Publishes:
-# - ghcr.io/project-openubl/searchpe/searchpe (native) and searchpe-operator, for amd64 and arm64:
+# - ghcr.io/project-openubl/searchpe/searchpe (native), searchpe-operator, xhandler-service (JVM),
+#   xhandler-engine and xhandler-ui, for amd64 and arm64:
 #   vX.Y.Z always; latest and vX only for the highest stable release (of its major for vX).
 # - release assets: the JVM distribution, the OpenAPI schema, the operator bundle and SHA256SUMS.
 #
@@ -58,7 +59,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: [searchpe, searchpe-operator]
+        image: [searchpe, searchpe-operator, xhandler-service, xhandler-engine, xhandler-ui]
         arch: [amd64, arm64]
         include:
           - arch: amd64
@@ -118,6 +119,30 @@ jobs:
         env:
           ARCH: ${{ matrix.arch }}
         run: docker build --platform "linux/$ARCH" -t "$IMAGE" operator
+      - if: ${{ !steps.pushed.outputs.pushed && matrix.image == 'xhandler-service' }}
+        uses: actions/setup-java@v6
+        with:
+          java-version: 25
+          distribution: temurin
+          cache: maven
+      - name: Build ${{ env.IMAGE }}
+        if: ${{ !steps.pushed.outputs.pushed && matrix.image == 'xhandler-service' }}
+        working-directory: xhandler
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          ./mvnw -B -q package -DskipTests -pl app -am
+          docker build --platform "linux/$ARCH" -f app/src/main/docker/Dockerfile.jvm -t "$IMAGE" app
+      - name: Build ${{ env.IMAGE }}
+        if: ${{ !steps.pushed.outputs.pushed && matrix.image == 'xhandler-engine' }}
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: docker build --platform "linux/$ARCH" -t "$IMAGE" xhandler/engine
+      - name: Build ${{ env.IMAGE }}
+        if: ${{ !steps.pushed.outputs.pushed && matrix.image == 'xhandler-ui' }}
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: docker build --platform "linux/$ARCH" --build-arg VERSION="$VERSION" -t "$IMAGE" ui
       - if: ${{ !steps.pushed.outputs.pushed }}
         run: docker push "$IMAGE"
 
@@ -128,7 +153,7 @@ jobs:
       packages: write
     strategy:
       matrix:
-        image: [searchpe, searchpe-operator]
+        image: [searchpe, searchpe-operator, xhandler-service, xhandler-engine, xhandler-ui]
     # One release at a time moves the floating tags of an image, from the tags that exist then
     concurrency:
       group: floating-tags-${{ matrix.image }}
@@ -207,7 +232,9 @@ jobs:
         working-directory: operator
         run: |
           make bundle bundle-validate VERSION="$VERSION" \
-            IMG="$REGISTRY/searchpe-operator:$TAG" SEARCHPE_IMAGE="$REGISTRY/searchpe:$TAG"
+            IMG="$REGISTRY/searchpe-operator:$TAG" SEARCHPE_IMAGE="$REGISTRY/searchpe:$TAG" \
+            XHANDLER_IMAGE="$REGISTRY/xhandler-service:$TAG" XHANDLER_ENGINE_IMAGE="$REGISTRY/xhandler-engine:$TAG" \
+            XHANDLER_UI_IMAGE="$REGISTRY/xhandler-ui:$TAG"
           tar -czf "../dist/searchpe-operator-bundle-$VERSION.tar.gz" bundle
       - name: Upload the release assets
         env:
@@ -225,6 +252,6 @@ jobs:
           {
             echo "# searchpe $TAG"
             echo
-            echo "- \`$REGISTRY/searchpe:$TAG\`, \`$REGISTRY/searchpe-operator:$TAG\` (amd64, arm64)"
+            echo "- \`$REGISTRY/searchpe:$TAG\`, \`$REGISTRY/searchpe-operator:$TAG\`, \`$REGISTRY/xhandler-service:$TAG\`, \`$REGISTRY/xhandler-engine:$TAG\`, \`$REGISTRY/xhandler-ui:$TAG\` (amd64, arm64)"
             echo "- Release assets: the distribution, the OpenAPI schema and the operator bundle (release-tools opens the OperatorHub pull requests from it)"
           } >> "$GITHUB_STEP_SUMMARY"

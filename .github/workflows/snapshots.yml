@@ -70,8 +70,34 @@ jobs:
           name: artifacts-operator
           path: searchpe-operator-container-image.tar
 
+  xhandler-containers:
+    name: xhandler containers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          java-version: 25
+          distribution: temurin
+          cache: maven
+      - name: Build container images
+        run: |
+          (cd xhandler && ./mvnw -B -q package -DskipTests -pl app -am)
+          docker build -f xhandler/app/src/main/docker/Dockerfile.jvm -t ghcr.io/project-openubl/searchpe/xhandler-service:nightly xhandler/app
+          docker build -t ghcr.io/project-openubl/searchpe/xhandler-engine:nightly xhandler/engine
+          docker build -t ghcr.io/project-openubl/searchpe/xhandler-ui:nightly ui
+      - name: Save container images
+        run: |
+          docker save -o xhandler-container-images.tar ghcr.io/project-openubl/searchpe/xhandler-service:nightly \
+            ghcr.io/project-openubl/searchpe/xhandler-engine:nightly ghcr.io/project-openubl/searchpe/xhandler-ui:nightly
+      - name: Upload container images
+        uses: actions/upload-artifact@v7
+        with:
+          name: artifacts-xhandler
+          path: xhandler-container-images.tar
+
   publish-container:
-    needs: [ application-container, operator-container ]
+    needs: [ application-container, operator-container, xhandler-containers ]
     name: Publish container
     runs-on: ubuntu-latest
     permissions:
@@ -92,7 +118,11 @@ jobs:
         run: |
           docker load -i artifacts/searchpe-container-image.tar
           docker load -i artifacts/searchpe-operator-container-image.tar
+          docker load -i artifacts/xhandler-container-images.tar
       - name: Push images to registry
         run: |
           docker push ghcr.io/project-openubl/searchpe/searchpe:nightly
           docker push ghcr.io/project-openubl/searchpe/searchpe-operator:nightly
+          docker push ghcr.io/project-openubl/searchpe/xhandler-service:nightly
+          docker push ghcr.io/project-openubl/searchpe/xhandler-engine:nightly
+          docker push ghcr.io/project-openubl/searchpe/xhandler-ui:nightly
