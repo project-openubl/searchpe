@@ -34,12 +34,19 @@ if (yaml.spec.annotations instanceof Map) {
     annotations.putAll(yaml.spec.annotations)
 }
 yaml.spec.remove('annotations')
-annotations.containerImage = 'quay.io/projectopenubl/searchpe-operator:v' + version
+annotations.containerImage = 'ghcr.io/project-openubl/searchpe/searchpe-operator:v' + version
 annotations.description = 'Searchpe is an enterprise solution for managing natural and legal entities in your organization. Valid for Peru.'
 annotations.createdAt = LocalDate.now().toString()
 yaml.metadata.annotations = annotations
 
-// yaml.spec.install.spec.deployments[0].spec.template.spec.containers[0].image = 'quay.io/projectopenubl/searchpe-operator:v' + version
+// The operator and searchpe images are published for both architectures
+def labels = yaml.metadata.labels ?: [:]
+labels['operatorframework.io/arch.amd64'] = 'supported'
+labels['operatorframework.io/arch.arm64'] = 'supported'
+labels['operatorframework.io/os.linux'] = 'supported'
+yaml.metadata.labels = labels
+
+// yaml.spec.install.spec.deployments[0].spec.template.spec.containers[0].image = 'ghcr.io/project-openubl/searchpe/searchpe-operator:v' + version
 yaml.spec.version = version
 yaml.spec.customresourcedefinitions.owned[0].displayName = 'Searchpe'
 yaml.spec.customresourcedefinitions.owned[0].description = 'Searchpe'

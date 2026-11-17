@@ -24,16 +24,12 @@
     <parent>
         <groupId>io.github.project-openubl</groupId>
         <artifactId>searchpe-parent</artifactId>
-        <version>4.1.2-SNAPSHOT</version>
+        <version>4.2.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
     <artifactId>searchpe-application</artifactId>
     <description>Searchpe REST application</description>
-
-    <properties>
-        <helm.image.tag>${project.version}</helm.image.tag>
-    </properties>
 
     <dependencyManagement>
         <dependencies>
@@ -261,33 +257,6 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
                 <version>3.5.0</version>
-                <goals>
-                    <goal>resources</goal>
-                </goals>
-                <executions>
-                    <execution>
-                        <id>copy-resources-helm</id>
-                        <phase>validate</phase>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.build.directory}/helm/</outputDirectory>
-                            <resources>
-                                <resource>
-                                    <directory>src/main/helm/</directory>
-                                    <filtering>true</filtering>
-                                </resource>
-                                <resource>
-                                    <directory>${project.basedir}</directory>
-                                    <includes>
-                                        <include>LICENSE</include>
-                                    </includes>
-                                </resource>
-                            </resources>
-                        </configuration>
-                    </execution>
-                </executions>
             </plugin>
         </plugins>
     </build>
