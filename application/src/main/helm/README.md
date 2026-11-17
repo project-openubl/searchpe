@@ -43,6 +43,12 @@ helm delete my-release
 | database.port | int | `5432` |                                           |
 | database.username | string | `"db_username"` |                                           |
 
+## Security parameters
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| sessionEncryptionKey | string | `""` | Key that encrypts the form-login cookie, at least 16 characters. If empty, a random key is generated on install and kept on upgrades. Set it explicitly when rendering with `helm template` or GitOps tools, which can't look up the existing Secret. Pods must be restarted after changing it |
+
 ## Openshift parameters
 
 | Key | Type | Default | Description |

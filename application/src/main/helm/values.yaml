@@ -51,6 +51,12 @@ database:
   username: db_username
   password: db_password
 
+# Key that encrypts the form-login cookie (at least 16 characters). Leave it empty to generate a random key on install,
+# which is kept on upgrades. Set it explicitly when rendering with `helm template` or GitOps tools (e.g. Argo CD): they
+# can't look up the existing Secret, so a new key would be generated on every sync. Pods must be restarted after
+# changing it.
+sessionEncryptionKey: ""
+
 # Additional environment variables for Searchpe mapped from Secret or ConfigMap
 extraEnvFrom: ""
 
