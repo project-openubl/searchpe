@@ -1,5 +1,6 @@
 package io.github.projectopenubl.xhandler.ose;
 
+import io.github.projectopenubl.xhandler.api.XmlText;
 import io.github.projectopenubl.xhandler.engine.Engine;
 import io.github.projectopenubl.xhandler.engine.EngineException;
 import io.github.projectopenubl.xhandler.engine.EngineModels;
@@ -13,18 +14,26 @@ import io.micrometer.core.instrument.Timer;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
+import java.nio.channels.FileChannel;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
@@ -38,17 +47,26 @@ public final class OseJobs {
 
     /**
      * Forwards each CDR-OSE and its document to SUNAT within 1 hour of issuing the CDR (RS 117-2017
-     * art. 7.5; SUNAT flags later ones with 4196). Runs every 30 seconds at priority 1. Each run
-     * leases its batch for 2 minutes ({@code FOR UPDATE SKIP LOCKED}), calls SUNAT with no
-     * transaction open, and records the outcome; ambiguous outcomes are retried (SUNAT acknowledges
-     * a resend). The delay from {@code cdr_issued_at} is measured, and the oldest pending forward
-     * is a gauge read from the database.
+     * art. 7.5; SUNAT flags later ones with 4196). Runs every 30 seconds at priority 1 and keeps
+     * going, 8 sends at a time, until the queue is empty or its 25-second budget is spent. Each batch
+     * is leased for 2 minutes ({@code FOR UPDATE SKIP LOCKED}); SUNAT is called with no transaction
+     * open; outcomes are compare-and-set on the lease.
+     *
+     * <ul>
+     *   <li>accepted: forwarded, the delay measured from {@code cdr_issued_at};
+     *   <li>unknown / not delivered: retried with backoff (SUNAT acknowledges a resend);
+     *   <li>rejected (2000–3999): SUNAT refused the document; an operator decides, never purged;
+     *   <li>blocked (credentials, package, 1032/1033, unknown codes): not the document's fault;
+     *       the row stays queued and the whole run stops, alerting, until a person fixes it.
+     * </ul>
      */
     @ApplicationScoped
     public static class Forwarder implements JobHandler {
 
         static final Duration LEASE = Duration.ofMinutes(2);
+        static final Duration BUDGET = Duration.ofSeconds(25);
         static final Duration WARN_AFTER = Duration.ofMinutes(45);
+        static final int PARALLEL = 8;
 
         private final jakarta.persistence.EntityManager em;
         private final Engine engine;
@@ -76,9 +94,9 @@ public final class OseJobs {
 
         double oldestPending() {
             try {
-                List<?> age = QuarkusTransaction.requiringNew().call(() -> em.createNativeQuery(
-                                "SELECT extract(epoch FROM now() - min(cdr_issued_at)) FROM xhandler.ose_submission WHERE forward_status = 'pending'")
-                        .getResultList());
+                List<?> age = QuarkusTransaction.requiringNew().call(() -> em.createNativeQuery("""
+                                SELECT extract(epoch FROM now() - min(cdr_issued_at)) FROM xhandler.ose_submission
+                                WHERE forward_status IN ('pending', 'blocked')""").getResultList());
                 return age.isEmpty() || age.get(0) == null ? 0.0 : ((Number) age.get(0)).doubleValue();
             } catch (RuntimeException e) {
                 return Double.NaN;
@@ -90,83 +108,172 @@ public final class OseJobs {
             return "ose.forward";
         }
 
+        record Due(UUID id, String name, String tipo, String xmlRef, String cdrRef, Instant issuedAt, int attempts, UUID lease) {}
+
         @Override
         public Map<String, Object> run(JobContext context) {
-            record Due(UUID id, String name, String tipo, String xmlRef, String cdrRef, Instant issuedAt, int attempts) {}
-            List<Due> due = QuarkusTransaction.requiringNew().call(() -> {
-                @SuppressWarnings("unchecked")
-                List<Object[]> rows = em.createNativeQuery("""
-                                SELECT id, name, tipo, xml_ref, cdr_ref, cdr_issued_at, forward_attempts FROM xhandler.ose_submission
-                                WHERE forward_status = 'pending' AND next_attempt_at <= now()
-                                ORDER BY cdr_issued_at LIMIT 50 FOR UPDATE SKIP LOCKED""").getResultList();
-                for (Object[] r : rows) {
-                    em.createNativeQuery("UPDATE xhandler.ose_submission SET next_attempt_at = now() + interval '2 minutes' WHERE id = :id")
-                            .setParameter("id", r[0]).executeUpdate();
-                }
-                return rows.stream().map(r -> new Due((UUID) r[0], (String) r[1], (String) r[2], (String) r[3], (String) r[4],
-                        io.github.projectopenubl.xhandler.status.StatusResource.toInstant(r[5]), ((Number) r[6]).intValue())).toList();
-            });
-            if (due.isEmpty()) {
-                return Map.of("forwarded", 0);
-            }
+            Instant deadline = Instant.now().plus(BUDGET);
+            // Blocked rows come back every 10 minutes: once the cause is fixed they flow again
+            QuarkusTransaction.requiringNew().run(() -> em.createNativeQuery("""
+                            UPDATE xhandler.ose_submission SET forward_status = 'pending'
+                            WHERE forward_status = 'blocked' AND next_attempt_at <= now()""").executeUpdate());
             EngineModels.Environment env = switch (environment) {
                 case "production" -> EngineModels.Environment.PRODUCTION;
                 case "beta" -> EngineModels.Environment.BETA;
                 default -> EngineModels.Environment.FAKE;
             };
-            EngineModels.OseCredentials creds = QuarkusTransaction.requiringNew().call(() -> credentials.pick("ose_sunat")
-                    .map(id -> credentials.read(id, "ose_sunat", "ose-forward"))
-                    .map(f -> new EngineModels.OseCredentials(f.get("username"), f.get("password")))
-                    .orElse(null));
-            if (creds == null && env != EngineModels.Environment.FAKE) {
-                AUDIT.error("OSE forwarding has no SUNAT credentials (platform credential ose_sunat): CDRs are piling up");
-                return Map.of("forwarded", 0, "error", "no credentials");
-            }
-            EngineModels.OseCredentials use = creds != null ? creds : new EngineModels.OseCredentials("OSEFAKE", "fake");
-            int forwarded = 0;
-            for (Due d : due) {
-                String xml = new String(files.get(d.xmlRef()), StandardCharsets.UTF_8);
-                String cdr = new String(files.get(d.cdrRef()), StandardCharsets.UTF_8);
-                String operation = List.of("RC", "RA", "RR").contains(d.tipo()) ? "send_summary" : "send_bill";
-                EngineModels.OseForwardResponse response;
-                try {
-                    response = engine.oseForward(new EngineModels.OseForwardRequest(env, url.orElse(null), use, d.name(), xml, cdr, operation));
-                } catch (EngineException e) {
-                    response = new EngineModels.OseForwardResponse("unknown", null, e.getMessage());
+            EngineModels.OseCredentials creds = null;
+            AtomicInteger forwarded = new AtomicInteger();
+            AtomicBoolean blocked = new AtomicBoolean();
+            int seen = 0;
+            while (Instant.now().isBefore(deadline) && !blocked.get()) {
+                List<Due> due = lease();
+                if (due.isEmpty()) {
+                    break;
                 }
-                EngineModels.OseForwardResponse outcome = response;
-                QuarkusTransaction.requiringNew().run(() -> {
-                    switch (outcome.status()) {
-                        case "accepted" -> em.createNativeQuery("""
-                                        UPDATE xhandler.ose_submission SET forward_status = 'forwarded', forwarded_at = now(), sunat_ack = :ack,
-                                            forward_attempts = forward_attempts + 1, next_attempt_at = NULL, last_error = NULL WHERE id = :id""")
-                                .setParameter("ack", ((outcome.code() == null ? "" : outcome.code()) + " " + (outcome.description() == null ? ""
-                                        : outcome.description())).strip())
-                                .setParameter("id", d.id()).executeUpdate();
-                        case "rejected" -> em.createNativeQuery("""
-                                        UPDATE xhandler.ose_submission SET forward_status = 'rejected', forward_attempts = forward_attempts + 1,
-                                            next_attempt_at = NULL, last_error = :e WHERE id = :id""")
-                                .setParameter("e", outcome.code() + " " + outcome.description()).setParameter("id", d.id()).executeUpdate();
-                        default -> em.createNativeQuery("""
-                                        UPDATE xhandler.ose_submission SET forward_attempts = forward_attempts + 1, last_error = :e,
-                                            next_attempt_at = now() + cast(:wait AS interval) WHERE id = :id""")
-                                .setParameter("e", String.valueOf(outcome.description())).setParameter("wait", backoff(d.attempts() + 1))
-                                .setParameter("id", d.id()).executeUpdate();
+                seen += due.size();
+                if (creds == null) {
+                    creds = QuarkusTransaction.requiringNew().call(() -> credentials.pick("ose_sunat")
+                            .map(id -> credentials.read(id, "ose_sunat", "ose-forward"))
+                            .map(f -> new EngineModels.OseCredentials(f.get("username"), f.get("password")))
+                            .orElse(null));
+                    if (creds == null && env != EngineModels.Environment.FAKE) {
+                        AUDIT.error("OSE forwarding has no SUNAT credentials (platform credential ose_sunat): CDRs are waiting");
+                        release(due);
+                        return Map.of("forwarded", 0, "error", "no credentials");
                     }
-                });
-                if ("accepted".equals(outcome.status())) {
-                    forwarded++;
-                    delay.record(Duration.between(d.issuedAt(), Instant.now()));
-                } else if ("rejected".equals(outcome.status())) {
-                    // SUNAT refused a document the OSE accepted: an operator must look at it
-                    AUDIT.errorf("SUNAT rejected the OSE forward of %s: %s %s", d.name(), outcome.code(), outcome.description());
+                    if (creds == null) {
+                        creds = new EngineModels.OseCredentials("OSEFAKE", "fake");
+                    }
                 }
-                if (Duration.between(d.issuedAt(), Instant.now()).compareTo(WARN_AFTER) > 0 && !"accepted".equals(outcome.status())) {
-                    AUDIT.errorf("OSE forward of %s is %d minutes old: the 1-hour limit is close", d.name(),
-                            Duration.between(d.issuedAt(), Instant.now()).toMinutes());
+                EngineModels.OseCredentials use = creds;
+                try (ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor()) {
+                    java.util.concurrent.Semaphore permits = new java.util.concurrent.Semaphore(PARALLEL);
+                    List<Future<?>> sends = new ArrayList<>();
+                    for (Due d : due) {
+                        sends.add(pool.submit(() -> {
+                            permits.acquireUninterruptibly();
+                            try {
+                                if (blocked.get()) {
+                                    release(List.of(d));
+                                    return;
+                                }
+                                String status = forward(d, env, use);
+                                if ("accepted".equals(status)) {
+                                    forwarded.incrementAndGet();
+                                } else if ("blocked".equals(status)) {
+                                    blocked.set(true);
+                                }
+                            } catch (RuntimeException e) {
+                                // One row's problem (a missing file...) doesn't stop the others
+                                LOG.warnf("OSE forward of %s failed: %s", d.name(), e.toString());
+                                retry(d, e.toString());
+                            } finally {
+                                permits.release();
+                            }
+                        }));
+                    }
+                    for (Future<?> send : sends) {
+                        try {
+                            send.get();
+                        } catch (Exception e) {
+                            LOG.warnf("OSE forward task failed: %s", e.toString());
+                        }
+                    }
                 }
             }
-            return Map.of("forwarded", forwarded, "due", due.size());
+            return Map.of("forwarded", forwarded.get(), "seen", seen, "blocked", blocked.get());
+        }
+
+        private List<Due> lease() {
+            UUID lease = UUID.randomUUID();
+            return QuarkusTransaction.requiringNew().call(() -> {
+                @SuppressWarnings("unchecked")
+                List<Object[]> rows = em.createNativeQuery("""
+                                WITH due AS (
+                                    SELECT id FROM xhandler.ose_submission
+                                    WHERE forward_status = 'pending' AND next_attempt_at <= now()
+                                    ORDER BY cdr_issued_at LIMIT 50 FOR UPDATE SKIP LOCKED)
+                                UPDATE xhandler.ose_submission s SET next_attempt_at = now() + interval '2 minutes', forward_lease = :lease
+                                FROM due WHERE s.id = due.id
+                                RETURNING s.id, s.name, s.tipo, s.xml_ref, s.cdr_ref, s.cdr_issued_at, s.forward_attempts""")
+                        .setParameter("lease", lease).getResultList();
+                return rows.stream().map(r -> new Due((UUID) r[0], (String) r[1], (String) r[2], (String) r[3], (String) r[4],
+                        io.github.projectopenubl.xhandler.status.StatusResource.toInstant(r[5]), ((Number) r[6]).intValue(), lease)).toList();
+            });
+        }
+
+        /** Gives a leased row back at once (the run stopped before sending it). */
+        private void release(List<Due> due) {
+            for (Due d : due) {
+                QuarkusTransaction.requiringNew().run(() -> em.createNativeQuery("""
+                                UPDATE xhandler.ose_submission SET next_attempt_at = now(), forward_lease = NULL
+                                WHERE id = :id AND forward_status = 'pending' AND forward_lease = :lease""")
+                        .setParameter("id", d.id()).setParameter("lease", d.lease()).executeUpdate());
+            }
+        }
+
+        private void retry(Due d, String error) {
+            QuarkusTransaction.requiringNew().run(() -> em.createNativeQuery("""
+                            UPDATE xhandler.ose_submission SET forward_attempts = forward_attempts + 1, last_error = :e,
+                                next_attempt_at = now() + cast(:wait AS interval)
+                            WHERE id = :id AND forward_status = 'pending' AND forward_lease = :lease""")
+                    .setParameter("e", truncate(error)).setParameter("wait", backoff(d.attempts() + 1)).setParameter("id", d.id())
+                    .setParameter("lease", d.lease()).executeUpdate());
+        }
+
+        private String forward(Due d, EngineModels.Environment env, EngineModels.OseCredentials creds) {
+            // The stored bytes, in their declared encoding: the engine zips exactly what the issuer signed
+            String xml = XmlText.decode(files.get(d.xmlRef()));
+            String cdr = XmlText.decode(files.get(d.cdrRef()));
+            String operation = List.of("RC", "RA", "RR").contains(d.tipo()) ? "send_summary" : "send_bill";
+            EngineModels.OseForwardResponse response;
+            try {
+                response = engine.oseForward(new EngineModels.OseForwardRequest(env, url.orElse(null), creds, d.name(), xml, cdr, operation));
+            } catch (EngineException e) {
+                response = new EngineModels.OseForwardResponse("unknown", null, e.getMessage());
+            }
+            EngineModels.OseForwardResponse outcome = response;
+            String detail = ((outcome.code() == null ? "" : outcome.code()) + " " + (outcome.description() == null ? "" : outcome.description())).strip();
+            int changed = QuarkusTransaction.requiringNew().call(() -> switch (outcome.status()) {
+                case "accepted" -> em.createNativeQuery("""
+                                UPDATE xhandler.ose_submission SET forward_status = 'forwarded', forwarded_at = now(), sunat_ack = :ack,
+                                    forward_attempts = forward_attempts + 1, next_attempt_at = NULL, last_error = NULL
+                                WHERE id = :id AND forward_status = 'pending' AND forward_lease = :lease""")
+                        .setParameter("ack", truncate(detail)).setParameter("id", d.id()).setParameter("lease", d.lease()).executeUpdate();
+                case "rejected" -> em.createNativeQuery("""
+                                UPDATE xhandler.ose_submission SET forward_status = 'rejected', forward_attempts = forward_attempts + 1,
+                                    next_attempt_at = NULL, last_error = :e
+                                WHERE id = :id AND forward_status = 'pending' AND forward_lease = :lease""")
+                        .setParameter("e", truncate(detail)).setParameter("id", d.id()).setParameter("lease", d.lease()).executeUpdate();
+                case "blocked" -> em.createNativeQuery("""
+                                UPDATE xhandler.ose_submission SET forward_status = 'blocked', forward_attempts = forward_attempts + 1,
+                                    next_attempt_at = now() + interval '10 minutes', last_error = :e
+                                WHERE id = :id AND forward_status = 'pending' AND forward_lease = :lease""")
+                        .setParameter("e", truncate(detail)).setParameter("id", d.id()).setParameter("lease", d.lease()).executeUpdate();
+                default -> em.createNativeQuery("""
+                                UPDATE xhandler.ose_submission SET forward_attempts = forward_attempts + 1, last_error = :e,
+                                    next_attempt_at = now() + cast(:wait AS interval)
+                                WHERE id = :id AND forward_status = 'pending' AND forward_lease = :lease""")
+                        .setParameter("e", truncate(detail)).setParameter("wait", backoff(d.attempts() + 1)).setParameter("id", d.id())
+                        .setParameter("lease", d.lease()).executeUpdate();
+            });
+            if (changed == 0) {
+                // Another run took the row over (its lease expired): its outcome stands
+                return "superseded";
+            }
+            switch (outcome.status()) {
+                case "accepted" -> delay.record(Duration.between(d.issuedAt(), Instant.now()));
+                case "rejected" -> AUDIT.errorf("SUNAT rejected the OSE forward of %s: %s", d.name(), detail);
+                case "blocked" -> AUDIT.errorf("OSE forwarding blocked by SUNAT (%s) at %s: fix it; documents stay queued", detail, d.name());
+                default -> {
+                    if (Duration.between(d.issuedAt(), Instant.now()).compareTo(WARN_AFTER) > 0) {
+                        AUDIT.errorf("OSE forward of %s is %d minutes old: the 1-hour limit is close", d.name(),
+                                Duration.between(d.issuedAt(), Instant.now()).toMinutes());
+                    }
+                }
+            }
+            return outcome.status();
         }
 
         /** 30 s, 1, 2, 4 minutes, then every 5: well inside the hour. */
@@ -174,12 +281,17 @@ public final class OseJobs {
             long seconds = Math.min(300, 30L << Math.min(attempts - 1, 4));
             return seconds + " seconds";
         }
+
+        private static String truncate(String text) {
+            return text == null ? null : text.length() > 500 ? text.substring(0, 500) : text;
+        }
     }
 
     /**
-     * The 1-month retention duty (RS 117-2017 art. 7.12): forwarded (or rejected) submissions and
-     * inconsistency notices older than {@code purge_after} are deleted with their files. A file is
-     * deleted only when no other submission points at it (identical resends share files).
+     * The 1-month retention duty (RS 117-2017 art. 7.12): forwarded submissions and inconsistency
+     * notices older than {@code purge_after} are deleted with their files. Rejected forwards are
+     * never purged here (an operator decides). A file is deleted only when no remaining submission
+     * points at it (identical resends share files).
      */
     @ApplicationScoped
     public static class Purge implements JobHandler {
@@ -200,15 +312,28 @@ public final class OseJobs {
         public Map<String, Object> run(JobContext context) {
             List<String> orphaned = QuarkusTransaction.requiringNew().call(() -> {
                 @SuppressWarnings("unchecked")
-                List<String> refs = em.createNativeQuery("""
-                                WITH gone AS (
-                                    DELETE FROM xhandler.ose_submission
-                                    WHERE purge_after < now() AND (result = 'inconsistency' OR forward_status IN ('forwarded', 'rejected'))
-                                    RETURNING xml_ref, cdr_ref)
-                                SELECT DISTINCT ref FROM (SELECT xml_ref AS ref FROM gone UNION SELECT cdr_ref FROM gone) refs
-                                WHERE ref IS NOT NULL
-                                  AND NOT EXISTS (SELECT 1 FROM xhandler.ose_submission s WHERE s.xml_ref = refs.ref OR s.cdr_ref = refs.ref)""")
-                        .getResultList();
+                List<Object[]> gone = em.createNativeQuery("""
+                                DELETE FROM xhandler.ose_submission
+                                WHERE purge_after < now() AND (result = 'inconsistency' OR forward_status = 'forwarded')
+                                RETURNING xml_ref, cdr_ref""").getResultList();
+                List<String> refs = new ArrayList<>();
+                for (Object[] r : gone) {
+                    for (Object ref : r) {
+                        if (ref != null && !refs.contains(ref)) {
+                            refs.add((String) ref);
+                        }
+                    }
+                }
+                if (refs.isEmpty()) {
+                    return List.<String>of();
+                }
+                // A second statement: it sees the deletion above (a CTE would not)
+                @SuppressWarnings("unchecked")
+                List<String> still = em.createNativeQuery("""
+                                SELECT ref FROM unnest(cast(:refs AS text[])) ref
+                                WHERE EXISTS (SELECT 1 FROM xhandler.ose_submission s WHERE s.xml_ref = ref OR s.cdr_ref = ref)""")
+                        .setParameter("refs", refs.toArray(String[]::new)).getResultList();
+                refs.removeAll(still);
                 return refs;
             });
             int deleted = 0;
@@ -226,13 +351,18 @@ public final class OseJobs {
 
     /**
      * The SFTP channel (DESIGN.md §11.4 step 1): an SFTP server (deployed beside the app, it
-     * authenticates the OSE users) writes ZIPs to {@code {root}/{username}/in/}; this job checks
-     * each one like {@code sendBill} and writes {@code R-{name}.zip} (the CDR-OSE) or
-     * {@code {name}.error.txt} to {@code out/}, moving the input to {@code done/}. Symbolic links
-     * and oversized files are skipped.
+     * authenticates the OSE users; symbolic links disabled) writes ZIPs to
+     * {@code {root}/{username}/in/}; this job checks each like {@code sendBill} and writes
+     * {@code R-{name}.zip} (the CDR-OSE) or {@code {name}.error.txt} to {@code out/}, moving the
+     * input to {@code done/}. Every path must resolve inside the root without symbolic links;
+     * files are read through no-follow handles, answers written to a temporary file and moved into
+     * place. Files younger than 10 seconds may still be uploading and wait for the next run; an
+     * engine failure leaves the file for the next run.
      */
     @ApplicationScoped
     public static class SftpIntake implements JobHandler {
+        static final Duration SETTLE = Duration.ofSeconds(10);
+
         private final OseClients clients;
         private final OseIntake intake;
         private final Optional<Path> root;
@@ -254,17 +384,23 @@ public final class OseJobs {
                 return Map.of("enabled", false);
             }
             int processed = 0;
-            try (DirectoryStream<Path> users = Files.newDirectoryStream(root.get())) {
-                for (Path user : users) {
-                    if (!Files.isDirectory(user, LinkOption.NOFOLLOW_LINKS)) {
-                        continue;
+            try {
+                Path base = root.get().toRealPath();
+                try (DirectoryStream<Path> users = Files.newDirectoryStream(base)) {
+                    for (Path user : users) {
+                        if (!realDirectory(base, user)) {
+                            continue;
+                        }
+                        Optional<OseClients.Client> client = clients.byUsername(user.getFileName().toString());
+                        if (client.isEmpty()) {
+                            continue;
+                        }
+                        try {
+                            processed += drain(base, client.get(), user);
+                        } catch (IOException | RuntimeException e) {
+                            LOG.warnf("OSE SFTP intake of %s: %s", user.getFileName(), e.toString());
+                        }
                     }
-                    Optional<OseClients.Client> client = clients.byUsername(user.getFileName().toString());
-                    Path in = user.resolve("in");
-                    if (client.isEmpty() || !Files.isDirectory(in, LinkOption.NOFOLLOW_LINKS)) {
-                        continue;
-                    }
-                    processed += drain(client.get(), user, in);
                 }
             } catch (IOException e) {
                 LOG.warnf("OSE SFTP intake: %s", e.toString());
@@ -272,26 +408,67 @@ public final class OseJobs {
             return Map.of("processed", processed);
         }
 
-        private int drain(OseClients.Client client, Path user, Path in) throws IOException {
-            Path out = Files.createDirectories(user.resolve("out"));
-            Path done = Files.createDirectories(user.resolve("done"));
+        /** A directory under the root, reached without symbolic links. */
+        static boolean realDirectory(Path base, Path path) throws IOException {
+            return Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS) && !Files.isSymbolicLink(path)
+                    && path.toRealPath().startsWith(base) && path.toRealPath().equals(path.toAbsolutePath().normalize());
+        }
+
+        private Path directory(Path base, Path user, String name) throws IOException {
+            Path dir = user.resolve(name);
+            if (!Files.exists(dir, LinkOption.NOFOLLOW_LINKS)) {
+                Files.createDirectory(dir);
+            }
+            if (!realDirectory(base, dir)) {
+                throw new IOException(dir + " is not a plain directory under the root");
+            }
+            return dir;
+        }
+
+        private int drain(Path base, OseClients.Client client, Path user) throws IOException {
+            Path in = directory(base, user, "in");
+            Path out = directory(base, user, "out");
+            Path done = directory(base, user, "done");
             int processed = 0;
             try (DirectoryStream<Path> zips = Files.newDirectoryStream(in, "*.{zip,ZIP}")) {
                 for (Path zip : zips) {
-                    if (!Files.isRegularFile(zip, LinkOption.NOFOLLOW_LINKS) || Files.size(zip) > ZipGuard.MAX_ZIP_BYTES) {
+                    BasicFileAttributes attributes = Files.readAttributes(zip, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+                    if (!attributes.isRegularFile() || attributes.size() > ZipGuard.MAX_ZIP_BYTES
+                            || attributes.lastModifiedTime().toInstant().isAfter(Instant.now().minus(SETTLE))) {
                         continue;
                     }
                     String fileName = zip.getFileName().toString();
-                    String base = fileName.replaceFirst("(?i)\\.zip$", "");
-                    try {
-                        OseIntake.Cdr cdr = intake.sendBill(client, "sftp", fileName, Files.readAllBytes(zip));
-                        Files.write(out.resolve("R-" + cdr.name() + ".zip"), cdr.zip());
-                    } catch (OseIntake.Fault e) {
-                        Files.writeString(out.resolve(base + ".error.txt"), e.code + "|" + e.getMessage() + "\n");
-                    } catch (ZipGuard.Refused e) {
-                        Files.writeString(out.resolve(base + ".error.txt"), e.code + "|" + e.getMessage() + "\n");
+                    String base64Safe = fileName.replaceFirst("(?i)\\.zip$", "").replaceAll("[^A-Za-z0-9._-]", "_");
+                    byte[] bytes;
+                    // No-follow read: a symlink swapped in after the check fails here
+                    try (FileChannel channel = FileChannel.open(zip, StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS)) {
+                        bytes = new byte[(int) Math.min(channel.size(), ZipGuard.MAX_ZIP_BYTES + 1L)];
+                        java.nio.ByteBuffer buffer = java.nio.ByteBuffer.wrap(bytes);
+                        while (buffer.hasRemaining() && channel.read(buffer) >= 0) {
+                            // read fully
+                        }
                     }
-                    Files.move(zip, done.resolve(fileName), StandardCopyOption.REPLACE_EXISTING);
+                    String answerName;
+                    byte[] answer;
+                    try {
+                        OseIntake.Cdr cdr = intake.sendBill(client, "sftp", fileName, bytes);
+                        answerName = "R-" + cdr.name() + ".zip";
+                        answer = cdr.zip();
+                    } catch (OseIntake.Fault e) {
+                        if ("0109".equals(e.code)) {
+                            // The service failed, not the document: try again next run
+                            continue;
+                        }
+                        answerName = base64Safe + ".error.txt";
+                        answer = (e.code + "|" + e.getMessage() + "\n").getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                    } catch (ZipGuard.Refused e) {
+                        answerName = base64Safe + ".error.txt";
+                        answer = (e.code + "|" + e.getMessage() + "\n").getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                    }
+                    Path temp = Files.createTempFile(out, ".answer-", ".tmp");
+                    Files.write(temp, answer, StandardOpenOption.TRUNCATE_EXISTING, LinkOption.NOFOLLOW_LINKS);
+                    Files.move(temp, out.resolve(answerName), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+                    Files.move(zip, done.resolve(base64Safe + ".zip"), StandardCopyOption.REPLACE_EXISTING, LinkOption.NOFOLLOW_LINKS);
                     processed++;
                 }
             }

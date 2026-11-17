@@ -10,11 +10,14 @@ use super::{blocking, lima_today, ApiError, ApiJson, ErrorKind};
 use crate::cdr;
 use crate::inspect::{self, InspectResponse};
 use crate::rules::{self, Finding};
+use crate::xmldsig;
 use crate::xsd::{self, XsdOutcome};
 
 /// SUNAT's code for an XML it can't parse, "incluye validación de XSD"
 /// (AjustesValidacionesCPE, General sheet)
 const UNPARSEABLE: &str = "0306";
+/// SUNAT's code for an altered document (a signature that doesn't verify)
+const ALTERED: &str = "2335";
 /// Code of the XSD violations (SUNAT reports them all as 0306)
 const XSD: &str = "XSD";
 /// libxml2's diagnostic for an `ext:ExtensionContent` without children
@@ -57,6 +60,17 @@ pub(super) async fn validate(
     };
     // The bytes as sent to SUNAT (in the encoding the XML declares)
     let bytes = UblFile::from(request.xml).bytes().to_vec();
+    // A signed document must verify: an OSE never answers for an altered one (§11.4)
+    let signature = if facts.digest_value.is_some() {
+        let signed = bytes.clone();
+        Some(
+            blocking(move || Ok::<_, ApiError>(xmldsig::verify(&signed)))
+                .await?
+                .0,
+        )
+    } else {
+        None
+    };
     let mut errors = match xsd::validate(&facts.document_type, bytes)
         .await
         .map_err(|e| ApiError::new(ErrorKind::Other, e))?
@@ -78,6 +92,21 @@ pub(super) async fn validate(
     };
     let (rule_errors, observations) = rules::check(&facts, lima_today());
     errors.extend(rule_errors);
+    match signature {
+        None | Some(xmldsig::Verdict::Valid) => {}
+        Some(xmldsig::Verdict::DigestMismatch) => errors.push(Finding {
+            code: ALTERED.into(),
+            message: "El documento electrónico ingresado ha sido alterado (el resumen no coincide con la firma)".into(),
+        }),
+        Some(xmldsig::Verdict::BadSignature) => errors.push(Finding {
+            code: ALTERED.into(),
+            message: "La firma digital no corresponde al certificado del documento".into(),
+        }),
+        Some(xmldsig::Verdict::Unsupported(reason)) => errors.push(Finding {
+            code: ALTERED.into(),
+            message: format!("No se puede verificar la firma digital: {reason}"),
+        }),
+    }
     Ok(Json(ValidateResponse {
         valid: errors.is_empty(),
         errors,
@@ -210,6 +239,42 @@ mod tests {
         let signed = sign_with_demo_key(xml).await;
         let body = validate(&signed["xml"]).await;
         assert_eq!(body["valid"], true, "{body}");
+    }
+
+    #[tokio::test]
+    async fn altered_documents_and_signatures_are_2335() {
+        let signed = sign_with_demo_key(build(invoice()).await).await;
+        let xml = signed["xml"].as_str().unwrap().to_string();
+        // A changed line after signing
+        let altered = xml.replacen("Item1", "Item9", 1);
+        assert_ne!(altered, xml);
+        let body = validate(&altered.into()).await;
+        assert_eq!(body["valid"], false);
+        assert_eq!(body["errors"][0]["code"], "2335", "{body}");
+        assert!(body["errors"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("alterado"));
+        // A forged signature value
+        let start = xml.find("<ds:SignatureValue>").unwrap() + "<ds:SignatureValue>".len();
+        let mut forged = xml.clone();
+        forged.replace_range(
+            start..start + 4,
+            if &xml[start..start + 4] == "AAAA" {
+                "BBBB"
+            } else {
+                "AAAA"
+            },
+        );
+        let body = validate(&forged.into()).await;
+        assert_eq!(body["errors"][0]["code"], "2335", "{body}");
+        assert!(
+            body["errors"][0]["message"]
+                .as_str()
+                .unwrap()
+                .contains("certificado"),
+            "{body}"
+        );
     }
 
     #[tokio::test]

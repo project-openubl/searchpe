@@ -174,8 +174,23 @@ public class OseIntake {
         String ticket = ticket();
         boolean any = false;
         for (Map.Entry<String, byte[]> xml : xmls.entrySet()) {
-            Name name = name(xml.getKey(), false);
-            checkIssuer(client, name);
+            // Each document gets its answer in the ticket; one bad entry doesn't lose the others
+            Name name;
+            try {
+                name = name(xml.getKey(), false);
+            } catch (Fault e) {
+                name = new Name(xml.getKey().replaceFirst("(?i)\\.xml$", ""), client.issuerRuc(), "??", "????", 0, false);
+                record(client, channel, name, ticket, Instant.now(), FileStore.sha256(xml.getValue()), null, null, e.code, e.getMessage());
+                any = true;
+                continue;
+            }
+            try {
+                checkIssuer(client, name);
+            } catch (Fault e) {
+                record(client, channel, name, ticket, Instant.now(), FileStore.sha256(xml.getValue()), null, null, e.code, e.getMessage());
+                any = true;
+                continue;
+            }
             check(client, channel, name, xml.getValue(), ticket);
             any = true;
         }
@@ -193,14 +208,15 @@ public class OseIntake {
 
     /** Validates one document and records the answer. */
     private Checked check(OseClients.Client client, String channel, Name name, byte[] xmlBytes, String ticket) {
-        String xml = new String(xmlBytes, StandardCharsets.UTF_8);
+        // In the encoding it declares: the engine turns it back into these exact bytes
+        String xml = io.github.projectopenubl.xhandler.api.XmlText.decode(xmlBytes);
         String sha256 = FileStore.sha256(xmlBytes);
         Instant received = Instant.now();
         // A resend of an accepted document: the same bytes get the same CDR; other bytes collide
         Optional<Object[]> previous = QuarkusTransaction.requiringNew().call(() -> {
             @SuppressWarnings("unchecked")
             List<Object[]> rows = em.createNativeQuery("""
-                            SELECT sha256, cdr_ref FROM xhandler.ose_submission
+                            SELECT sha256, cdr_ref, id FROM xhandler.ose_submission
                             WHERE issuer_ruc = :r AND tipo = :t AND serie = :s AND numero = :n AND result = 'cdr'""")
                     .setParameter("r", name.ruc()).setParameter("t", name.tipo()).setParameter("s", name.serie()).setParameter("n", name.numero())
                     .getResultList();
@@ -208,43 +224,62 @@ public class OseIntake {
         });
         if (previous.isPresent()) {
             if (sha256.equals(previous.get()[0])) {
+                if (ticket != null) {
+                    // The ticket answers for it too
+                    link(ticket, client, (UUID) previous.get()[2]);
+                }
                 return new Checked(new Cdr(name.full(), new String(files.get((String) previous.get()[1]), StandardCharsets.UTF_8)), null, null);
             }
-            return record(client, channel, name, ticket, received, sha256, null, "1033",
+            return record(client, channel, name, ticket, received, sha256, null, null, "1033",
                     "El comprobante fue registrado previamente con otros datos.");
         }
         if (!name.summary() && !TIPOS.contains(name.tipo())) {
             String message = "09".equals(name.tipo()) || "31".equals(name.tipo())
                     ? "Las guías de remisión se envían directamente a SUNAT." : "Tipo de comprobante no admitido por el OSE.";
-            return record(client, channel, name, ticket, received, sha256, null, "1003", message);
+            return record(client, channel, name, ticket, received, sha256, null, null, "1003", message);
         }
         EngineModels.InspectResponse identity;
         try {
             identity = engine.inspect(xml);
         } catch (io.github.projectopenubl.xhandler.engine.EngineException e) {
-            return record(client, channel, name, ticket, received, sha256, null, "0306", "No se puede leer (parsear) el archivo XML.");
+            if (!"invalid_document".equals(e.kind())) {
+                // The engine failed, not the document: nothing is recorded or billed, the issuer retries
+                throw new Fault("0109", "El sistema no puede responder su solicitud.");
+            }
+            return record(client, channel, name, ticket, received, sha256, null, null, "0306", "No se puede leer (parsear) el archivo XML.");
         }
         if (!name.ruc().equals(identity.ruc()) || !name.summary() && (!name.serie().equals(identity.serie())
                 || identity.numero() == null || identity.numero() != name.numero() || !name.tipo().equals(identity.tipoComprobante()))) {
-            return record(client, channel, name, ticket, received, sha256, null, "0151",
+            return record(client, channel, name, ticket, received, sha256, null, null, "0151",
                     "El nombre del archivo no corresponde al contenido del comprobante.");
         }
         if (!identity.signed()) {
-            return record(client, channel, name, ticket, received, sha256, null, "0306", "El comprobante no tiene firma digital.");
+            return record(client, channel, name, ticket, received, sha256, null, null, "0306", "El comprobante no tiene firma digital.");
         }
         EngineModels.ValidateResponse validation = engine.validate(xml);
         if (!validation.valid()) {
-            EngineModels.Finding first = validation.errors().get(0);
-            String code = first.code() != null && first.code().matches("\\d{4}") ? first.code() : "0306";
-            return record(client, channel, name, ticket, received, sha256, null, code, truncate(first.message()));
+            EngineModels.Finding first = validation.errors().isEmpty() ? new EngineModels.Finding("0306", "Documento inválido")
+                    : validation.errors().get(0);
+            boolean numbered = first.code() != null && first.code().matches("\\d{4}");
+            // XSD messages come from libxml2 in English: the issuer gets SUNAT's code and a Spanish text
+            String message = numbered ? truncate(first.message()) : "El XML no cumple el esquema (XSD) de SUNAT.";
+            return record(client, channel, name, ticket, received, sha256, null, null, numbered ? first.code() : "0306", message);
         }
         List<EngineModels.CdrNote> notes = validation.observations() == null ? List.of()
                 : validation.observations().stream().map(o -> new EngineModels.CdrNote(o.code(), truncate(o.message()))).toList();
-        String description = (name.summary() ? "El resumen " : "El comprobante ") + identity.serieNumero() + " ha sido aceptado";
-        String cdrXml = signCdr(engine.cdr(xml, ruc(), "0", description, notes, Instant.now()));
+        String description = switch (name.tipo()) {
+            case "RC" -> "El resumen diario ";
+            case "RA" -> "La comunicación de baja ";
+            case "RR" -> "El resumen de reversiones ";
+            default -> "El comprobante ";
+        } + identity.serieNumero() + " ha sido aceptado";
+        // One instant: the CDR's response time and the start of the 1-hour forwarding clock
+        Instant checkedAt = Instant.now();
+        String cdrXml = signCdr(engine.cdr(xml, ruc(), "0", description, notes, checkedAt));
         FileStore.Stored storedXml = files.put(STORAGE, xmlBytes);
         FileStore.Stored storedCdr = files.put(STORAGE, cdrXml.getBytes(StandardCharsets.UTF_8));
-        return record(client, channel, name, ticket, received, sha256, new String[] {storedXml.key(), storedCdr.key(), cdrXml}, "0", description);
+        return record(client, channel, name, ticket, received, sha256, new String[] {storedXml.key(), storedCdr.key(), cdrXml}, checkedAt, "0",
+                description);
     }
 
     /** CDR-OSE signed with the platform's OSE key; the demo key outside production when there's none. */
@@ -261,19 +296,26 @@ public class OseIntake {
         return engine.signFinalize(unsigned, signature, key.get().certificate()).xml();
     }
 
+    private void link(String ticket, OseClients.Client client, UUID submission) {
+        QuarkusTransaction.requiringNew().run(() -> em.createNativeQuery("""
+                        INSERT INTO xhandler.ose_ticket_item (ticket, ose_client_id, submission_id) VALUES (:t, :c, :s) ON CONFLICT DO NOTHING""")
+                .setParameter("t", ticket).setParameter("c", client.id()).setParameter("s", submission).executeUpdate());
+    }
+
     private Checked record(OseClients.Client client, String channel, Name name, String ticket, Instant received, String sha256, String[] cdr,
-            String code, String description) {
+            Instant checkedAt, String code, String description) {
         boolean accepted = cdr != null;
+        UUID id = Ids.newId();
         try {
             QuarkusTransaction.requiringNew().run(() -> {
-                Instant now = Instant.now();
+                Instant now = checkedAt != null ? checkedAt : Instant.now();
                 em.createNativeQuery("""
                                 INSERT INTO xhandler.ose_submission (id, ose_client_id, issuer_ruc, tipo, serie, numero, name, channel, ticket,
                                     received_at, result, response_code, description, sha256, xml_ref, cdr_ref, cdr_issued_at, forward_status,
                                     next_attempt_at, purge_after)
                                 VALUES (:id, :client, :ruc, :tipo, :serie, :numero, :name, :channel, :ticket, :received, :result, :code, :description,
                                     :sha, :xml, :cdr, :issued, :forward, :next, :purge)""")
-                        .setParameter("id", Ids.newId()).setParameter("client", client.id()).setParameter("ruc", name.ruc())
+                        .setParameter("id", id).setParameter("client", client.id()).setParameter("ruc", name.ruc())
                         .setParameter("tipo", name.tipo()).setParameter("serie", name.serie()).setParameter("numero", name.numero())
                         .setParameter("name", name.full()).setParameter("channel", channel).setParameter("ticket", ticket)
                         .setParameter("received", received).setParameter("result", accepted ? "cdr" : "inconsistency").setParameter("code", code)
@@ -282,6 +324,10 @@ public class OseIntake {
                         .setParameter("issued", accepted ? now : null).setParameter("forward", accepted ? "pending" : null)
                         .setParameter("next", accepted ? now : null).setParameter("purge", now.plus(RETENTION))
                         .executeUpdate();
+                if (ticket != null) {
+                    em.createNativeQuery("INSERT INTO xhandler.ose_ticket_item (ticket, ose_client_id, submission_id) VALUES (:t, :c, :s)")
+                            .setParameter("t", ticket).setParameter("c", client.id()).setParameter("s", id).executeUpdate();
+                }
                 em.createNativeQuery("""
                                 INSERT INTO xhandler.ose_usage (ose_client_id, day, validations) VALUES (:c, :d, 1)
                                 ON CONFLICT (ose_client_id, day) DO UPDATE SET validations = ose_usage.validations + 1""")
@@ -294,7 +340,19 @@ public class OseIntake {
             });
         } catch (RuntimeException e) {
             if (accepted && io.github.projectopenubl.xhandler.api.Constraints.violated(e).isPresent()) {
-                // Two sends of one number at once: the first one's CDR stands
+                // Two sends of one number at once: the first one's CDR stands; the same bytes get it
+                @SuppressWarnings("unchecked")
+                List<Object[]> winner = QuarkusTransaction.requiringNew().call(() -> em.createNativeQuery("""
+                                SELECT sha256, cdr_ref, id FROM xhandler.ose_submission
+                                WHERE issuer_ruc = :r AND tipo = :t AND serie = :s AND numero = :n AND result = 'cdr'""")
+                        .setParameter("r", name.ruc()).setParameter("t", name.tipo()).setParameter("s", name.serie())
+                        .setParameter("n", name.numero()).getResultList());
+                if (!winner.isEmpty() && sha256.equals(winner.get(0)[0])) {
+                    if (ticket != null) {
+                        link(ticket, client, (UUID) winner.get(0)[2]);
+                    }
+                    return new Checked(new Cdr(name.full(), new String(files.get((String) winner.get(0)[1]), StandardCharsets.UTF_8)), null, null);
+                }
                 throw new Fault("1033", "El comprobante fue registrado previamente con otros datos.");
             }
             throw e;
@@ -307,8 +365,9 @@ public class OseIntake {
     public Status getStatus(OseClients.Client client, String ticket) {
         @SuppressWarnings("unchecked")
         List<Object[]> rows = QuarkusTransaction.requiringNew().call(() -> em.createNativeQuery("""
-                        SELECT name, result, response_code, description, cdr_ref FROM xhandler.ose_submission
-                        WHERE ticket = :t AND ose_client_id = :c ORDER BY name""").setParameter("t", ticket).setParameter("c", client.id())
+                        SELECT s.name, s.result, s.response_code, s.description, s.cdr_ref
+                        FROM xhandler.ose_ticket_item i JOIN xhandler.ose_submission s ON s.id = i.submission_id
+                        WHERE i.ticket = :t AND i.ose_client_id = :c ORDER BY s.name""").setParameter("t", ticket).setParameter("c", client.id())
                 .getResultList());
         if (rows.isEmpty()) {
             throw new Fault("0127", "El ticket no existe.");

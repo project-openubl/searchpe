@@ -69,9 +69,14 @@ pub enum Operation {
 #[serde(rename_all = "snake_case")]
 pub enum ForwardStatus {
     Accepted,
+    /// SUNAT refused the document itself (2000–3999): a person must look at it
     Rejected,
     Unknown,
     NotDelivered,
+    /// SUNAT refused the request for a reason that isn't the document (credentials, the
+    /// package, an unclassified code, 1032/1033 whose digest isn't compared here): keep it
+    /// queued and stop until a person fixes it
+    Blocked,
 }
 
 #[derive(Serialize, Debug)]
@@ -121,6 +126,8 @@ pub(super) async fn forward(
     );
     let http = reqwest::Client::builder()
         .timeout(TIMEOUT)
+        // Never replay the credentials to another location
+        .redirect(reqwest::redirect::Policy::none())
         .build()
         .map_err(|e| ApiError::new(ErrorKind::Other, e))?;
     let span = tracing::info_span!("sunat.ose_forward", otel.kind = "client", name = %request.name);
@@ -163,20 +170,20 @@ fn answer(body: &str) -> ForwardResponse {
     if let Some(fault) = capture(r"(?s)<faultcode[^>]*>([^<]*)</faultcode>") {
         let code = fault.rsplit('.').next().unwrap_or(&fault).to_string();
         let description = capture(r"(?s)<faultstring[^>]*>([^<]*)</faultstring>");
-        let status = match code.parse::<u32>().ok().and_then(codes::classify) {
-            Some(
-                CodeClass::TransientSystem
-                | CodeClass::TransientConstancia
-                | CodeClass::TransientInProcess,
-            )
-            | None => match code.parse::<u32>() {
-                // Codes outside the table: SUNAT's rejections (2000–3999) are final, others may pass
-                Ok(n) if (2000..4000).contains(&n) => ForwardStatus::Rejected,
-                _ => ForwardStatus::Unknown,
-            },
-            // Already received: acknowledged before
-            Some(CodeClass::AlreadyRegistered | CodeClass::AlreadyFinal) => ForwardStatus::Accepted,
-            Some(_) => ForwardStatus::Rejected,
+        let number = code.parse::<u32>().ok();
+        let status = match (number, number.and_then(codes::classify)) {
+            (Some(n), _) if (2000..4000).contains(&n) => ForwardStatus::Rejected,
+            (
+                _,
+                Some(
+                    CodeClass::TransientSystem
+                    | CodeClass::TransientConstancia
+                    | CodeClass::TransientInProcess,
+                ),
+            ) => ForwardStatus::Unknown,
+            (None, _) => ForwardStatus::Unknown,
+            // Credentials, package, route, 1032/1033 and anything unclassified: not the document's fault
+            _ => ForwardStatus::Blocked,
         };
         return ForwardResponse {
             status,
@@ -217,7 +224,10 @@ fn answer(body: &str) -> ForwardResponse {
     let status = match code.as_deref() {
         Some("0") => ForwardStatus::Accepted,
         Some(c) if c.parse::<u32>().is_ok_and(|n| n >= 4000) => ForwardStatus::Accepted,
-        Some(_) => ForwardStatus::Rejected,
+        Some(c) if c.parse::<u32>().is_ok_and(|n| (2000..4000).contains(&n)) => {
+            ForwardStatus::Rejected
+        }
+        Some(_) => ForwardStatus::Blocked,
         None => ForwardStatus::Unknown,
     };
     ForwardResponse {
@@ -231,7 +241,8 @@ fn zip_pair(name: &str, xml: &str, cdr_xml: &str) -> zip::result::ZipResult<Vec<
     let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
     let options = zip::write::SimpleFileOptions::default();
     zip.start_file(format!("{name}.xml"), options)?;
-    zip.write_all(xml.as_bytes())?;
+    // The bytes the issuer signed, in the encoding the XML declares (e.g. ISO-8859-1)
+    zip.write_all(xhandler::prelude::UblFile::from(xml).bytes())?;
     zip.start_file(format!("R-{name}.xml"), options)?;
     zip.write_all(cdr_xml.as_bytes())?;
     Ok(zip.finish()?.into_inner())
@@ -295,8 +306,15 @@ mod tests {
             format!("<soap:Fault><faultcode>soap-env:Client.{code}</faultcode><faultstring>x</faultstring></soap:Fault>")
         };
         assert_eq!(answer(&fault("0109")).status, ForwardStatus::Unknown);
-        assert_eq!(answer(&fault("1033")).status, ForwardStatus::Accepted);
         assert_eq!(answer(&fault("2335")).status, ForwardStatus::Rejected);
+        // Not the document's fault: kept queued for a person
+        for code in ["0102", "0111", "0151", "1032", "1033", "0999"] {
+            assert_eq!(
+                answer(&fault(code)).status,
+                ForwardStatus::Blocked,
+                "{code}"
+            );
+        }
         assert_eq!(answer("<html>503</html>").status, ForwardStatus::Unknown);
     }
 

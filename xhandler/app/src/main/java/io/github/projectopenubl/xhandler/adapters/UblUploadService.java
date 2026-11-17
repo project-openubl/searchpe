@@ -81,7 +81,8 @@ public class UblUploadService {
         }
         // Authorize before the engine parses anything
         QuarkusTransaction.requiringNew().run(() -> access.enter(tenantId, Role.OPERATOR));
-        String xml = new String(xmlBytes, StandardCharsets.UTF_8);
+        // In the encoding it declares, so a pre-signed ISO-8859-1 document keeps its exact bytes
+        String xml = io.github.projectopenubl.xhandler.api.XmlText.decode(xmlBytes);
         EngineModels.InspectResponse identity = engine.inspect(xml);
         if (identity.tipoComprobante() == null || !TIPOS.contains(identity.tipoComprobante()) || identity.numero() == null
                 || identity.serie() == null) {

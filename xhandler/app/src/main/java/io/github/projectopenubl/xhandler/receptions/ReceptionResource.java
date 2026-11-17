@@ -80,7 +80,7 @@ public class ReceptionResource {
         byte[] xmlBytes = read(xml, MAX_XML, "El XML");
         byte[] pdfBytes = pdf == null ? null : read(pdf, MAX_ATTACHMENT, "El PDF");
         byte[] cdrBytes = cdr == null ? null : read(cdr, MAX_ATTACHMENT, "El CDR");
-        EngineModels.InspectResponse identity = engine.inspect(new String(xmlBytes, StandardCharsets.UTF_8));
+        EngineModels.InspectResponse identity = engine.inspect(io.github.projectopenubl.xhandler.api.XmlText.decode(xmlBytes));
         if (identity.tipoComprobante() == null || identity.numero() == null) {
             throw ApiException.invalid("invalid_document", "El XML no es un comprobante.", null);
         }

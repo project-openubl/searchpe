@@ -11,4 +11,5 @@ pub mod consult;
 pub mod inspect;
 pub mod rules;
 pub mod sunat_fake;
+pub mod xmldsig;
 pub mod xsd;

@@ -41,6 +41,12 @@ class OseTest {
     OseJobs.Forwarder forwarder;
 
     @Inject
+    OseJobs.Purge purge;
+
+    @Inject
+    io.github.projectopenubl.xhandler.storage.FileStore files;
+
+    @Inject
     EntityManager em;
 
     String ruc;
@@ -165,6 +171,45 @@ class OseTest {
         assertTrue(sendBill(ruc + "-01-F001-5", zip(Map.of(ruc + "-01-F001-5.xml", xml("F001-5", true, "")))).asString().contains("Client.2010"));
         as("olga").body(List.of()).put("/api/admin/v1/ose/blocked/dl1532").then().statusCode(200);
         as("olga").get("/api/admin/v1/ose/forwarding").then().statusCode(200);
+        as("olga").get("/api/admin/v1/ose/usage").then().statusCode(200);
+
+        // The engine down: the issuer gets "service unavailable" and nothing is recorded or billed
+        EngineStub.on("/v1/inspect", body -> new EngineStub.Reply(502, "{\"kind\":\"other\",\"message\":\"down\"}"));
+        String down = ruc + "-01-F001-7";
+        assertTrue(sendBill(down, zip(Map.of(down + ".xml", xml("F001-7", true, "")))).asString().contains("Client.0109"));
+        EngineStub.reset();
+        assertEquals(0L, (long) QuarkusTransaction.requiringNew().call(() -> ((Number) em.createNativeQuery(
+                "SELECT count(*) FROM xhandler.ose_submission WHERE name = :n").setParameter("n", down).getSingleResult()).longValue()));
+    }
+
+    @Test
+    void credential_faults_block_forwarding_instead_of_rejecting_and_the_purge_deletes_files() throws Exception {
+        associate(ruc);
+        String first = ruc + "-01-F005-1";
+        String second = ruc + "-01-F005-2";
+        sendBill(first, zip(Map.of(first + ".xml", xml("F005-1", true, "")))).then().statusCode(200);
+        sendBill(second, zip(Map.of(second + ".xml", xml("F005-2", true, "")))).then().statusCode(200);
+        // SUNAT refuses the OSE's own user: not the documents' fault
+        EngineStub.on("/v1/ose/forward", body -> EngineStub.Reply.ok("{\"status\":\"blocked\",\"code\":\"0102\",\"description\":\"Usuario o contraseña incorrectos\"}"));
+        forwarder.run(new JobContext(UUID.randomUUID(), null, "ose.forward", 1, new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode(),
+                null, () -> false));
+        List<String> states = QuarkusTransaction.requiringNew().call(() -> em.createNativeQuery(
+                        "SELECT forward_status FROM xhandler.ose_submission WHERE name IN (:a, :b) AND result = 'cdr'")
+                .setParameter("a", first).setParameter("b", second).getResultList());
+        assertTrue(states.contains("blocked") && !states.contains("rejected") && !states.contains("forwarded"), states.toString());
+
+        // Old forwarded submissions go, with their files
+        EngineStub.reset();
+        String xmlRef = QuarkusTransaction.requiringNew().call(() -> {
+            em.createNativeQuery("UPDATE xhandler.ose_submission SET forward_status = 'forwarded', purge_after = now() - interval '1 day' WHERE name = :n")
+                    .setParameter("n", first).executeUpdate();
+            return (String) em.createNativeQuery("SELECT xml_ref FROM xhandler.ose_submission WHERE name = :n").setParameter("n", first).getSingleResult();
+        });
+        purge.run(new JobContext(UUID.randomUUID(), null, "ose.purge", 1, new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode(),
+                null, () -> false));
+        assertEquals(0L, (long) QuarkusTransaction.requiringNew().call(() -> ((Number) em.createNativeQuery(
+                "SELECT count(*) FROM xhandler.ose_submission WHERE name = :n").setParameter("n", first).getSingleResult()).longValue()));
+        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, () -> files.get(xmlRef));
     }
 
     @Test
@@ -199,13 +244,25 @@ class OseTest {
                         zip(Map.of(ruc + "-01-F003-2.xml", xml("F003-2", false, ""))))))
                 .post("/api/v1/ose/documents").then().statusCode(422).body("kind", equalTo("inconsistency")).body("detail", equalTo("0306"));
 
-        // Five wrong passwords lock the user, even for the right one
-        for (int i = 0; i < 5; i++) {
+        // Wrong passwords never lock the issuer out (anyone knowing the username could): the right one still works
+        for (int i = 0; i < 6; i++) {
             given().header("Authorization", "Basic " + Base64.getEncoder().encodeToString((username + ":bad").getBytes(StandardCharsets.UTF_8)))
                     .get("/api/v1/ose/documents/" + name + "/cdr").then().statusCode(401);
         }
-        given().header("Authorization", basic).get("/api/v1/ose/documents/" + name + "/cdr").then().statusCode(401);
-        assertTrue(soap(username, password, "getStatus", "<ticket>" + ticket + "</ticket>").asString().contains("Client.0102"));
+        given().header("Authorization", basic).get("/api/v1/ose/documents/" + name + "/cdr").then().statusCode(200);
+
+        // An identical resend through a ticket is answered by that ticket too
+        String again = between(soap(username, password, "sendSummary", "<fileName>" + summary + ".zip</fileName><contentFile>"
+                + Base64.getEncoder().encodeToString(zip(Map.of(summary + ".xml", rc))) + "</contentFile>").asString(), "<ticket>", "</ticket>");
+        assertTrue(soap(username, password, "getStatus", "<ticket>" + again + "</ticket>").asString().contains("<statusCode>0</statusCode>"));
+        // A pack entry with a bad name gets its own answer; the others still go through
+        byte[] mixed = zip(Map.of("bad-name.xml", "<x/>", ruc + "-01-F004-1.xml", xml("F004-1", true, "")));
+        String mixedTicket = between(soap(username, password, "sendPack", "<fileName>" + ruc + "-PACK2.zip</fileName><contentFile>"
+                + Base64.getEncoder().encodeToString(mixed) + "</contentFile>").asString(), "<ticket>", "</ticket>");
+        Map<String, String> mixedContent = unzip(between(soap(username, password, "getStatus", "<ticket>" + mixedTicket + "</ticket>").asString(),
+                "<content>", "</content>"));
+        assertTrue(mixedContent.containsKey("R-" + ruc + "-01-F004-1.xml") && mixedContent.get("errores.txt").contains("bad-name"),
+                mixedContent.toString());
         // A DOCTYPE in the envelope is refused
         given().contentType("text/xml").body("<?xml version=\"1.0\"?><!DOCTYPE x [<!ENTITY e SYSTEM \"file:///etc/passwd\">]><x>&e;</x>")
                 .post("/ose/billService").then().statusCode(500).body(containsString("Client.0306"));

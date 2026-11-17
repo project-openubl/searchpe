@@ -45,8 +45,11 @@ public class OseAdminResource {
     private final EntityManager em;
     private final PlatformKeys keys;
     private final PlatformCredentials credentials;
+    private final java.util.Optional<String> oseRuc;
 
-    public OseAdminResource(PlatformAdmin admin, EntityManager em, PlatformKeys keys, PlatformCredentials credentials) {
+    public OseAdminResource(PlatformAdmin admin, EntityManager em, PlatformKeys keys, PlatformCredentials credentials,
+            @org.eclipse.microprofile.config.inject.ConfigProperty(name = "xhandler.ose.ruc") java.util.Optional<String> oseRuc) {
+        this.oseRuc = oseRuc;
         this.admin = admin;
         this.em = em;
         this.keys = keys;
@@ -70,7 +73,11 @@ public class OseAdminResource {
                     .setParameter("h", OseClients.hash(password)).setParameter("t", request.tenantId()).setParameter("by", who).executeUpdate();
             em.flush();
         } catch (jakarta.persistence.PersistenceException e) {
-            if (io.github.projectopenubl.xhandler.api.Constraints.violated(e).isPresent()) {
+            String constraint = io.github.projectopenubl.xhandler.api.Constraints.violated(e).orElse("");
+            if (constraint.contains("tenant")) {
+                throw ApiException.invalid("invalid_request", "La organización indicada no existe.", null);
+            }
+            if (!constraint.isEmpty()) {
                 throw ApiException.conflict("username_taken", "Ese usuario ya existe.");
             }
             throw e;
@@ -134,10 +141,12 @@ public class OseAdminResource {
     @PUT
     @Path("/association")
     @Transactional
-    public Map<String, Object> association(@Valid List<@Valid Association> entries) {
+    public Map<String, Object> association(@Valid List<@Valid Association> entries,
+            @jakarta.ws.rs.QueryParam("confirm_empty") boolean confirmEmpty) {
         String who = admin.require();
-        if (entries == null) {
-            throw ApiException.invalid("invalid_request", "Envíe la lista de contribuyentes asociados.", null);
+        if (entries == null || entries.isEmpty() && !confirmEmpty) {
+            // An empty list refuses every issuer: only on purpose
+            throw ApiException.invalid("invalid_request", "Envíe la lista de contribuyentes asociados (o confirme vaciarla).", null);
         }
         em.createNativeQuery("DELETE FROM xhandler.ose_association").executeUpdate();
         for (Association a : entries) {
@@ -177,7 +186,33 @@ public class OseAdminResource {
         if (file == null || password == null) {
             throw ApiException.invalid("invalid_request", "Envíe el archivo .pfx y su contraseña.", null);
         }
-        PlatformKeys.Key key = keys.importKey("ose_cdr", Files.readAllBytes(file.uploadedFile()), password.toCharArray());
+        byte[] pkcs12 = Files.readAllBytes(file.uploadedFile());
+        // The CDR-OSE certificate must be the OSE's own (SUNAT checks 2824) and in force
+        java.security.KeyStore store;
+        try {
+            store = java.security.KeyStore.getInstance("PKCS12");
+            store.load(new java.io.ByteArrayInputStream(pkcs12), password.toCharArray());
+        } catch (java.security.GeneralSecurityException | IOException e) {
+            throw ApiException.invalid("invalid_certificate", "No se pudo leer el certificado o la contraseña es incorrecta.", null);
+        }
+        java.security.cert.X509Certificate certificate;
+        try {
+            String alias = java.util.Collections.list(store.aliases()).stream().filter(a -> {
+                try {
+                    return store.isKeyEntry(a);
+                } catch (java.security.KeyStoreException e) {
+                    return false;
+                }
+            }).findFirst().orElseThrow();
+            certificate = (java.security.cert.X509Certificate) store.getCertificate(alias);
+            certificate.checkValidity();
+        } catch (java.util.NoSuchElementException | java.security.GeneralSecurityException e) {
+            throw ApiException.invalid("invalid_certificate", "El certificado no tiene clave privada o no está vigente.", null);
+        }
+        if (oseRuc.isEmpty() || !certificate.getSubjectX500Principal().getName().contains(oseRuc.get())) {
+            throw ApiException.invalid("invalid_certificate", "El certificado no corresponde al RUC del OSE.", null);
+        }
+        PlatformKeys.Key key = keys.importKey("ose_cdr", pkcs12, password.toCharArray());
         AdminResource.PLATFORM_AUDIT.infof("admin %s imported the OSE CDR certificate %s", who, key.subject());
         return Map.of("subject", key.subject(), "ruc", String.valueOf(key.ruc()), "valid_until", key.validUntil().toString());
     }
@@ -208,7 +243,7 @@ public class OseAdminResource {
     public Map<String, Object> forwarding() {
         admin.require();
         Object[] r = (Object[]) em.createNativeQuery("""
-                        SELECT count(*) FILTER (WHERE forward_status = 'pending'),
+                        SELECT count(*) FILTER (WHERE forward_status IN ('pending', 'blocked')),
                                extract(epoch FROM now() - min(cdr_issued_at) FILTER (WHERE forward_status = 'pending')),
                                count(*) FILTER (WHERE forward_status = 'rejected'),
                                count(*) FILTER (WHERE forward_status = 'forwarded' AND forwarded_at > cdr_issued_at + interval '1 hour'),
@@ -222,11 +257,37 @@ public class OseAdminResource {
         view.put("pending", ((Number) r[0]).longValue());
         view.put("oldest_pending_seconds", r[1] == null ? 0 : ((Number) r[1]).doubleValue());
         view.put("rejected", ((Number) r[2]).longValue());
+        view.put("blocked", ((Number) em.createNativeQuery("SELECT count(*) FROM xhandler.ose_submission WHERE forward_status = 'blocked'")
+                .getSingleResult()).longValue());
         view.put("late", ((Number) r[3]).longValue());
         view.put("forwarded", ((Number) r[4]).longValue());
         view.put("rejected_items", rejected.stream().map(x -> Map.of("id", x[0], "name", x[1], "error", String.valueOf(x[2]),
                 "cdr_issued_at", String.valueOf(StatusResource.toInstant(x[3])))).toList());
         return view;
+    }
+
+    /** Validations per OSE user and month: the separate billing line (RS 242-2018 art. 7.16), also for issuers that aren't tenants. */
+    @GET
+    @Path("/usage")
+    @Transactional
+    public List<Map<String, Object>> usage(@jakarta.ws.rs.QueryParam("month") String month) {
+        admin.require();
+        java.time.YearMonth m = month == null ? java.time.YearMonth.now() : java.time.YearMonth.parse(month);
+        @SuppressWarnings("unchecked")
+        List<Object[]> rows = em.createNativeQuery("""
+                        SELECT c.id, c.issuer_ruc, c.username, c.tenant_id, coalesce(sum(u.validations), 0)
+                        FROM xhandler.ose_client c LEFT JOIN xhandler.ose_usage u ON u.ose_client_id = c.id AND u.day BETWEEN :from AND :to
+                        GROUP BY c.id ORDER BY c.issuer_ruc""")
+                .setParameter("from", m.atDay(1)).setParameter("to", m.atEndOfMonth()).getResultList();
+        return rows.stream().map(x -> {
+            Map<String, Object> view = new LinkedHashMap<>();
+            view.put("ose_client_id", x[0]);
+            view.put("issuer_ruc", x[1]);
+            view.put("username", x[2]);
+            view.put("tenant_id", x[3]);
+            view.put("validations", ((Number) x[4]).longValue());
+            return view;
+        }).toList();
     }
 
     /** Sends a rejected forward again (after fixing what SUNAT refused). */
