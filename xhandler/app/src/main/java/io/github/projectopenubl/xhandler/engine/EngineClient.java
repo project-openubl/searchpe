@@ -1,5 +1,6 @@
 package io.github.projectopenubl.xhandler.engine;
 
+import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import org.eclipse.microprofile.rest.client.annotation.RegisterProvider;
@@ -19,6 +20,14 @@ public interface EngineClient {
     EngineModels.BuildResponse build(EngineModels.BuildRequest request);
 
     @POST
+    @Path("/validate")
+    EngineModels.ValidateResponse validate(EngineModels.ValidateRequest request);
+
+    @POST
+    @Path("/inspect")
+    EngineModels.InspectResponse inspect(EngineModels.InspectRequest request);
+
+    @POST
     @Path("/sign")
     EngineModels.SignResponse sign(EngineModels.SignRequest request);
 
@@ -33,4 +42,28 @@ public interface EngineClient {
     @POST
     @Path("/send")
     EngineModels.SendResponse send(EngineModels.SendRequest request);
+
+    @POST
+    @Path("/verify-ticket")
+    EngineModels.SendResponse verifyTicket(EngineModels.VerifyTicketRequest request);
+
+    @POST
+    @Path("/status-cdr")
+    EngineModels.StatusCdrResponse statusCdr(EngineModels.StatusCdrRequest request);
+
+    @POST
+    @Path("/validity")
+    EngineModels.ValidityResponse validity(EngineModels.ValidityRequest request);
+
+    @POST
+    @Path("/validity/file")
+    EngineModels.ValidityResponse validityFile(EngineModels.ValidityFileRequest request);
+
+    @POST
+    @Path("/cdr")
+    EngineModels.XmlResponse cdr(EngineModels.CdrRequest request);
+
+    @GET
+    @Path("/info")
+    EngineModels.InfoResponse info();
 }

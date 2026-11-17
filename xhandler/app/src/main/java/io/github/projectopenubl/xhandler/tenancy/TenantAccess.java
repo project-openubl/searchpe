@@ -57,8 +57,9 @@ public class TenantAccess {
      * from a request without an explicit platform check.
      */
     @Transactional(Transactional.TxType.MANDATORY)
-    public void enterAsPlatform(UUID tenantId) {
+    public TenantScope enterAsPlatform(UUID tenantId) {
         setTenant(tenantId);
+        return new TenantScope(tenantId, Actor.PLATFORM, Role.PLATFORM);
     }
 
     private Role roleOf(UUID tenantId, Actor actor) {

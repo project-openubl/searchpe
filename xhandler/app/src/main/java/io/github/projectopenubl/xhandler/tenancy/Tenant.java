@@ -23,6 +23,8 @@ public class Tenant extends PanacheEntityBase {
     public int retentionYears = 10;
     public boolean auditHold;
     public String createdBy;
+    /** Holds SUNAT attempts for all its documents (DESIGN.md §24.1) */
+    public boolean sendingPaused;
 
     @CreationTimestamp
     public Instant createdAt;

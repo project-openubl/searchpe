@@ -16,6 +16,7 @@ PR. Regulatory background is in [docs/research/](docs/research/README.md).
 
 ```
 app/              Quarkus application (Java 25, Maven)
+admin-cli/        xhandler-admin: Picocli client of the admin API
 engine/           Rust sidecar: build, sign, send (axum; xhandler-rust pinned by rev)
 deploy/base/      Kustomize base: one pod = app + engine sidecar
 hack/             compose.yaml (PostgreSQL, Grafana LGTM) and e2e.sh
@@ -35,7 +36,13 @@ docs/             DESIGN.md and research
 ./hack/e2e.sh                          # full flow against SUNAT beta, checks the trace
 ```
 
-Rust 1.100.0 is pinned in `engine/rust-toolchain.toml`. Java 25.
+Rust 1.100.0 is pinned in `engine/rust-toolchain.toml`. Java 25. The engine builds against
+libxml2 (`libxml2-dev`, `libclang-dev`, `pkg-config`).
+
+```bash
+(cd engine && cargo run --bin sunat-fake)  # the SUNAT fake on 127.0.0.1:8099 (environment "fake")
+java -jar admin-cli/target/xhandler-admin.jar --help   # xhandler-admin (after ./mvnw package)
+```
 
 ## Conventions
 
@@ -60,7 +67,9 @@ Rust 1.100.0 is pinned in `engine/rust-toolchain.toml`. Java 25.
   - every `@Transactional` method touching tenant data calls `TenantAccess.enter(tenantId, minimumRole)` first;
   - PostgreSQL row-level security does the isolation: the app runs as `xhandler_app` (never as the owner or a superuser; `DatabaseRoleCheck`), and a query without an open tenant sees no rows;
   - cross-tenant lookups are `SECURITY DEFINER` SQL functions in the migrations, never ad-hoc queries;
-  - never edit an applied migration (`V1`, `V2`, …): add a new one;
+  - never edit an applied migration (`V1`, `V2`, …): add a new one. "Applied" includes your own
+    local test database (Dev Services reuse it), so once a test run has migrated it, add a new
+    migration instead of editing;
   - foreign and unknown tenants are both 404.
 - **Secrets and keys**:
   - private keys only through `KeyVault` (an HSM in production; `SoftwareKeyVault` for dev and tests only);

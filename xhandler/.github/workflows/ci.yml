@@ -28,6 +28,8 @@ jobs:
         working-directory: engine
     steps:
       - uses: actions/checkout@v7.0.1
+      # libxml2 for XSD validation (the libxml crate generates its bindings with libclang)
+      - run: sudo apt-get update && sudo apt-get install -y libxml2-dev libclang-dev pkg-config
       # Installs the toolchain of engine/rust-toolchain.toml
       - run: rustup show active-toolchain || rustup toolchain install
       - uses: Swatinem/rust-cache@v2.9.3

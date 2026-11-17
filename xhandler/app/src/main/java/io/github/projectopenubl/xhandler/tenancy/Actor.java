@@ -6,6 +6,9 @@ package io.github.projectopenubl.xhandler.tenancy;
  */
 public record Actor(String kind, String subject, boolean emailVerified, boolean platformSupport) {
 
+    /** Platform work (workers, schedules, the admin CLI's jobs). */
+    public static final Actor PLATFORM = new Actor("platform", "worker", false, false);
+
     public boolean isUser() {
         return "user".equals(kind);
     }

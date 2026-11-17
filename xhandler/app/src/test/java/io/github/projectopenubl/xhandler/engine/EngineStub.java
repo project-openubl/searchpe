@@ -8,18 +8,33 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executors;
+import java.util.function.Function;
 
 /**
  * Plays the Rust engine over real HTTP, answering with JSON in the engine's wire format, so tests
  * exercise the REST client, error mapping and snake_case (de)serialization. Records the requests.
+ *
+ * <p>Tests script answers per path with {@link #on}: this is the SUNAT fake of the app's tests
+ * (any code, outages, delays, a dropped answer). Scripts are global: tests that script must reset
+ * in {@code @AfterEach} and use documents only they touch.
  */
 public class EngineStub implements QuarkusTestResourceLifecycleManager {
 
     /** A request the stub received. */
     public record Recorded(String path, String body) {}
 
+    /** An answer: HTTP status and JSON body. */
+    public record Reply(int status, String json) {
+        public static Reply ok(String json) {
+            return new Reply(200, json);
+        }
+    }
+
     private static final List<Recorded> REQUESTS = new CopyOnWriteArrayList<>();
+    private static final Map<String, Function<String, Reply>> SCRIPTS = new ConcurrentHashMap<>();
 
     private HttpServer server;
 
@@ -27,13 +42,35 @@ public class EngineStub implements QuarkusTestResourceLifecycleManager {
         return List.copyOf(REQUESTS);
     }
 
+    /** Requests to {@code path} whose body contains {@code text}. */
+    public static List<Recorded> requests(String path, String text) {
+        return REQUESTS.stream().filter(r -> r.path().equals(path) && r.body().contains(text)).toList();
+    }
+
     public static void reset() {
         REQUESTS.clear();
+        SCRIPTS.clear();
+    }
+
+    /** Answers requests to {@code path} with {@code script} (given the request body) until reset. */
+    public static void on(String path, Function<String, Reply> script) {
+        SCRIPTS.put(path, script);
     }
 
     /** Body of the last request to {@code path}. */
     public static String lastBody(String path) {
         return REQUESTS.stream().filter(r -> r.path().equals(path)).reduce((a, b) -> b).map(Recorded::body).orElseThrow();
+    }
+
+    public static String sendAnswer(String status, Integer code, String codeClass, String ticket) {
+        return "{\"status\":\"" + status + "\",\"code\":" + code + ",\"code_class\":" + quote(codeClass)
+                + ",\"description\":\"respuesta " + status + "\",\"notes\":[],\"cdr_zip\":"
+                + ("accepted".equals(status) || "rejected".equals(status) ? "\"UEsDBA==\"" : "null")
+                + ",\"ticket\":" + quote(ticket) + "}";
+    }
+
+    private static String quote(String value) {
+        return value == null ? "null" : "\"" + value + "\"";
     }
 
     @Override
@@ -43,6 +80,7 @@ public class EngineStub implements QuarkusTestResourceLifecycleManager {
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
+        server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
         server.createContext("/v1/", this::handle);
         server.start();
         return Map.of("quarkus.rest-client.engine.url", "http://127.0.0.1:" + server.getAddress().getPort());
@@ -60,6 +98,17 @@ public class EngineStub implements QuarkusTestResourceLifecycleManager {
         String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         REQUESTS.add(new Recorded(path, body));
 
+        Function<String, Reply> script = SCRIPTS.get(path);
+        if (script != null) {
+            Reply reply = script.apply(body);
+            if (reply == null) {
+                // A dropped answer: close without responding
+                exchange.close();
+                return;
+            }
+            respond(exchange, reply.status(), reply.json());
+            return;
+        }
         switch (path) {
             case "/v1/build" -> {
                 if (body.contains("\"serie_numero\"")) {
@@ -68,13 +117,19 @@ public class EngineStub implements QuarkusTestResourceLifecycleManager {
                     respond(exchange, 422, "{\"kind\":\"invalid_document\",\"message\":\"missing field `serie_numero`\"}");
                 }
             }
+            case "/v1/validate" -> respond(exchange, 200, "{\"valid\":true,\"errors\":[],\"observations\":[]}");
             case "/v1/sign" -> respond(exchange, 200, "{\"xml\":\"<Invoice signed-with-demo-key/>\",\"digest_value\":\"digest-demo\"}");
             // data_to_sign = base64("data-to-sign")
             case "/v1/sign/prepare" -> respond(exchange, 200, "{\"data_to_sign\":\"ZGF0YS10by1zaWdu\",\"digest_value\":\"digest-123\"}");
             case "/v1/sign/finalize" -> respond(exchange, 200, "{\"xml\":\"<Invoice signed/>\",\"digest_value\":\"digest-123\"}");
             case "/v1/send" -> respond(exchange, 200, """
-                    {"status":"accepted","code":0,"description":"La Factura numero F001-1, ha sido aceptada",\
+                    {"status":"accepted","code":0,"code_class":null,"description":"La Factura numero F001-1, ha sido aceptada",\
                     "notes":[],"cdr_zip":"UEsDBA==","ticket":null}""");
+            case "/v1/verify-ticket" -> respond(exchange, 200, sendAnswer("accepted", 0, null, null));
+            case "/v1/status-cdr" -> respond(exchange, 200, "{\"status\":\"not_found\",\"code\":\"0011\",\"description\":\"no existe\",\"cdr_zip\":null}");
+            case "/v1/validity/file" -> respond(exchange, 200, "{\"state\":\"matches\",\"code\":\"0001\",\"description\":\"coincide\"}");
+            case "/v1/validity" -> respond(exchange, 200, "{\"state\":\"valid\",\"code\":\"0001\",\"description\":\"válido\"}");
+            case "/v1/info" -> respond(exchange, 200, "{\"engine_version\":\"0.0.0-stub\",\"xhandler_rust_rev\":\"stub\"}");
             default -> respond(exchange, 404, "{\"kind\":\"other\",\"message\":\"not found\"}");
         }
     }

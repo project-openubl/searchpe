@@ -4,6 +4,8 @@ import java.util.Locale;
 
 /** Role of an actor in a tenant, from most to least privileged. */
 public enum Role {
+    /** Platform work without a person (workers, schedules): never granted to a member. */
+    PLATFORM,
     OWNER,
     ADMIN,
     OPERATOR,

@@ -27,6 +27,8 @@ public class Company extends PanacheEntityBase {
     public String emissionMode = "software";
     public Instant rucVerifiedAt;
     public boolean active = true;
+    /** Holds SUNAT attempts for all its documents (DESIGN.md §24.1) */
+    public boolean sendingPaused;
 
     @CreationTimestamp
     public Instant createdAt;

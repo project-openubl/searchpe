@@ -63,7 +63,7 @@ class CompanyTest {
             response = as("carol").body(Map.of("ruc", randomRuc(), "razon_social", "Empresa"))
                     .post("/api/v1/tenants/" + tenant + "/companies");
             created++;
-        } while (response.statusCode() == 201 && created <= 31);
+        } while (response.statusCode() == 201 && created <= 201);
         response.then().statusCode(409).body("kind", equalTo("limit_reached"));
     }
 

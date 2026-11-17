@@ -46,3 +46,6 @@ nb-configuration.xml
 
 # Rust
 engine/target/
+
+# Claude Code worktrees
+.claude/worktrees/

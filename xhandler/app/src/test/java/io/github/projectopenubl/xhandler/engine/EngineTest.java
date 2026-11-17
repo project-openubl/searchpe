@@ -9,32 +9,10 @@ import org.junit.jupiter.api.Test;
 class EngineTest {
 
     /** An engine client whose every call fails like an unreachable or timed-out engine. */
-    private static final EngineClient UNREACHABLE = new EngineClient() {
-        @Override
-        public EngineModels.BuildResponse build(EngineModels.BuildRequest request) {
-            throw new ProcessingException("Connection refused");
-        }
-
-        @Override
-        public EngineModels.SignResponse sign(EngineModels.SignRequest request) {
-            throw new ProcessingException("Connection refused");
-        }
-
-        @Override
-        public EngineModels.SignPrepareResponse signPrepare(EngineModels.SignPrepareRequest request) {
-            throw new ProcessingException("Connection refused");
-        }
-
-        @Override
-        public EngineModels.SignResponse signFinalize(EngineModels.SignFinalizeRequest request) {
-            throw new ProcessingException("Connection refused");
-        }
-
-        @Override
-        public EngineModels.SendResponse send(EngineModels.SendRequest request) {
-            throw new ProcessingException("Read timed out");
-        }
-    };
+    private static final EngineClient UNREACHABLE = (EngineClient) java.lang.reflect.Proxy.newProxyInstance(
+            EngineClient.class.getClassLoader(), new Class<?>[] {EngineClient.class}, (proxy, method, args) -> {
+                throw new ProcessingException("Connection refused");
+            });
 
     @Test
     void unreachable_engine_is_engine_unavailable() {

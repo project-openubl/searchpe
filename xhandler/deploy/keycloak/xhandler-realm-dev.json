@@ -73,6 +73,42 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "xhandler-admin",
+      "description": "xhandler-admin CLI (platform administrators, client credentials)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "admin-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocolMappers": [
+        {
+          "name": "xhandler-service audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "xhandler-service",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "client_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "config": {
+            "user.session.note": "client_id",
+            "claim.name": "client_id",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
     }
   ],
   "users": [
@@ -143,6 +179,32 @@
       "username": "service-account-acme-erp",
       "enabled": true,
       "serviceAccountClientId": "acme-erp"
+    },
+    {
+      "username": "olga",
+      "enabled": true,
+      "email": "olga@example.com",
+      "emailVerified": true,
+      "firstName": "Olga",
+      "lastName": "Admin",
+      "realmRoles": [
+        "platform-admin"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "olga",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "service-account-xhandler-admin",
+      "enabled": true,
+      "serviceAccountClientId": "xhandler-admin",
+      "realmRoles": [
+        "platform-admin"
+      ]
     }
   ]
 }
