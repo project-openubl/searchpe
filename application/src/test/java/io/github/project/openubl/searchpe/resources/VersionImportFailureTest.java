@@ -25,9 +25,6 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
 
-import java.util.concurrent.TimeUnit;
-
-import static org.awaitility.Awaitility.await;
 
 @QuarkusTest
 @TestProfile(UnreachableSunatProfileManager.class)
@@ -51,14 +48,6 @@ public class VersionImportFailureTest extends AbstractBaseTest {
                 .extract().body().as(VersionDto.class);
 
         // Then
-        await().atMost(1, TimeUnit.MINUTES)
-                .until(() -> givenAuth("alice")
-                        .header("Content-Type", "application/json")
-                        .when()
-                        .get("/" + version.getId())
-                        .then()
-                        .extract().body().as(VersionDto.class)
-                        .getStatus() == Status.ERROR
-                );
+        awaitVersionStatus(version.getId(), Status.ERROR);
     }
 }

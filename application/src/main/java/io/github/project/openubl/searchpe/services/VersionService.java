@@ -17,12 +17,14 @@
 package io.github.project.openubl.searchpe.services;
 
 import io.github.project.openubl.searchpe.models.VersionEvent;
+import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.EstadoContribuyente;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.utils.DataHelper;
 import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.runtime.StartupEvent;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
@@ -31,6 +33,7 @@ import org.postgresql.core.BaseConnection;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
+import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import javax.sql.DataSource;
 import jakarta.transaction.Transactional;
@@ -118,11 +121,17 @@ public class VersionService {
     @ConfigProperty(name = "searchpe.sunat.watchDelay")
     int watchDelay;
 
+    @ConfigProperty(name = "searchpe.sunat.minRecordsRatio")
+    double minRecordsRatio;
+
     @Inject
     DataSource dataSource;
 
     @Inject
     FileService fileService;
+
+    @Inject
+    VersionRepository versionRepository;
 
     @Inject
     Event<VersionEvent.DownloadingEvent> downloadingVersionEvent;
@@ -201,6 +210,8 @@ public class VersionService {
         } catch (Exception e) {
             if (e instanceof CancellationException || Thread.currentThread().isInterrupted()) {
                 LOGGER.infof("Import of Version %s was cancelled", versionId);
+            } else if (e instanceof IncompletePadronException) {
+                LOGGER.error(e.getMessage());
             } else {
                 LOGGER.errorf(e, "Import of Version %s failed", versionId);
             }
@@ -227,6 +238,7 @@ public class VersionService {
 
             importingVersionEvent.fire(() -> versionId);
             int totalRowsImported = processTxtFile(versionId, txtFile, executorService);
+            checkRecordCount(versionId, totalRowsImported);
             updateVersion(versionId, version -> {
                 version.status = Status.INDEXING;
                 version.records = totalRowsImported;
@@ -237,6 +249,40 @@ public class VersionService {
 
         createIndex(versionId, executorService);
         updateVersion(versionId, version -> version.status = Status.COMPLETED);
+    }
+
+    /**
+     * Refuses to promote a version that is much smaller than the active one, which usually means SUNAT published a
+     * truncated or broken file. The import then fails and the active version stays in place. An import with no rows is
+     * always rejected, even when there is no active version.
+     */
+    private void checkRecordCount(Long versionId, int totalRowsImported) {
+        Optional<VersionEntity> activeVersion = versionRepository.findActive();
+        int minimumRecords = minimumRecords(activeVersion.map(version -> version.records).orElse(0), minRecordsRatio);
+        if (totalRowsImported < minimumRecords) {
+            throw new IncompletePadronException(String.format(
+                    "Version %s imported %d records, fewer than the %d required by searchpe.sunat.minRecordsRatio=%s "
+                            + "(active version: %s)",
+                    versionId, totalRowsImported, minimumRecords, minRecordsRatio,
+                    activeVersion.map(version -> version.id + " with " + version.records + " records").orElse("none")
+            ));
+        }
+    }
+
+    /**
+     * @param activeVersionRecords records of the active version, or 0 if there is none
+     * @return the minimum number of records a new version needs to replace the active one, never less than 1
+     */
+    static int minimumRecords(int activeVersionRecords, double minRecordsRatio) {
+        return Math.max(1, (int) Math.ceil(activeVersionRecords * minRecordsRatio));
+    }
+
+    void validateConfig(@Observes StartupEvent event) {
+        if (minRecordsRatio < 0 || minRecordsRatio > 1) {
+            throw new IllegalArgumentException(
+                    "searchpe.sunat.minRecordsRatio must be between 0 and 1, but it is " + minRecordsRatio
+            );
+        }
     }
 
     private void createIndex(Long versionId, ScheduledExecutorService executorService) {

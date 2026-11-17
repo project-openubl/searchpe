@@ -71,7 +71,7 @@ public class VersionResourceTest extends AbstractBaseTest {
                         "size()", is(1),
                         "[0].id", is(3),
                         "[0].status", is("COMPLETED"),
-                        "[0].records", is(9_000_000)
+                        "[0].records", is(400)
                 );
 
     }
