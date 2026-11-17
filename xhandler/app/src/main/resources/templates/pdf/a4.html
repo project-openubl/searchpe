@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<title>{d.tipoNombre} {d.serieNumero}</title>
+<style>
+  @page { size: A4; margin: 14mm 12mm; }
+  body { font-family: Helvetica, Arial, sans-serif; font-size: 9pt; color: #222; }
+  .head { width: 100%; border-collapse: collapse; }
+  .head td { vertical-align: top; }
+  .box { border: 1.5px solid {brand.color}; border-radius: 4px; padding: 8px; text-align: center; width: 62mm; }
+  .box .ruc { font-size: 11pt; font-weight: bold; }
+  .box .tipo { font-size: 11pt; font-weight: bold; color: {brand.color}; margin: 4px 0; }
+  .company { font-size: 12pt; font-weight: bold; }
+  .muted { color: #666; }
+  table.items { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  table.items th { background: {brand.color}; color: #fff; padding: 4px; font-size: 8pt; text-align: left; }
+  table.items td { border-bottom: 0.5px solid #ccc; padding: 4px; }
+  .num { text-align: right; }
+  .totals { width: 70mm; margin-left: auto; margin-top: 8px; border-collapse: collapse; }
+  .totals td { padding: 2px 4px; }
+  .totals .grand td { font-weight: bold; border-top: 1px solid #222; }
+  .banner { border: 2px solid #c0392b; color: #c0392b; font-weight: bold; text-align: center; padding: 6px; margin-bottom: 8px; }
+  .foot { margin-top: 14px; width: 100%; }
+  .foot td { vertical-align: top; }
+  .small { font-size: 7.5pt; }
+</style>
+</head>
+<body>
+{#if banner}<div class="banner">{banner}</div>{/if}
+<table class="head">
+  <tr>
+    <td>
+      {#if logo}<img src="{logo}" style="max-height: 22mm; max-width: 60mm;"/><br/>{/if}
+      <div class="company">{c.razonSocial}</div>
+      {#if c.nombreComercial}<div>{c.nombreComercial}</div>{/if}
+      {#if c.direccion}<div class="muted">{c.direccion}</div>{/if}
+      {#if c.email}<div class="muted">{c.email}</div>{/if}
+    </td>
+    <td style="width: 66mm;">
+      <div class="box">
+        <div class="ruc">RUC {c.ruc}</div>
+        <div class="tipo">{d.tipoNombre}</div>
+        <div class="ruc">{d.serieNumero}</div>
+      </div>
+    </td>
+  </tr>
+</table>
+<table style="width: 100%; margin-top: 10px;">
+  <tr><td style="width: 30mm;" class="muted">Cliente</td><td>{d.clienteNombre ?: '-'}</td>
+      <td style="width: 32mm;" class="muted">Fecha de emisión</td><td style="width: 28mm;">{d.fechaEmision}</td></tr>
+  <tr><td class="muted">{d.clienteTipoNombre}</td><td>{d.clienteNumero ?: '-'}</td>
+      <td class="muted">Moneda</td><td>{d.moneda}</td></tr>
+  {#if d.afectado}<tr><td class="muted">Documento afectado</td><td>{d.afectado}</td><td class="muted">Motivo</td><td>{d.motivo ?: ''}</td></tr>{/if}
+</table>
+<table class="items">
+  <tr><th style="width: 14mm;" class="num">Cant.</th><th>Descripción</th><th style="width: 24mm;" class="num">P. unitario</th><th style="width: 26mm;" class="num">Importe</th></tr>
+  {#for item in d.items}
+  <tr><td class="num">{item.cantidad}</td><td>{item.descripcion}</td><td class="num">{item.precio}</td><td class="num">{item.importe}</td></tr>
+  {/for}
+</table>
+<table class="totals">
+  {#if d.gravado}<tr><td>Op. gravadas</td><td class="num">{d.gravado}</td></tr>{/if}
+  {#if d.exonerado}<tr><td>Op. exoneradas</td><td class="num">{d.exonerado}</td></tr>{/if}
+  {#if d.inafecto}<tr><td>Op. inafectas</td><td class="num">{d.inafecto}</td></tr>{/if}
+  {#if d.igv}<tr><td>IGV</td><td class="num">{d.igv}</td></tr>{/if}
+  <tr class="grand"><td>Importe total ({d.moneda})</td><td class="num">{d.total}</td></tr>
+</table>
+{#if d.leyenda}<p><b>SON:</b> {d.leyenda}</p>{/if}
+<table class="foot">
+  <tr>
+    <td style="width: 32mm;">{#if qr}<img src="{qr}" style="width: 28mm; height: 28mm;"/>{/if}</td>
+    <td class="small">
+      Representación impresa de la {d.tipoNombre}.<br/>
+      {#if d.digest}Código hash: {d.digest}<br/>{/if}
+      {#if accessUrl}Consulte el documento en: {accessUrl}<br/>{/if}
+      Estado ante SUNAT: {d.estado}
+      {#if brand.footer}<br/>{brand.footer}{/if}
+    </td>
+  </tr>
+</table>
+</body>
+</html>

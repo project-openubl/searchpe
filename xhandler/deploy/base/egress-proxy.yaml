@@ -1,0 +1,132 @@
+# Egress proxy (DESIGN.md §16, §26.4): the only way out to SUNAT and
+# third-party OSEs. HTTPS CONNECT only, to port 443 of public addresses;
+# private, loopback, link-local and metadata ranges denied. The cluster's NAT
+# gives it the static egress IPs SUNAT's OSE service is restricted to.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: egress-proxy
+data:
+  squid.conf: |
+    http_port 3128
+    acl private dst 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 100.64.0.0/10 169.254.0.0/16 127.0.0.0/8 0.0.0.0/8 ::1 fc00::/7 fe80::/10
+    acl ssl_port port 443
+    acl CONNECT method CONNECT
+    http_access deny private
+    http_access deny !CONNECT
+    http_access deny CONNECT !ssl_port
+    http_access allow CONNECT ssl_port
+    http_access deny all
+    cache deny all
+    access_log stdio:/dev/stdout
+    cache_log stdio:/dev/stderr
+    pid_filename none
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: egress-proxy
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: egress-proxy
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: egress-proxy
+    spec:
+      automountServiceAccountToken: false
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          nodeTaintsPolicy: Honor
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: egress-proxy
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 31
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: squid
+          image: egress-proxy
+          # Squid itself, in the foreground (the image's own entrypoint is a service manager)
+          command: ["/usr/sbin/squid"]
+          args: ["-N", "-f", "/etc/squid/squid.conf"]
+          ports:
+            - { name: proxy, containerPort: 3128 }
+          readinessProbe:
+            tcpSocket: { port: proxy }
+          resources:
+            requests: { cpu: 100m, memory: 64Mi }
+            limits: { memory: 256Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: config, mountPath: /etc/squid }
+            - { name: tmp, mountPath: /var/spool/squid }
+            - { name: run, mountPath: /var/run/squid }
+      volumes:
+        - name: config
+          configMap: { name: egress-proxy }
+        - name: tmp
+          emptyDir: {}
+        - name: run
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: egress-proxy
+spec:
+  selector:
+    app.kubernetes.io/name: egress-proxy
+  ports:
+    - { name: proxy, port: 3128, targetPort: proxy }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: egress-proxy
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: egress-proxy
+---
+# The proxy reaches only public port 443 (and DNS); only the xhandler pods reach it
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: egress-proxy
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: egress-proxy
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: xhandler-service
+      ports:
+        - { port: 3128, protocol: TCP }
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - { port: 53, protocol: UDP }
+        - { port: 53, protocol: TCP }
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 100.64.0.0/10, 169.254.0.0/16, 127.0.0.0/8]
+      ports:
+        - { port: 443, protocol: TCP }

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<title>{d.tipoNombre} {d.serieNumero}</title>
+<style>
+  @page { size: {width} 400mm; margin: 3mm; }
+  body { font-family: Helvetica, Arial, sans-serif; font-size: 7.5pt; color: #000; }
+  .center { text-align: center; }
+  .bold { font-weight: bold; }
+  hr { border: 0; border-top: 0.5px dashed #000; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 1px 0; vertical-align: top; }
+  .num { text-align: right; }
+</style>
+</head>
+<body>
+{#if banner}<div class="center bold">*** {banner} ***</div>{/if}
+<div class="center">
+  {#if logo}<img src="{logo}" style="max-width: 40mm; max-height: 15mm;"/><br/>{/if}
+  <span class="bold">{c.razonSocial}</span><br/>
+  RUC {c.ruc}<br/>
+  {#if c.direccion}{c.direccion}<br/>{/if}
+  <span class="bold">{d.tipoNombre}</span><br/>
+  <span class="bold">{d.serieNumero}</span>
+</div>
+<hr/>
+Fecha: {d.fechaEmision}<br/>
+Cliente: {d.clienteNombre ?: '-'}<br/>
+{d.clienteTipoNombre}: {d.clienteNumero ?: '-'}
+<hr/>
+<table>
+  {#for item in d.items}
+  <tr><td colspan="2">{item.descripcion}</td></tr>
+  <tr><td>{item.cantidad} x {item.precio}</td><td class="num">{item.importe}</td></tr>
+  {/for}
+</table>
+<hr/>
+<table>
+  {#if d.igv}<tr><td>IGV</td><td class="num">{d.igv}</td></tr>{/if}
+  <tr class="bold"><td>TOTAL {d.moneda}</td><td class="num">{d.total}</td></tr>
+</table>
+{#if d.leyenda}<div>SON: {d.leyenda}</div>{/if}
+<hr/>
+<div class="center">
+  {#if qr}<img src="{qr}" style="width: 26mm; height: 26mm;"/><br/>{/if}
+  Representación impresa de la {d.tipoNombre}<br/>
+  {#if accessUrl}{accessUrl}<br/>{/if}
+  Estado: {d.estado}
+</div>
+</body>
+</html>

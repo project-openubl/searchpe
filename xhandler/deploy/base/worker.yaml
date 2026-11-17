@@ -1,0 +1,145 @@
+# The worker role (DESIGN.md §10, §25.1): claims and runs jobs (SUNAT sends,
+# OSE forwarding, webhooks, reports...) and the singleton activities. No
+# Service: it takes no traffic. Same images as the api deployment.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: xhandler-worker
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: xhandler-service
+      app.kubernetes.io/component: worker
+  strategy:
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: xhandler-service
+        app.kubernetes.io/component: worker
+    spec:
+      automountServiceAccountToken: false
+      # Longer than a full SUNAT call (xsender: 120 s) plus the app's shutdown
+      # timeout, so in-flight sends finish instead of being killed.
+      terminationGracePeriodSeconds: 150
+      # At least three zones (§25.1): spread evenly, and never two on one node
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          # A lost zone's tainted nodes don't count: replacements schedule in the others
+          nodeTaintsPolicy: Honor
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: xhandler-service
+              app.kubernetes.io/component: worker
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: xhandler-service
+              app.kubernetes.io/component: worker
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      # Native sidecar (restartPolicy: Always): starts before the app and is
+      # stopped after it, so the app can finish its engine calls on shutdown.
+      initContainers:
+        - name: engine
+          image: xhandler-engine
+          restartPolicy: Always
+          env:
+            - name: XHANDLER_ENGINE_ADDR
+              value: 127.0.0.1:8090
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector:4318
+            # SUNAT and third-party OSEs through the egress proxy (§16): static
+            # egress IPs, private ranges denied
+            - name: HTTPS_PROXY
+              value: http://egress-proxy:3128
+            - name: NO_PROXY
+              value: localhost,127.0.0.1,otel-collector,.svc,.cluster.local
+          # The engine listens on localhost only, which kubelet HTTP probes
+          # can't reach: probe with the binary itself.
+          startupProbe:
+            exec:
+              command: ["/usr/local/bin/xhandler-engine", "--health"]
+            timeoutSeconds: 3
+            periodSeconds: 1
+            failureThreshold: 30
+          readinessProbe:
+            exec:
+              command: ["/usr/local/bin/xhandler-engine", "--health"]
+            timeoutSeconds: 3
+          livenessProbe:
+            exec:
+              command: ["/usr/local/bin/xhandler-engine", "--health"]
+            timeoutSeconds: 3
+          resources:
+            requests: { cpu: 250m, memory: 64Mi }
+            limits: { memory: 256Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+      containers:
+        - name: app
+          image: xhandler-service
+          ports:
+            - name: http
+              containerPort: 8080
+              # health and metrics only
+          env:
+            - name: XHANDLER_ROLE
+              value: worker
+            - name: XHANDLER_ENGINE_URL
+              value: http://localhost:8090
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector:4317
+            - name: QUARKUS_DATASOURCE_JDBC_URL
+              valueFrom:
+                secretKeyRef: { name: xhandler-db, key: jdbc-url }
+            - name: QUARKUS_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef: { name: xhandler-db, key: username }
+            - name: QUARKUS_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: xhandler-db, key: password }
+            # The app logs in as a non-owner member of xhandler_app (DatabaseRoleCheck
+            # refuses anything else). Migrations run separately, with the owner role
+            # (see hack/postgres/init.sql for the role layout).
+            - name: QUARKUS_FLYWAY_MIGRATE_AT_START
+              value: "false"
+            - name: QUARKUS_OIDC_AUTH_SERVER_URL
+              valueFrom:
+                configMapKeyRef: { name: xhandler-config, key: oidc-auth-server-url }
+            # Key vault: an HSM through PKCS#11 (the module comes from the
+            # environment's overlay, e.g. a volume with the vendor's library)
+            - name: XHANDLER_VAULT_PKCS11_LIBRARY
+              valueFrom:
+                configMapKeyRef: { name: xhandler-config, key: pkcs11-library }
+            - name: XHANDLER_VAULT_PKCS11_PIN
+              valueFrom:
+                secretKeyRef: { name: xhandler-hsm, key: pin }
+          readinessProbe:
+            httpGet: { path: /q/health/ready, port: http }
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet: { path: /q/health/live, port: http }
+            timeoutSeconds: 3
+          resources:
+            requests: { cpu: 250m, memory: 512Mi }
+            limits: { memory: 1Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

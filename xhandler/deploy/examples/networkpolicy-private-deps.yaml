@@ -1,0 +1,42 @@
+# Example overlay patch: the private dependencies the base NetworkPolicy denies
+# (deploy/base/networkpolicy.yaml). Replace the addresses and ports with the
+# environment's; keep each rule as narrow as possible.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: xhandler-private-deps
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: xhandler-service
+  policyTypes: [Egress]
+  egress:
+    # Network HSM cluster (PKCS#11 client)
+    - to:
+        - ipBlock: { cidr: 10.20.30.0/28 }
+      ports:
+        - { port: 1792, protocol: TCP }
+    # Keycloak inside the VPC
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: keycloak
+      ports:
+        - { port: 8443, protocol: TCP }
+    # Lago and an S3 interface endpoint
+    - to:
+        - ipBlock: { cidr: 10.20.40.0/24 }
+      ports:
+        - { port: 443, protocol: TCP }
+        - { port: 3000, protocol: TCP }
+    # An OpenTelemetry collector in the monitoring namespace
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: otel-collector
+      ports:
+        - { port: 4317, protocol: TCP }
+        - { port: 4318, protocol: TCP }

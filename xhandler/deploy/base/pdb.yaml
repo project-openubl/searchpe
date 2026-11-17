@@ -1,0 +1,23 @@
+# Voluntary disruptions (node drains, upgrades) never take more than one pod of
+# each role at a time (DESIGN.md §25.1)
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: xhandler-api
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: xhandler-service
+      app.kubernetes.io/component: api
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: xhandler-worker
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: xhandler-service
+      app.kubernetes.io/component: worker

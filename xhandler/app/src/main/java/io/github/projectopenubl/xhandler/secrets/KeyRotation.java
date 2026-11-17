@@ -1,0 +1,112 @@
+package io.github.projectopenubl.xhandler.secrets;
+
+import io.github.projectopenubl.xhandler.keys.KeyVault;
+import io.github.projectopenubl.xhandler.keys.SigningKey;
+import io.github.projectopenubl.xhandler.tenancy.TenantAccess;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.persistence.EntityManager;
+import io.quarkus.narayana.jta.QuarkusTransaction;
+import java.util.List;
+import java.util.UUID;
+import org.jboss.logging.Logger;
+
+/**
+ * Re-wraps everything protected by an old master key with the current one, tenant by tenant, without
+ * downtime: old master keys stay readable until nothing references them (DESIGN.md §6). Exposed
+ * through xhandler-admin (P2).
+ */
+@ApplicationScoped
+public class KeyRotation {
+
+    private static final Logger LOG = Logger.getLogger(KeyRotation.class);
+
+    public record Result(int tenants, int credentials, int signingKeys) {}
+
+    private final EntityManager em;
+    private final TenantAccess access;
+    private final SecretBox box;
+    private final KeyVault vault;
+
+    public KeyRotation(EntityManager em, TenantAccess access, SecretBox box, KeyVault vault) {
+        this.em = em;
+        this.access = access;
+        this.box = box;
+        this.vault = vault;
+    }
+
+    public Result rewrapAll() {
+        int credentials = 0;
+        int keys = 0;
+        List<UUID> tenants = QuarkusTransaction.requiringNew().call(this::tenantIds);
+        for (UUID tenantId : tenants) {
+            // One transaction per tenant, so a failure leaves the others done
+            int[] counts = QuarkusTransaction.requiringNew().call(() -> rewrapTenant(tenantId));
+            credentials += counts[0];
+            keys += counts[1];
+        }
+        // The platform's own secrets and keys (PSE SOL pool, validity, OSE; PSE and OSE CDR keys)
+        int[] platform = QuarkusTransaction.requiringNew().call(this::rewrapPlatform);
+        credentials += platform[0];
+        keys += platform[1];
+        LOG.infof("key rotation: %d tenants, %d credentials and %d signing keys re-wrapped with %s",
+                tenants.size(), credentials, keys, vault.currentMasterKeyId());
+        return new Result(tenants.size(), credentials, keys);
+    }
+
+    private int[] rewrapPlatform() {
+        String current = vault.currentMasterKeyId();
+        @SuppressWarnings("unchecked")
+        List<Object[]> secrets = em.createNativeQuery("""
+                        SELECT id, ciphertext, wrapped_data_key, master_key_id FROM xhandler.platform_credential
+                        WHERE master_key_id <> :m FOR UPDATE""").setParameter("m", current).getResultList();
+        for (Object[] r : secrets) {
+            SecretBox.Sealed rewrapped = box.rewrap(new SecretBox.Sealed((byte[]) r[1], (byte[]) r[2], (String) r[3]));
+            em.createNativeQuery("UPDATE xhandler.platform_credential SET wrapped_data_key = :w, master_key_id = :m, updated_at = now() WHERE id = :id")
+                    .setParameter("w", rewrapped.wrappedDataKey()).setParameter("m", rewrapped.masterKeyId()).setParameter("id", r[0])
+                    .executeUpdate();
+        }
+        int keys = 0;
+        @SuppressWarnings("unchecked")
+        List<Object[]> platformKeys = em.createNativeQuery("SELECT id, key_ref FROM xhandler.platform_key FOR UPDATE").getResultList();
+        for (Object[] r : platformKeys) {
+            String rewrapped = vault.rewrapPrivateKey((String) r[1]);
+            if (!rewrapped.equals(r[1])) {
+                // key_ref is not updatable by the app role; the owner-run function does it
+                em.createNativeQuery("SELECT xhandler.rewrap_platform_key(:id, :ref)").setParameter("id", r[0]).setParameter("ref", rewrapped)
+                        .getSingleResult();
+                keys++;
+            }
+        }
+        return new int[] {secrets.size(), keys};
+    }
+
+    private List<UUID> tenantIds() {
+        @SuppressWarnings("unchecked")
+        List<UUID> ids = em.createNativeQuery("SELECT id FROM xhandler.all_tenant_ids()").getResultList();
+        return ids;
+    }
+
+    private int[] rewrapTenant(UUID tenantId) {
+        access.enterAsPlatform(tenantId);
+        String current = vault.currentMasterKeyId();
+        // Locked, so a concurrent update of the secret can't be overwritten with the old ciphertext
+        List<Credential> credentials = Credential.<Credential>find("masterKeyId <> ?1", current)
+                .withLock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+                .list();
+        for (Credential credential : credentials) {
+            credential.seal(box.rewrap(credential.sealed()));
+        }
+        int keys = 0;
+        // Every key, not only active ones: replaced keys stay readable for retention
+        for (SigningKey key : SigningKey.<SigningKey>find("from SigningKey")
+                .withLock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+                .list()) {
+            String rewrapped = vault.rewrapPrivateKey(key.keyRef);
+            if (!rewrapped.equals(key.keyRef)) {
+                key.keyRef = rewrapped;
+                keys++;
+            }
+        }
+        return new int[] {credentials.size(), keys};
+    }
+}

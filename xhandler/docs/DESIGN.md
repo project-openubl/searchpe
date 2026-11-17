@@ -1,0 +1,1376 @@
+# xhandler-service — Design
+
+Multi-tenant SaaS for SUNAT (Peru) electronic documents: create, sign, validate, send,
+track, deliver and report them. Client systems (ERP, POS, xhandler-ui, later
+xhandler-mobile) use a REST API. The fiscal core is
+[xhandler-rust](https://github.com/project-openubl/xhandler-rust); everything else is a
+Quarkus application.
+
+License: Apache-2.0, developed in a **private** GitHub repository (project-openubl/xhandler-service). Status: in implementation; see §21 for what each phase delivered.
+
+Inputs to this design:
+
+- the requirement rounds held on 2026-11-13/14;
+- [xhandler-mobile's design](https://github.com/project-openubl/xhandler-mobile), for the fiscal domain;
+- [pulpcore](https://github.com/pulp/pulpcore), for platform patterns;
+- [pulp-ui-2](https://github.com/pulp/pulp-ui-2), for the UI;
+- vendor research (Nubefact, Bizlinks, APIsPERU);
+- the regulatory research in [research/](research/README.md).
+
+---
+
+## 1. Scope
+
+### 1.1 Roles
+
+The service operates in three roles from v1:
+
+| Role | Who signs | Who submits | Legal basis |
+|---|---|---|---|
+| **Software** (SEE-Del contribuyente) | Tenant's own certificate | Tenant's SOL user, to SUNAT or to the tenant's OSE | RS 097-2012 |
+| **PSE** (Proveedor de Servicios Electrónicos) | Platform's PSE certificate | Platform's own SOL user; the tenant authorizes the platform in SOL | RS 199-2015, RS 108-2022 |
+| **OSE** (Operador de Servicios Electrónicos) | Issuer signs the document; the platform signs the CDR | Platform forwards document + CDR to SUNAT within 1 hour | RS 117-2017 and amendments |
+
+### 1.2 Customers and accounts
+
+- Customers:
+  - SMEs through their ERP/POS;
+  - large enterprises;
+  - developers and startups (free tier);
+  - software vendors reselling the service.
+- Account hierarchy: **Partner → Tenant → Company (RUC)**.
+  - A partner manages its tenants through the API.
+  - A tenant owns one or more companies.
+
+### 1.3 In v1
+
+- Documents: everything xbuilder supports.
+  - factura, boleta;
+  - nota de crédito, nota de débito;
+  - guía de remisión (GRE);
+  - percepción, retención;
+  - resumen diario (RC), comunicación de baja (RA), resumen de reversiones (RR).
+- Inputs:
+  - native xbuilder JSON;
+  - adapters for UBL XML upload, SFS-style TXT and Nubefact-compatible JSON;
+  - OSE inbound over SOAP, REST and SFTP.
+- Supplier invoice reception, uploaded through the API.
+- PDF and email delivery; webhooks.
+- Optional catalogs: customers (with RUC/DNI lookup), products, vehicles, drivers, addresses.
+- SIRE automation; factura negociable conformity tracking; CSV/Excel reports.
+- Billing through Lago, in a separate pod.
+- UI in xhandler-ui, a separate container (§18).
+
+### 1.4 Not in v1
+
+- Contingency (paper) documents.
+- WhatsApp delivery.
+- Selling RUC/DNI or exchange-rate data APIs as products.
+- CAVALI integration.
+- Mobile sync (the schema is ready for it, §7.2).
+- Redis in xhandler-service (§10.9). Lago, a separate product, runs its own Redis and Postgres (§14).
+
+---
+
+## 2. Decisions
+
+| Topic | Decision |
+|---|---|
+| Application stack | Java 25, Maven, Quarkus: Hibernate/Panache, Flyway, OIDC, Micrometer, OpenTelemetry, SmallRye OpenAPI, Scheduler, Qute, Mailer, Dev Services |
+| Fiscal core | xhandler-rust, run as a stateless Rust sidecar ("engine") reached over localhost. The fallback is Panama FFM behind the same Java interface. |
+| Rejected options | Go: viable, but it means rewriting xsender. A Rust web stack: too much plumbing. Chicory/wasm: no networking, so xsender would be duplicated. |
+| Tenancy | One shared schema; `tenant_id` on every table, enforced by Hibernate's discriminator plus Postgres row-level security |
+| Identity | Keycloak OIDC for people (roles, 2FA) and machine clients (OAuth2 client credentials); public self-service signup |
+| Keys | PKCS#11 HSM. The platform PSE and OSE keys are HSM objects. Tenant keys are wrapped under an HSM master key and unwrapped only inside the HSM to sign. |
+| Other secrets | Envelope encryption in Postgres; several master keys active at once; a rotation command |
+| Async work | A Postgres job system modeled on pulpcore's tasking (exclusive resources, FIFO per resource, heartbeats on the lock connection, LISTEN/NOTIFY). Retry state lives on the document; a singleton reconciler with leases is the only creator of SUNAT attempts (§24). No Kafka, no Redis. |
+| Files | S3-compatible storage, content-addressed by sha256 and immutable |
+| Hosting | Cloud-agnostic Kubernetes/OpenShift. The same image runs as `api` and `worker` deployments, each with the engine sidecar. |
+| Availability | Lose nothing (RPO = 0) and no noticeable downtime (seconds of automatic failover), delivered by the infrastructure layer (Kubernetes + cloud, a separate project). The application is built to be failover-safe (§25.1). 99.96% for the OSE role. ISO 27001 controls from day one. |
+| License and repository | Apache-2.0; the code lives in a private GitHub repository |
+| PDF | Qute HTML templates rendered with OpenHTMLtoPDF |
+| Email | Platform default sender, or the tenant's own SMTP |
+| Numbering | Assigned by the service at emit |
+| Emit | Build, number, validate and sign inside the request, reply `201 pending_send`, send asynchronously |
+| Boletas | Sent individually up to D+5. A boleta still unsent after D+5 moves automatically into a resumen diario (RC, estado 1) before D+7. RC is also used for voiding. |
+| Billing | Lago (separate pod). The service emits usage events and enforces entitlements. |
+| UI | xhandler-ui (separate container) built on the pulp-ui-2 blueprint |
+| Retention | 10 years by default (configurable). Full export when a tenant leaves; deleted 2 years later unless the tenant buys an archive plan. |
+| Operating company | A Peruvian legal entity in the general regime (required for PSE/OSE registration). It invoices its own subscriptions through xhandler-service. |
+
+---
+
+## 3. Legal constraints that shape the system
+
+Sources: [research/](research/README.md). Values are the rules in force on 2026-11-13.
+
+### 3.1 Deadlines
+
+D is the issue date; days are calendar days.
+
+| Document | Send deadline | Voiding | Source |
+|---|---|---|---|
+| Factura, and notes referring to it | D+3. Sent later, it is not a factura. | RA within 7 days. Before 2027 this counts from receipt of the CDR (needs `cdr_received_at`); from 2027-01-01, from when the RA is generated. | RS 000003-2023; RS 000048-2026; RS 000143-2026 |
+| Boleta, and its notes (sent individually) | D+5. After that, only by resumen diario, which the service builds automatically (§9.2). | RC line with estado 3 within 7 days | RS 097-2012 art. 12 |
+| Resumen diario | D+7 | — | RS 114-2019 |
+| GRE (remitente/transportista) | Before transport starts. Always sent direct to SUNAT, never through an OSE. | Only in SOL: before transport starts, or during transport if the destinatario changes | RS 000123-2022 |
+| Percepción / retención | D+7 (OSE text; the SEE-Del text in RS 274-2015 is unverified) | RR within 7 days of telling the provider/client about the reversal (needs a recorded `reversal_communicated_at`) | RS 117-2017 arts. 36, 38 |
+| OSE forwarding to SUNAT | Within 1 hour of issuing the CDR | — | RS 117-2017 art. 7.5 |
+| Factura negociable conformity | Buyer has 8 days | — | DU 013-2020; RS 000165-2021 |
+
+Other rules:
+
+- A document whose issue date is more than 2 days after the send date is rejected (code 2329).
+- A boleta buyer must be identified above S/ 700 (validator code 2514).
+- Only documents not yet delivered to the buyer can be voided. Otherwise a nota de crédito is required.
+- From 2027-01-01 a credit or debit note may refer to exactly one document.
+- No code ships before 2027-01-01, so the service implements only the 2027 rules. It has no dated feature flags.
+- **Time zone.** Every legal date — D, deadlines, the 2329 future-date check, the `daily_counter` day — is computed in `America/Lima`. Timestamps are stored in UTC. The document stores D, the first send time and the CDR receipt time separately.
+- **Currency.** For documents in foreign currency, the S/ 700 boleta check uses the PEN equivalent at the document's `tipo_cambio`. If the document carries none, the SBS rate for D is used.
+
+### 3.2 Roles
+
+- **Submission route.** A company using an OSE cannot also send directly to SUNAT; only SEE-SOL stays available (RS 117-2017 art. 12.2). Principal taxpayers with 300 UIT or more of income must use an OSE or SEE-SOL. So each company's route is a **regulatory status the service derives and enforces**, not a free toggle. GRE is always direct. Only production documents go through the OSE (test environments never reach a real OSE). Documents sent through an OSE are never resolved through SUNAT's consult services (those take SOL credentials): an ambiguous one is resent to the OSE, and a summary without a ticket needs attention. In the service: `company.submission_route` (`sunat` | `ose`) is set through `PUT …/companies/{id}/route` with the OSE's URLs and credentials (checked like any tenant-supplied host, §16); `company.ose_obligated` is set by the platform (admin API), and an obligated company can neither choose `sunat` nor emit through it in production. Documents sent through an OSE get the endpoint `ose:<id>:<service>`, so each OSE has its own breaker and cap.
+- **PSE (RS 199-2015 art. 3, 5, 7).**
+  - The PSE signs with its own certificate and its own SOL user; the issuer stays liable.
+  - Registration needs ISO 27001, capital of 150 UIT or more, and at least 5 employees.
+  - Rejected CDRs must stay at or under 10% in the first year, then 5%, measured every six months.
+- **OSE (RS 117-2017 arts. 5–8, annexes A and C).**
+  - Registration needs 300 UIT of capital, a 28 UIT bank guarantee, an audit by an ISO lead auditor, and SUNAT's 25-business-day test process. ISO 27001 is required from the second year.
+  - Validation is immediate. CDRs follow a fixed structure and are signed with a key used only for the OSE role.
+  - Availability must be 99.96%.
+  - Keys must be in an HSM: FIPS 140-2 Level 2 if dedicated, Level 3 if shared.
+  - Development follows OWASP, with penetration tests.
+  - The OSE runs a public page to check document validity.
+  - Issuers on SUNAT's blocked lists (DL 1532, RS 000302-2024) must be refused.
+  - The validation service is invoiced as its own line.
+  - Fines are per document: 25 UIT for not validating, 10 UIT for a late forward.
+- **PSE and OSE in the same company.** No rule forbids it, and none explicitly allows it. We build both strictly separated:
+  - separate keys;
+  - no validation shortcut for our own PSE documents;
+  - a separate billing line;
+  - two SOL authorizations per tenant.
+
+  SUNAT's written confirmation is obtained before the combined offer is sold.
+
+### 3.3 Buyers, retention, records
+
+- **Buyer portal.** Issuers must give buyers authenticated web access to their documents for 1 year (RS 097-2012 art. 25; RS 117-2017 art. 29). The cited text explicitly covers boletas (and their notes) reported by resumen diario, and the CRE/CPE cases in art. 29.2 and 33.4. The service offers the portal for every document type anyway, since vendors do the same. It is served by xhandler-ui through capability links (§12).
+- **Retention.** Issuers keep documents at least 5 years, up to the prescription period of 4, 6 or 10 years (Código Tributario arts. 87.7, 87.8, 43).
+- **SIRE** has replaced PLE for current periods (RS 112-2021, RS 040-2022, RS 000075-2026, RS 000125-2026).
+  - SIRE's API needs the tenant's client_id/secret plus a SOL user and password.
+  - PLE remains only for adjusting old periods.
+
+### 3.4 Non-tax law
+
+- **Personal data (Ley 29733, DS 016-2024-JUS).**
+  - For invoice data, the service is the processor (encargado); for its own customers' data, it is the controller.
+  - Sub-processors need the tenant's authorization (in the contract).
+  - Audit logs of every personal-data access, change and export, kept at least 2 years.
+  - Access reviews every six months; weekly backups with restore tests.
+  - Breaches are reported to the tenant immediately. The controller notifies the ANPD within 48 hours for serious incidents.
+  - Data-subject requests are forwarded to the tenant within 3 days.
+  - After a contract ends, data is kept at most 2 years, or returned to the tenant.
+  - Hosting outside Peru must be communicated to the ANPD.
+- **Signatures (Ley 27269, DS 052-2008-PCM).**
+  - Holding a tenant's key and signing for them is not an accredited "firma remota".
+  - It is valid by contract, with an explicit authorization clause, HSM custody, and a log of every signature.
+- **Consumer protection.** A virtual Libro de Reclamaciones with a permanently visible link (Ley 32495). Complaints answered within 15 working days.
+- **Taxes on the SaaS.** A Peruvian operator charges IGV and issues a real comprobante for every subscription. Lago's invoices are not comprobantes.
+- **Data residency.** No rule found requires XML, CDR or servers to be in Peru.
+
+---
+
+## 4. Architecture
+
+```
+ xhandler-ui (separate container)               Lago (separate pod)
+ buyer portal · validity page · tenant and       plans · quotas · invoicing
+ partner consoles · manual issuing               ▲ usage events (CloudEvents)
+            │ REST (generated client)            │  entitlements
+ ┌──────────▼────────── Kubernetes / OpenShift ──┴─────────────────┐
+ │ api pods     Quarkus: REST · SOAP (OSE) · SFTP intake  + engine │
+ │ worker pods  Quarkus: jobs                             + engine │
+ │ engine = Rust sidecar on localhost (xhandler-rust)               │
+ └──────┬───────────────┬───────────────┬──────────────┬───────────┘
+   PostgreSQL HA    S3-compatible    PKCS#11 HSM     Keycloak
+   (PITR)           storage          (all keys)      (OIDC)
+                                         │
+     SUNAT: SOAP billService · GRE REST · SIRE · validity · conformity
+     Third-party OSEs (SOAP, per company)
+```
+
+- **api**: serves REST and SOAP and the SFTP intake. It runs the emit transaction (number, build, validate, sign) synchronously.
+- **worker**: runs jobs (§10).
+- **One artifact**: the same image for api and worker, selected by configuration (`xhandler.role=api|worker`). Both scale horizontally.
+- **engine**: a stateless sidecar; it holds no data, no keys and no HSM session. Signing takes two calls (§4.1): the engine prepares SignedInfo, Java signs it in the HSM through SunPKCS11, and the engine assembles the signature.
+- Observability: OpenTelemetry traces cross Quarkus → engine → SUNAT, and Micrometer metrics are exported to Prometheus (§15).
+
+### 4.1 Engine API (HTTP on localhost, versioned `/v1`)
+
+Mirrors xhandler-mobile's Rust bridge so the two stay aligned (a shared facade crate is optional, §19).
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /v1/build` | Document JSON (`{"kind": "Invoice", "spec": {...}}`) + defaults → `{xml, enriched_json}`. `enriched_json` (totals, legends) feeds PDFs and reports, so Java never computes taxes. |
+| `POST /v1/validate` | XML → `{valid, errors, observations}` with SUNAT codes: XSD (R5, libxml2, schemas compiled once at startup, `XSD` per violation, `0306` unparseable) plus the first xvalidator rules (R3: `0151` RUC, `1001` serie, `2329` future date, `2514` boleta over S/ 700, `2524`/`3194` note references), in one call |
+| `POST /v1/inspect` | XML → identity of a UBL document (type, RUC, serie-número, date, currency, total, buyer, digest, signed, sha256). Used by uploads, reception and OSE intake. Rejects DOCTYPEs. |
+| `POST /v1/sign` | **P0 only**: single-step signing with SUNAT's beta demo key or a PKCS#12 in the request. Replaced by the two steps below in R1/P1. |
+| `POST /v1/sign/prepare` | XML + certificate → `{signed_info, digest_to_sign, state}` |
+| `POST /v1/sign/finalize` | `state` + signature bytes from the HSM → `{xml, digest_value}` |
+| ~~`POST /v1/certificates/inspect`~~ | Not needed: Java reads the PKCS#12 itself, since it moves the key into the vault anyway (P1) |
+| `POST /v1/send`, `/v1/verify-ticket` | SUNAT/OSE SOAP and GRE REST operations. Optional `credentials` (SOL user, GRE client) and `urls` (a third-party OSE; https and non-loopback in production). |
+| `POST /v1/status-cdr` | billConsultService `getStatusCdr` → `accepted | rejected | voided | not_found | unknown | not_delivered` (+ CDR). Production and the fake only. |
+| `POST /v1/validity`, `/v1/validity/file` | billValidService: `validaCDPcriterios` (status of a document by its data) and `verificaCPEarchivo` (does SUNAT hold exactly these bytes? The 1033 digest check). Production and the fake only. |
+| `POST /v1/sire/*`, `/v1/conformity/*` | New SUNAT clients (§19) |
+| `POST /v1/cdr` | Build an unsigned OSE CDR (CDR-OSE structure, UBL 2.1 ApplicationResponse); Java signs it with prepare/finalize (OSE role) |
+| `GET /v1/info` | Engine version and the pinned xhandler-rust revision (for `/api/v1/status`) |
+
+- Send results use the mobile `SunatStatus`: `Accepted | Rejected | Exception | InProgress | Unknown | NotDelivered`, plus `code` (SUNAT's numeric code), `code_class` (§9.2.3, codes 99–1999 only), `description`, `notes`, `cdr_zip` and `ticket`.
+- `environment` is `beta`, `production` or `fake`. The **SUNAT fake** (`engine/src/bin/sunat-fake.rs`) speaks SUNAT's SOAP and GRE REST, keeps an in-memory registry of what it received (so resends, 1033, consult and validity answers behave like SUNAT), and picks a scenario from a marker in the document (`xhandler-fake:reject`, `observe`, `exception`, `collision`, `timeout`, `drop`, `in_progress`, `credentials`; default accept). `POST /fake/mode` simulates an outage or slowness. It is the CI gate (§15.2) and the sandbox every tenant starts on (§26.2).
+  - `NotDelivered`: the request never reached SUNAT (connection refused, DNS, TLS, SUNAT's front-proxy rate limit), so it is safe to resend.
+  - `Unknown`: no usable answer after the request may have reached SUNAT (timeout, HTTP error, unreadable SOAP or CDR), so ask before resending (§9.2.1).
+  - Everything that can be checked before contacting SUNAT (document type, signature present, credentials, the demo key not used in production) is checked first and returns 422.
+- xsender's `Status` maps from SUNAT codes: 0 → Accepted, 98 → InProgress, 99–1999 → Exception ("not processed, can be sent again"), 2000–3999 → Rejected, ≥ 4000 → Accepted. Its `Unknown` means "any other code". §9.2 decides what each outcome does. The service's `unknown` status ("we don't know whether SUNAT has it") is a separate concept: it is set by crash recovery and by xsender `Unknown` codes.
+- Errors carry `kind` (`invalid_document | invalid_certificate | wrong_password | invalid_request | other`) and `message`. SUNAT's beta demo key is used only on an explicit `demo_key: true`, and `/v1/send` refuses it in production.
+- The sidecar API is versioned in its path. Quarkus and the engine ship in the same image release, so only one version is live at a time.
+
+---
+
+## 5. Inputs
+
+| Input | Path |
+|---|---|
+| Native JSON (xbuilder, snake_case) | `POST /documents`. This is the internal format; every other input converts to it. |
+| UBL XML upload | `POST …/documents/ubl` (`application/xml`, up to 5 MB). Validated. Signed if unsigned (software/PSE); XML signed by the issuer is accepted in software mode only (as PSE the platform signs everything it sends). Passes the same gates as any emit: quota, company active, PSE authorization, issue-date window, bounded series waits. Stored and sent. |
+| SFS-style TXT | `POST …/documents/sfs` with the file name (`RUC-TT-SERIE-NUMERO`) and the .CAB/.NOT and .DET contents; converted to native JSON. Amounts the conversion can't carry (ISC, ICBPER, an IGV rate other than 18%) are refused, not dropped. |
+| Nubefact-compatible JSON | `POST /api/v1/public/nubefact/{company}` with `Authorization: Token token="…"` (tokens per company, stored hashed, revocable): `generar_comprobante`, `consultar_comprobante`, `generar_anulacion`, `consultar_anulacion`, answered in Nubefact's shape, so their customers can switch by changing the URL and token. Sending is asynchronous: clients poll `consultar_comprobante`. Idempotent per company, environment and number. Unsupported input (`sunat_transaction` other than 1, IGV other than 18%, discounts, ISC, ICBPER, anticipos, detracción, percepción, debit notes 4/5) is refused with 422. A token voids only documents it emitted; its id is the actor in their history; tokens of deleted companies stop working; `GET …/adapter-tokens` lists them. |
+| OSE inbound | SOAP compatible with SUNAT's `billService` (`sendBill`, `sendSummary`, `sendPack`, `getStatus`, `getStatusCdr`); REST for signed XML; SFTP batch |
+| Supplier invoices (reception) | `POST …/receptions` (multipart: XML plus optional PDF/CDR). Checked with SUNAT's validity API and stored. Files are served as downloads (`Content-Disposition: attachment`, `nosniff`). The re-check job skips inactive tenants and receptions older than a year, and stamps every attempt so none starves the rest. |
+
+Adapter documents keep the client's own numbering: the series is created if needed and its counter moves past the number, so later service-numbered emits in it can't collide (the unique index is the backstop). A client number may jump at most 100,000 past the counter, deactivated series refuse numbers, and F/B/T series must match facturas/boletas/guías (digit-led contingency series excepted). They count toward quotas like API emits.
+
+---
+
+## 6. Tenancy, identity, secrets
+
+- **Tenants.**
+  - `partner`, `tenant` and `company` are first-class rows.
+  - Every business table has `tenant_id`, and it is part of every tenant-scoped uniqueness rule.
+- **One RUC, one verified company.** SUNAT numbering is unique per RUC, so a RUC is *claimed* once on the platform per environment: a global partial unique index on `company(ruc, sunat_env) WHERE active AND ruc_verified_at IS NOT NULL`.
+  - Typing a RUC claims nothing. Unverified duplicates are allowed, so nobody can squat a RUC by registering it first, and a tenant may have at most 3 unverified companies (§26.8).
+  - Verification proves ownership and claims the RUC: a successful SUNAT SOL login (`POST …/companies/{id}/verify`), limited to 5 failures per RUC per hour across tenants, so the platform is no password-guessing oracle against SUNAT. The company's SOL user, which must start with its RUC, asks SUNAT production's consult service about one of the company's own numbers. Any answer other than an authentication error (0101–0106, 0110–0113, 0154) proves the credentials work for that RUC. A matching RUC in an uploaded certificate is only informative, because anyone can create a self-signed certificate with any RUC. Checking the chain against the CAs SUNAT accepts may become a second proof later.
+  - Moving a company to another tenant (for example, from a partner to the client) is an explicit transfer, never a second registration.
+- **Row-level security mechanics.**
+  - **The app never holds owner or superuser rights.** In production it logs in as a non-owner role that is a member of `xhandler_app` (NOSUPERUSER, NOBYPASSRLS); migrations run with separate owner credentials (`quarkus.flyway.username/password` or a migration job). `DatabaseRoleCheck` refuses to start otherwise. In dev and tests the login is a superuser, and the pool interceptor runs every connection as `xhandler_app` (`SET ROLE`).
+  - Every tenant table has `ENABLE ROW LEVEL SECURITY`, without `FORCE`: the owner is never the app, and the owner-run `SECURITY DEFINER` lookups must see all rows.
+  - The tenant is set with `set_config('app.tenant_id', …, true)` inside each transaction (`TenantAccess.enter`), never per session, so it can't leak across pooled connections. A missing setting matches no rows.
+  - Cross-tenant work goes only through narrow `SECURITY DEFINER` functions (`search_path` pinned, EXECUTE revoked from PUBLIC): membership lookups, signup checks, support sessions, the tenant list for platform jobs; later the job unblocker, schedules and public capability-link lookups.
+  - Hibernate's tenant discriminator sits on top as a second layer.
+  - Tests deliberately try to cross tenants, including with the setting missing.
+- **Protected deletion.** A tenant or company that has documents cannot be deleted (legal retention); it can only be deactivated.
+- **Identity.**
+  - Keycloak realm(s) with roles per partner and tenant (admin, operator, viewer, billing) and optional per-company scoping.
+  - Machine clients use OAuth2 client credentials. A token counts as a machine client only when `client_id` = `azp` and the username is `service-account-<azp>`; the API only accepts tokens whose audience includes `xhandler-service` (deploy/keycloak/README.md).
+  - 2FA for users; stronger authentication for platform operators.
+  - Self-service signup creates the tenant on first login, with the free tier and SUNAT beta.
+- **Keys.**
+  - The HSM is reached through PKCS#11 (SunPKCS11 in Java).
+  - The platform's PSE key and the OSE CDR key are separate, permanent HSM objects.
+  - **Tenant keys are wrapped**, so thousands of tenants don't hit HSM object limits and costs:
+    - at import, the private key is wrapped under an HSM master key and stored as ciphertext;
+    - at signing time, it is unwrapped into a session-only object inside the HSM.
+
+    The key is only ever in clear text inside the HSM.
+  - At import, the .pfx and its password pass through application memory once. They are never logged or stored, and the buffers are cleared.
+  - Development and CI use SoftHSM.
+  - Every signature is logged: who, document, key, time.
+  - PKCS#11 keys are created sensitive and non-extractable. Master keys are created out of band and must exist at startup. Replaced signing keys are deleted from the vault after the change commits, and a key from a rolled-back upload is deleted too.
+  - `finalize` verifies the HSM signature against the certificate (R1), and import checks that the key matches the certificate.
+- **Secrets** (SOL, GRE and SIRE credentials, SMTP passwords, lookup tokens).
+  - Each secret is encrypted with its own data key, which is wrapped by a master key. Master keys live in the HSM.
+  - Decryption tries every active master key, and `xhandler-admin rotate-keys` re-wraps data keys without downtime, row-locked against concurrent updates, including deleted tenants and replaced keys.
+  - The credential's identity (id, tenant, company, kind) is AES-GCM associated data, so a ciphertext only opens in its own row.
+- **Contract.** The tenant contract includes the data processing agreement, the sub-processor list, and the clause authorizing the platform to sign on the tenant's behalf (§3.4).
+
+---
+
+## 7. Data model (PostgreSQL)
+
+Every table has:
+
+- `id` (UUIDv7);
+- `tenant_id` (except platform tables);
+- `created_at` and `updated_at`.
+
+Editable configuration and catalog rows also have `deleted_at` (soft delete). Issued documents, their events, files and deliveries are never deleted: no `deleted_at`, and there are no partial unique indexes on deletion.
+
+```
+partner           id, name, branding (json), status
+tenant            id, partner_id?, name, plan_ref (Lago), status, retention_years, audit_hold
+company           id, tenant_id, ruc, razon_social, nombre_comercial, direccion(...), email,
+                  logo_ref, firmante_*, sunat_env (beta|production), emission_mode
+                  (software|pse), submission_route (sunat|ose:<id>), ose_obligated,
+                  cuenta_detracciones, es_agente_percepcion, es_agente_retencion,
+                  pdf_template_*, pdf_options (json), email_* settings, lookup_provider,
+                  delivered_on_emit_default, ruc_verified_at, switching (bool), sending_paused, active
+                  UNIQUE(ruc, sunat_env) WHERE active          -- global, across tenants (§6)
+ose_endpoint      id, company_id, name, urls (bill, summary, consult), credential_id
+credential        id, owner_type (company|platform), owner_id?, kind (sol|gre|sire|validity|
+                  smtp|lookup|ose_client), secret (envelope-encrypted), pool (platform SOL pool)
+signing_key       id, owner (company|platform_pse|platform_ose), hsm_label | wrapped_key,
+                  subject, ruc, valid_from, valid_until, status
+pse_authorization id, company_id, authorized_at, evidence_ref, approved_at/by, revoked_at
+series            id, company_id, sunat_env, tipo_comprobante, serie, next_number, is_default,
+                  active, device_id?, UNIQUE(company_id, sunat_env, tipo_comprobante, serie)
+daily_counter     company_id, sunat_env, kind (RC|RA|RR), day (America/Lima), next_number
+catalog_entry     id, company_id, kind (customer|product|vehicle|driver|address), key, data (json),
+                  device_id?, deleted_at       -- optional catalogs (§17), one table typed by kind
+document          id, company_id, sunat_env, origin (api|adapter|ose_inbound|reception),
+                  tipo_comprobante, serie, numero, fecha_emision, deadline_at,
+                  customer snapshot, moneda, tipo_cambio, total, status, status_before_voiding,
+                  sunat_code, sunat_description, sunat_notes (json), ticket, digest_value,
+                  input_ref, enriched_ref (S3), affected_document_id, voided_by_document_id, summary_document_id,
+                  endpoint, hold_reason (null|needs_attention|operator),
+                  delivered_at, delivered_source (service|client), attempts, next_attempt_at,
+                  send_started_at, first_sent_at, cdr_received_at, reversal_communicated_at,
+                  labels (json), device_id?,  -- partitioned by issue year (§25)
+                  UNIQUE(company_id, sunat_env, tipo_comprobante, serie, numero)
+                    WHERE origin <> 'ose_inbound'                 -- §7.1
+document_file     document_id, kind (xml_signed|cdr_zip|pdf|input), storage_key, sha256, size
+document_event    document_id, at, status, code, message, actor, correlation_id   -- timeline/audit
+delivery          document_id, channel, recipient, at, result
+access_token      document_id, token_hash, created_at, expires_at   -- buyer capability links (§12)
+idempotency_key   tenant_id, key, request_hash, response (json), created_at,
+                  UNIQUE(tenant_id, key)                          -- §11.1
+ose_client        id, issuer_ruc, username, password_hash, failed_attempts, locked_until,
+                  sunat_association_checked_at, status            -- OSE inbound auth (§11.4)
+ose_submission    id, ose_client_id, issuer_ruc, tipo, serie, numero, received_at, result
+                  (cdr|inconsistency), cdr_issued_at, forwarded_at, sunat_ack, document_id?,
+                  next_attempt_at, attempts, purge_after          -- 1-month retention duty
+conformity        document_id, state (pending|agreed|objected|silent_agreed), due_at, details
+reception         id, company_id, supplier_ruc, tipo, serie, numero, validity_state, files
+sire_period       company_id, register (rvie|rce), period, state, proposal_ref, ticket, submitted_at
+sunat_endpoint    id, url, kind (bill|summary|consult|gre|ose_forward), breaker_state, breaker_until,
+                  concurrency_cap, paused         -- written only by the reconciler (§24.2)
+job, job_schedule, worker (§10)    webhook_subscription, webhook_delivery    usage_event_outbox
+audit_log         at, actor, tenant_id, action, object, details     -- personal-data access log
+```
+
+### 7.1 Rules
+
+- Issued documents never change. Only their status columns change, and corrections are new documents.
+- Every status change writes a `document_event` carrying the request's `correlation_id`.
+- OSE inbound documents are not covered by the document uniqueness rule. An issuer may resubmit a number after an inconsistency notice. For those documents, uniqueness of `(issuer_ruc, tipo, serie, numero)` holds among accepted submissions only, through a partial unique index on `ose_submission WHERE result = 'cdr'`.
+- Credentials can belong to the platform (`platform_credential`): the PSE SOL users (a pool), the OSE's SUNAT credentials, and the validity API. Platform keys (PSE, OSE CDR) are `platform_key` rows pointing into the vault.
+- A company's own SOL and GRE credentials are only ever sent to SUNAT production. Beta and the fake use SUNAT's public test user (a third-party OSE route uses that OSE's credentials).
+
+### 7.2 Ready for mobile sync
+
+This follows xhandler-mobile's design §3.1:
+
+- UUIDv7 ids and timestamps;
+- soft deletes on editable rows;
+- `device_id` on rows that are created once;
+- files with sha256;
+- series that can belong to a device.
+
+Sync itself is not in v1.
+
+---
+
+## 8. Numbering
+
+- Default series are created with each company:
+  - `F001` factura, `B001` boleta;
+  - `FC01`/`BC01` nota de crédito, `FD01`/`BD01` nota de débito;
+  - `T001` GRE remitente, `V001` GRE transportista;
+  - `P001` percepción, `R001` retención.
+
+  Clients may choose another active series. POS integrations should use **one series per terminal**: this is common practice, and it removes contention on a shared series (see §11.1).
+- A number is reserved inside the emit transaction (§11.1):
+  `UPDATE series SET next_number = next_number + 1 WHERE … RETURNING next_number - 1`.
+  The unique constraint on `document` is the backstop.
+- RC/RA/RR are numbered `RC-YYYYMMDD-n` through `daily_counter`, with the same atomic update. The day is computed in America/Lima.
+- **A number is consumed when its document commits.** From then on it stays used, even if SUNAT rejects the document.
+  - If the transaction fails, the number is reissued.
+  - The XML signed in that transaction was never sent; the signing log records it as discarded.
+- Every company starts on the SUNAT fake (sandbox, §26.2). Switching environment (`POST …/companies/{id}/environment`: fake → beta → production) is the gate:
+  1. the switch locks the company row (`FOR UPDATE`); every emit holds it `FOR SHARE`, so running emits finish first and new ones wait;
+  2. series are per environment, so the new environment gets its default series and numbering starts there, while the old environment's documents stay as they are (read-only history) and their pending attempts finish in their own environment;
+  3. production needs a verified RUC (§6), a valid certificate and SOL credentials.
+
+  No `switching` column is needed: the row lock is the gate.
+
+---
+
+## 9. Document lifecycle
+
+### 9.1 Status
+
+| Status | Meaning |
+|---|---|
+| `draft` | Being edited, no number (manual issuing in xhandler-ui) |
+| `pending_send` | Signed and stored; no definitive answer yet |
+| `in_progress` | Ticket issued or answer 98; verification scheduled |
+| `accepted` | CDR with code 0 and no notes |
+| `accepted_with_observations` | Accepted with code ≥ 4000 or notes |
+| `rejected` | Codes 2000–3999 |
+| `exception` | A permanent error: a permanent SUNAT code (§9.2) or a local error |
+| `unknown` | We don't know whether SUNAT has the document: crash during a send (§10.4) or a code xsender can't classify. SUNAT is consulted before anything else. |
+
+Independently of status, `hold_reason` marks documents that need a person: `needs_attention` (repeated identical failures, still retried every 6 hours) or `operator` (held, not retried until released).
+| `voiding` | RA/RC/RR sent, waiting for its result. The previous status is kept in `status_before_voiding`. |
+| `voided` | Voiding accepted |
+
+```
+draft ─emit─▶ pending_send ─send─▶ accepted | accepted_with_observations | rejected | exception
+                 ▲   │  ▲               ▲
+   transient ────┘   │  └─ consult ── unknown (crash mid-send / unclassified code)
+                     └─▶ in_progress ─┘ (verify ticket)
+accepted* ─void─▶ voiding ─▶ voided
+                     └── voiding rejected ─▶ back to status_before_voiding
+```
+
+### 9.2 Retries and definitive answers
+
+- A document **may be sent to SUNAT more than once**; retries are required, and SUNAT is expected to fail (§24).
+- Every SUNAT interaction for a document is serialized through the job system's exclusive `document:{id}` resource (§10.2).
+- Each attempt is **fenced on the document** (§10.4): it re-reads the document after taking the resource, does nothing once a definitive answer exists, and writes its outcome only if `document.attempts` still matches.
+- A retry always sends the **same signed XML bytes** from storage. The only exception is a summary whose ticket is lost and that SUNAT doesn't have; it gets a new RC number (§9.2.2).
+
+#### 9.2.1 Outcomes
+
+Codes are matched in this order:
+
+| Outcome | Definitive? | Action |
+|---|---|---|
+| Accepted / accepted with observations | Yes | None; later attempts do nothing |
+| Rejected (2000–3999) | Yes | None; the number stays used; "duplicate as new" is offered |
+| 1033 "registrado previamente con otros datos" | Depends | Recover SUNAT's record (§9.2.2) and **compare it with our `digest_value`**. If they match: accepted. If they differ: `exception` "number collision" (e.g. the number was already used by a previous provider; onboarding sets each series' starting number, §8). Matched before the generic 99–1999 branch. |
+| Voided | Yes | None |
+| Transient SUNAT error (table below) | No | Retry with backoff |
+| Permanent SUNAT error (table below) | Stops automatic retries | `exception`; the user fixes the cause; manual resend (with the same number) |
+| **Failure after the request may have reached SUNAT** (timeout, connection reset mid-request, HTTP 5xx after sending, unexpected body, crash after `send_started_at`) | No | `unknown`: resolve the ambiguity first (§9.2.2), never resend blindly. The resolving attempt waits until `send_started_at` + SUNAT read timeout + margin, so a stale call can't still be in flight. |
+| Failure before anything was sent (DNS, connection refused, TLS handshake) | No | Retry with backoff |
+| Ticket answer 98 (in progress) | No | Check the ticket again later |
+| Ticket answer 99 | — | The outcome is the code inside the returned CDR; classify that code, not "99" |
+
+#### 9.2.2 Resolving ambiguity, per document type
+
+SUNAT's consult service (`billConsultService`: `getStatus`/`getStatusCdr`) exists **only in production**. It answers with its own codes ("0001" accepted, "0002" rejected, "0011" doesn't exist, …), which xsender maps explicitly (R2) and never through the 99–1999 ranges.
+
+| Document | Production | Beta |
+|---|---|---|
+| Factura and its notes | `getStatusCdr` → accepted (store the CDR) / rejected / "doesn't exist" → resend the same bytes | Resend the same bytes. Beta has no validity API, so a 1033 can't be checked: on the first attempt it is a number collision (beta's shared demo RUC is used by everyone), on a later attempt it is taken as our earlier send. Beta has no legal effect. |
+| Boleta and its notes (sent individually) | Resend the same bytes; 1033 → validity API (`estadoCp`) + digest check, then accepted **without a CDR** (boletas get no `getStatusCdr` coverage) | Same |
+| Summaries (RC/RA/RR) with a known ticket | Check the ticket | Same |
+| Summaries with a lost ticket | Only once the ticket is known lost (0126/0127) or SUNAT had 6 hours to process the summary (until then: ask again hourly). Check each line through the validity API (`validaCDPcriterios`); any line SUNAT can't answer for, or `not_found` before 6 hours, means "ask again later", never a decision. Lines SUNAT already has are done (accepted or voided); RC lines it lacks go back to the D+5 fallback, which puts them in a **new** RC with a new number; voidings it didn't register put the original back in its previous status and tell the tenant (the void is requested again). The summary ends in `exception` with `code_class = ticket_lost`. | No validity API: the summary needs attention |
+| GRE (REST) | Query by document through the GRE API; resend the same bytes if absent | (no GRE beta) |
+
+#### 9.2.3 SUNAT codes 99–1999 ("not processed")
+
+- **Source.** SUNAT publishes these codes in the *CódigosRetorno* sheet of its CPE validation rules workbook (`AjustesValidacionesCPE vYYYYMMDD.xlsx`, cpe.sunat.gob.pe → Guías y manuales). Changes are logged in its *Control de Cambios* sheet. The current copy is v2026-02-12 (1,987 codes).
+- **Where the classification lives.** In xhandler-rust (xsender), as data generated from that sheet, so the service, the CLI and mobile all classify the same way (§19, R2).
+- **Unknown codes.** A code that isn't in the table: resolve the ambiguity first (§9.2.2). If the document is still not definitive, set `hold_reason = needs_attention` and alert, so the table gets updated.
+
+| Class | Codes (v2026-02-12) | Meaning | Action |
+|---|---|---|---|
+| **Transient: SUNAT system** | 0100, 0109, 0130–0138, 0200, 0201, 0253, 0254 | "El sistema no puede responder", authentication service down, storage, queue, database or batch failures on SUNAT's side | Retry with backoff; counts toward the endpoint's breaker |
+| **Transient: constancia** | 0125, 0307 | SUNAT could not produce or return the receipt | Resolve via §9.2.2, then retry |
+| **Transient: in process** | 0140 | "Existe un Documento igual en Proceso" | Wait, then resolve via §9.2.2; never resend in parallel |
+| **Already registered** | 1033 | Registered before "con otros datos" | Digest comparison (above) |
+| **Already final** | 1032 | Already reported, voided or rejected | Resolve via §9.2.2; definitive |
+| **Route change** | 1079 | Boleta can only go in a resumen diario | Move it into the RC fallback (below) |
+| **Ticket lost** | 0126, 0127 | Ticket not ours or doesn't exist | Lost-ticket path (§9.2.2) |
+| **Permanent: credentials and authorization** | 0101–0106, 0110–0113, 0154, 1078, 1080, 1085, 1086 | Bad SOL user/password, inactive user, missing CPE profile, user must be secondary, PSE not authorized for the RUC, issuer not authorized for SEE-Del, wrong system (GRE), issuer without operating capacity (SSCO) | `exception`. Alert the tenant: fix credentials, authorization or route. The issuer is blocked from sending until it's fixed. |
+| **Permanent: package or file** | 0151–0161, 0202–0204, 0250–0252, 0300–0306 | ZIP or XML name, empty, corrupt or missing file, too many files, unzip failure, wrong method, schema directory or file not found (e.g. a wrong UBLVersionID), unparseable or unprocessable XML | `exception`. Most likely our bug; alert the platform. These fail every time with the same bytes, so retrying would loop. |
+| **Permanent: document content** | 1001–1077, 1083 | Format and required-field errors in the XML | `exception`. Fix and resend with the same number. |
+| **Permanent: references** | 0403, 0404, 1039, 1040 | Affected document missing or rejected; invalid note target | `exception` |
+| **Not applicable** | 0400–0402, 1081, 1082, 1084 | Homologation test cases; utility-services channel; contingency | `exception` + alert |
+
+The GRE REST API and SIRE have their own error codes, published in their manuals. They are classified the same way when R2 implements those clients.
+
+#### 9.2.4 Retry rules
+
+- Backoff steps are 1m, 5m, 15m, 1h, then hourly, with ±20% jitter. Retries are scheduled on the document (`next_attempt_at`), and the reconciler is the only component that turns due documents into attempts (§24). Jobs never schedule follow-up jobs.
+- **No hot loops.** After 10 identical transient outcomes, or 24 hours without progress, the document gets `hold_reason = needs_attention` and an alert. **It keeps being retried, every 6 hours,** until it is definitive or someone acts on it. This keeps "always retryable" without hammering SUNAT with a request that keeps failing the same way.
+- During an outage, the endpoint's circuit breaker stops attempts for all its documents (§24). Deadline alerts fire before the legal limit (§3.1).
+- **Boletas past D+5.** A boleta still not accepted when D+5 (Lima) passes stops being sent individually.
+  - A scheduled job groups such boletas by issue day into a resumen diario (RC, estado 1) and sends it before D+7. It only takes boletas SUNAT can't have: `pending_send` (or `exception` after 1079) with no attempt in flight; `unknown` ones are resolved first. Each RC is its own transaction (number reserved, then lines locked with `SKIP LOCKED`); lines whose RC can't be built are set aside (`summary_failed`, `needs_attention`) instead of blocking the group. A retried boleta past D+5 goes back to this job, never on its own.
+  - Each boleta gets `summary_document_id` set and `next_attempt_at` cleared; from then on it follows the RC's outcome.
+
+### 9.3 Guards
+
+- **Delivery.** A document counts as delivered when:
+  - the service delivered it (email, portal download);
+  - the client attests it, with `delivered: true` on emit (the default comes from `company.delivered_on_emit_default`: false unless the company sets it, usually POS), or `POST /documents/{id}/delivered`.
+
+  `delivered_source` records which of the two.
+- **Voiding** is allowed only when all of these hold:
+  - the document is `accepted`/`accepted_with_observations`;
+  - it is within its deadline (§3.1, using `cdr_received_at` or `reversal_communicated_at` as the rule requires);
+  - it is not delivered.
+
+  The void request must also attest "not delivered". Otherwise the API returns 409 and suggests a nota de crédito.
+- Status changes are conditional: `UPDATE document SET status = :new WHERE id = :id AND status IN (:allowed)`. If zero rows change, the API returns 409.
+- A document already delivered that later ends up `rejected` raises a warning (webhook + email) listing who received it.
+
+---
+
+## 10. Job system
+
+Modeled on pulpcore's tasking (`pulpcore/tasking/worker.py`, `tasks.py`, `models/task.py`), kept entirely in Postgres.
+
+### 10.1 Tables
+
+```
+job            id, seq bigserial (ordering), tenant_id, name,
+               state (waiting|running|completed|failed|canceling|canceled),
+               priority_class, run_at, unblocked_at?,
+               reserved_resources text[] (exclusive), credential_id?,
+               attempt, args (json), result (json), error (json), worker, started_at,
+               finished_at, correlation_id, created_resources (json)
+job_schedule   name, job_name, interval, next_run_at, last_job_id
+worker         name, role, last_heartbeat
+```
+
+Indexes:
+
+- partial GIN on `reserved_resources WHERE state IN ('waiting','running')`;
+- partial btree on `(priority_class, seq) WHERE state = 'waiting'`;
+- partial btree on `(unblocked_at) WHERE state = 'waiting' AND unblocked_at IS NOT NULL`.
+
+The job API is shaped like Pulp's tasks (state, timestamps, error, created resources, links), so pulp-ui-2's task-reporting patterns apply to xhandler-ui.
+
+### 10.2 Resources
+
+- **Exclusive `document:{id}`.** Taken by every attempt on that document: send, ticket check, consult or voiding.
+  - A voiding job also takes `document:{id}` of every original it voids.
+  - Attempts run one at a time, in `seq` order.
+- **Credential slots (`credential_id`).** At most N running jobs per SUNAT credential.
+  - Beta: N = 1.
+  - Production: configurable. The value is an **assumption to measure**: SUNAT publishes no per-user limit.
+  - PSE mode sends with a **pool** of platform SOL users, so the shared credential is not one global bottleneck.
+- Endpoint health (breaker, concurrency cap) is enforced by the reconciler (§24.2), not here.
+
+### 10.3 Unblocking and claiming
+
+This is pulpcore's two-step design: a single "unblocker" decides what may run, and workers just claim.
+
+**Unblocker.** At most one worker runs it at a time, under a global `pg_try_advisory_xact_lock(UNBLOCK)`. It runs on `NOTIFY xhandler_job_wakeup` and periodically. In one pass over incomplete jobs in `seq` order, it sets `unblocked_at` on a waiting job only when all of these hold:
+
+- `run_at <= now()`. Jobs scheduled for later reserve nothing, so they never block.
+- None of its exclusive resources is taken by a running job or an earlier due job (FIFO per resource).
+- Its credential has a free slot, counting running plus already-unblocked jobs.
+
+The `job` table stays small (the reconciler creates attempts only up to capacity, §24.2), so this pass is cheap. Priority is by `priority_class`, then `seq`.
+
+**Claim.** The worker first takes the job's session advisory lock with `pg_try_advisory_lock(job.id)`, on the pod's lock connection (§10.8), **before** the waiting → running compare-and-set, as pulpcore does:
+
+```sql
+SELECT id FROM job WHERE state = 'waiting' AND unblocked_at IS NOT NULL
+ORDER BY priority_class, unblocked_at FOR UPDATE SKIP LOCKED LIMIT 1;
+-- then pg_try_advisory_lock(id); if false, skip it
+-- then UPDATE job SET state = 'running', worker = :me WHERE id = :id AND state = 'waiting'
+```
+
+### 10.4 Running, fencing and recovery
+
+- **Document fencing.** At the start of an attempt, transaction 1 increments `document.attempts` (to n), records `send_started_at` and commits. The outcome is written in transaction 2 with `UPDATE document … WHERE id = :id AND attempts = :n`. A stale worker (paused or partitioned) that wakes up after a newer attempt has started finds `attempts ≠ n` and writes nothing. `job.attempt` fences only the job row.
+- **Ownership.** While a job runs, its worker holds the job's session advisory lock on the pod's lock connection (§10.8).
+- **Heartbeat on the lock connection.** As in pulpcore, the worker's heartbeat (`UPDATE worker SET last_heartbeat = now()`) runs **on the same connection that holds the job locks**, so a missing heartbeat always means the locks are gone too. If the lock connection breaks, the worker:
+  1. stops claiming;
+  2. lets in-flight SUNAT calls finish;
+  3. writes their outcomes (still fenced on the document);
+  4. exits the process, so Kubernetes restarts it.
+- **Recovery.** A singleton under `WORKER_CLEANUP` fails every running job whose lock it can take (`pg_try_advisory_xact_lock(seq)` succeeds). A job's lock is taken before `start_job` commits and released only after `finish_job` commits (a worker that can't record the end keeps the lock), so a running job with a free lock is always orphaned, whatever its worker's heartbeat says. The lock connection sets server-side TCP keepalives (`tcp_keepalives_*`, `tcp_user_timeout`), so PostgreSQL drops a dead worker's session, and its locks, within about a minute. Their documents are never lost:
+  - each stays non-definitive;
+  - one that had `send_started_at` set moves to `unknown`;
+  - the reconciler starts the next attempt when its `next_attempt_at` lease expires (§24.2). Recovery creates no jobs itself.
+- Workers name themselves and sleep until `NOTIFY` (wake-up or `xhandler_job_cancel`).
+- The state machine has no loops: `waiting → running → completed | failed`, plus `canceling → canceled` from waiting or running.
+- Finished jobs are purged after a protection period. The permanent audit trail is `document_event`.
+
+### 10.5 Priority classes
+
+1. OSE forwarding (1-hour legal limit).
+2. Document attempts (send, ticket check, ambiguity resolution, voiding). Within this class, the reconciler already orders by legal deadline (§24.2).
+3. Webhooks and email.
+4. Reports, SIRE, exports, purges.
+
+### 10.6 Schedules
+
+- The **reconciler** (§24.2): every few seconds, enqueue attempts for due non-definitive documents, up to capacity.
+- Deadline alerts and the boleta D+5 → RC fallback.
+- Certificate expiry (30 days ahead).
+- Import of SUNAT's blocked-issuer lists, and checks of the OSE association list.
+- Conformity polling.
+- SIRE calendar.
+- PSE rejected-rate report.
+- Usage sync to Lago.
+- Circuit-breaker probes (driven by the reconciler, §24.2).
+- Job purge; OSE 1-month purge; retention and exit deletions.
+
+### 10.7 Guards summary
+
+1. Exclusive `document:{id}` with FIFO, plus the definitive-answer check at the start of each job.
+2. Credential slots (pooled for PSE).
+3. Atomic counters for numbering (§8).
+4. Conditional status updates (§9.3).
+5. Document fencing on `attempts`, plus the reconciler lease; recovery goes through `unknown` (§10.4, §24.2).
+
+The beta → production switch uses the company's `switching` gate (§8), not a job resource.
+
+### 10.8 Concurrency and thread-safety rules
+
+These rules apply pulpcore's tasking discipline to a multi-threaded JVM. Every PR touching jobs, documents or numbering is reviewed against them.
+
+**Invariants (database)**
+
+1. **Postgres is the only source of truth.**
+   - No mutable state is shared across requests or jobs in memory.
+   - The only in-memory state is immutable configuration and read-through caches (Caffeine) of data that may be stale without harm: entitlements, catalogs, compiled schemas.
+2. **Every state change is a compare-and-set** inside a transaction: `UPDATE … WHERE id = :id AND status IN (:allowed) [AND attempts = :n]`, which must change exactly one row. Nothing reads, decides in Java, and then writes without a row lock or this conditional.
+3. **No remote call while holding row locks**, with one documented exception: the emit transaction (engine, HSM, S3; §11.1). SUNAT calls always follow three steps:
+   1. transaction 1 records `send_started_at` and commits;
+   2. call SUNAT, with no transaction open;
+   3. transaction 2 writes the result with a compare-and-set.
+4. **Lock ordering**, to prevent deadlocks: company → series/daily_counter → documents (sorted by id) → job rows. Advisory locks use the two-integer form `(namespace, key)`, with one namespace per purpose. They are never taken inside a row-lock section in any other order.
+5. **Singleton activities** run under `pg_try_advisory_xact_lock(namespace, constant)`. If the lock isn't acquired, the activity is skipped, because another worker is doing it. This is the pulpcore model (`TASK_UNBLOCKING_LOCK`, `TASK_SCHEDULING_LOCK`, `TASK_METRICS_LOCK`, `WORKER_CLEANUP_LOCK`). Ours:
+   - `UNBLOCK`;
+   - `RECONCILE`;
+   - `SCHEDULE_DISPATCH`;
+   - `WORKER_CLEANUP`;
+   - `METRICS`;
+   - `BLOCKED_LIST_IMPORT`;
+   - `RETENTION_PURGE`.
+6. **Job ownership.**
+   - Only the worker holding a job's session advisory lock may move it from `running` to a final state.
+   - `canceling` may be set by anyone, without the lock (as in pulpcore), and is signalled with `NOTIFY xhandler_job_cancel`.
+   - The running worker checks for cancellation at safe points. **It never abandons a SUNAT call after `send_started_at`**: it finishes, records the result, then honors the cancellation.
+7. **Idempotent handlers.** Every job handler can safely run again from the start: it re-reads state, resends the same bytes, and writes results with a compare-and-set. Fencing with `attempt` makes a stale run harmless (§10.4).
+
+**Connections**
+
+- Each worker pod has one **lock connection**. It holds the session advisory locks of all jobs currently running in that pod, and it is never returned to the pool. Calls on it are serialized by a single mutex-guarded component.
+- Only **non-blocking** `pg_try_advisory_*` calls are allowed on the lock connection. A blocking call would stall every job behind the mutex, and Postgres's deadlock detector can't see waits that span the pool and the lock connection.
+- The worker's **heartbeat runs on the lock connection** (§10.4). So a live heartbeat proves the locks are held, and a lost connection stops the heartbeat and makes recovery possible.
+- If the lock connection breaks, the locks are gone. The worker stops claiming, lets in-flight calls finish, writes their outcomes (fenced on `document.attempts`), and exits (§10.4).
+- The lock and listener connections are direct to Postgres. They never go through a transaction-pooling proxy such as PgBouncer.
+- A separate dedicated **listener connection** handles `LISTEN`/`NOTIFY`.
+- The pool size covers concurrent jobs, concurrent requests and headroom; the lock and listener connections are outside it. An emit holds two connections at once (its transaction and the signature log), so `PoolSizeCheck` refuses to start unless `max-size ≥ 2 × emit permits + job slots + 8`. Waits on a series row are bounded by `lock_timeout` (`xhandler.emit.lock-timeout`), answered with 503.
+
+**Threads (Quarkus / Java)**
+
+- HTTP requests run on virtual threads. **JNI calls pin virtual threads** (SunPKCS11/HSM), so HSM calls run on a bounded platform-thread executor sized to the HSM session pool. Emits take a permit from a bounded semaphore, and connection-pool acquisition has a timeout, so a slow HSM degrades emits only, not reads.
+- Jobs run on a bounded executor with N slots per worker pod. N is configured, and the unblocker never hands out more work than slots exist.
+- CDI beans are stateless (`@ApplicationScoped` with no mutable fields). Data passed between components is immutable (Java records).
+- Hibernate sessions and entities never cross threads or transactions; IDs are passed instead.
+- Objects that are not thread-safe are never shared:
+  - XML: `javax.xml.validation.Validator`, `DocumentBuilder`, `Transformer`, StAX readers. Their compiled factories (`Schema`, `Templates`) are thread-safe and shared.
+  - JCA `Signature` and `Cipher` instances.
+  - PKCS#11 sessions come from a bounded HSM session pool, one thread per session at a time.
+- The engine client (REST client over Vert.x) is shared and thread-safe. The engine itself is stateless: Rust holds no global mutable state, and its template and catalog statics are immutable.
+- Timeouts everywhere: database statement timeout, engine call timeout, HSM timeout, SUNAT connect and read timeouts. Nothing waits forever while holding a slot. **Timeouts nest outward:**
+  - SUNAT call (xsender: 120 s);
+  - < app → engine read timeout (130 s);
+  - < app shutdown timeout (135 s);
+  - < pod termination grace period (150 s).
+
+  So no layer gives up on, or kills, a send that an inner layer may still complete.
+
+**Verification**
+
+- Static checks: Error Prone, plus a rule banning mutable fields in application-scoped beans.
+- Property-based tests of the unblocker: random job and resource mixes; assert no overlap, FIFO per resource, slot limits and no starvation.
+- Concurrency integration tests with real Postgres:
+  - N threads emitting on one series give no duplicate or skipped numbers;
+  - concurrent void and send on one document stay serialized;
+  - concurrent idempotent retries produce one document.
+- Chaos tests: kill workers or the lock connection mid-SUNAT-call, pause workers past the heartbeat window, and assert no duplicate sends and that recovery goes through `unknown` (§15.2).
+
+### 10.9 Why not Redis
+
+- pulpcore's Redis worker exists for hosted-scale database load.
+- Its changelog shows lock leaks, orphaned and stale locks, stalls and FIFO bugs, because state lives in Postgres while locks live in Redis.
+- Our throughput is bounded by SUNAT's latency, and Postgres is enough.
+- Redis may be added to xhandler-service later only if a metric demands it (shared rate limits, queue load on the database).
+- Lago's own Redis is unrelated; it belongs to the billing product (§14).
+
+---
+
+## 11. Flows
+
+### 11.1 Emit (software and PSE)
+
+`POST /api/v1/tenants/{tenant}/companies/{company}/documents` with `{document: {kind, spec}, serie?, delivered?, labels?}` and an `Idempotency-Key` header. The service fills the issuer from the company and the number from the series (an explicit `serie`, the serie part of `spec.serie_numero`, or the default series; notes pick the F or B family of the document they affect). Summaries are never emitted by clients.
+
+1. **Idempotency.** Insert `(tenant_id, key, request_hash)` into `idempotency_key`, in its own committed transaction so concurrent retries see it.
+   - On conflict with the same hash and a stored response: return that response.
+   - On conflict while the first request is still running: 409. A key left running by a crashed process is taken over after two minutes. Every claim has its own token: `complete` and `abandon` only touch their own claim, so a request that outlives a takeover rolls back instead of creating a duplicate, and can't free the new owner's key.
+   - The request hash is over canonical JSON (keys sorted). The stored response omits the buyer link (its token is never stored); a replay gets everything else.
+   - On conflict with a different hash: 422.
+   - A request that fails deletes its key, so the client can retry. Keys are purged after 24 hours.
+2. **Quota** check against cached Lago entitlements. If Lago is unreachable, the last known entitlements are used for up to 24 hours; after that, emits for over-quota tenants fail closed.
+3. **One short transaction** (an emit permit from a bounded semaphore is taken first; pool acquisition has a timeout):
+   1. reserve the number (§8);
+   2. `engine build` with the real number, then `engine validate` (XSD + rules). On errors: roll back (no number is consumed, since numbers are consumed only on commit) and return 422 with SUNAT codes;
+   3. `sign/prepare`, then the HSM signs the digest (tenant key in software mode, platform PSE key in PSE mode), then `sign/finalize`. HSM calls run on a **bounded platform-thread executor** sized to the HSM session pool, because SunPKCS11 is JNI and would pin virtual threads;
+   4. upload the signed XML to S3. It is content-addressed, so an orphan left by a rolled-back transaction is harmless and purged later. `input_json` and `enriched_json` are stored the same way (§25). The signature is written to `signature_log` in its own transaction: if the emit then rolls back, the entry's document id matches no document, which marks the signature discarded (§8);
+   5. insert `document` (`pending_send`, `next_attempt_at = now()`), `document_file`, the usage outbox row and the stored idempotency response, then `NOTIFY xhandler_reconcile`;
+   6. commit.
+
+   The series row stays locked for the engine call, the HSM call and the S3 upload, so emits on one series run one at a time. One series per POS terminal (§8) keeps that off the critical path. Per-series throughput is a measured SLO. If measurements show the S3 upload dominates, the fallback is to store the signed XML in Postgres within the transaction and copy it to S3 asynchronously.
+4. Reply `201` with id, serie-número, digest/QR data, the buyer access link and the status.
+
+Emit never creates jobs. The reconciler sends the document (§24.2), usually within a second.
+
+### 11.2 Send
+
+- The reconciler leases the document and creates an attempt (§24.2).
+- The worker holds `document:{id}` and a credential slot. It re-reads the document, increments `attempts` and records `send_started_at` (transaction 1), then sends through the company's derived route:
+  - SUNAT direct;
+  - a third-party OSE;
+  - GRE always over REST to SUNAT.
+- Transaction 2, fenced on `attempts`, applies §9.2:
+  - sets `first_sent_at` and `cdr_received_at`;
+  - writes events and emits webhooks and usage events;
+  - for a non-definitive outcome, sets `next_attempt_at` (backoff, ticket check or ambiguity resolution).
+
+### 11.3 Voiding
+
+`POST …/documents/{id}/void` with `{motivo, not_delivered: true, reversal_communicated_at?}` answers `202` with the voiding document. Each request creates its own RA or RC (several per day are allowed). RRs are cumulative: a later RR of the same type and day replaces the earlier one at SUNAT (RS 117-2017 art. 38), so each RR repeats that day's reversals of the same type and issue date. The voiding follows the original's route (an RA for a factura sent directly goes directly), whatever the company's route now. The 2027 windows apply: RA and RC estado 3 up to the 7th calendar day after the document's issue date; RR up to the 7th day after the reversal was communicated (required for percepciones and retenciones). GRE can only be voided in SOL (409).
+
+1. `POST /documents/{id}/void` checks the §9.3 guards.
+2. It builds the RA, RC (estado 3) or RR line and numbers it from `daily_counter`.
+3. It moves the original(s) to `voiding`, saving `status_before_voiding`, with one conditional update after the summary is built (lock order: company → daily counter → documents). If the original changed meanwhile, the whole transaction rolls back and the summary's number is not consumed.
+4. It sets the voiding document's `next_attempt_at = now()`. The reconciler creates its attempts, and each attempt holds `document:{voiding_id}` and `document:{original}` for every original.
+5. Outcome:
+   - voiding accepted: originals move to `voided`;
+   - voiding rejected: originals return to `status_before_voiding`, and the user is told;
+   - voiding in `exception` (credentials, a permanent code): not a rejection. The RA/RC/RR can be fixed and resent, so the originals stay in `voiding`; the user may cancel the void instead (`POST …/documents/{id}/void/cancel`).
+
+### 11.4 OSE inbound
+
+1. **Receive** over SOAP (`billService`, WS-Security UsernameToken), REST or SFTP.
+   - The issuer authenticates as an `ose_client`: password hashed, lockout after failed attempts.
+   - The issuer must be on SUNAT's list of taxpayers associated with us as OSE, checked periodically.
+2. **Harden input**: size limits; ZIP entry count, size and compression-ratio caps; DTDs disabled (XXE).
+3. **Refuse** issuers on SUNAT's blocked lists.
+4. **Validate** fully with xvalidator. There is no shortcut for documents the platform produced as PSE.
+5. **Answer**: build the CDR and sign it with the OSE key, or return an inconsistency notice. Record an `ose_submission`.
+6. **Forward**: the submission gets `next_attempt_at = now()`, and the reconciler creates priority-1 forwarding attempts that send the document and CDR to SUNAT within 1 hour, recording `cdr_issued_at`, `forwarded_at` and `sunat_ack`. The 1-hour SLO is measured from `cdr_issued_at`.
+7. **Retain** the submission at least 1 month (`purge_after`). If the issuer is also our tenant, the document follows that tenant's retention instead.
+8. Record usage on a separate "OSE validation" billing line, and expose the result through the public validity API.
+
+How it runs (P10):
+
+- Channels: SOAP at `/ose/billService` and at SUNAT's path `/ol-ti-itcpfegem/billService` (`sendBill` answers the CDR-OSE at once; `sendSummary` and `sendPack` answer a ticket for `getStatus`; `getStatusCdr`), REST at `POST /api/v1/ose/documents` (HTTP Basic, `{file_name, content_base64}`), and SFTP through a separate SFTP server writing to `{xhandler.ose.sftp-root}/{username}/in/` (the `ose.sftp` job answers into `out/`). The SOAP envelope is parsed with DTDs and external entities disabled.
+- `ose_client`: one user per issuer RUC (a PSE gets one per issuer). Passwords are generated by the platform (144 random bits), shown once and stored as salted SHA-256; there is no account lockout (anyone knowing a username — RUCs are public — could otherwise stop an issuer from invoicing): failures are counted and logged every 20, and per-IP limits belong to the gateway. An optional `tenant_id` carries the billing line; `GET /api/admin/v1/ose/usage?month=` reports validations per user for issuers that aren't tenants. Admin API under `/api/admin/v1/ose` (users, the association list and blocked lists — imported, replacing what was stored —, the CDR-OSE certificate, the OSE's SUNAT user, the forwarding queue, re-forward).
+- ZIPs: ≤ 10 MB, ≤ 5 MB per XML, ≤ 100 MB and ratio ≤ 100 in total, plain `.xml` names only, one XML for `sendBill`/`sendSummary`, up to 500 for `sendPack`.
+- Checks, in order: the file name; the sender is the issuer (`0111`); the association counts until the 7th day of the month after it ends (`0154`); blocked lists (`2010`); the same number accepted before (same bytes: the same CDR, also through a ticket; other bytes: `1033`, also when two sends race); type (GRE are never checked by an OSE); the content matches the name (`0151`); signed (`0306`); the engine's full validation, which verifies the XMLDSig signature (reference digest and SignedInfo against the certificate, inclusive or exclusive C14N, RSA-SHA256/SHA1: `2335` when altered) plus XSD (`0306`, a Spanish message) and rules (their codes). Documents are handled in the encoding they declare, so the bytes the issuer signed are the bytes validated and forwarded. An engine failure is a `0109` fault with nothing recorded or billed. In a pack, each entry gets its own answer. These codes are our choice where SUNAT's manual leaves it open, to confirm in SUNAT's OSE tests (C3); answering 2xxx/3xxx rejections as faults (rather than as a CDR) is also to confirm there.
+- The CDR-OSE is built by the engine (`/v1/cdr`, ResponseCode 0 with the observations as notes) and signed with the `ose_cdr` platform key (the demo key outside production; production refuses service without the key). Files go to an OSE namespace in storage, outside any tenant.
+- Forwarding is the `ose.forward` job (every 30 seconds, priority 1, 8 sends at a time until the queue is empty or 25 seconds pass): batches leased with `FOR UPDATE SKIP LOCKED` and a lease id that every outcome is compare-and-set on, SUNAT called with no transaction open through the engine (`/v1/ose/forward`: a ZIP with the document's original bytes and its CDR-OSE, `sendBill`, or `sendSummary` for resúmenes and bajas, authenticated with the OSE's SUNAT user, no redirects). Outcomes: acknowledged; unknown (retried at 30 s, 1, 2, 4 and then every 5 minutes); rejected — only SUNAT's 2000–3999 — kept for an operator and never purged; blocked — credentials, package, 1032/1033 or unclassified codes, not the document's fault — kept queued, the run stops and alerts, and blocked rows are retried every 10 minutes until the cause is fixed. A summary is forwarded when SUNAT returns its ticket (following that ticket is pending). The delay from `cdr_issued_at` is a timer (`xhandler.ose.forward_delay`) and the oldest pending forward a gauge (`xhandler.ose.forward_oldest_seconds`); forwards older than 45 minutes alert. A dedicated job replaces the reconciler-created attempts first planned: OSE submissions are not tenant documents and have no attempts of their own.
+- `ose.purge` (daily) deletes forwarded submissions and inconsistency notices after 31 days with their files (a file shared by an identical resend stays until no submission points at it). The issuer-is-also-a-tenant retention rule is not applied yet: OSE copies are separate from the tenant's own documents.
+- A production build refuses to start with the OSE enabled and `xhandler.ose.environment` other than `production` or `beta` (unless `xhandler.ose.allow-fake`); the CDR certificate must be in force and issued to the OSE's RUC.
+- Public validity: `POST /api/v1/public/lookup/ose` (CAPTCHA, per-RUC limit): `con_cdr`, `con_inconsistencia` or `no_encontrado`, with when it was checked.
+- Not yet: the checks of the issuer's certificate against SUNAT's list (2325/2326) and of the PSE link (2873), SUNAT's lists synced automatically (they are imported by admins), the complete AjustesValidacionesCPE rule set (R3), sendPack answered asynchronously (it checks every entry before answering), and following the tickets of forwarded summaries.
+
+### 11.5 Supplier reception
+
+`POST …/receptions` takes XML plus optional files, all treated as untrusted input (size caps; the engine refuses DTDs). The document must be addressed to the company (the buyer's RUC). It is checked with SUNAT's validity API (`validaCDPcriterios`, with the company's SOL user or the platform's validity credential; the SUNAT call runs outside any transaction), stored, and indexed by issue date for the purchases side of SIRE. Receptions SUNAT couldn't answer for are re-checked by a job.
+
+### 11.6 Delivery
+
+- The PDF is rendered on demand from `enriched_json` + company data + status (so the banner always matches the current status; nothing is stored), by `GET …/files/pdf`, the buyer's link and emails. The renderer only accepts `data:` URIs (QR, logo), so templates can't make it fetch anything; logos are re-encoded at upload, at most 2000 × 2000 pixels.
+- **Test documents never pass for real ones**: a sandbox or beta document's PDF says "SIN VALOR LEGAL - DOCUMENTO DE PRUEBA", the buyer portal answers `documento_de_prueba`, documents are emailed automatically only in production, and an unverified company (any RUC can be typed) can't email test documents at all.
+  - Formats: A4 and 80/58 mm tickets.
+  - Contents: SUNAT QR (`RUC|TIPO|SERIE|NUMERO|IGV|TOTAL|FECHA|TIPO_DOC|NUM_DOC|HASH|`, with GRE using SUNAT's QR), partner/tenant branding, and a "pendiente" banner until there is a definitive answer.
+  - Templates are Qute code shipped with the service; companies customize them through options.
+- Email goes through the platform sender (Quarkus Mailer) or the tenant's SMTP (credential kind `smtp`: host re-checked at send time, ports 25/465/587/2525 only, failures reported to the tenant generically), with up to 2000 emails per tenant per day. The tenant's body template is sanitized (an allow-list of formatting tags, https/mailto links only) and subjects are one line. With a verified sender domain, mail goes out as the company's own address; with per-company subject/body templates (`{tipo}`, `{serie_numero}`, `{razon_social}`, `{link}`…). Attachments: PDF, XML and optionally the CDR. Each email carries the buyer's capability link (§12). Emails go out as jobs: on request (`POST …/documents/{id}/email`, 202) or when SUNAT accepts, if the company enables `email_on_accept` and the document carries the buyer's email (`cliente.contacto.email`).
+- `delivered_at` is set by the first successful delivery (`delivered_source = service`) or by the client's attestation (`client`, §9.3). It drives the voiding guard. Every delivery is logged.
+
+### 11.7 SIRE
+
+For each company and period:
+
+1. Download SUNAT's proposal (RVIE and RCE) through SIRE's API.
+2. Reconcile it with stored documents and receptions.
+3. Generate replacement and adjustment files.
+4. Submit them and poll the tickets.
+5. Track the deadline calendar (RS 281-2022 annex II).
+
+PLE files are generated only to adjust old periods.
+
+How it runs:
+
+- Credential kind `sire`: the API client (client_id/secret) plus the SOL user with the SIRE profile. One OAuth password grant per engine call (the engine stays stateless).
+- `sire_period` per company, environment, register (`rvie`, `rce`) and period: `requested` → `proposal_ready` (proposal stored and reconciled: what SUNAT lacks, what it has that isn't stored, different totals) → `submitting` → `submitted` → `accepted`, plus `error`, `credentials` (resumes by itself when the `sire` credentials are saved) and `unknown`. Requests and replacements are jobs; the `sire.poll` job (every 5 minutes) follows the tickets. A proposal request is claimed on the row before SUNAT is called; every later change is a compare-and-set on the state and the ticket. Failed exchanges back off exponentially (up to 6 hours) and end in `error` after 20 attempts.
+- The replacement is generated from the stored rows (§11.9) in SUNAT's layout, zipped, and sent with its SHA-256. Submitting is ADMIN, and refused while documents of the period have no final answer, while amounts are missing, and — unless the admin acknowledges it (audited) — when the reconciliation doesn't match, because what SUNAT has and the platform doesn't would be dropped.
+- A replacement whose answer was lost (timeout, a crashed job left in `submitting` for 10 minutes) is `unknown`: SUNAT may have it, so it is resent only after the admin confirms in SOL that SUNAT didn't get it (`confirm_not_received`, audited). Starting over after `accepted` or a reviewed proposal needs ADMIN.
+- The deadline calendar (`sire_calendar`, by period and RUC last digit) is loaded by platform admins (`PUT /api/admin/v1/sire/calendar`); the daily `sire.deadlines` job notifies once per company and period (`sire_deadline_notice`) 3 days before an unaccepted sales register is due.
+- The engine's SIRE calls answer within 100 seconds (below the app's read timeout); only `invalid_grant`/`invalid_client` answers count as rejected credentials (429 and others are retried).
+- SIRE has no beta: production, or the SUNAT fake (whose proposals come from the documents it received). The REST paths follow SUNAT's SIRE manual and are verified against the fake only until a production round trip (C-track).
+
+### 11.8 Factura negociable
+
+- Credit facturas carry FormaPago, cuotas and the net pending amount (already in xbuilder).
+- After acceptance, a `conformity` row starts the 8-day window. The service polls SUNAT's conformity API and sends webhooks on agreed, objected or silent agreement, plus reminders.
+- An objection leads to a guided credit note type 13.
+- An export is provided for factoring. There is no CAVALI integration.
+
+How it runs: emits record `payment_terms` (`credito` when `forma_pago` has cuotas or `tipo: Credito`; UBL uploads from `cac:PaymentTerms`). When SUNAT accepts a credit factura to a RUC buyer (production or fake), a `conformity` row opens the 8-day window (calendar days from the acceptance the service recorded: an approximation; SUNAT decides silent agreement, and the window only drives reminders and polling). Voiding the factura closes it; rows are not polled beyond 3 days after the window. The hourly `conformity.poll` job asks SUNAT with the company's `sire` credentials (no credentials: the row records why and waits), records `agreed`, `objected` or `silent_agreement`, publishes `document.conformity_<state>` webhooks and notifications, and reminds 2 days before the window closes (`document.conformity_reminder`). `GET /documents/{id}/conformity` suggests the credit note type 13 for an objection; `GET /companies/{id}/conformity/export` is the CSV for factoring.
+
+### 11.9 Reports
+
+One row generator feeds CSV, Excel, SIRE and legacy PLE. Reports run as jobs (`202` + job link).
+
+- Sales come from the company's documents (01, 03, 07, 08; accepted, voiding or voided) by issue date; purchases from its receptions SUNAT didn't report as voided, rejected or nonexistent. Amounts by tax come from the signed XML (the engine's inspect reads the document-level TaxSubtotals) and are stored with each document and reception; the `documents.amounts-backfill` job completes older rows, and reports and SIRE refuse to run while any row lacks them (never zeros in their place). Credit notes are negative; voided documents keep their row with zero amounts (estado 2 in PLE). PLE amounts are in soles (the document's tipo de cambio, else SUNAT's selling rate of the day); SIRE keeps the document's currency with its rate. The SIRE and PLE layouts are checked against the fake and unit tests only until the C-track production round trip.
+- `POST …/companies/{id}/reports` `{register: sales|purchases, format: csv|xlsx|ple|sire, period: YYYYMM}` → `202`; `GET …/reports/{id}` and `…/file`. CSV is UTF-8 with a BOM and neutralizes formula injection; Excel is a minimal OOXML workbook written by the service; PLE is 14.1 (sales) or 8.1 (purchases) with SUNAT's file name.
+
+---
+
+## 12. API
+
+- Base path `/api/v1`. The OpenAPI spec is generated by SmallRye. It must be good enough for `@hey-api/openapi-ts`: stable operation ids, typed error schemas, consistent pagination and filters.
+- `201` for emit; `202` + job link for long operations; `409` for guard violations; `422` with SUNAT codes for invalid documents.
+- `Idempotency-Key` on every create, stored with a request hash and the response (§11.1).
+- Per-tenant rate limits are applied at the gateway.
+- Free-form `labels` on documents (ERP ids), with filtering.
+- One identifier format across the API, webhooks and logs: `xh:<type>:<uuid>`.
+- Permissions are exposed per resource so the UI can hide or disable actions (pulp-ui-2 ADR 0008).
+- Webhooks:
+  - payload is a CloudEvent 1.0 (`application/cloudevents+json`; types `document.accepted`, `document.rejected`, `document.rejected_after_delivery`, `document.exception`, `document.voided`, `document.delayed`, `conformity.objected`, …) with a versioned `dataschema` (`urn:xhandler:schema:document-event:v1`);
+  - signed with HMAC-SHA256 over `"<timestamp>.<body>"`: `X-Xhandler-Signature: t=<unix seconds>,v1=<hex>`; the per-subscription secret (`whsec_…`) is shown once and stored envelope-encrypted;
+  - written to `webhook_delivery` in the transaction that caused the event (an outbox), leased and delivered by a job every 2 seconds, retried 10 s, 1 min, 5 min, 30 min, 2 h, then every 6 h, up to 12 attempts; every delivery is logged and can be redelivered or tested through the API;
+  - sent through the egress proxy (§16), and checked in the app too: https, ports 443/8443, public addresses only (including IPv4 embedded in NAT64, 6to4 and Teredo), no redirects; production refuses to call out without the proxy (`xhandler.egress.require-proxy`), since only the proxy pins DNS. Each delivery has a hard 15-second deadline for headers and body, so a slow receiver can't stall the others. Every use of a webhook secret is audited.
+- Client SDKs are generated from the OpenAPI spec.
+- **Versioning.**
+  - Within `/api/v1`, changes are additive only.
+  - A breaking change creates `/api/v2`, and v1 is kept for at least 12 months after v2 ships, with `Deprecation`/`Sunset` headers.
+  - Webhook payloads follow the same rule through `dataschema` versions.
+- **Public endpoints** (no login, rate limited, behind the gateway's bot protection):
+  - **Buyer access by capability link** (revocable: `POST …/documents/{id}/access-links/revoke`). Each document gets a random 128-bit token, stored hashed in `access_token`. It is printed in the PDF QR, sent in emails and returned by the emit API (`access_url`; a new one can be created later, the token itself is never stored). `GET /api/v1/public/documents/{token}` shows the document's status and files, and `/{xml|cdr|pdf}` downloads them for the legal access period (366 days). The first download marks the document delivered (`delivered_source = service`) and is logged in `delivery`. This is the primary path.
+  - **Lookup by data.** RUC + serie-número + date + total is low-entropy and guessable. It requires a CAPTCHA, has per-IP and per-RUC limits, and returns **only status and validity**, never the files.
+  - **OSE validity** (RS 242-2018): status only.
+
+---
+
+## 13. Storage and retention
+
+- Files are stored under `tenant/{tenant_id}/{sha256}` in S3-compatible storage and never modified. Postgres keeps the metadata.
+- Retention is `tenant.retention_years`, 10 by default, and files move to an archive tier with age.
+- Nothing is deleted while `tenant.audit_hold` is set, which flags a tax audit.
+- OSE inbound submissions are kept at least 1 month (`ose_submission.purge_after`). If the issuer is also our tenant, they follow that tenant's retention.
+- When a tenant leaves:
+  1. Full export: XML, CDR, PDF and metadata, as ZIP + JSON.
+  2. Deletion 2 years later, with evidence, unless the tenant buys an archive plan.
+
+This satisfies the processor's 2-year limit (DS 016-2024-JUS art. 31.2) while the tenant keeps the copies it is legally required to hold.
+
+How it runs (P11):
+
+- Export: `POST /api/v1/tenants/{t}/exports` (ADMIN; one an hour) → a job writes parts of at most 300 documents (XML, CDR, PDF and a JSON each, named `env/RUC-TT-SERIE-NUMERO` like SUNAT, so two companies never collide), parts of receptions, and an index; memory stays bounded by one part. Parts are downloaded one by one (audited). An export whose job died shows as failed.
+- Exit: `POST /api/v1/tenants/{t}/exit` (OWNER, the organization's name typed, no document waiting for SUNAT, and a finished export from the last 30 days newer than every document). The tenant becomes `exited`: its members can still read it (exports, data-subject requests) but can't emit or void, nothing of it is sent to SUNAT, and `delete_after` is 2 years ahead (none with the archive plan; dropping the plan afterwards sets it). Platform admins can cancel an exit before then, set the archive plan, and set `audit_hold` (`/api/admin/v1/data-protection/tenants/{t}/…`).
+- Deletion: the daily `tenants.exit-deletion` job deletes every file under the tenant's storage prefix (referenced or not), then every row of every table with a `tenant_id` (a SECURITY DEFINER function, in as many passes as foreign keys need; OSE users only lose their billing link), keeps the tenant row without personal data (`name` replaced, billing and notification addresses removed) and writes `tenant_deletion` (counts per table and files deleted) as evidence, which the app role can't change. Keycloak users and the Lago customer are closed by the platform's offboarding (outside the service).
+- Retention: the daily `retention.purge` job deletes documents whose issue year (in Lima) is more than `retention_years` behind (at least 5; a database constraint) with their events, files, links, deliveries, signature log entries and conformity rows, never documents still open and never under `audit_hold`; a file another record of the tenant still uses (a reception, a report) is kept. Moving old files to an archive tier is an object-storage lifecycle rule.
+
+---
+
+## 14. Billing (Lago)
+
+- Lago runs as its own deployment, with **its own Postgres and Redis** (Sidekiq). This is accepted: "no Redis" applies to xhandler-service, and Lago is a separate product. It is AGPL and used unmodified as a separate service.
+- If Lago is unreachable, emits continue on cached entitlements for up to 24 hours (§11.1), and usage events wait in the outbox.
+- The service writes usage events (documents accepted per type, OSE validations, receptions, storage) to `usage_event_outbox` in the business transaction. A job delivers them to Lago.
+- Entitlements (plan, quotas) are synced from Lago and cached (`entitlement`). Quotas are enforced at emit: production documents per month, beta and the sandbox per day (Lima), counted from the documents themselves (no hot counter row). Plans (`plan`: free, starter, business, enterprise) live in the service; prices and invoices in Lago. A plan set by a platform admin (contracts outside Lago) isn't overwritten by the sync. Notices at 80% and 100% (§26.6).
+- Quotas are soft by design: usage is counted from committed documents, so concurrent emits around the limit can overshoot it by at most the emits in flight (permits × pods); a per-tenant lock would serialize every emit of a tenant. Quotas apply to new documents only: an idempotent replay always gets its stored answer, and the platform's own invoices never count. Unknown plan codes are refused; a Lago plan the service doesn't know never downgrades a customer.
+- Plans follow Lago's `subscription.*` webhooks as they happen; the periodic sync refreshes Lago customers as a safety net. A usage event Lago refuses is set aside (with its error) so the others keep flowing.
+- Usage events go to Lago's batch API with the outbox row id as `transaction_id` (Lago deduplicates).
+- Partners see their tenants' usage (`GET /api/v1/partners/{p}/tenants?month=`). Partner members (admin or viewer, set and removed by the platform through SECURITY DEFINER functions; the app role can't write partners) act on their partner's tenants through the normal API, with the more privileged of their tenant and partner roles, create tenants (`POST /api/v1/partners/{p}/tenants`) and brand PDFs and emails (`PUT …/branding`).
+- **The platform's own subscription invoices are issued as real comprobantes through xhandler-service**, because Lago's invoices are not comprobantes. Lago's `invoice.created` webhook (HMAC-signed, `X-Lago-Signature`) becomes a factura (a boleta without a billing RUC) from the platform's issuing company (admin API `billing/issuer`) to the tenant's billing details, emailed to its billing address; idempotent per Lago invoice (also beyond the idempotency window: the job looks for the invoice's label first). The comprobante's total must match what Lago charged (Lago amounts are before the 18% IGV, which must be set up as a Lago tax), or the job fails for a person to look at.
+
+---
+
+## 15. Observability and operations
+
+- **Logs**: structured JSON. A correlation id flows from the API request to its jobs, to the engine and to the SUNAT call, and is stored on jobs and events.
+- **Metrics**:
+  - queue wait time (ready but unclaimed) and depth per priority;
+  - SUNAT latency and response codes per environment and document type;
+  - documents per status;
+  - deadlines at risk;
+  - OSE forwarding time against the 1-hour limit;
+  - PSE rejected-CDR rate;
+  - certificate expiry;
+  - API latency histograms;
+  - HSM latency and errors.
+- **Traces**: OpenTelemetry across Quarkus and the engine.
+- **Health and status**: `/q/health` (liveness/readiness) for Kubernetes. `/api/v1/status` reports versions (service, engine, xhandler-rust revision), online workers, database, storage and HSM health, and queue depth.
+- **SLOs**: 99.96% availability for OSE intake, and OSE forwarding under 1 hour at the 100th percentile. Dashboards and alerts for both.
+- **Engine performance budget** (per document, typical invoice, one core): build + validate (XSD + rules) + sign-prepare under 5 ms at p99, excluding the HSM signature. It is tracked with `criterion` benchmarks. CI gates on **instruction counts** (`iai-callgrind`), which are stable on shared runners, failing on a regression above 10%. Wall-clock benchmarks run nightly on dedicated hardware.
+- **Admin CLI** (`xhandler-admin`, Picocli, module `admin-cli/`): a thin client of the admin API (`/api/admin/v1`, Keycloak realm role `platform-admin`, e.g. the `xhandler-admin` service account), so it needs no database credentials and every action is audited in the tenant's log:
+  - `rotate-keys`;
+  - `requeue-document`;
+  - `cancel-job`;
+  - `purge-jobs`;
+  - `data-repair` (`partitions`: create missing partitions now; `requeue-stuck`: make due any non-definitive document no automatic attempt would pick up);
+  - `migration-status`;
+  - `reset-admin` (a temporary Keycloak password, through Keycloak's admin API);
+  - `hold` / `release` (document, company, tenant, endpoint);
+  - `retry` (one document, or in bulk by filter);
+  - `endpoint-status`.
+- **Runbooks**: a stuck queue, SUNAT outage, HSM outage, a certificate expiring, a breach.
+
+### 15.1 Schema migrations
+
+- Flyway, with the **expand/contract** rule, because api and worker pods of two versions run side by side during a rolling deploy:
+  1. add columns and tables in release N;
+  2. backfill;
+  3. switch reads in N+1;
+  4. drop in N+2.
+- No migration may take long locks on `document` or `job`. Large backfills run as jobs.
+
+### 15.2 Testing strategy
+
+- **Unit tests** (JUnit), including property-based tests of the unblocker and claim logic: no overlap on a resource, FIFO per resource, credential slots respected, no starvation.
+- **Integration tests** with Dev Services: Postgres, Keycloak, SoftHSM, MinIO.
+- **A SUNAT fake** (SOAP + REST) is the CI gate. It can return any code, delays, timeouts and 1033, and it can drop a response after accepting the document. SUNAT beta is flaky and lenient, so beta e2e runs nightly, not as a gate.
+- **Golden files**: built XML per document type (as in xhandler-rust), adapter inputs/outputs, CDRs.
+- **Chaos tests**: kill workers mid-SUNAT-call, kill the lock connection, and pause workers past the heartbeat window. Assert no duplicate sends and that recovery goes through `unknown`.
+- **Tenant isolation tests**: deliberately cross tenants, including with the tenant setting missing.
+- Engine benchmarks (`criterion`): build, XSD validation, rules and sign-prepare per document type, gated in CI (§15).
+- Load tests for OSE intake and forwarding (P10/P11).
+
+---
+
+## 16. Security and compliance in the product
+
+- ISO 27001 controls: access control, logging, change management, secure development (OWASP), penetration tests, supplier management, backups.
+- Private keys only ever in clear text inside the HSM; every signature logged; secrets envelope-encrypted with rotation.
+- **SSRF.** Every outbound connection to a tenant-supplied host (webhook URLs, SMTP hosts, third-party OSE endpoints, lookup URLs) goes through an egress proxy:
+  - private, loopback, link-local and metadata ranges are denied, so it can't reach the engine on localhost, cloud metadata, or Keycloak admin. The engine's outbound calls (SUNAT, third-party OSEs) go through it too (`HTTPS_PROXY`), and the engine itself refuses non-https and internal literal addresses in tenant-supplied URLs in production;
+  - DNS is resolved and pinned before connecting;
+  - only allowed ports are open.
+- **Untrusted files** (UBL uploads, receptions, OSE ZIPs, SFTP drops):
+  - DTDs and external entities are disabled in every XML parser (Java and Rust);
+  - ZIP entry count, size and compression ratio are capped;
+  - request sizes are limited.
+- Audit logs of personal-data access, kept at least 2 years; access reviews every six months.
+- Weekly backups with restore tests; Postgres point-in-time recovery; disaster-recovery drills.
+- Data-subject request workflow: forwarded to the tenant within 3 days, with tracked deadlines. In the service (P11): `data_subject_request`; platform admins register requests that reach the platform (`POST /api/admin/v1/data-protection/tenants/{t}/data-subject-requests`, forwarded to the tenant at once by notification); tenants register their own, see what the platform holds about the person (`…/{id}/personal-data`: the documents issued to that identity document) and close them with their answer. Terms: 20 days for access, 10 for rectification, cancellation and opposition (calendar days, a conservative reading); the tenant is reminded 2 days before and overdue requests are logged for the platform. These notices can't be muted by notification preferences, and their dates are shown in Lima time.
+- Breach runbook: notify tenants immediately, and support the controller's 48-hour notice to the ANPD and CNSD.
+- Sub-processor list published; the data processing agreement and signing-authorization clause in the tenant contract.
+- Libro de Reclamaciones link in xhandler-ui.
+- Tenant isolation tests and dependency scanning in CI.
+
+---
+
+## 17. Catalogs and lookup
+
+- Optional CRUD for customers, products, vehicles, drivers and addresses (`…/companies/{id}/catalogs/{kind}`). Reads of customers and drivers are audited (personal data). They live in one table typed by kind: each kind has its required fields and natural key (a customer by its identity document, a product by its code, a vehicle by its plate), validated by the app. Soft-deleted and sync-ready (§7.2).
+- A document may reference catalog entries or carry everything inline.
+- RUC/DNI lookup behind one interface, `lookup(tipo, numero)` (`…/lookup/{ruc|dni}/{numero}`): a commercial provider (credential kind `lookup`: URL template and the tenant's token, checked as a tenant-supplied host) or the platform's `searchpe` (`xhandler.lookup.searchpe-url`). Results are merged into the customer catalog (fields the user entered are kept) and cached 30 days. Every lookup is audited and limited per tenant per hour.
+
+---
+
+## 18. xhandler-ui
+
+xhandler-ui (sibling repo, separate container) is the only UI. It **must follow the design, patterns, skills, rules and tooling of [pulp-ui-2](https://github.com/pulp/pulp-ui-2)**:
+
+- **Stack**:
+  - React 19 + PatternFly 6, Vite, TypeScript;
+  - TanStack Router (file-based routes) and TanStack Query, axios;
+  - an API client generated with `@hey-api/openapi-ts`;
+  - react-hook-form;
+  - Vitest, and Playwright e2e tests whose folders mirror `pages/`;
+  - an Express production server; OIDC login.
+- **Repo layout**: npm workspaces `common/`, `client/`, `server/` and `e2e/`, with the same `client/src/app/` structure (`pages/`, `queries/`, `components/`, `hooks/`, generated `client/`, `axios-config/`).
+- **Guidance**:
+  - `AGENTS.md`;
+  - `docs/adr/` (what the UI does, each ADR with `## Rules`; design changes need a new or superseding ADR);
+  - `.rulesync/` rules and skills generated into `.claude/` and `.cursor/`;
+  - `docs/internals/`.
+- **Tooling**: oxlint/oxfmt for the fast loop; ESLint, tsc and Prettier as the gate; husky and commitlint; PatternFly skills.
+- **Adaptations**: Pulp-specific rules are rewritten (e.g. `pulp-api` → `xhandler-api`). Plugin concepts are adapted where useful (document types as data, after pulp-ui-2 ADR 0001) or dropped, and the U0 ADRs record which.
+
+**Language:** the UI is in Spanish (es-PE), and so are emails, PDFs and API error messages (§26.9).
+
+v1 screens:
+
+- buyer portal (capability links, 1-year access) and OSE validity page. These are **public routes outside the OIDC login flow**: no session, and the generated client calls only the public endpoints (§12). A U0 ADR defines how public and authenticated routes coexist;
+- tenant admin console (companies, certificates, series, API clients, webhooks, usage, browsing and resending documents);
+- partner console;
+- manual issuing;
+- SIRE and conformity screens.
+
+---
+
+## 19. Changes in xhandler-rust
+
+| Item | Change |
+|---|---|
+| R1 | **xsigner external-signer mode**, in two steps: `prepare` returns the canonical SignedInfo and its digest, and `finalize` takes the signature bytes and assembles the `ds:Signature`. Java does the HSM signing in between (engine `sign/prepare` / `sign/finalize`). Output must match .pfx signing byte for byte. |
+| R5 | **Runtime XSD validation in Rust, built for speed.** A **separate crate, `xxsd`**, validates against SUNAT's XSDs. It is kept apart from `xvalidator` (R3, the SUNAT rules) and from xbuilder/xsigner, which all stay pure Rust for mobile. It with **libxml2 through the `libxml` crate**: the fastest proven option, and the same validator xbuilder's tests use today, so results match the current suite.<br>• The UBL/SUNAT schemas are parsed and compiled **once at engine startup**, one compiled schema per document type.<br>• libxml2 validation contexts are not thread-safe, so validation runs on a **fixed-size dedicated thread pool**, one context per thread. tokio's blocking pool would create and reap threads and churn contexts.<br>• Known libxml2 integration points:<br>  – `xmlInitParser` once at startup;<br>  – a global `xmlSetExternalEntityLoader` that resolves `xs:import`/`include` from the embedded schemas only;<br>  – thin `unsafe` Send wrappers around the crate's schema types where needed.<br>• libxml2's maintenance and CVE record is a tracked risk: pin it and patch it promptly.<br>• Parsing is hardened: no network (`XML_PARSE_NONET`), no entity expansion or DTD loading (no `XML_PARSE_NOENT`/`DTDLOAD`), and input size caps. Schemas come only from embedded files.<br>• XSD validation and the xvalidator rules run in **one engine call** (`/v1/validate`), parsing the document once where possible.<br>• Running inside the sidecar process also isolates libxml2: a crash in C code restarts the engine container, never the JVM.<br>• The engine image ships libxml2 (fine in a container). Mobile keeps working without XSD validation, or with a pure-Rust validator later.<br>• Behind an `XsdValidator` trait, so a pure-Rust crate (`xsd-schema`, `oxixml-schema`) can replace libxml2 once it passes the conformance corpus (all xbuilder snapshots plus negative cases) at equal or better speed. |
+| R2 | **New xsender clients**: validity check (consulta integrada); factura negociable conformity; SIRE (OAuth password grant, ZIP + SHA-256, tickets); import of blocked-issuer lists. **Plus SUNAT code classification** (transient/permanent/special, §9.2), generated from the workbook's CódigosRetorno sheet and exposed through the engine API. |
+| R3 | **xvalidator crate**: SUNAT's validation rules, data-driven and versioned from the v2026-02-12 catalog, returning SUNAT codes. Built incrementally: factura/boleta, then notes, summaries, percepción/retención. |
+| R4 | **OSE CDR builder** (CDR-OSE structure for documents and summaries), signed through R1 |
+| Optional | A shared facade crate used by both the engine and the xhandler-mobile bridge |
+
+**Where R2–R5 live for now.** The engine pins a fork of xhandler-rust (R1, project-openubl/xhandler-rust#610) that can't take further changes until that PR lands. So the first versions of R2 (consult and validity clients, code classification), R3 (the first rules), R4 (CDR builder) and R5 (XSD validation with libxml2) are modules of the engine (`codes.rs`, `consult.rs`, `rules.rs`, `cdr.rs`, `xsd.rs`), each written to move into xhandler-rust as is. Moving them is one PR to xhandler-rust plus a pin bump here. The engine image ships libxml2; building the engine needs `libxml2-dev`, `libclang-dev` and `pkg-config`.
+
+---
+
+## 20. Repository layout
+
+```
+xhandler-service/
+├── pom.xml                      Maven multi-module (Java 25, Quarkus)
+├── app/                         Quarkus application (api + worker roles)
+│   └── src/main/java/…          tenancy, identity, documents, numbering, jobs, sunat,
+│                                ose, reception, delivery, sire, conformity, billing,
+│                                catalogs, reports, webhooks, admin
+├── admin-cli/                   xhandler-admin (Picocli)
+├── engine/                      Rust sidecar (Cargo; depends on xhandler-rust pinned by rev)
+├── deploy/                      Kubernetes manifests / Helm chart, Lago, Keycloak realm
+├── docs/
+│   ├── DESIGN.md
+│   └── research/                regulatory research
+└── .github/workflows/           CI: Java, Rust, images, e2e against SUNAT beta
+```
+
+---
+
+## 21. Roadmap
+
+Four tracks run in parallel. In this repo, each phase is committed straight to `main`; work in other repos (xhandler-rust, xhandler-ui) goes in one single PR per repo. Every phase is followed by a senior-engineer review. Phases are internal milestones; the public v1 launches at GA with all three roles.
+
+This is a deliberate choice, made after the design review. Launching all three roles at once means GA waits for OSE registration (capital, bank guarantee, audit, SUNAT tests). Pilot tenants at M1 and M2 can still run in production before GA.
+
+```
+Service      P0 ─ P1 ─ P2 ─ P3 ─ P4 ─ P5 ─ P6 ─ P7 ─ P8 ─ P9 ─ P10 ─ P11 (GA)
+                                 M1 ▲          M2 ▲          M3 ▲
+xhandler-rust  R1 ───── R2 ───────── R3 (incremental) ───────── R4
+xhandler-ui                  U0 ─ U1 ──── U2 ──── U3 ──── U4
+Certification  C1 (company, ISO 27001, legal) ──── C2 (PSE) ──── C3 (OSE)
+Infrastructure I1 (dev/staging) ─── I2 (production HA: sync replication, multi-zone, HSM cluster) ── I3 (DR drills)
+```
+
+### 21.1 Service
+
+| Phase | Goal | Deliverables | Exit criteria |
+|---|---|---|---|
+| **P0** Walking skeleton | Prove the architecture | Repo with `AGENTS.md`/`CLAUDE.md` conventions (§26.9); Maven parent + `app` module (Quarkus 3.40, Java 25); `engine/` Rust sidecar (axum, xhandler-rust pinned by rev) with `/v1/build`, `/v1/sign` (single-step with SUNAT's beta demo key or a PKCS#12, until R1), `/v1/send`, `/health` and a `--health` exec probe; dev-only `POST /api/v1/dev/documents` (build → sign → send to beta); Dev Services PostgreSQL + Flyway baseline; health, metrics, OpenAPI; OpenTelemetry across both containers (W3C trace context); `hack/compose.yaml` (PostgreSQL, Grafana LGTM) and `hack/e2e.sh`; container images; Kustomize base (one pod = app + engine); CI (app, engine, images, manifests) and a nightly SUNAT-beta e2e. Keycloak, MinIO and SoftHSM move to P1, where they're first used. Publishing and signing images and the dev/staging GitOps environments belong to the infrastructure track (I1). | Done: `hack/e2e.sh` gets an invoice accepted by SUNAT beta through the engine, and one trace spans `xhandler-service` → `xhandler-engine` → `sunat.send` |
+| **P1** Platform core | Multi-tenant foundations | Done:<br>- Partner, tenant, member (people and machine clients) and company.<br>- PostgreSQL row-level security: the app runs as the non-owner `xhandler_app` role on every pooled connection, the tenant is set per transaction, and cross-tenant lookups go through `SECURITY DEFINER` functions.<br>- Keycloak OIDC with Dev Services and a dev realm; self-service signup (verified email, one free tenant per person); support sessions (request, approve, read-only, revoke).<br>- An append-only audit log.<br>- `KeyVault`: PKCS#11 (HSM) for production, a software vault refused in production; envelope-encrypted credentials with master-key rotation (`KeyRotation`).<br>- Certificate import (PKCS#12 parsed in Java, RUC read from the subject; expired, wrong-password and non-RSA keystores refused). A matching RUC is the first ownership proof; the SOL login proof comes in P3.<br>- Two-step signing through the vault (engine prepare → vault → engine finalize; R1).<br>- Default series; Spanish API errors `{kind, message, detail}`; pagination.<br>- Engine logs carry `trace_id`; `hack/e2e.sh` covers the API flow.<br><br>Not in P1: MinIO moves to P3 (files); the PKCS#11 vault is untested until SoftHSM is installed locally; the rotation command goes in the P2 admin CLI. | Done: cross-tenant tests fail closed; private keys never reach the engine (the e2e signs through the vault and SUNAT beta accepts); rotation re-wraps without downtime |
+| **P2** Job system | Pulp-style tasking + SUNAT resilience | Done:<br>- `job`, `job_schedule`, `worker`; the no-loop state machine; the unblocker as one SQL pass (FIFO per resource, credential slots); claim with `pg_try_advisory_lock(seq)` on the pod's lock connection before the compare-and-set; heartbeat on the lock connection; recovery under `WORKER_CLEANUP` moves interrupted sends to `unknown`; LISTEN/NOTIFY wake-ups; schedules; purge.<br>- `document` (partitioned by issue year) with its retry state, `document_event` (monthly), `document_file`; the reconciler as one SQL function (leases, deadline order, per-endpoint caps, holds per document, company, tenant and endpoint); breakers from the last 30 s of `sunat_call`; the fenced three-step attempt (§10.4) with per-type ambiguity resolution and the 1033 digest check; `needs_attention` after 10 identical outcomes or 24 h.<br>- Content-addressed storage (`FileStore`: S3 with SigV4, or a directory in dev/tests).<br>- `/api/v1/status`, tenant jobs API (Pulp-task shaped), admin API and `xhandler-admin`.<br>- The engine's consult, ticket, validity, validation, inspect and CDR endpoints, and the SUNAT fake (§4.1, §19).<br><br>Every cross-tenant step is a `SECURITY DEFINER` function. | Done: property test of the unblocker (no overlap, FIFO, slots, no starvation); chaos tests: dead worker → `unknown` → resolved without resending; paused worker keeps its lock and no second attempt runs; lost lock connection stops claims; a stale attempt writes nothing; outage opens the breaker, and the backlog drains through one probe in deadline order |
+| **P3** Emit and send (software mode) | Real factura/boleta | Done:<br>- `POST …/documents` with `Idempotency-Key`, the emit permit, and one transaction that numbers, builds, validates (`/v1/validate`), signs through the HSM executor and stores; `signature_log`; buyer capability links and public endpoints; the documents API (list with filters and labels, timeline, files, retry/hold/release, delivered attestation).<br>- Webhooks (outbox, signed CloudEvents, retries, delivery log, redelivery, test events) with the egress guard.<br>- The boleta D+5 → resumen diario fallback (also on 1079) and the RC outcome propagated to its boletas; deadline alerts (`document.delayed`, America/Lima); usage events on acceptance (outbox for P6).<br>- Every company starts on the SUNAT fake; the environment switch; RUC verification by SOL login.<br>- `hack/e2e.sh` emits through the API and checks the attempt's trace.<br><br>Not in P3: PDFs and email (P5); the per-line lost-ticket path for summaries (P4). | Done: emit → accepted through the job system; idempotent and concurrent retries give one document; concurrent emits on one series give consecutive numbers with no gaps; an invalid document consumes no number; a boleta answered 1079 goes by RC and follows it; signed webhooks verify |
+| **P4** All documents | Complete the set | Done: notes (series follow the affected document; the 2027 one-reference rule in the engine); percepción/retención; GRE through the REST API with its own credentials (SOL user + API client); voiding by RA, RC estado 3 and RR with the delivered guard, the 2027 windows and rollback when the voiding is rejected; the lost-ticket path for summaries; the derived submission route (SUNAT or a third-party OSE, OSE-obligated companies refused); SUNAT/SBS exchange rates and the S/ 700 check in foreign currency; the production switch gate (P3). | Done: every document type emits and is accepted against the fake; voiding accepted and rejected; a third-party OSE receives the documents with its credentials while GRE stays direct; invalid routes refused |
+| **P5** Delivery and catalogs | Reach buyers | Done: Qute PDFs rendered with OpenHTMLtoPDF (A4, 80/58 mm tickets, SUNAT QR, company logo, partner branding, Spanish, "pendiente" banner), email (platform sender or tenant SMTP, templates, attachments, on request or on acceptance, suppression list, sender-domain verification), the delivery log, tenant notifications (documents in exception or at risk, rejected after delivery, expiring certificates, SUNAT outages), buyer portal APIs (capability links, PDF, lookup by data with CAPTCHA and per-RUC limits), catalogs, RUC/DNI lookup with cache. SPF/DKIM/DMARC records belong to the platform's mail provider setup (infrastructure). | Done: a buyer fetches XML/CDR/PDF through the link; emails carry PDF, XML and CDR and are logged; notifications arrive in-app and by email |
+| **M1** | **Software-mode beta** | Pilot tenants | |
+| **P6** Billing, partners and developers | Monetization and DX | Done: plans and cached entitlements with quotas at emit (fail closed to the free plan after 24 h without Lago); usage outbox delivered to Lago; entitlement sync; partner API (tenants, usage, branding) with partner members acting on their tenants; self-invoicing from Lago's webhook; free-tier limits (no tenant SMTP; webhooks need a verified RUC); public API reference; SDK generation (TypeScript, Java); quickstarts; the sandbox (P3) and webhook tools (P3); `/api/v1/status` as the status page source. The Lago deployment itself belongs to the infrastructure track. | Done: quotas enforced; a partner onboards a tenant through the API; a Lago invoice becomes our factura |
+| **P7** PSE mode | Sign for tenants | Done: the platform's PSE certificate imported into the vault (`platform_key`, separate from tenant keys); a pool of platform SOL users (`platform_credential`, sealed, reads logged) that PSE documents are spread over, each a credential slot; PSE authorization tracking per company (registered by the tenant with evidence — a PDF or image of the SOL screen, RUC verified — and counted only once a platform admin approves it; PSE mode needs an approved authorization and is refused for companies sending through an OSE; revocation waits until no PSE document is pending, is notified, and goes back to software mode); GRE are never signed as PSE; signatures log the platform key used; key rotation re-wraps platform keys and credentials; platform certificates expiring within 30 days alert; the emission mode recorded on each document; the engine's validation gate before signing (as for every document, P3); the rejected-CDR rate per half-year (Lima calendar; per comprobante by creation, summaries and GRE excluded) against the 10%/5% limits — 5% when the PSE registration date is not configured — (report job, metric read from the database, admin API, logged breach); attempts counted per pool member. Platform documents in PSE mode in test environments sign with the PSE key when there is one, else the demo key. | Done: PSE-signed documents accepted against the fake with the platform's certificate and SOL user; rejected rate reported; per-credential attempt counts measured |
+| **M2** | **PSE ready** | Feeds C2 | |
+| **P8** Adapters and reception | More inputs | Done: UBL XML upload (validated, signed if unsigned, client numbering), SFS TXT (.CAB/.NOT + .DET), the Nubefact-compatible API with per-company tokens, supplier reception with validity checks (now and by a job) and file downloads. | Done: golden-file tests per adapter; uploads, SFS and Nubefact documents accepted against the fake; receptions validated and stored |
+| **P9** Tax compliance | SIRE, negociable, reports | Done: SIRE automation (proposal, reconciliation, replacement with SHA-256, tickets, deadline calendar and alerts), conformity tracking (8-day window, polling, webhooks, reminders, guided credit note 13, factoring export), CSV/Excel/SIRE/legacy PLE reports from one row generator, amounts by tax stored per document and reception. Engine: SIRE and conformity clients (R2) and the fake's SIRE and conformity APIs. | SIRE round trip against the fake (SIRE has no beta; production round trip pending C-track credentials); conformity tracked end to end against the stub |
+| **P10** OSE | Become an operator | Done: SOAP billService (sendBill, sendSummary, sendPack, getStatus, getStatusCdr) at SUNAT's path with WS-Security auth (`ose_client`, lockout), association and blocked lists (imported), REST and SFTP intake, ZIP hardening, the engine's validation, CDR-OSE signed with the OSE key, `ose_submission` with the forwarding job (priority 1, delay timer and oldest-pending gauge, alerts at 45 minutes), 1-month purge, public validity API, the OSE validation billing line; engine OSE forwarding client and the fake's OSE service. Pending: certificate/PSE-link checks against SUNAT's lists, automatic list sync, the full rule set (R3). | Done: an external system switches by changing only the URL (SOAP tests at SUNAT's path); forwarding measured. Pending: forwarding under load (load script in P11), SUNAT's OSE tests (C3) |
+| **M3** | **OSE ready** | Feeds C3 | |
+| **P11** GA hardening | Enterprise operations (with the infrastructure track) | Done in this repository: api and worker deployments (zone spread that ignores a lost zone's nodes, PDBs, rolling with no unavailability), NetworkPolicies (private dependencies such as the HSM are explicit overlay patches, `deploy/examples/networkpolicy-private-deps.yaml`) and the egress proxy, the migration Job (Quarkus init-and-exit: Flyway as the owner, then exit), a CloudNativePG example (synchronous standby, PITR, weekly backups), SLO alerts and dashboard (`deploy/monitoring/`; the document and job gauges read a snapshot the `ops.snapshot` job computes every 30 seconds for the cluster; OSE intake availability counts only internal faults), runbooks for every alert plus DR, breach and data protection (`docs/runbooks/`), k6 load tests including outage + drain (`hack/load/`), and the data protection workflows (data-subject requests, export, exit and deletion with evidence, retention purge, audit hold, archive plan). With the infrastructure track: running the DR drills and restore tests, the OWASP pen test, the load tests at §25 figures and the soak. | Pending (infrastructure track): SLOs met over a soak period; pen-test findings closed; ISO 27001 evidence complete |
+
+### 21.2 xhandler-rust
+
+| Phase | Deliverable | Needed by |
+|---|---|---|
+| R1 | External-signer mode in xsigner (prepare/finalize) | P1/P3 |
+| R5 | Runtime XSD validation in Rust (libxml2, compiled once, thread-local contexts), benchmarked | P3 |
+| R2 | Validity, conformity, SIRE and blocked-list clients | P8, P9, P10 |
+| R3 | xvalidator, incremental | Partly by P7, complete by P10 |
+| R4 | OSE CDR builder | P10 |
+
+### 21.3 xhandler-ui (starts after P3)
+
+| Phase | Deliverable |
+|---|---|
+| U0 | Bootstrap on the pulp-ui-2 blueprint: structure, tooling, rules, skills, ADR process; first ADRs (navigation partner → tenant → company, app shell, job reporting); OIDC + generated client + CI running against the service |
+| U1 | Tenant admin console |
+| U2 | Buyer portal, Libro de Reclamaciones link, manual issuing |
+| U3 | Partner console |
+| U4 | OSE validity page, SIRE and conformity screens |
+
+### 21.4 Infrastructure (separate project)
+
+Kubernetes and the cloud are designed in their own project, but on the same timeline:
+
+| Phase | Deliverable | Needed by |
+|---|---|---|
+| I1 | dev and staging clusters, GitOps, observability stack, SoftHSM/MinIO in dev | P0 |
+| I2 | Production: multi-zone Kubernetes, Postgres with synchronous replication and PITR, cross-region replicas, clustered HSM, gateway, egress proxy with static IPs | M1 |
+| I3 | DR drills and the region-failover runbook; evidence for ISO 27001 and the OSE availability requirement | P11 |
+
+### 21.5 Why this order
+
+- Software mode comes first because PSE and OSE are built on its jobs, documents, storage and delivery.
+- The job system comes before real sends, because the retry and racing rules must be proven first.
+- Billing comes before PSE so pilot tenants can pay.
+- OSE comes last: it needs a complete xvalidator, and its certification needs a working system.
+
+---
+
+## 22. Certification and legal track
+
+This work takes calendar time, so it starts at P0.
+
+| Phase | Work |
+|---|---|
+| C1 | Incorporate the Peruvian operating company (general regime).<br>Start the ISO 27001 management system (6–12 months; evidence comes from development).<br>Register the personal-data banks with the ANPD and communicate offshore hosting.<br>Draft the data processing agreement and the signing-authorization clause.<br>Libro de Reclamaciones.<br>Send SUNAT the written question about running PSE and OSE in one company. |
+| C2 (after M2) | PSE registration: ISO 27001, 150 UIT of capital, at least 5 employees, platform certificate registered in SOL. |
+| C3 (after M3) | OSE registration: 300 UIT of capital, 28 UIT bank guarantee, audit by an ISO lead auditor, SUNAT's 25-business-day test process. |
+
+---
+
+## 23. Open items
+
+- Which documents SUNAT's consult service (`getStatusCdr`) covers (boletas?) and how GRE queries by document. This affects §9.2.2; verify against SUNAT's web-service manuals.
+- SUNAT-side throttling or WAF limits per source IP at hundreds of concurrent calls; static egress IPs (§25).
+
+- The infrastructure/DR project (§25.1): cloud choice (AWS or other), synchronous-replication topology, HSM clustering, region-failover runbook.
+
+- Whether SUNAT requires IOFE-accredited certificates for CPE. The source norms are image-only scans; OCR them or ask counsel.
+- The exact article of the Reglamento de Comprobantes de Pago that sets the S/ 700 boleta threshold.
+- Whether DU 013-2020 art. 8.2 (tax credit on credit facturas tied to conformity) is still in force.
+- HSM vendor and deployment (network HSM vs cloud-agnostic options), and its FIPS level per role.
+- Whether being a PSE counts as a "critical activity" under DS 126-2025-PCM (cybersecurity incident duties). Ask counsel.
+- SUNAT's written answer on running PSE and OSE in one company.
+- Whether to extract a shared engine/mobile facade crate.
+- Re-check the §9.2 classification against the newest published workbook (the online copy at cpe.sunat.gob.pe returned 403 to automated fetches; the local copy is v2026-02-12).
+- Real per-SOL-user concurrency limits on SUNAT production (§10.2), measured in pilots.
+- When a pure-Rust XSD validator can replace libxml2 (R5): run the conformance and benchmark spike once those crates mature.
+
+---
+
+## 24. Resilience to SUNAT failures
+
+SUNAT will fail: outages, slowness, timeouts after accepting a document, garbage responses, authentication-service failures. The architecture assumes this, so **any document can always be retried until SUNAT gives a definitive answer**.
+
+### 24.1 Principles
+
+1. **Intake never depends on SUNAT.** Emit builds, signs and stores locally and replies `201 pending_send`, whatever SUNAT's state.
+2. **The document carries its own retry state.**
+   - Every non-definitive document has `next_attempt_at` and `attempts`.
+   - Jobs are only disposable attempts.
+   - The reconciler (§24.2) is the **only** component that creates attempts.
+   - Retries therefore survive anything that loses a job: a worker crash, a job that fails because of a bug, a purge, a lost `NOTIFY`, a bad deploy, restoring the job table from backup.
+3. **Never give up automatically.**
+   - Retries continue until a definitive answer, a permanent error (§9.2), or an explicit hold by an operator or tenant.
+   - Repeated identical failures are flagged `needs_attention` but still retried every 6 hours (§9.2.4).
+   - A document past its legal deadline is still sent, flagged as late; the tenant is alerted well before.
+4. **Same bytes, always**, except the documented lost-ticket summary case (§9.2.2).
+5. **Ambiguity is resolved by asking, not by resending blindly**, using the per-document-type table in §9.2.2.
+6. **Retries cost SUNAT nothing while it is down.**
+   - Each endpoint has a circuit breaker.
+   - While it is open, the reconciler simply leaves that endpoint's documents out of its query. No rows are rewritten, only half-open probes are sent, and recovery isn't a thundering herd.
+7. **Ordered drain.** When SUNAT recovers, documents go out **earliest legal deadline first**, within each endpoint's concurrency cap and the credential slots, with jittered backoff.
+8. **Manual control.**
+   - `POST /documents/{id}/retry` clears the hold and sets `next_attempt_at = now()`.
+   - Bulk retry by filter (company, status, date range).
+   - Hold or release per document, company, tenant or endpoint.
+   - The same actions exist in `xhandler-admin` (§15).
+9. **Visibility.**
+   - Metrics: backlog size and oldest pending age per endpoint, deadlines at risk, breaker state, drain rate, documents in `needs_attention`.
+   - A `document.delayed` webhook and tenant notifications (§26.6).
+   - A SUNAT health panel in xhandler-ui; on-call paging (§26.4).
+10. **OSE role.** Forwarding to SUNAT uses the same machinery at priority 1 and balances across SUNAT's two OSE reception endpoints (RS 117-2017 annex C). Breaching the 1-hour limit pages on-call.
+
+### 24.2 Reconciler
+
+- A singleton under `pg_try_advisory_xact_lock(RECONCILE)` runs every second and on `NOTIFY xhandler_reconcile`.
+- **Endpoint state.** It alone owns the `sunat_endpoint` rows: breaker state (closed / open / half-open with cap 1) and a fixed, configured concurrency cap (the admin API only pauses and caps). It computes the breaker from the outcomes of the last 30 seconds of attempts. Workers only append to `sunat_call`, so there's no hot row. The half-open probe is a call *started* after the endpoint went half-open, so a late answer to a call started before the outage can't close or reopen the breaker.
+- **Lease and create**, in one transaction:
+
+  ```sql
+  WITH due AS (
+    SELECT id FROM document
+    WHERE status IN ('pending_send','in_progress','unknown')
+      AND next_attempt_at <= now()
+      AND hold_reason IS DISTINCT FROM 'operator'
+      AND endpoint NOT IN (:open_or_paused_endpoints)
+    ORDER BY deadline_at
+    LIMIT :free_capacity            -- per endpoint, from caps and credential slots
+    FOR UPDATE SKIP LOCKED)
+  UPDATE document d SET next_attempt_at = now() + :lease   -- e.g. 5 minutes
+  FROM due WHERE d.id = due.id
+  RETURNING d.id;
+  -- then insert one attempt job per returned document, in the same transaction
+  ```
+
+  - A document never gets a second attempt while one is active: it doesn't look due until the lease expires, the attempt renews the lease when it starts (it may have waited in the queue), and the reconciler skips documents that hold a waiting or running attempt (`reserved_resources @> {document:id}`, served by the partial GIN index). The last check matters when attempts queue behind a credential slot for longer than the lease.
+  - The attempt's outcome overwrites `next_attempt_at` (or clears it on a definitive answer), and clears `attempt_job_id`, so recovery never turns a recorded outcome into `unknown`.
+  - If the worker dies, recovery fails its job, the lease expires and the next pass retries the document. Documents that follow a summary carry no retry state and are skipped.
+- **Index.** A partial index on `(deadline_at) WHERE status IN ('pending_send','in_progress','unknown')`, filtered on `next_attempt_at`. It stays tiny in steady state and holds only the backlog during outages.
+- Voiding originals (`voiding`) are not reconciled; their RA/RC/RR document carries the retry state. Boletas moved into an RC have `next_attempt_at` cleared (§9.2.4).
+- **Deferred to post-v1, if metrics ask for them:** adaptive concurrency (AIMD) and tenant fairness. Facturas have a 3-day deadline, so minutes of unfairness during a drain are harmless.
+
+### 24.3 Testing
+
+The SUNAT fake (§15.2) simulates:
+
+- a full outage;
+- partial outages (5xx, timeouts);
+- accept-then-timeout;
+- 1033 after a lost response, including a 1033 with a different digest;
+- lost tickets;
+- slow responses;
+- recovery.
+
+Tests assert that no document is lost or double-attempted, nothing is sent after a definitive answer, the drain is ordered by deadline, stale workers can't overwrite outcomes, and the backlog drains within the expected time.
+
+---
+
+## 25. Capacity
+
+Target: **thousands of documents per minute**. Design figures: 5,000/minute sustained (about 83/second), 50,000/minute burst at intake.
+
+| Area | Implication |
+|---|---|
+| Intake | Stateless api pods scale horizontally; emit is local (engine + HSM + database + S3), bounded by an emit semaphore and HSM sessions |
+| Engine | 5 ms p99 per document on one core (§15) for one build + validate + sign-prepare/finalize, excluding the HSM signature and localhost HTTP round trips. Scales with pods. |
+| HSM | About 85 signatures/second sustained, about 850/second in bursts. Size the HSM cluster for bursts. Keep each tenant key unwrapped as a session object, cached per HSM session (LRU). |
+| Postgres rows | About 7.2M `document` rows/day, about 2.6B/year, kept 10 years. **`document` is partitioned by issue year** (`LIST (issue_year)`; the uniqueness rule includes that key; series counters are monotonic, so a number can't repeat across years). `document_event` is partitioned by month. `ensure_partitions()` creates the coming partitions daily, and default partitions catch anything outside them. Partitions are reached only through their parent, whose row-level security applies; the app role has no rights on them. `job` is not partitioned: it is purged and stays small. `audit_log` and `delivery` become monthly partitions through an expand/contract migration when their volume asks for it (§15.1). Large JSON (`input_json`, `enriched_json`) lives in S3, not in rows. |
+| Postgres writes | About 15–20 rows per document: roughly 1.5k writes/second sustained, over 7k/second during intake bursts. Size and benchmark the primary for that. `NOTIFY`s are coalesced to one per transaction. |
+| SUNAT drain | Roughly 85 documents/second at ~1–2 s latency needs about 100–200 calls in flight across credentials. PSE needs a large enough pool of platform SOL users. |
+| Outage backlog | 4 hours at 5,000/minute is about 1.2M pending documents. Draining at about 200/second while intake continues at about 83/second clears it in about **3 hours**, earliest deadline first. |
+| SUNAT-side limits | SUNAT may throttle or block per source IP at hundreds of concurrent calls. Egress uses static IPs. The real limits are measured in pilots (§23). |
+| S3 | Several objects per document (XML, CDR, JSON, PDF on demand). Content-addressed, so duplicates are free. |
+
+P11 load tests run at these figures, including an outage followed by a drain.
+
+
+### 25.1 Disaster recovery
+
+**Targets: lose nothing (RPO = 0) and no downtime (RTO ≈ 0).**
+
+- **Who provides them.** The infrastructure layer delivers these targets: Kubernetes plus the cloud provider (e.g. AWS), designed and operated separately from the application.
+- **What "no downtime" means in practice.** Literal zero downtime isn't physically achievable. The target is automatic failover in seconds that no tenant notices: in-flight requests may be retried, but none are lost.
+- **What the application guarantees.** It is built so that any infrastructure failover is safe.
+
+**Infrastructure layer (separate project):**
+
+| Component | Requirement |
+|---|---|
+| Postgres | **Synchronous replication** to at least one standby in another zone (CloudNativePG synchronous standbys, or Aurora/RDS Multi-AZ with synchronous commit). A commit is acknowledged only once it is on two zones, which gives RPO = 0. Automatic failover; point-in-time recovery to object storage; a cross-region replica for regional disasters. |
+| Object storage | Multi-zone by default (S3); cross-region replication for files (XML, CDR, JSON). Content-addressed, so replication is idempotent. |
+| HSM | A clustered HSM across zones, with key material replicated within the cluster. Tenant keys are wrapped and stored in Postgres (§6), so they are covered by its replication. |
+| Kubernetes | api, worker and engine pods spread across at least three zones (topology spread constraints, PodDisruptionBudgets); rolling deploys; no single-replica components. |
+| Keycloak, Lago, gateway, egress proxy | Each with several replicas across zones, and its own database replicated the same way. |
+| Region failover | Documented and drilled (P11). Promoting the cross-region replica is a deliberate operator decision, because the remote region is asynchronous. |
+
+**Application guarantees (this design):**
+
+- **Stateless pods.** All state is in Postgres, object storage or the HSM, so losing any pod or zone loses no data.
+- **A commit means durable.** A `201` on emit is returned only after the transaction commits, and with synchronous replication that means it's on two zones. A document that was answered can't be lost by a failover.
+- **Failover-tolerant connections.**
+  - Database connections retry on failover with backoff.
+  - The lock connection's loss is handled as in §10.4: finish in-flight calls, write fenced outcomes, exit, restart.
+  - Recovery and the reconciler's lease (§24.2) resume every interrupted attempt, so no SUNAT send is lost and none is duplicated.
+- **Idempotent clients.** `Idempotency-Key` (§11.1) lets clients safely retry requests that failed during a failover.
+- **Fencing and document state** (§9.2, §10.4) make work interrupted at any point safe to resume.
+- **Tests.** Chaos tests in staging (§15.2) include failing over Postgres, losing a zone and restarting the HSM during load, and assert no lost or duplicated documents.
+
+
+---
+
+## 26. Operations, support and developer experience
+
+### 26.1 Support access
+
+- Platform operators can't see tenant data by default.
+- A support session is requested, approved by the tenant (or granted by a documented break-glass procedure), limited in time (e.g. 4 hours), read-only by default, and fully audited (§16). The tenant can see the audit.
+- This is required by ISO 27001 and the data protection rules.
+
+### 26.2 Developer experience
+
+- A public API reference generated from the OpenAPI spec (`/q/openapi`, `/q/swagger-ui`, public). The admin API is left out of it and of the SDKs.
+- SDKs generated for **TypeScript and Java** in v1 (`sdk/generate.sh`, CI workflow `sdk.yml`); other languages later, from the same OpenAPI spec. Publishing them to npm and Maven Central is part of the release process.
+- Quickstarts in Spanish: `docs/quickstarts/`.
+- **Sandbox**: every new tenant starts on the **SUNAT fake**, with deterministic answers (accepted, rejected, 1033, outage). SUNAT beta is opt-in and uses the tenant's own SOL user. The shared demo credential would give every free tenant a single slot (N = 1), about one document per second for the whole platform.
+- Quickstarts per integration style: ERP, POS, the Nubefact adapter.
+- Webhook tools: a test-event sender, delivery logs and redelivery.
+- A public status page for platform and SUNAT health.
+
+### 26.3 Release and deployment
+
+- Environments: `dev` (Dev Services), `staging` (SUNAT beta, production-like), `production`.
+- GitOps (Argo CD) with container images signed and scanned in CI.
+- Rolling deploys under the expand/contract migration rule (§15.1).
+- The engine's xhandler-rust dependency is pinned by revision. Bumping it is its own PR, gated on the golden files and the engine benchmarks.
+- Feature flags only for staged rollouts, not for regulation dates (§3.1).
+
+### 26.4 Tool choices
+
+| Need | Choice |
+|---|---|
+| Metrics, logs, traces | Prometheus + Grafana, Loki, Tempo (through the OpenTelemetry Collector) |
+| Alerting and on-call | Alertmanager → an on-call pager (PagerDuty or Opsgenie); runbooks linked from every alert, including "documents stuck in needs_attention" and "OSE 1-hour SLA at risk" |
+| API gateway (rate limits, bot protection, CAPTCHA on public endpoints) | Envoy Gateway (Kubernetes Gateway API) |
+| Platform secrets and the HSM PIN | External Secrets Operator from the platform vault; the HSM PIN is never in images or Git |
+| Egress proxy (§16) | A dedicated proxy deployment plus Kubernetes NetworkPolicies. The base ships Squid (`deploy/base/egress-proxy.yaml`: CONNECT to public port 443 only) for SUNAT and third-party OSEs through `HTTPS_PROXY`; the pods' NetworkPolicy allows public addresses only on 443 and the SMTP ports, on top of the app's and the engine's own checks. Static egress IPs come from the cluster's NAT. |
+| Database HA | A Postgres operator (CloudNativePG) with point-in-time recovery to S3 |
+
+### 26.5 Email deliverability
+
+- The platform sender domain has SPF, DKIM and DMARC.
+- Tenants with their own domain verify it through DNS records (DKIM/SPF) before sending as that domain.
+- Bounces and complaints are processed: the provider's reports reach the admin API, the address is suppressed per tenant (`email_suppression`), and the tenant sees and can remove suppressions.
+- A tenant proves its own domain with a DNS TXT record (`_xhandler.<domain>`, `xhandler-verification=<token>`).
+
+### 26.6 Tenant notifications
+
+Email (to the tenant's notification address) and in-app (`…/notifications`), separate from webhooks, configurable per tenant and kind (`…/notification-preferences`). Written in the event's transaction; emails go out as jobs:
+
+- documents in `exception`;
+- documents delayed or at risk of missing a deadline;
+- rejected documents that had already been delivered;
+- certificate expiring in 30, 7 or 1 days;
+- PSE authorization revoked;
+- quota at 80% and 100%;
+- conformity objected;
+- SIRE deadlines;
+- SUNAT outage started or ended (debounced: "down" after 5 minutes with the breaker not closed, "up" only after a "down").
+
+### 26.7 Exchange rates
+
+A daily job imports the SBS/SUNAT exchange rate (purchase and sale) from SUNAT's public file (`xhandler.exchange-rates.url`, `dd/MM/yyyy|compra|venta|`) into `exchange_rate`; a day without a published rate uses the latest earlier one. It's used for the S/ 700 boleta check (foreign-currency boletas are checked at emit at their own `tipo_cambio`, or the day's selling rate, since the engine's rule only knows PEN), the PEN equivalents in reports, and as a default `tipo_cambio` on manual issuing (`GET /api/v1/exchange-rates?date=`).
+
+### 26.8 Free-tier abuse controls
+
+- Signup needs a verified email. Until the RUC is verified (§6), a tenant has low limits: beta only, a small daily quota, no custom SMTP and no webhooks to arbitrary hosts.
+- Signup and API calls are rate limited per IP and per account at the gateway.
+- Abuse signals (many tenants from one source, RUC ownership failures) are flagged for review.
+
+### 26.9 Repo conventions
+
+- xhandler-service gets `AGENTS.md`/`CLAUDE.md` mirroring xhandler-rust's conventions:
+  - SUNAT and domain concepts in Spanish (`Detalle`, `tipoComprobante`), infrastructure in English (`Job`, `Worker`, `…Service`, `…Repository`, `…Error`);
+  - acronyms as words (`Igv`, `Sunat`, `Ruc`);
+  - Java naming per Google Java Style.
+- **User-facing text (UI, API error messages, emails, PDFs) is Spanish.** Logs and code are English.
+- xhandler-ui follows pulp-ui-2's rules and skills (§18).
+
+---
+
+## Appendix A. Patterns taken from pulpcore
+
+| pulpcore | Here |
+|---|---|
+| `BaseModel` (UUIDv7 `pulp_id`, created/updated) | UUIDv7 ids and timestamps on every table |
+| `Domain`: multi-tenancy in every uniqueness rule, encrypted settings, protected deletion | `tenant` (plus partner/company), the same rules |
+| Tasking: Postgres as the only source of truth, no-loop state machine, exclusive/shared resources, FIFO, heartbeats, abandoned-task cleanup, LISTEN/NOTIFY, `TaskSchedule`, purge | §10 |
+| `pulpcore-api` / `pulpcore-worker` from one codebase | `api` / `worker` roles of one image |
+| Correlation id in logs and on tasks; OTel metrics, including unblocked-waiting tasks | §15 |
+| Status endpoint (versions, workers, database, storage) | `/api/v1/status` |
+| CloudEvents for task status on Kafka | CloudEvents webhooks |
+| `EncryptedJSONField` + MultiFernet + `rotate-db-key` | Envelope encryption with several master keys + `rotate-keys` |
+| Content-addressed artifacts (sha256) | Content-addressed files; retention instead of orphan cleanup |
+| 202 + task href, labels, PRN identifiers, generated bindings | §12 |
+| Management commands (data repair, reset admin password) | `xhandler-admin` |
+
+**Not taken:** the plugin system, access policies stored as data, the Redis worker, the content-serving app, and chunked uploads.

@@ -1,0 +1,28 @@
+# Base manifests. Environments (dev, staging, production) overlay this from the
+# infrastructure project (DESIGN.md §21.4, §26.3): image digests, replicas,
+# the HSM module volume, the database and gateway labels.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: xhandler-service
+    includeSelectors: false
+resources:
+  - api.yaml
+  - worker.yaml
+  - service.yaml
+  - pdb.yaml
+  - networkpolicy.yaml
+  - egress-proxy.yaml
+  - migrate-job.yaml
+# Environments pin these images by digest in their overlays.
+images:
+  - name: xhandler-service
+    newName: ghcr.io/project-openubl/xhandler-service
+    newTag: latest
+  - name: xhandler-engine
+    newName: ghcr.io/project-openubl/xhandler-engine
+    newTag: latest
+  - name: egress-proxy
+    newName: docker.io/ubuntu/squid
+    newTag: "6.6-24.04_edge"
