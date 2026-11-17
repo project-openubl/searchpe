@@ -28,7 +28,7 @@ Read the guide of the directory you change: `xhandler/AGENTS.md` (the design is
 (cd xhandler && ./mvnw verify)                  # only xhandler-service
 (cd xhandler/engine && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test)
 (cd operator && make lint verify-generated test)
-(cd ui && npm ci && npm run lint && npm run format && npm run build && npm test)
+(cd ui && npm ci && npm run build && npm run lint && npm run format && npm test)   # build first: lint type-checks it
 (cd ui && npm run start:dev)                    # the UI on :3000, proxying both backends
 podman compose -f hack/compose.yaml up -d       # the local stack (Keycloak on 8180)
 ```

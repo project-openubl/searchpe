@@ -61,9 +61,10 @@ jobs:
           cache-dependency-path: ui/package-lock.json
       # npm ci runs `prepare`, which generates the API clients from client/openapi/
       - run: npm ci
+      # The type check needs the built common package and the generated route tree
+      - run: npm run build
       - run: npm run lint
       - run: npm run format
-      - run: npm run build
       - run: npx playwright install --with-deps chromium
       - name: Test
         run: npm test
