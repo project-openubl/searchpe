@@ -20,7 +20,6 @@ import io.github.project.openubl.searchpe.models.FilterBean;
 import io.github.project.openubl.searchpe.models.PageBean;
 import io.github.project.openubl.searchpe.models.SearchResultBean;
 import io.github.project.openubl.searchpe.models.SortBean;
-import io.github.project.openubl.searchpe.models.TipoPersona;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteId;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
@@ -64,12 +63,15 @@ public class ContribuyenteRepository implements PanacheRepositoryBase<Contribuye
         List<String> queryConditions = new ArrayList<>();
 
         if (filterBean.getTipoPersona() != null) {
-            if (filterBean.getTipoPersona().equals(TipoPersona.JURIDICA)) {
-                queryConditions.add("c.id.ruc is not null");
-            }
-            if (filterBean.getTipoPersona().equals(TipoPersona.NATURAL)) {
-                queryConditions.add("c.dni is not null");
-            }
+            // SUNAT RUC prefixes: 10 is a natural person with a DNI (dni is derived from it), 20 is a legal entity.
+            // Other prefixes (15, 17, ...) match neither filter.
+            queryConditions.add(switch (filterBean.getTipoPersona()) {
+                case NATURAL -> "c.dni is not null";
+                case JURIDICA -> {
+                    parameters.and("rucPrefix", DataHelper.PERSONA_JURIDICA_RUC_PREFIX + "%");
+                    yield "c.id.ruc like :rucPrefix";
+                }
+            });
         }
 
         queryConditions.add("c.id.versionId = :versionId");

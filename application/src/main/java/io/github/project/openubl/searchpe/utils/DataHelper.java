@@ -33,6 +33,7 @@ public class DataHelper {
     public static final Charset PADRON_CHARSET = StandardCharsets.ISO_8859_1;
 
     private static final String PERSONA_NATURAL_RUC_PREFIX = "10";
+    public static final String PERSONA_JURIDICA_RUC_PREFIX = "20";
     private static final Pattern DNI_PATTERN = Pattern.compile("\\d{8}");
     private static final int[] RUC_CHECK_DIGIT_WEIGHTS = {5, 4, 3, 2, 7, 6, 5, 4, 3, 2};
 
