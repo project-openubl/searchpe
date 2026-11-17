@@ -120,6 +120,20 @@
           }
         }
       },
+      "CdrResult" : {
+        "type" : "object",
+        "properties" : {
+          "result" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "cdr_zip_base64" : {
+            "type" : "string"
+          }
+        }
+      },
       "CertificateView" : {
         "type" : "object",
         "properties" : {
@@ -662,6 +676,37 @@
           }
         }
       },
+      "ExportView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "parts" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "additionalProperties" : { }
+            }
+          },
+          "documents" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "detail" : {
+            "type" : "string"
+          },
+          "created_at" : {
+            "type" : "string"
+          },
+          "done_at" : {
+            "type" : "string"
+          }
+        }
+      },
       "GreCredentials" : {
         "type" : "object",
         "required" : [ "username", "password", "client_id", "client_secret" ],
@@ -922,6 +967,20 @@
           },
           "read_at" : {
             "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "NubefactToken" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "token" : {
+            "type" : "string"
+          },
+          "url" : {
+            "type" : "string"
           }
         }
       },
@@ -1189,6 +1248,20 @@
           }
         }
       },
+      "PartnerTenant" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "partner_id" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }
+      },
       "PartnerView" : {
         "type" : "object",
         "properties" : {
@@ -1275,6 +1348,17 @@
           },
           "oldest_unblocked" : {
             "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "Queued" : {
+        "type" : "object",
+        "properties" : {
+          "job_id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "job_prn" : {
+            "type" : "string"
           }
         }
       },
@@ -1478,6 +1562,14 @@
           },
           "active" : {
             "type" : "boolean"
+          }
+        }
+      },
+      "SessionRequested" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
           }
         }
       },
@@ -1979,10 +2071,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK",
+            "description" : "El CDR-OSE del comprobante.",
             "content" : {
               "application/json" : {
-                "schema" : { }
+                "schema" : {
+                  "$ref" : "#/components/schemas/CdrResult"
+                }
               }
             }
           },
@@ -2049,10 +2143,13 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK",
+            "description" : "El CDR-OSE (ZIP).",
             "content" : {
-              "application/json" : {
-                "schema" : { }
+              "application/zip" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
               }
             }
           },
@@ -2278,11 +2375,13 @@
           "required" : true
         },
         "responses" : {
-          "200" : {
-            "description" : "OK",
+          "201" : {
+            "description" : "Cuenta creada para el socio.",
             "content" : {
               "application/json" : {
-                "schema" : { }
+                "schema" : {
+                  "$ref" : "#/components/schemas/PartnerTenant"
+                }
               }
             }
           },
@@ -2387,10 +2486,25 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK",
+            "description" : "El archivo: XML firmado, CDR (ZIP) o PDF.",
             "content" : {
-              "application/json" : {
-                "schema" : { }
+              "application/xml" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              },
+              "application/zip" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              },
+              "application/pdf" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
               }
             }
           },
@@ -2441,13 +2555,8 @@
           "required" : true
         },
         "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : { }
-              }
-            }
+          "204" : {
+            "description" : "Evento recibido."
           },
           "4XX" : {
             "description" : "Error de la solicitud: `kind` estable, `message` en español.",
@@ -2601,10 +2710,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK",
+            "description" : "Respuesta con el formato de Nubefact (objeto libre).",
             "content" : {
               "application/json" : {
-                "schema" : { }
+                "schema" : {
+                  "$ref" : "#/components/schemas/JsonNode"
+                }
               }
             }
           },
@@ -2689,11 +2800,13 @@
           "required" : true
         },
         "responses" : {
-          "200" : {
-            "description" : "OK",
+          "201" : {
+            "description" : "Sesión de soporte solicitada.",
             "content" : {
               "application/json" : {
-                "schema" : { }
+                "schema" : {
+                  "$ref" : "#/components/schemas/SessionRequested"
+                }
               }
             }
           },
@@ -2791,11 +2904,13 @@
           "required" : true
         },
         "responses" : {
-          "200" : {
-            "description" : "OK",
+          "201" : {
+            "description" : "Cuenta creada.",
             "content" : {
               "application/json" : {
-                "schema" : { }
+                "schema" : {
+                  "$ref" : "#/components/schemas/TenantView"
+                }
               }
             }
           },
@@ -3159,11 +3274,13 @@
           "required" : true
         },
         "responses" : {
-          "200" : {
-            "description" : "OK",
+          "201" : {
+            "description" : "Empresa creada.",
             "content" : {
               "application/json" : {
-                "schema" : { }
+                "schema" : {
+                  "$ref" : "#/components/schemas/CompanyView"
+                }
               }
             }
           },
@@ -3354,11 +3471,13 @@
           "required" : true
         },
         "responses" : {
-          "200" : {
-            "description" : "OK",
+          "201" : {
+            "description" : "Token creado; se muestra solo esta vez.",
             "content" : {
               "application/json" : {
-                "schema" : { }
+                "schema" : {
+                  "$ref" : "#/components/schemas/NubefactToken"
+                }
               }
             }
           },
@@ -3422,13 +3541,8 @@
           }
         } ],
         "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : { }
-              }
-            }
+          "204" : {
+            "description" : "Token revocado."
           },
           "401" : {
             "description" : "Sin token o con un token inválido (sin cuerpo)."
@@ -3582,11 +3696,13 @@
           "required" : true
         },
         "responses" : {
-          "200" : {
-            "description" : "OK",
+          "201" : {
+            "description" : "Registro creado o actualizado.",
             "content" : {
               "application/json" : {
-                "schema" : { }
+                "schema" : {
+                  "$ref" : "#/components/schemas/Entry"
+                }
               }
             }
           },
@@ -3814,13 +3930,8 @@
           }
         } ],
         "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : { }
-              }
-            }
+          "204" : {
+            "description" : "Registro eliminado."
           },
           "401" : {
             "description" : "Sin token o con un token inválido (sin cuerpo)."
@@ -4085,10 +4196,13 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK",
+            "description" : "Facturas negociables y su conformidad (CSV).",
             "content" : {
-              "application/json" : {
-                "schema" : { }
+              "text/csv" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
               }
             }
           },
@@ -4593,11 +4707,53 @@
           "required" : true
         },
         "responses" : {
-          "200" : {
-            "description" : "OK",
+          "201" : {
+            "description" : "Documento emitido (también la respuesta repetida de una Idempotency-Key ya usada, sin access_url).",
             "content" : {
               "application/json" : {
-                "schema" : { }
+                "schema" : {
+                  "$ref" : "#/components/schemas/DocumentView"
+                }
+              }
+            }
+          },
+          "402" : {
+            "description" : "Sin cuota de documentos en el plan (quota_exceeded).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "Conflicto: Idempotency-Key en proceso, número ya usado, empresa desactivada o no autorizada.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422" : {
+            "description" : "Documento o solicitud inválidos, o Idempotency-Key reutilizada con otra solicitud.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503" : {
+            "description" : "Servicio o serie ocupados (busy): reintente en unos segundos.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
               }
             }
           },
@@ -4669,11 +4825,53 @@
           "required" : true
         },
         "responses" : {
-          "200" : {
-            "description" : "OK",
+          "201" : {
+            "description" : "Documento emitido (también la respuesta repetida de una Idempotency-Key ya usada, sin access_url).",
             "content" : {
               "application/json" : {
-                "schema" : { }
+                "schema" : {
+                  "$ref" : "#/components/schemas/DocumentView"
+                }
+              }
+            }
+          },
+          "402" : {
+            "description" : "Sin cuota de documentos en el plan (quota_exceeded).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "Conflicto: Idempotency-Key en proceso, número ya usado, empresa desactivada o no autorizada.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422" : {
+            "description" : "Documento o solicitud inválidos, o Idempotency-Key reutilizada con otra solicitud.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503" : {
+            "description" : "Servicio o serie ocupados (busy): reintente en unos segundos.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
               }
             }
           },
@@ -4753,11 +4951,13 @@
           "required" : true
         },
         "responses" : {
-          "200" : {
-            "description" : "OK",
+          "201" : {
+            "description" : "Documento recibido y emitido.",
             "content" : {
               "application/json" : {
-                "schema" : { }
+                "schema" : {
+                  "$ref" : "#/components/schemas/DocumentView"
+                }
               }
             }
           },
@@ -5327,11 +5527,13 @@
           "required" : true
         },
         "responses" : {
-          "200" : {
-            "description" : "OK",
+          "201" : {
+            "description" : "Comprobante recibido.",
             "content" : {
               "application/json" : {
-                "schema" : { }
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReceptionView"
+                }
               }
             }
           },
@@ -5487,10 +5689,25 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK",
+            "description" : "El archivo: XML, PDF o CDR (ZIP).",
             "content" : {
-              "application/json" : {
-                "schema" : { }
+              "application/xml" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              },
+              "application/pdf" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              },
+              "application/zip" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
               }
             }
           },
@@ -5615,11 +5832,13 @@
           "required" : true
         },
         "responses" : {
-          "200" : {
-            "description" : "OK",
+          "202" : {
+            "description" : "Reporte solicitado; lo genera un trabajo (job_id).",
             "content" : {
               "application/json" : {
-                "schema" : { }
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReportView"
+                }
               }
             }
           },
@@ -5751,10 +5970,31 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK",
+            "description" : "El reporte: CSV, Excel, ZIP (SIRE) o texto (PLE).",
             "content" : {
-              "application/json" : {
-                "schema" : { }
+              "text/csv" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              },
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              },
+              "application/zip" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              },
+              "text/plain" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
               }
             }
           },
@@ -6010,11 +6250,13 @@
           "required" : true
         },
         "responses" : {
-          "200" : {
-            "description" : "OK",
+          "201" : {
+            "description" : "Serie creada.",
             "content" : {
               "application/json" : {
-                "schema" : { }
+                "schema" : {
+                  "$ref" : "#/components/schemas/SeriesView"
+                }
               }
             }
           },
@@ -6240,10 +6482,13 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK",
+            "description" : "El archivo de SUNAT (ZIP).",
             "content" : {
-              "application/json" : {
-                "schema" : { }
+              "application/zip" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
               }
             }
           },
@@ -6311,11 +6556,13 @@
           }
         } ],
         "responses" : {
-          "200" : {
-            "description" : "OK",
+          "202" : {
+            "description" : "Propuesta solicitada a SUNAT; la trae un trabajo.",
             "content" : {
               "application/json" : {
-                "schema" : { }
+                "schema" : {
+                  "$ref" : "#/components/schemas/SirePeriodView"
+                }
               }
             }
           },
@@ -6393,11 +6640,13 @@
           "required" : true
         },
         "responses" : {
-          "200" : {
-            "description" : "OK",
+          "202" : {
+            "description" : "Reemplazo enviado a SUNAT; lo sigue un trabajo.",
             "content" : {
               "application/json" : {
-                "schema" : { }
+                "schema" : {
+                  "$ref" : "#/components/schemas/SirePeriodView"
+                }
               }
             }
           },
@@ -7009,13 +7258,8 @@
           }
         } ],
         "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : { }
-              }
-            }
+          "204" : {
+            "description" : "Enlaces revocados."
           },
           "401" : {
             "description" : "Sin token o con un token inválido (sin cuerpo)."
@@ -7197,11 +7441,13 @@
           "required" : true
         },
         "responses" : {
-          "200" : {
-            "description" : "OK",
+          "202" : {
+            "description" : "Correo encolado: lo envía un trabajo.",
             "content" : {
               "application/json" : {
-                "schema" : { }
+                "schema" : {
+                  "$ref" : "#/components/schemas/Queued"
+                }
               }
             }
           },
@@ -7329,10 +7575,30 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK",
+            "description" : "El archivo: XML firmado, CDR (ZIP), PDF, o el JSON de entrada o enriquecido.",
             "content" : {
+              "application/xml" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              },
+              "application/zip" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              },
+              "application/pdf" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              },
               "application/json" : {
-                "schema" : { }
+                "schema" : {
+                  "$ref" : "#/components/schemas/JsonNode"
+                }
               }
             }
           },
@@ -7583,11 +7849,13 @@
           "required" : true
         },
         "responses" : {
-          "200" : {
-            "description" : "OK",
+          "202" : {
+            "description" : "Anulación enviada: el documento queda en voiding hasta la respuesta de SUNAT.",
             "content" : {
               "application/json" : {
-                "schema" : { }
+                "schema" : {
+                  "$ref" : "#/components/schemas/DocumentView"
+                }
               }
             }
           },
@@ -7759,13 +8027,8 @@
           }
         } ],
         "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : { }
-              }
-            }
+          "204" : {
+            "description" : "Dirección quitada de la lista de supresión."
           },
           "401" : {
             "description" : "Sin token o con un token inválido (sin cuerpo)."
@@ -7884,8 +8147,7 @@
                 "schema" : {
                   "type" : "array",
                   "items" : {
-                    "type" : "object",
-                    "additionalProperties" : { }
+                    "$ref" : "#/components/schemas/ExportView"
                   }
                 }
               }
@@ -7932,11 +8194,13 @@
           }
         } ],
         "responses" : {
-          "200" : {
-            "description" : "OK",
+          "202" : {
+            "description" : "Exportación solicitada; la genera un trabajo.",
             "content" : {
               "application/json" : {
-                "schema" : { }
+                "schema" : {
+                  "$ref" : "#/components/schemas/ExportView"
+                }
               }
             }
           },
@@ -7999,10 +8263,13 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK",
+            "description" : "La parte de la exportación (ZIP).",
             "content" : {
-              "application/json" : {
-                "schema" : { }
+              "application/zip" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
               }
             }
           },
@@ -8312,11 +8579,13 @@
           "required" : true
         },
         "responses" : {
-          "200" : {
-            "description" : "OK",
+          "201" : {
+            "description" : "Miembro agregado.",
             "content" : {
               "application/json" : {
-                "schema" : { }
+                "schema" : {
+                  "$ref" : "#/components/schemas/MemberView"
+                }
               }
             }
           },
@@ -8632,13 +8901,8 @@
           }
         } ],
         "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : { }
-              }
-            }
+          "204" : {
+            "description" : "Notificaciones marcadas como leídas."
           },
           "401" : {
             "description" : "Sin token o con un token inválido (sin cuerpo)."
@@ -8690,13 +8954,8 @@
           }
         } ],
         "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : { }
-              }
-            }
+          "204" : {
+            "description" : "Notificación marcada como leída."
           },
           "401" : {
             "description" : "Sin token o con un token inválido (sin cuerpo)."
@@ -8805,11 +9064,13 @@
           "required" : true
         },
         "responses" : {
-          "200" : {
-            "description" : "OK",
+          "201" : {
+            "description" : "Dominio agregado (o el existente).",
             "content" : {
               "application/json" : {
-                "schema" : { }
+                "schema" : {
+                  "$ref" : "#/components/schemas/DomainView"
+                }
               }
             }
           },
@@ -9159,11 +9420,13 @@
           "required" : true
         },
         "responses" : {
-          "200" : {
-            "description" : "OK",
+          "201" : {
+            "description" : "Webhook creado; el secreto se muestra solo esta vez.",
             "content" : {
               "application/json" : {
-                "schema" : { }
+                "schema" : {
+                  "$ref" : "#/components/schemas/WebhookView"
+                }
               }
             }
           },
@@ -9220,13 +9483,8 @@
           }
         } ],
         "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : { }
-              }
-            }
+          "204" : {
+            "description" : "Webhook eliminado."
           },
           "401" : {
             "description" : "Sin token o con un token inválido (sin cuerpo)."
