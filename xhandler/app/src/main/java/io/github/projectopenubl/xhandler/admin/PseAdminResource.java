@@ -218,8 +218,9 @@ public class PseAdminResource {
 
         double latestRate() {
             try {
-                return QuarkusTransaction.requiringNew().call(() -> em.createNativeQuery("SELECT rate FROM xhandler.pse_report ORDER BY period DESC LIMIT 1")
-                        .getResultStream().findFirst().map(r -> ((Number) r).doubleValue()).orElse(0.0));
+                List<?> rates = QuarkusTransaction.requiringNew().call(() ->
+                        em.createNativeQuery("SELECT rate FROM xhandler.pse_report ORDER BY period DESC LIMIT 1").getResultList());
+                return rates.isEmpty() ? 0.0 : ((Number) rates.get(0)).doubleValue();
             } catch (RuntimeException e) {
                 return Double.NaN;
             }
