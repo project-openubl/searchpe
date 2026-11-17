@@ -102,6 +102,62 @@ class AdapterTest {
     }
 
     @Test
+    void nubefact_input_it_cannot_carry_is_refused_and_numbers_are_per_company() {
+        String token = as("alice").body(Map.of("label", "ERP")).post(base + "/adapter-tokens/nubefact").then().statusCode(201)
+                .extract().path("token");
+        as("alice").get(base + "/adapter-tokens").then().statusCode(200).body("label", org.hamcrest.Matchers.hasItem("ERP"))
+                .body("token", org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.nullValue()));
+        String url = "/api/v1/public/nubefact/" + company;
+        java.util.function.Function<Map<String, Object>, Map<String, Object>> factura = extra -> {
+            Map<String, Object> f = new java.util.HashMap<>(Map.of("operacion", "generar_comprobante", "tipo_de_comprobante", 1, "serie", "F780",
+                    "numero", 1, "cliente_tipo_de_documento", "6", "cliente_numero_de_documento", "20111111111",
+                    "cliente_denominacion", "CLIENTE SAC", "moneda", 1,
+                    "items", List.of(Map.of("unidad_de_medida", "NIU", "descripcion", "Producto", "cantidad", 1, "valor_unitario", 100,
+                            "tipo_de_igv", 1))));
+            f.putAll(extra);
+            return f;
+        };
+        // Detracción, a 10% IGV, an ISO date, a debit note for exports: refused (422), never a silent 500
+        for (Map<String, Object> bad : List.<Map<String, Object>>of(Map.of("sunat_transaction", 30), Map.of("porcentaje_de_igv", 10),
+                Map.of("fecha_de_emision", "2027-01-15"), Map.of("moneda", 9), Map.of("total_descuento", "5.00"))) {
+            given().contentType("application/json").header("Authorization", token).body(factura.apply(bad)).post(url).then().statusCode(422);
+        }
+        given().contentType("application/json").header("Authorization", token).body(factura.apply(Map.of())).post(url).then().statusCode(200);
+
+        // Another company of the tenant uses the same number with its own token
+        UUID other = companies.verified(tenant, "fake");
+        String otherToken = as("alice").body(Map.of("label", "ERP 2")).post("/api/v1/tenants/" + tenant + "/companies/" + other + "/adapter-tokens/nubefact")
+                .then().statusCode(201).extract().path("token");
+        given().contentType("application/json").header("Authorization", otherToken).body(factura.apply(Map.of())).post("/api/v1/public/nubefact/" + other)
+                .then().statusCode(200).body("numero", equalTo(1));
+        // A token voids only its own documents
+        String apiDoc = as("alice").body(Map.of("serie", "F780", "document", Map.of("kind", "Invoice", "spec", Map.of(
+                        "cliente", Map.of("tipo_documento_identidad", "6", "numero_documento_identidad", "20111111111", "nombre", "X"),
+                        "detalles", List.of()))))
+                .post(base + "/documents").then().statusCode(201).extract().path("serie_numero");
+        given().contentType("application/json").header("Authorization", token)
+                .body(Map.of("operacion", "generar_anulacion", "tipo_de_comprobante", 1, "serie", "F780", "numero", Long.parseLong(apiDoc.split("-")[1]),
+                        "motivo", "Error"))
+                .post(url).then().statusCode(409).body("kind", equalTo("not_an_adapter_document"));
+    }
+
+    @Test
+    void client_numbers_cannot_run_away_with_a_series() {
+        String cab = "0101|" + io.github.projectopenubl.xhandler.documents.Deadlines.todayInLima()
+                + "|10:30:00|-|0000|6|20111111111|CLIENTE SAC|PEN|18.00|100.00|118.00|0.00|0.00|0.00|118.00|2.1|2.0";
+        String det = "NIU|1|P001|-|PRODUCTO|100|18.00|1000|18.00|100.00|IGV|VAT|10|18.00";
+        as("alice").body(Map.of("file_name", ruc + "-01-F781-1", "cab", cab, "det", det)).post(base + "/documents/sfs").then().statusCode(201);
+        as("alice").body(Map.of("file_name", ruc + "-01-F781-99999999", "cab", cab, "det", det)).post(base + "/documents/sfs").then()
+                .statusCode(422);
+        // A boleta series for a factura, a bad date, a 10% IGV rate
+        as("alice").body(Map.of("file_name", ruc + "-01-B781-1", "cab", cab, "det", det)).post(base + "/documents/sfs").then().statusCode(422);
+        as("alice").body(Map.of("file_name", ruc + "-01-F781-2", "cab", cab.replace("|10:30", "x|10:30"), "det", det)).post(base + "/documents/sfs")
+                .then().statusCode(422);
+        as("alice").body(Map.of("file_name", ruc + "-01-F781-3", "cab", cab, "det", det.replace("|10|18.00", "|10|10.00")))
+                .post(base + "/documents/sfs").then().statusCode(422);
+    }
+
+    @Test
     void supplier_invoices_are_received_and_checked_with_sunat() throws Exception {
         as("alice").body(Map.of("username", ruc + "USER", "password", "x")).put(base + "/credentials/sol").then().statusCode(200);
         String number = String.valueOf(System.nanoTime() % 1_000_000);

@@ -72,6 +72,11 @@ public class ReceptionResource {
         if (xml == null) {
             throw ApiException.invalid("invalid_request", "Envíe el XML del comprobante (campo xml).", null);
         }
+        // Authorize before reading uploads or making the engine parse them
+        QuarkusTransaction.requiringNew().run(() -> {
+            access.enter(tenantId, Role.OPERATOR);
+            CompanyResource.find(companyId);
+        });
         byte[] xmlBytes = read(xml, MAX_XML, "El XML");
         byte[] pdfBytes = pdf == null ? null : read(pdf, MAX_ATTACHMENT, "El PDF");
         byte[] cdrBytes = cdr == null ? null : read(cdr, MAX_ATTACHMENT, "El CDR");
@@ -113,7 +118,12 @@ public class ReceptionResource {
                     Map.of("supplier_ruc", identity.ruc(), "serie_numero", identity.serie() + "-" + identity.numero()));
             return receptionId;
         });
-        validity.check(tenantId, id);
+        try {
+            validity.check(tenantId, id);
+        } catch (RuntimeException e) {
+            // The reception is stored; the validity job checks it later
+            org.jboss.logging.Logger.getLogger(ReceptionResource.class).warnf("validity check of reception %s failed: %s", id, e.toString());
+        }
         return Response.status(201).entity(QuarkusTransaction.requiringNew().call(() -> {
             access.enter(tenantId, Role.OPERATOR);
             return find(id);
@@ -157,8 +167,10 @@ public class ReceptionResource {
             throw ApiException.notFound();
         }
         auditor.record(scope, "reception.file_read", "reception", receptionId, Map.of("kind", kind));
+        // Supplier files are untrusted: downloaded, never rendered from the API origin
         return Response.ok(files.get(ref.toString())).type("xml".equals(kind) ? "application/xml" : "pdf".equals(kind) ? "application/pdf"
-                : "application/zip").build();
+                : "application/zip").header("Content-Disposition", "attachment; filename=\"" + receptionId + "." + ("cdr".equals(kind) ? "zip" : kind) + "\"")
+                .header("X-Content-Type-Options", "nosniff").build();
     }
 
     private ReceptionView find(UUID id) {

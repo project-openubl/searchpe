@@ -242,13 +242,13 @@ Mirrors xhandler-mobile's Rust bridge so the two stay aligned (a shared facade c
 | Input | Path |
 |---|---|
 | Native JSON (xbuilder, snake_case) | `POST /documents`. This is the internal format; every other input converts to it. |
-| UBL XML upload | `POST …/documents/ubl` (`application/xml`, up to 5 MB). Validated. Signed if unsigned (software/PSE). Stored and sent. |
-| SFS-style TXT | `POST …/documents/sfs` with the file name (`RUC-TT-SERIE-NUMERO`) and the .CAB/.NOT and .DET contents; converted to native JSON |
-| Nubefact-compatible JSON | `POST /api/v1/public/nubefact/{company}` with `Authorization: Token token="…"` (tokens per company, stored hashed, revocable): `generar_comprobante`, `consultar_comprobante`, `generar_anulacion`, `consultar_anulacion`, answered in Nubefact's shape, so their customers can switch by changing the URL and token. Sending is asynchronous: clients poll `consultar_comprobante`. |
+| UBL XML upload | `POST …/documents/ubl` (`application/xml`, up to 5 MB). Validated. Signed if unsigned (software/PSE); XML signed by the issuer is accepted in software mode only (as PSE the platform signs everything it sends). Passes the same gates as any emit: quota, company active, PSE authorization, issue-date window, bounded series waits. Stored and sent. |
+| SFS-style TXT | `POST …/documents/sfs` with the file name (`RUC-TT-SERIE-NUMERO`) and the .CAB/.NOT and .DET contents; converted to native JSON. Amounts the conversion can't carry (ISC, ICBPER, an IGV rate other than 18%) are refused, not dropped. |
+| Nubefact-compatible JSON | `POST /api/v1/public/nubefact/{company}` with `Authorization: Token token="…"` (tokens per company, stored hashed, revocable): `generar_comprobante`, `consultar_comprobante`, `generar_anulacion`, `consultar_anulacion`, answered in Nubefact's shape, so their customers can switch by changing the URL and token. Sending is asynchronous: clients poll `consultar_comprobante`. Idempotent per company, environment and number. Unsupported input (`sunat_transaction` other than 1, IGV other than 18%, discounts, ISC, ICBPER, anticipos, detracción, percepción, debit notes 4/5) is refused with 422. A token voids only documents it emitted; its id is the actor in their history; tokens of deleted companies stop working; `GET …/adapter-tokens` lists them. |
 | OSE inbound | SOAP compatible with SUNAT's `billService` (`sendBill`, `sendSummary`, `sendPack`, `getStatus`, `getStatusCdr`); REST for signed XML; SFTP batch |
-| Supplier invoices (reception) | `POST …/receptions` (multipart: XML plus optional PDF/CDR). Checked with SUNAT's validity API and stored. |
+| Supplier invoices (reception) | `POST …/receptions` (multipart: XML plus optional PDF/CDR). Checked with SUNAT's validity API and stored. Files are served as downloads (`Content-Disposition: attachment`, `nosniff`). The re-check job skips inactive tenants and receptions older than a year, and stamps every attempt so none starves the rest. |
 
-Adapter documents keep the client's own numbering: the series is created if needed and its counter moves past the number, so later service-numbered emits in it can't collide (the unique index is the backstop). They count toward quotas like API emits.
+Adapter documents keep the client's own numbering: the series is created if needed and its counter moves past the number, so later service-numbered emits in it can't collide (the unique index is the backstop). A client number may jump at most 100,000 past the counter, deactivated series refuse numbers, and F/B/T series must match facturas/boletas/guías (digit-led contingency series excepted). They count toward quotas like API emits.
 
 ---
 

@@ -145,41 +145,51 @@ public class EmitService {
             claim = begun.claim();
         }
         UUID owned = claim;
+        try {
+            UUID documentId = Ids.newId();
+            JsonNode body = admitted(tenantId, companyId, platform, !platform || "adapter".equals(origin), () -> QuarkusTransaction.requiringNew()
+                    .call(() -> emitInTransaction(tenantId, companyId, documentId, idempotencyKey, owned, request, correlationId, platform,
+                            numeroDado, origin)));
+            return new Emitted(201, body);
+        } catch (RuntimeException e) {
+            abandon(tenantId, idempotencyKey, owned);
+            throw e;
+        }
+    }
+
+    /**
+     * The gates every new document passes, whatever its input (API, adapters, UBL upload, §5): the
+     * quota (a replay never gets here; the platform's own invoices don't count, §14), then an emit
+     * permit. Waits on a series row beyond the lock timeout are answered as busy.
+     */
+    public <T> T admitted(UUID tenantId, UUID companyId, boolean platform, boolean countQuota, java.util.function.Supplier<T> work) {
+        if (countQuota) {
+            QuarkusTransaction.requiringNew().run(() -> {
+                if (platform) {
+                    access.enterAsPlatform(tenantId);
+                } else {
+                    access.enter(tenantId, Role.OPERATOR);
+                }
+                Company company = Company.findById(companyId);
+                if (company == null || company.deletedAt != null) {
+                    throw ApiException.notFound();
+                }
+                for (EmitQuota q : quota) {
+                    q.checkEmit(tenantId, company.sunatEnv);
+                }
+            });
+        }
         boolean acquired = false;
         try {
-            // Quotas only for a new document: a replay returns the stored answer above, whatever the
-            // usage now; the platform's own invoices never count (§14). Adapters count like the API.
-            if (!platform || "adapter".equals(origin)) {
-                QuarkusTransaction.requiringNew().run(() -> {
-                    if (platform) {
-                        access.enterAsPlatform(tenantId);
-                    } else {
-                        access.enter(tenantId, Role.OPERATOR);
-                    }
-                    Company company = Company.findById(companyId);
-                    if (company == null || company.deletedAt != null) {
-                        throw ApiException.notFound();
-                    }
-                    for (EmitQuota q : quota) {
-                        q.checkEmit(tenantId, company.sunatEnv);
-                    }
-                });
-            }
             acquired = permits.tryAcquire(permitTimeoutMillis, TimeUnit.MILLISECONDS);
             if (!acquired) {
                 throw new ApiException(503, "busy", "El servicio está ocupado. Intente nuevamente en unos segundos.");
             }
-            UUID documentId = Ids.newId();
-            JsonNode body = QuarkusTransaction.requiringNew().call(() ->
-                    emitInTransaction(tenantId, companyId, documentId, idempotencyKey, owned, request, correlationId, platform, numeroDado,
-                            origin));
-            return new Emitted(201, body);
+            return work.get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            abandon(tenantId, idempotencyKey, owned);
             throw new ApiException(503, "busy", "El servicio está ocupado. Intente nuevamente en unos segundos.");
         } catch (RuntimeException e) {
-            abandon(tenantId, idempotencyKey, owned);
             if (lockTimeout(e)) {
                 throw new ApiException(503, "busy", "La serie está ocupada por otras emisiones. Intente nuevamente en unos segundos.");
             }
@@ -188,6 +198,23 @@ public class EmitService {
             if (acquired) {
                 permits.release();
             }
+        }
+    }
+
+    /** Inside an emit transaction, before locking the company: waits on the series row are bounded. */
+    public void boundLockWaits() {
+        em.createNativeQuery("SELECT set_config('lock_timeout', :timeout, true)").setParameter("timeout", lockTimeout).getSingleResult();
+    }
+
+    /** The company may emit this document type now: active, and authorized when it emits as PSE (§3.2). */
+    public void checkCompany(Company company, String tipo) {
+        if (!company.active) {
+            throw ApiException.conflict("company_inactive", "La empresa está desactivada.");
+        }
+        if ("pse".equals(company.emissionMode) && "production".equals(company.sunatEnv) && !"09".equals(tipo) && !"31".equals(tipo)
+                && !pseAuthorized(company)) {
+            throw ApiException.conflict("pse_not_authorized",
+                    "La empresa no tiene registrada su autorización a la plataforma como PSE en SUNAT Operaciones en Línea.");
         }
     }
 
@@ -211,15 +238,12 @@ public class EmitService {
             EmitRequest request, String correlationId, boolean platform, Long numeroDado, String origin) {
         TenantScope scope = platform ? access.enterAsPlatform(tenantId) : access.enter(tenantId, Role.OPERATOR);
         // Waits on the series row (another emit holds it across engine, HSM and storage) are bounded
-        em.createNativeQuery("SELECT set_config('lock_timeout', :timeout, true)").setParameter("timeout", lockTimeout).getSingleResult();
+        boundLockWaits();
         // Lock order: company → series → documents (§10.8 rule 4). FOR SHARE: an environment
         // switch (FOR UPDATE) waits for running emits and blocks new ones.
         Company company = Company.findById(companyId, LockModeType.PESSIMISTIC_READ);
         if (company == null || company.deletedAt != null) {
             throw ApiException.notFound();
-        }
-        if (!company.active) {
-            throw ApiException.conflict("company_inactive", "La empresa está desactivada.");
         }
         ObjectNode document = request.document().deepCopy();
         String kind = document.get("kind").asText();
@@ -227,11 +251,7 @@ public class EmitService {
         String tipo = DocumentTypes.tipoComprobante(kind, spec);
         String sunatEnv = company.sunatEnv;
 
-        if ("pse".equals(company.emissionMode) && "production".equals(sunatEnv) && !"09".equals(tipo) && !"31".equals(tipo)
-                && !pseAuthorized(company)) {
-            throw ApiException.conflict("pse_not_authorized",
-                    "La empresa no tiene registrada su autorización a la plataforma como PSE en SUNAT Operaciones en Línea.");
-        }
+        checkCompany(company, tipo);
         Routes.Assignment route = routes.assign(company, sunatEnv, tipo);
 
         fillProveedor(spec, company);
@@ -375,6 +395,12 @@ public class EmitService {
         } catch (java.time.format.DateTimeParseException e) {
             throw ApiException.invalid("invalid_document", "fecha_emision debe tener el formato AAAA-MM-DD.", null);
         }
+        return checkIssueDate(fecha);
+    }
+
+    /** SUNAT refuses more than 2 days ahead (2329); older than 7 days is too late to send. */
+    public static LocalDate checkIssueDate(LocalDate fecha) {
+        LocalDate today = Deadlines.todayInLima();
         if (fecha.isAfter(today.plusDays(2)) || fecha.isBefore(today.minusDays(7))) {
             throw ApiException.invalid("invalid_document",
                     "fecha_emision debe estar entre " + today.minusDays(7) + " y " + today.plusDays(2) + " (hora de Lima).", "2329");

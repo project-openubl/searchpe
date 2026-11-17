@@ -57,8 +57,14 @@ public class ReceptionValidity implements JobHandler {
         });
         int checked = 0;
         for (Due d : due) {
-            if (check(d.tenant(), d.reception())) {
-                checked++;
+            try {
+                if (check(d.tenant(), d.reception())) {
+                    checked++;
+                }
+            } catch (RuntimeException e) {
+                // One reception's failure doesn't stop the rest
+                org.jboss.logging.Logger.getLogger(ReceptionValidity.class).warnf("validity check of reception %s failed: %s", d.reception(), e.toString());
+                stamp(d.tenant(), d.reception(), null);
             }
         }
         return Map.of("checked", checked, "due", due.size());
@@ -73,37 +79,54 @@ public class ReceptionValidity implements JobHandler {
                             SELECT company_id, supplier_ruc, tipo_comprobante, serie, numero, fecha_emision, total FROM xhandler.reception WHERE id = :id""")
                     .setParameter("id", receptionId).getSingleResult();
             Company company = Company.findById(r[0]);
-            Optional<EngineModels.Credentials> sol = credentials.read(scope, company, "sol", "reception-validity:" + receptionId)
-                    .map(f -> new EngineModels.Credentials(f.get("username"), f.get("password"), null, null));
+            if (r[5] == null || r[6] == null) {
+                return null;
+            }
+            // The validity service is production SUNAT (the fake stands in for it in development): a
+            // company's SOL user only works where it is real; beta companies use the platform's credential
+            EngineModels.Environment environment = "fake".equals(company.sunatEnv) ? EngineModels.Environment.FAKE
+                    : EngineModels.Environment.PRODUCTION;
+            Optional<EngineModels.Credentials> sol = !"beta".equals(company.sunatEnv)
+                    ? credentials.read(scope, company, "sol", "reception-validity:" + receptionId)
+                            .map(f -> new EngineModels.Credentials(f.get("username"), f.get("password"), null, null))
+                    : Optional.empty();
             EngineModels.Credentials creds = sol.orElseGet(() -> platformCredentials.pick("validity")
                     .map(id -> platformCredentials.read(id, "validity", "reception-validity:" + receptionId))
                     .map(f -> new EngineModels.Credentials(f.get("username"), f.get("password"), null, null))
                     .orElse(null));
-            if (creds == null || r[5] == null || r[6] == null) {
+            if (creds == null) {
                 return null;
             }
-            return new Request(new EngineModels.ValidityRequest(EngineModels.Environment.PRODUCTION, creds,
+            return new Request(new EngineModels.ValidityRequest(environment, creds,
                     new EngineModels.DocumentKey((String) r[1], (String) r[2], (String) r[3], ((Number) r[4]).longValue()), "6", company.ruc,
                     (r[5] instanceof java.time.LocalDate d ? d : ((java.sql.Date) r[5]).toLocalDate()).toString(), ((BigDecimal) r[6]).toPlainString()));
         });
         if (request == null) {
+            // Can't be checked now (no credential, no date or total): stamped, so it waits its turn
+            stamp(tenantId, receptionId, null);
             return false;
         }
         String state;
         try {
             state = engine.validity(request.request()).state();
-        } catch (EngineException e) {
+        } catch (EngineException | jakarta.ws.rs.ProcessingException e) {
             state = "unknown";
         }
         if ("not_delivered".equals(state)) {
             state = "unknown";
         }
-        String finalState = state;
+        stamp(tenantId, receptionId, state);
+        return !"unknown".equals(state);
+    }
+
+    /** Records a check; a null state keeps the current one (the check couldn't be made). */
+    private void stamp(UUID tenantId, UUID receptionId, String state) {
         QuarkusTransaction.requiringNew().run(() -> {
             access.enterAsPlatform(tenantId);
-            em.createNativeQuery("UPDATE xhandler.reception SET validity_state = :s, validity_checked_at = now(), updated_at = now() WHERE id = :id")
-                    .setParameter("s", finalState).setParameter("id", receptionId).executeUpdate();
+            em.createNativeQuery("""
+                            UPDATE xhandler.reception SET validity_state = coalesce(:s, validity_state), validity_checked_at = now(), updated_at = now()
+                            WHERE id = :id""")
+                    .setParameter("s", state).setParameter("id", receptionId).executeUpdate();
         });
-        return !"unknown".equals(state);
     }
 }

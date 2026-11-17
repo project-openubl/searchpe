@@ -27,6 +27,16 @@ public final class SfsAdapter {
      * @param details the .DET content, one line per item
      */
     public static Converted convert(String fileName, String header, String details) {
+        try {
+            return parse(fileName, header, details);
+        } catch (java.time.format.DateTimeParseException e) {
+            throw ApiException.invalid("invalid_document", "Fecha inválida: use AAAA-MM-DD.", e.getParsedString());
+        } catch (NumberFormatException e) {
+            throw ApiException.invalid("invalid_document", "Número inválido en el archivo.", e.getMessage());
+        }
+    }
+
+    private static Converted parse(String fileName, String header, String details) {
         String[] name = fileName.replaceAll("\\.[A-Za-z]+$", "").split("-");
         if (name.length != 4 || !name[0].matches("\\d{11}") || !name[1].matches("\\d{2}") || !name[3].matches("\\d{1,8}")) {
             throw invalid("El nombre del archivo debe ser RUC-TIPO-SERIE-NUMERO.");
@@ -77,6 +87,14 @@ public final class SfsAdapter {
             detalle.put("descripcion", d[4]);
             detalle.put("precio", new BigDecimal(d[5]));
             detalle.put("igv_tipo", d[12]);
+            // ISC (d[15]), ICBPER (d[21]) and an IGV rate other than 18% (d[13]) would change the
+            // amounts: refused, not dropped
+            boolean isc = d.length > 15 && amount(d[15]).signum() != 0;
+            boolean icbper = d.length > 21 && amount(d[21]).signum() != 0;
+            BigDecimal rate = amount(d[13]);
+            if (isc || icbper || rate.signum() != 0 && rate.compareTo(new BigDecimal("18")) != 0) {
+                throw invalid("El adaptador SFS solo soporta IGV de 18% sin ISC ni ICBPER.");
+            }
         }
         if (detalles.isEmpty()) {
             throw invalid("El archivo .DET no tiene ítems.");
@@ -85,6 +103,10 @@ public final class SfsAdapter {
         document.put("kind", kind);
         document.set("spec", spec);
         return new Converted(document, name[0], tipo, name[2], Long.parseLong(name[3]));
+    }
+
+    private static BigDecimal amount(String text) {
+        return text == null || text.isBlank() || "-".equals(text) ? BigDecimal.ZERO : new BigDecimal(text.strip());
     }
 
     private static ObjectNode cliente(String tipo, String numero, String nombre) {

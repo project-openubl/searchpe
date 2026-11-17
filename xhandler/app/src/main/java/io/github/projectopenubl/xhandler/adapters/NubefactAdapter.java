@@ -42,6 +42,7 @@ public final class NubefactAdapter {
 
     public static Converted convert(JsonNode r) {
         String tipo = tipo(r);
+        unsupported(r);
         String serie = r.path("serie").asText();
         long numero = r.path("numero").asLong(0);
         ObjectNode spec = JSON.objectNode();
@@ -59,7 +60,11 @@ public final class NubefactAdapter {
         if (r.hasNonNull("fecha_de_vencimiento") && !r.get("fecha_de_vencimiento").asText().isBlank()) {
             spec.put("fecha_vencimiento", LocalDate.parse(r.get("fecha_de_vencimiento").asText(), DMY).toString());
         }
-        spec.put("moneda", MONEDAS.getOrDefault(r.path("moneda").asText("1"), "PEN"));
+        String moneda = MONEDAS.get(r.path("moneda").asText("1"));
+        if (moneda == null) {
+            throw invalid("moneda debe ser 1 (PEN), 2 (USD), 3 (EUR) o 4 (GBP).");
+        }
+        spec.put("moneda", moneda);
         if (r.hasNonNull("tipo_de_cambio") && !r.get("tipo_de_cambio").asText().isBlank()) {
             spec.put("tipo_cambio", new BigDecimal(r.get("tipo_de_cambio").asText()));
         }
@@ -85,7 +90,12 @@ public final class NubefactAdapter {
             spec.put("comprobante_afectado_serie_numero",
                     r.path("documento_que_se_modifica_serie").asText() + "-" + r.path("documento_que_se_modifica_numero").asText());
             String motivo = "07".equals(tipo) ? r.path("tipo_de_nota_de_credito").asText() : r.path("tipo_de_nota_de_debito").asText();
-            spec.put("tipo_nota", String.format("%02d", Integer.parseInt(motivo.isBlank() ? "1" : motivo)));
+            int code = Integer.parseInt(motivo.isBlank() ? "1" : motivo);
+            if ("08".equals(tipo) && (code < 1 || code > 3) || "07".equals(tipo) && (code < 1 || code > 13)) {
+                // Debit notes for exports or IVAP (Nubefact 4, 5) are not supported by the document builder
+                throw invalid("Tipo de nota no soportado: " + motivo + ".");
+            }
+            spec.put("tipo_nota", String.format("%02d", code));
             spec.put("descripcion_sustento", r.path("observaciones").asText("Nota " + tipo));
         }
         ArrayNode detalles = spec.putArray("detalles");
@@ -138,6 +148,49 @@ public final class NubefactAdapter {
         a.put("enlace_del_cdr", cdrUrl);
         a.put("estado_xhandler", status);
         return a;
+    }
+
+    /** Fields whose amounts the conversion can't carry: refused rather than silently dropped. */
+    static void unsupported(JsonNode r) {
+        String transaction = r.path("sunat_transaction").asText("1");
+        if (!"1".equals(transaction)) {
+            throw invalid("sunat_transaction " + transaction + " no está soportado: solo venta interna (1).");
+        }
+        String igv = r.path("porcentaje_de_igv").asText("18");
+        if (!igv.isBlank() && new BigDecimal(igv).compareTo(new BigDecimal("18")) != 0) {
+            throw invalid("porcentaje_de_igv " + igv + " no está soportado: solo 18.");
+        }
+        for (String field : new String[] {"descuento_global", "total_descuento", "total_anticipo", "total_isc", "total_impuestos_bolsas",
+                "percepcion_tipo", "retencion_tipo", "detraccion"}) {
+            if (nonZero(r.path(field))) {
+                throw invalid(field + " no está soportado por la API compatible con Nubefact.");
+            }
+        }
+        for (JsonNode item : r.path("items")) {
+            for (String field : new String[] {"descuento", "isc", "impuesto_bolsas", "anticipo_regularizacion"}) {
+                if (nonZero(item.path(field))) {
+                    throw invalid("items." + field + " no está soportado por la API compatible con Nubefact.");
+                }
+            }
+        }
+    }
+
+    private static boolean nonZero(JsonNode value) {
+        if (value.isMissingNode() || value.isNull()) {
+            return false;
+        }
+        if (value.isBoolean()) {
+            return value.asBoolean();
+        }
+        String text = value.asText().strip();
+        if (text.isEmpty() || "false".equalsIgnoreCase(text)) {
+            return false;
+        }
+        try {
+            return new BigDecimal(text).signum() != 0;
+        } catch (NumberFormatException e) {
+            return true;
+        }
     }
 
     static ApiException invalid(String message) {

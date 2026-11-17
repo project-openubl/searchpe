@@ -18,6 +18,9 @@ import java.util.UUID;
 @ApplicationScoped
 public class Numbering {
 
+    /** How far past the series counter a client-chosen number may go. */
+    static final long MAX_JUMP = 100_000;
+
     private final EntityManager em;
 
     public Numbering(EntityManager em) {
@@ -52,8 +55,35 @@ public class Numbering {
         if (numero < 1 || numero > 99_999_999) {
             throw ApiException.invalid("invalid_document", "El número debe estar entre 1 y 99999999.", null);
         }
-        if (!serie.matches("[A-Z0-9]{4}")) {
+        if (serie == null || !serie.matches("[A-Z0-9]{4}")) {
             throw ApiException.invalid("invalid_document", "La serie debe tener 4 caracteres en mayúsculas o dígitos.", null);
+        }
+        // Electronic series: F for facturas, B for boletas, T for guías; digits are contingency (physical) series
+        String family = switch (tipoComprobante) {
+            case "01" -> "F";
+            case "03" -> "B";
+            case "09" -> "T";
+            default -> null;
+        };
+        if (family != null && !serie.startsWith(family) && !Character.isDigit(serie.charAt(0))) {
+            throw ApiException.invalid("invalid_document", "La serie " + serie + " no corresponde al tipo de comprobante " + tipoComprobante + ".", null);
+        }
+        @SuppressWarnings("unchecked")
+        List<Object[]> existing = em.createNativeQuery("""
+                        SELECT next_number, active FROM xhandler.series
+                        WHERE company_id = :c AND sunat_env = :env AND tipo_comprobante = :tipo AND serie = :serie FOR UPDATE""")
+                .setParameter("c", companyId).setParameter("env", sunatEnv).setParameter("tipo", tipoComprobante).setParameter("serie", serie)
+                .getResultList();
+        if (!existing.isEmpty()) {
+            if (!Boolean.TRUE.equals(existing.get(0)[1])) {
+                throw ApiException.invalid("series_not_found", "La serie " + serie + " está desactivada.", null);
+            }
+            long next = ((Number) existing.get(0)[0]).longValue();
+            if (numero > next + MAX_JUMP) {
+                // One typo would otherwise move the counter for good (up to 99999999)
+                throw ApiException.invalid("invalid_document", "El número " + numero + " salta más de " + MAX_JUMP
+                        + " números desde el siguiente de la serie (" + next + ").", null);
+            }
         }
         em.createNativeQuery("""
                         INSERT INTO xhandler.series (id, tenant_id, company_id, sunat_env, tipo_comprobante, serie, next_number)
