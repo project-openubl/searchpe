@@ -41,14 +41,14 @@ jobs:
           -Dquarkus.native.container-build=true \
           -Dquarkus.container-image.push=false \
           -Dquarkus.container-image.build=true \
-          -Dquarkus.container-image.registry=quay.io \
-          -Dquarkus.container-image.group=projectopenubl \
-          -Dquarkus.container-image.name=searchpe \
-          -Dquarkus.container-image.tag=latest \
+          -Dquarkus.container-image.registry=ghcr.io \
+          -Dquarkus.container-image.group=project-openubl \
+          -Dquarkus.container-image.name=searchpe/searchpe \
+          -Dquarkus.container-image.tag=nightly \
           -P native,ui \
           -pl application
       - name: Save container image
-        run: docker save -o searchpe-container-image.tar quay.io/projectopenubl/searchpe:latest
+        run: docker save -o searchpe-container-image.tar ghcr.io/project-openubl/searchpe/searchpe:nightly
       - name: Upload container image
         uses: actions/upload-artifact@v7
         with:
@@ -71,14 +71,14 @@ jobs:
           -Dquarkus.native.container-build=true \
           -Dquarkus.container-image.push=false \
           -Dquarkus.container-image.build=true \
-          -Dquarkus.container-image.registry=quay.io \
-          -Dquarkus.container-image.group=projectopenubl \
-          -Dquarkus.container-image.name=searchpe-operator \
-          -Dquarkus.container-image.tag=latest \
+          -Dquarkus.container-image.registry=ghcr.io \
+          -Dquarkus.container-image.group=project-openubl \
+          -Dquarkus.container-image.name=searchpe/searchpe-operator \
+          -Dquarkus.container-image.tag=nightly \
           -P native \
           -pl operator
       - name: Save container image
-        run: docker save -o searchpe-operator-container-image.tar quay.io/projectopenubl/searchpe-operator:latest
+        run: docker save -o searchpe-operator-container-image.tar ghcr.io/project-openubl/searchpe/searchpe-operator:nightly
       - name: Upload container image
         uses: actions/upload-artifact@v7
         with:
@@ -89,6 +89,8 @@ jobs:
     needs: [ application-container, operator-container ]
     name: Publish container
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
     steps:
       - uses: actions/download-artifact@v8
         with:
@@ -101,29 +103,11 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Login to Quay.io
-        uses: docker/login-action@v4
-        with:
-          registry: quay.io
-          username: ${{ secrets.QUAYIO_USERNAME }}
-          password: ${{ secrets.QUAYIO_PASSWORD }}
-      - name: Load and config images
+      - name: Load images
         run: |
-          # Load images from .tar
           docker load -i artifacts/searchpe-container-image.tar
           docker load -i artifacts/searchpe-operator-container-image.tar
-          
-          # Tag images
-          docker tag quay.io/projectopenubl/searchpe:latest quay.io/projectopenubl/searchpe:nightly
-          docker tag quay.io/projectopenubl/searchpe:latest ghcr.io/project-openubl/searchpe/searchpe:nightly
-          
-          docker tag quay.io/projectopenubl/searchpe-operator:latest quay.io/projectopenubl/searchpe-operator:nightly
-          docker tag quay.io/projectopenubl/searchpe-operator:latest ghcr.io/project-openubl/searchpe/searchpe-operator:nightly
-
       - name: Push images to registry
         run: |
-          docker push quay.io/projectopenubl/searchpe:nightly
           docker push ghcr.io/project-openubl/searchpe/searchpe:nightly
-          
-          docker push quay.io/projectopenubl/searchpe-operator:nightly
           docker push ghcr.io/project-openubl/searchpe/searchpe-operator:nightly

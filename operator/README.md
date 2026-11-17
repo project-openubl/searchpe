@@ -89,20 +89,20 @@ mvn clean package \
 -Dquarkus.native.container-build=true \
 -Dquarkus.container-image.build=true \
 -Dquarkus.container-image.push=false \
--Dquarkus.container-image.registry=quay.io \
--Dquarkus.container-image.group=projectopenubl \
+-Dquarkus.container-image.registry=ghcr.io \
+-Dquarkus.container-image.group=$USER \
 -Dquarkus.container-image.name=searchpe-operator \
 -Dquarkus.operator-sdk.bundle.package-name=searchpe-operator \
 -Dquarkus.operator-sdk.bundle.channels=alpha \
 -Dquarkus.application.version=test \
 -P native
-podman push quay.io/$USER/searchpe-operator:nightly
+podman push ghcr.io/$USER/searchpe-operator:test
 ```
 
 Create bundle:
 
 ```shell
-BUNDLE_IMAGE=quay.io/$USER/searchpe-operator-bundle:test
+BUNDLE_IMAGE=ghcr.io/$USER/searchpe-operator-bundle:test
 podman build -t $BUNDLE_IMAGE -f target/bundle/searchpe-operator/bundle.Dockerfile target/bundle/searchpe-operator
 podman push $BUNDLE_IMAGE
 ```
@@ -110,7 +110,7 @@ podman push $BUNDLE_IMAGE
 Create catalog image:
 
 ```shell
-CATALOG_IMAGE=quay.io/$USER/searchpe-operator-catalog:nightly
+CATALOG_IMAGE=ghcr.io/$USER/searchpe-operator-catalog:test
 opm index add \
     --bundles $BUNDLE_IMAGE \
     --tag $CATALOG_IMAGE \

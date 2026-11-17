@@ -6,10 +6,9 @@ name: Release
 #
 # The tag is the version: the poms on main keep a development version and every job sets the
 # tag's. Publishes:
-# - quay.io/projectopenubl/searchpe and searchpe-operator, native, for amd64 and arm64:
+# - ghcr.io/project-openubl/searchpe/searchpe and searchpe-operator, native, for amd64 and arm64:
 #   vX.Y.Z always; latest and vX only for the highest stable release (of its major for vX).
-# - the Helm chart to oci://ghcr.io/project-openubl/charts/searchpe.
-# - release assets: the JVM distribution, the operator bundle, the Helm chart and SHA256SUMS.
+# - release assets: the JVM distribution, the OpenAPI schema, the operator bundle and SHA256SUMS.
 #
 # Running it again for the same tag is safe: images already pushed are kept and the assets are
 # replaced. To retry with a fixed workflow, dispatch it from main with the tag.
@@ -35,7 +34,7 @@ permissions:
 
 env:
   TAG: ${{ github.event.release.tag_name || inputs.tag }}
-  REGISTRY: quay.io/projectopenubl
+  REGISTRY: ghcr.io/project-openubl/searchpe
 
 jobs:
   prepare:
@@ -73,15 +72,17 @@ jobs:
           - arch: arm64
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
+    permissions:
+      packages: write
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
-      IMAGE: quay.io/projectopenubl/${{ matrix.image }}:${{ github.event.release.tag_name || inputs.tag }}-${{ matrix.arch }}
+      IMAGE: ghcr.io/project-openubl/searchpe/${{ matrix.image }}:${{ github.event.release.tag_name || inputs.tag }}-${{ matrix.arch }}
     steps:
       - uses: docker/login-action@v4
         with:
-          registry: quay.io
-          username: ${{ secrets.QUAYIO_USERNAME }}
-          password: ${{ secrets.QUAYIO_PASSWORD }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
       - name: Already pushed?
         id: pushed
         run: |
@@ -113,9 +114,9 @@ jobs:
             -Dquarkus.native.container-build=true \
             -Dquarkus.container-image.build=true \
             -Dquarkus.container-image.push=false \
-            -Dquarkus.container-image.registry=quay.io \
-            -Dquarkus.container-image.group=projectopenubl \
-            -Dquarkus.container-image.name="$NAME" \
+            -Dquarkus.container-image.registry=ghcr.io \
+            -Dquarkus.container-image.group=project-openubl \
+            -Dquarkus.container-image.name="searchpe/$NAME" \
             -Dquarkus.container-image.tag="$TAG-$ARCH" \
             -Dquarkus.jib.platforms="linux/$ARCH" \
             -Doperator.searchpe.image="$REGISTRY/searchpe:$TAG" \
@@ -127,6 +128,8 @@ jobs:
   manifests:
     needs: [prepare, images]
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
     strategy:
       matrix:
         image: [searchpe, searchpe-operator]
@@ -136,9 +139,9 @@ jobs:
     steps:
       - uses: docker/login-action@v4
         with:
-          registry: quay.io
-          username: ${{ secrets.QUAYIO_USERNAME }}
-          password: ${{ secrets.QUAYIO_PASSWORD }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
       # Pre-releases and patches of older lines don't move latest or vX
       - name: Floating tags
         id: floating
@@ -178,11 +181,8 @@ jobs:
     permissions:
       # Release assets
       contents: write
-      # The Helm chart on ghcr.io
-      packages: write
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
-      CHARTS: oci://ghcr.io/${{ github.repository_owner }}/charts
     steps:
       - uses: actions/checkout@v7
         with:
@@ -192,7 +192,6 @@ jobs:
           java-version: 25
           distribution: temurin
           cache: maven
-      - uses: azure/setup-helm@v5
       - name: Setup groovy
         run: sudo apt-get update -q && sudo apt-get install -y groovy
       - run: mvn -B -q versions:set -DnewVersion="$VERSION" -DgenerateBackupPoms=false
@@ -207,6 +206,9 @@ jobs:
       - name: Operator bundle
         run: |
           mvn -B package -DskipTests \
+            -Dquarkus.container-image.registry=ghcr.io \
+            -Dquarkus.container-image.group=project-openubl \
+            -Dquarkus.container-image.name=searchpe/searchpe-operator \
             -Dquarkus.container-image.tag="$TAG" \
             -Doperator.searchpe.image="$REGISTRY/searchpe:$TAG" \
             -Dquarkus.operator-sdk.bundle.package-name=searchpe-operator \
@@ -234,21 +236,6 @@ jobs:
           "$RUNNER_TEMP/operator-sdk" bundle validate "$bundle" --select-optional name=operatorhub
           "$RUNNER_TEMP/operator-sdk" bundle validate "$bundle" --select-optional suite=operatorframework
           tar -C operator/target/bundle -czf "dist/searchpe-operator-bundle-$VERSION.tar.gz" searchpe-operator
-      - name: Helm chart
-        run: |
-          helm lint application/target/helm
-          helm package application/target/helm --destination dist
-      - name: Push the Helm chart
-        env:
-          GH_ACTOR: ${{ github.actor }}
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          helm registry login ghcr.io --username "$GH_ACTOR" --password-stdin <<< "$GH_TOKEN"
-          if helm show chart "$CHARTS/searchpe" --version "$VERSION" >/dev/null 2>&1; then
-            echo "::notice::The searchpe $VERSION chart is already pushed"
-          else
-            helm push "dist/searchpe-$VERSION.tgz" "$CHARTS"
-          fi
       - name: Upload the release assets
         env:
           GH_TOKEN: ${{ github.token }}
@@ -261,13 +248,10 @@ jobs:
     needs: [prepare, manifests, assets]
     runs-on: ubuntu-latest
     steps:
-      - env:
-          VERSION: ${{ needs.prepare.outputs.version }}
-          CHARTS: oci://ghcr.io/${{ github.repository_owner }}/charts
-        run: |
+      - run: |
           {
             echo "# searchpe $TAG"
             echo
             echo "- \`$REGISTRY/searchpe:$TAG\`, \`$REGISTRY/searchpe-operator:$TAG\` (amd64, arm64)"
-            echo "- \`helm install searchpe $CHARTS/searchpe --version $VERSION\`"
+            echo "- Release assets: the distribution, the OpenAPI schema and the operator bundle (release-tools opens the OperatorHub pull requests from it)"
           } >> "$GITHUB_STEP_SUMMARY"

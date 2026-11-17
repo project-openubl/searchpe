@@ -20,7 +20,7 @@ Microservicio que expone los datos provenientes del `padrón reducido` de la SUN
 Releases are made with the
 [Release searchpe](https://github.com/project-openubl/release-tools#releasing-searchpe) workflow of
 release-tools. It tags this repository and publishes the GitHub release, which runs
-[release.yml](./.github/workflows/release.yml): the images, the Helm chart and the release assets. Then
+[release.yml](./.github/workflows/release.yml): the images and the release assets. Then
 release-tools opens the OperatorHub pull requests. Don't create releases by hand: release-tools checks
 CI first.
 

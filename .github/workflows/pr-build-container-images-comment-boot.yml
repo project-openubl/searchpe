@@ -46,7 +46,7 @@ jobs:
                     retries: 5
               
                 searchpe:
-                  image: quay.io/projectopenubl/searchpe:nightly
+                  image: ghcr.io/project-openubl/searchpe/searchpe:nightly
                   ports:
                     - 8180:8080
                   environment:
