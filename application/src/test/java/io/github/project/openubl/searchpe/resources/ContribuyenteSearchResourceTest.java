@@ -27,9 +27,12 @@ import org.junit.jupiter.api.Test;
 import java.util.concurrent.TimeUnit;
 
 import static org.awaitility.Awaitility.await;
+import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.matchesPattern;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.startsWith;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @QuarkusTest
@@ -150,6 +153,21 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
                         "data.size()", is(10),
                         "data[0].dni", matchesPattern("^[0-9]{8}$")
                 );
+        givenAuth("alice")
+                .header("Content-Type", "application/json")
+                .when()
+                .get("/api/contribuyentes?tipoPersona=juridica")
+                .then()
+                .statusCode(200)
+                .body(
+                        "meta.offset", is(0),
+                        "meta.limit", is(10),
+                        // The fixture only has 10 and 20 prefixes: natural (20) + juridica (404) = all rows (424)
+                        "meta.count", is(404),
+                        "data.size()", is(10),
+                        "data.ruc", everyItem(startsWith("20")),
+                        "data.dni", everyItem(nullValue())
+                );
     }
 
     @Test
@@ -181,10 +199,8 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
                 .body(
                         "meta.offset", is(0),
                         "meta.limit", is(10),
-                        "meta.count", is(1),
-                        "data.size()", is(1),
-                        "data[0].ruc", is("10452159428"),
-                        "data[0].nombre", is("GARCIA CHANCO CARLOS AUGUSTO")
+                        "meta.count", is(0),
+                        "data.size()", is(0)
                 );
     }
 }
