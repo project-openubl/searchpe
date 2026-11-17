@@ -322,7 +322,8 @@ pse_authorization id, company_id, authorized_at, revoked_at, evidence_ref
 series            id, company_id, sunat_env, tipo_comprobante, serie, next_number, is_default,
                   active, device_id?, UNIQUE(company_id, sunat_env, tipo_comprobante, serie)
 daily_counter     company_id, sunat_env, kind (RC|RA|RR), day (America/Lima), next_number
-customer, product, vehicle, driver, address        (optional catalogs, as in mobile)
+catalog_entry     id, company_id, kind (customer|product|vehicle|driver|address), key, data (json),
+                  device_id?, deleted_at       -- optional catalogs (§17), one table typed by kind
 document          id, company_id, sunat_env, origin (api|adapter|ose_inbound|reception),
                   tipo_comprobante, serie, numero, fecha_emision, deadline_at,
                   customer snapshot, moneda, tipo_cambio, total, status, status_before_voiding,
@@ -766,11 +767,11 @@ Emit never creates jobs. The reconciler sends the document (§24.2), usually wit
 
 ### 11.6 Delivery
 
-- The PDF is rendered from `enriched_json` + company data + status.
+- The PDF is rendered on demand from `enriched_json` + company data + status (so the banner always matches the current status; nothing is stored), by `GET …/files/pdf`, the buyer's link and emails.
   - Formats: A4 and 80/58 mm tickets.
   - Contents: SUNAT QR (`RUC|TIPO|SERIE|NUMERO|IGV|TOTAL|FECHA|TIPO_DOC|NUM_DOC|HASH|`, with GRE using SUNAT's QR), partner/tenant branding, and a "pendiente" banner until there is a definitive answer.
   - Templates are Qute code shipped with the service; companies customize them through options.
-- Email goes through the platform sender or the tenant's SMTP, with per-company subject/body templates. Attachments: PDF, XML and optionally the CDR. Each email carries the buyer's capability link (§12).
+- Email goes through the platform sender (Quarkus Mailer) or the tenant's SMTP (credential kind `smtp`, host checked as tenant-supplied), with per-company subject/body templates (`{tipo}`, `{serie_numero}`, `{razon_social}`, `{link}`…). Attachments: PDF, XML and optionally the CDR. Each email carries the buyer's capability link (§12). Emails go out as jobs: on request (`POST …/documents/{id}/email`, 202) or when SUNAT accepts, if the company enables `email_on_accept` and the document carries the buyer's email (`cliente.contacto.email`).
 - `delivered_at` is set by the first successful delivery (`delivered_source = service`) or by the client's attestation (`client`, §9.3). It drives the voiding guard. Every delivery is logged.
 
 ### 11.7 SIRE
@@ -925,9 +926,9 @@ This satisfies the processor's 2-year limit (DS 016-2024-JUS art. 31.2) while th
 
 ## 17. Catalogs and lookup
 
-- Optional CRUD for customers, products, vehicles, drivers and addresses.
+- Optional CRUD for customers, products, vehicles, drivers and addresses (`…/companies/{id}/catalogs/{kind}`). They live in one table typed by kind: each kind has its required fields and natural key (a customer by its identity document, a product by its code, a vehicle by its plate), validated by the app. Soft-deleted and sync-ready (§7.2).
 - A document may reference catalog entries or carry everything inline.
-- RUC/DNI lookup behind one interface, `lookup(tipo, numero)`: a commercial provider (tenant token) or `searchpe`. Results are cached in `customer`.
+- RUC/DNI lookup behind one interface, `lookup(tipo, numero)` (`…/lookup/{ruc|dni}/{numero}`): a commercial provider (credential kind `lookup`: URL template and the tenant's token, checked as a tenant-supplied host) or the platform's `searchpe` (`xhandler.lookup.searchpe-url`). Results are cached in the customer catalog.
 
 ---
 
@@ -1022,7 +1023,7 @@ Infrastructure I1 (dev/staging) ─── I2 (production HA: sync replication, m
 | **P2** Job system | Pulp-style tasking + SUNAT resilience | Done:<br>- `job`, `job_schedule`, `worker`; the no-loop state machine; the unblocker as one SQL pass (FIFO per resource, credential slots); claim with `pg_try_advisory_lock(seq)` on the pod's lock connection before the compare-and-set; heartbeat on the lock connection; recovery under `WORKER_CLEANUP` moves interrupted sends to `unknown`; LISTEN/NOTIFY wake-ups; schedules; purge.<br>- `document` (partitioned by issue year) with its retry state, `document_event` (monthly), `document_file`; the reconciler as one SQL function (leases, deadline order, per-endpoint caps, holds per document, company, tenant and endpoint); breakers from the last 30 s of `sunat_call`; the fenced three-step attempt (§10.4) with per-type ambiguity resolution and the 1033 digest check; `needs_attention` after 10 identical outcomes or 24 h.<br>- Content-addressed storage (`FileStore`: S3 with SigV4, or a directory in dev/tests).<br>- `/api/v1/status`, tenant jobs API (Pulp-task shaped), admin API and `xhandler-admin`.<br>- The engine's consult, ticket, validity, validation, inspect and CDR endpoints, and the SUNAT fake (§4.1, §19).<br><br>Every cross-tenant step is a `SECURITY DEFINER` function. | Done: property test of the unblocker (no overlap, FIFO, slots, no starvation); chaos tests: dead worker → `unknown` → resolved without resending; paused worker keeps its lock and no second attempt runs; lost lock connection stops claims; a stale attempt writes nothing; outage opens the breaker, and the backlog drains through one probe in deadline order |
 | **P3** Emit and send (software mode) | Real factura/boleta | Done:<br>- `POST …/documents` with `Idempotency-Key`, the emit permit, and one transaction that numbers, builds, validates (`/v1/validate`), signs through the HSM executor and stores; `signature_log`; buyer capability links and public endpoints; the documents API (list with filters and labels, timeline, files, retry/hold/release, delivered attestation).<br>- Webhooks (outbox, signed CloudEvents, retries, delivery log, redelivery, test events) with the egress guard.<br>- The boleta D+5 → resumen diario fallback (also on 1079) and the RC outcome propagated to its boletas; deadline alerts (`document.delayed`, America/Lima); usage events on acceptance (outbox for P6).<br>- Every company starts on the SUNAT fake; the environment switch; RUC verification by SOL login.<br>- `hack/e2e.sh` emits through the API and checks the attempt's trace.<br><br>Not in P3: PDFs and email (P5); the per-line lost-ticket path for summaries (P4). | Done: emit → accepted through the job system; idempotent and concurrent retries give one document; concurrent emits on one series give consecutive numbers with no gaps; an invalid document consumes no number; a boleta answered 1079 goes by RC and follows it; signed webhooks verify |
 | **P4** All documents | Complete the set | Done: notes (series follow the affected document; the 2027 one-reference rule in the engine); percepción/retención; GRE through the REST API with its own credentials (SOL user + API client); voiding by RA, RC estado 3 and RR with the delivered guard, the 2027 windows and rollback when the voiding is rejected; the lost-ticket path for summaries; the derived submission route (SUNAT or a third-party OSE, OSE-obligated companies refused); SUNAT/SBS exchange rates and the S/ 700 check in foreign currency; the production switch gate (P3). | Done: every document type emits and is accepted against the fake; voiding accepted and rejected; a third-party OSE receives the documents with its credentials while GRE stays direct; invalid routes refused |
-| **P5** Delivery and catalogs | Reach buyers | Qute PDFs (A4, tickets, QR, branding, Spanish), email (platform + tenant SMTP, SPF/DKIM/DMARC, bounces, §26.5), tenant notifications (§26.6), delivery log, buyer-portal APIs, catalogs, RUC/DNI lookup | A buyer fetches XML/CDR/PDF through the API; emails delivered and logged |
+| **P5** Delivery and catalogs | Reach buyers | Done: Qute PDFs rendered with OpenHTMLtoPDF (A4, 80/58 mm tickets, SUNAT QR, company logo, partner branding, Spanish, "pendiente" banner), email (platform sender or tenant SMTP, templates, attachments, on request or on acceptance, suppression list, sender-domain verification), the delivery log, tenant notifications (documents in exception or at risk, rejected after delivery, expiring certificates, SUNAT outages), buyer portal APIs (capability links, PDF, lookup by data with CAPTCHA and per-RUC limits), catalogs, RUC/DNI lookup with cache. SPF/DKIM/DMARC records belong to the platform's mail provider setup (infrastructure). | Done: a buyer fetches XML/CDR/PDF through the link; emails carry PDF, XML and CDR and are logged; notifications arrive in-app and by email |
 | **M1** | **Software-mode beta** | Pilot tenants | |
 | **P6** Billing, partners and developers | Monetization and DX | Lago pod, usage outbox, entitlements and quotas, partner APIs, white-label, self-invoicing through xhandler-service; developer experience: public API reference, published SDKs, sandbox with SUNAT-fake mode, quickstarts, webhook tools, status page (§26.2) | Quotas enforced; partner onboards a tenant through the API; Lago → our factura works |
 | **P7** PSE mode | Sign for tenants | Platform PSE key in the HSM, pool of platform SOL users, PSE authorization tracking, xvalidator gate before sending, rejected-rate metric and alerts | PSE-signed documents accepted on beta; rejected rate reported per half-year; measured per-credential throughput |
@@ -1275,11 +1276,12 @@ P11 load tests run at these figures, including an outage followed by a drain.
 
 - The platform sender domain has SPF, DKIM and DMARC.
 - Tenants with their own domain verify it through DNS records (DKIM/SPF) before sending as that domain.
-- Bounces and complaints are processed. Recipients that hard-bounce are suppressed per tenant, and the tenant is told.
+- Bounces and complaints are processed: the provider's reports reach the admin API, the address is suppressed per tenant (`email_suppression`), and the tenant sees and can remove suppressions.
+- A tenant proves its own domain with a DNS TXT record (`_xhandler.<domain>`, `xhandler-verification=<token>`).
 
 ### 26.6 Tenant notifications
 
-Email and in-app (xhandler-ui), separate from webhooks, configurable per tenant and role:
+Email (to the tenant's notification address) and in-app (`…/notifications`), separate from webhooks, configurable per tenant and kind (`…/notification-preferences`). Written in the event's transaction; emails go out as jobs:
 
 - documents in `exception`;
 - documents delayed or at risk of missing a deadline;

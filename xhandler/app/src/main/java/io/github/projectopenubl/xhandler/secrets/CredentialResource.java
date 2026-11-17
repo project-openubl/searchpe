@@ -29,10 +29,12 @@ public class CredentialResource {
 
     private final TenantAccess access;
     private final CredentialService credentials;
+    private final io.github.projectopenubl.xhandler.webhooks.Egress egress;
 
-    public CredentialResource(TenantAccess access, CredentialService credentials) {
+    public CredentialResource(TenantAccess access, CredentialService credentials, io.github.projectopenubl.xhandler.webhooks.Egress egress) {
         this.access = access;
         this.credentials = credentials;
+        this.egress = egress;
     }
 
     @GET
@@ -69,6 +71,45 @@ public class CredentialResource {
         Company company = CompanyResource.find(companyId);
         Credential stored = credentials.store(scope, company, "gre", Map.of("username", request.username(), "password",
                 request.password(), "client_id", request.clientId(), "client_secret", request.clientSecret()), mask(request.username()));
+        return new CredentialView(stored.kind, stored.label, Instant.now());
+    }
+
+    /** The tenant's own SMTP server for document emails (DESIGN.md §11.6). */
+    public record SmtpCredentials(@NotBlank @Size(max = 255) String host, @jakarta.validation.constraints.Min(1)
+            @jakarta.validation.constraints.Max(65535) int port, @NotBlank @Size(max = 200) String username,
+            @NotBlank @Size(max = 300) String password, @NotBlank @jakarta.validation.constraints.Email String from, Boolean startTls) {}
+
+    @PUT
+    @Path("/smtp")
+    @Transactional
+    public CredentialView putSmtp(
+            @PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId, @Valid SmtpCredentials request) {
+        TenantScope scope = access.enter(tenantId, Role.ADMIN);
+        Company company = CompanyResource.find(companyId);
+        // A tenant-supplied host: it must resolve to public addresses (DESIGN.md §16)
+        egress.checkHost(request.host());
+        Credential stored = credentials.store(scope, company, "smtp", Map.of("host", request.host(), "port", String.valueOf(request.port()),
+                "username", request.username(), "password", request.password(), "from", request.from(),
+                "start_tls", String.valueOf(!Boolean.FALSE.equals(request.startTls()))), request.from());
+        return new CredentialView(stored.kind, stored.label, Instant.now());
+    }
+
+    /** A commercial RUC/DNI lookup provider (DESIGN.md §17): URL with {tipo}/{numero}, and the tenant's token. */
+    public record LookupCredentials(@NotBlank @Size(max = 2000) String url, @Size(max = 500) String token) {}
+
+    @PUT
+    @Path("/lookup")
+    @Transactional
+    public CredentialView putLookup(
+            @PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId, @Valid LookupCredentials request) {
+        TenantScope scope = access.enter(tenantId, Role.ADMIN);
+        Company company = CompanyResource.find(companyId);
+        egress.check(request.url().replace("{tipo}", "ruc").replace("{numero}", "20000000001"));
+        Map<String, String> fields = new java.util.HashMap<>(Map.of("url", request.url()));
+        if (request.token() != null) {
+            fields.put("token", request.token());
+        }
+        Credential stored = credentials.store(scope, company, "lookup", fields, java.net.URI.create(request.url().replace("{", "").replace("}", "")).getHost());
         return new CredentialView(stored.kind, stored.label, Instant.now());
     }
 

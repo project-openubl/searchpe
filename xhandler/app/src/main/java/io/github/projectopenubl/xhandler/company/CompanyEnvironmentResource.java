@@ -44,7 +44,16 @@ import java.util.UUID;
 @Path("/api/v1/tenants/{tenantId}/companies/{companyId}")
 public class CompanyEnvironmentResource {
 
-    public record Settings(@Size(max = 300) String nombreComercial, @Email @Size(max = 300) String email, Boolean deliveredOnEmitDefault) {}
+    public record Settings(
+            @Size(max = 300) String nombreComercial,
+            @Email @Size(max = 300) String email,
+            Boolean deliveredOnEmitDefault,
+            @Size(max = 500) String direccion,
+            @Pattern(regexp = "a4|ticket80|ticket58") String pdfFormat,
+            Map<String, Object> pdfOptions,
+            Boolean emailOnAccept,
+            @Size(max = 200) String emailSubject,
+            @Size(max = 5000) String emailBody) {}
 
     public record EnvironmentChange(@NotBlank @Pattern(regexp = "fake|beta|production") String sunatEnv) {}
 
@@ -56,8 +65,11 @@ public class CompanyEnvironmentResource {
     private final Auditor auditor;
     private final CredentialService credentials;
     private final Engine engine;
+    private final io.github.projectopenubl.xhandler.storage.FileStore files;
 
-    public CompanyEnvironmentResource(TenantAccess access, Auditor auditor, CredentialService credentials, Engine engine) {
+    public CompanyEnvironmentResource(TenantAccess access, Auditor auditor, CredentialService credentials, Engine engine,
+            io.github.projectopenubl.xhandler.storage.FileStore files) {
+        this.files = files;
         this.access = access;
         this.auditor = auditor;
         this.credentials = credentials;
@@ -80,7 +92,46 @@ public class CompanyEnvironmentResource {
         if (settings.deliveredOnEmitDefault() != null) {
             company.deliveredOnEmitDefault = settings.deliveredOnEmitDefault();
         }
+        if (settings.direccion() != null) {
+            company.direccion = settings.direccion().strip();
+        }
+        if (settings.pdfFormat() != null) {
+            company.pdfFormat = settings.pdfFormat();
+        }
+        if (settings.pdfOptions() != null) {
+            company.pdfOptions = Map.copyOf(settings.pdfOptions());
+        }
+        if (settings.emailOnAccept() != null) {
+            company.emailOnAccept = settings.emailOnAccept();
+        }
+        if (settings.emailSubject() != null) {
+            company.emailSubject = settings.emailSubject().isBlank() ? null : settings.emailSubject();
+        }
+        if (settings.emailBody() != null) {
+            company.emailBody = settings.emailBody().isBlank() ? null : settings.emailBody();
+        }
         auditor.record(scope, "company.updated", "company", companyId);
+        return CompanyResource.view(company);
+    }
+
+    /** The company logo for PDFs and emails: PNG or JPEG, up to 200 KB. */
+    @PUT
+    @Path("/logo")
+    @jakarta.ws.rs.Consumes({"image/png", "image/jpeg"})
+    @Transactional
+    public CompanyResource.CompanyView logo(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId, byte[] image) {
+        TenantScope scope = access.enter(tenantId, Role.ADMIN);
+        Company company = CompanyResource.findForUpdate(companyId);
+        boolean png = image != null && image.length > 8 && (image[0] & 0xff) == 0x89 && image[1] == 'P' && image[2] == 'N' && image[3] == 'G';
+        boolean jpeg = image != null && image.length > 3 && (image[0] & 0xff) == 0xFF && (image[1] & 0xff) == 0xD8;
+        if (!png && !jpeg) {
+            throw ApiException.invalid("invalid_request", "El logo debe ser una imagen PNG o JPEG.", null);
+        }
+        if (image.length > 200 * 1024) {
+            throw ApiException.invalid("invalid_request", "El logo no debe pasar de 200 KB.", null);
+        }
+        company.logoRef = files.put(company.tenantId, image).key();
+        auditor.record(scope, "company.logo_changed", "company", companyId);
         return CompanyResource.view(company);
     }
 

@@ -38,9 +38,11 @@ public class DocumentResource {
     private final AccessLinks links;
     private final FileStore files;
     private final Auditor auditor;
+    private final io.github.projectopenubl.xhandler.pdf.DocumentPdf pdf;
 
     public DocumentResource(TenantAccess access, EmitService emit, DocumentControl control, AccessLinks links, FileStore files,
-            Auditor auditor, VoidingService voiding) {
+            Auditor auditor, VoidingService voiding, io.github.projectopenubl.xhandler.pdf.DocumentPdf pdf) {
+        this.pdf = pdf;
         this.access = access;
         this.voiding = voiding;
         this.emit = emit;
@@ -148,9 +150,11 @@ public class DocumentResource {
             case "input", "enriched", "pdf" -> kind;
             default -> throw ApiException.notFound();
         };
-        DocumentFile file = DocumentFile.of(doc.id, stored).orElseThrow(ApiException::notFound);
+        byte[] content = "pdf".equals(kind)
+                ? pdf.render(doc.id, null)
+                : files.get(DocumentFile.of(doc.id, stored).orElseThrow(ApiException::notFound).storageKey);
         auditor.record(scope, "document.file_read", "document", doc.id, Map.of("kind", kind));
-        return Response.ok(files.get(file.storageKey))
+        return Response.ok(content)
                 .type(contentType(kind))
                 .header("Content-Disposition", "attachment; filename=\"" + fileName(scope, doc, kind) + "\"")
                 .build();

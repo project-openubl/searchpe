@@ -89,6 +89,22 @@ public class Egress {
         return uri;
     }
 
+    /** A tenant-supplied host for a non-HTTP protocol (SMTP): public addresses only. */
+    public void checkHost(String host) {
+        if (allowPrivate) {
+            return;
+        }
+        try {
+            for (InetAddress address : InetAddress.getAllByName(host)) {
+                if (!isPublic(address)) {
+                    throw ApiException.invalid("invalid_url", "El servidor apunta a una dirección no permitida.", null);
+                }
+            }
+        } catch (UnknownHostException e) {
+            throw ApiException.invalid("invalid_url", "No se pudo resolver el servidor.", null);
+        }
+    }
+
     static boolean isPublic(InetAddress address) {
         if (address.isAnyLocalAddress() || address.isLoopbackAddress() || address.isLinkLocalAddress()
                 || address.isSiteLocalAddress() || address.isMulticastAddress()) {

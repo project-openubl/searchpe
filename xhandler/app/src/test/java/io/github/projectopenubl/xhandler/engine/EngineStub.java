@@ -34,6 +34,9 @@ public class EngineStub implements QuarkusTestResourceLifecycleManager {
     }
 
     private static final List<Recorded> REQUESTS = new CopyOnWriteArrayList<>();
+    /** The stub's base URL (for providers it plays). */
+    public static final java.util.concurrent.atomic.AtomicReference<String> BASE_URL = new java.util.concurrent.atomic.AtomicReference<>();
+
     /** What the fake exchange-rate file answers. */
     public static final java.util.concurrent.atomic.AtomicReference<String> FX_LINE =
             new java.util.concurrent.atomic.AtomicReference<>("16/11/2026|3.380|3.390|");
@@ -87,8 +90,20 @@ public class EngineStub implements QuarkusTestResourceLifecycleManager {
         server.createContext("/v1/", this::handle);
         // SUNAT's exchange rate file (ExchangeRates job)
         server.createContext("/fx/", exchange -> respondText(exchange, FX_LINE.get()));
+        // A RUC/DNI lookup provider: /lookup/{tipo}/{numero}
+        server.createContext("/lookup/", exchange -> {
+            String[] parts = exchange.getRequestURI().getPath().split("/");
+            REQUESTS.add(new Recorded(exchange.getRequestURI().getPath(), String.valueOf(exchange.getRequestHeaders().getFirst("Authorization"))));
+            if (parts.length < 4 || parts[3].startsWith("0")) {
+                respond(exchange, 404, "{\"message\":\"no encontrado\"}");
+            } else {
+                respond(exchange, 200, "{\"razonSocial\":\"EMPRESA " + parts[3] + " S.A.C.\",\"direccion\":\"AV. LIMA 123\","
+                        + "\"estado\":\"ACTIVO\",\"condicion\":\"HABIDO\"}");
+            }
+        });
         server.start();
         String base = "http://127.0.0.1:" + server.getAddress().getPort();
+        BASE_URL.set(base);
         return Map.of("quarkus.rest-client.engine.url", base, "xhandler.exchange-rates.url", base + "/fx/tipoCambio.txt");
     }
 

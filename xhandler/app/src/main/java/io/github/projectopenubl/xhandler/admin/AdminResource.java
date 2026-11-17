@@ -146,6 +146,22 @@ public class AdminResource {
         return Map.of("company_id", companyId, "ose_obligated", value);
     }
 
+    /** Bounce processing (§26.5): the platform's email provider reports hard bounces and complaints. */
+    @POST
+    @Path("/tenants/{tenantId}/email-suppressions")
+    @Transactional
+    public Map<String, Object> suppressEmail(@PathParam("tenantId") UUID tenantId, Map<String, String> body) {
+        TenantScope scope = openTenant(tenantId);
+        String address = body == null ? null : body.get("address");
+        if (address == null || !address.contains("@")) {
+            throw ApiException.invalid("invalid_request", "Indique el correo.", null);
+        }
+        String reason = body.getOrDefault("reason", "hard_bounce");
+        io.github.projectopenubl.xhandler.email.EmailSuppressions.suppress(em, tenantId, address, reason);
+        auditor.record(scope, "email.suppressed", "email", null, Map.of("address", address, "reason", reason));
+        return Map.of("address", address, "reason", reason);
+    }
+
     // --- endpoints (endpoint-status, hold/release per endpoint) ---------------------
 
     @GET

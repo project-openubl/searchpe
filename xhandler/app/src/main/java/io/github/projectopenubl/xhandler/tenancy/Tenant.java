@@ -25,6 +25,8 @@ public class Tenant extends PanacheEntityBase {
     public String createdBy;
     /** Holds SUNAT attempts for all its documents (DESIGN.md §24.1) */
     public boolean sendingPaused;
+    /** Where tenant notifications are emailed (DESIGN.md §26.6) */
+    public String notificationEmail;
 
     @CreationTimestamp
     public Instant createdAt;

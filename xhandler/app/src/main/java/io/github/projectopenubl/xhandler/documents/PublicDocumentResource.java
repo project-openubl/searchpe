@@ -41,8 +41,11 @@ public class PublicDocumentResource {
     private final TenantAccess access;
     private final FileStore files;
     private final EntityManager em;
+    private final io.github.projectopenubl.xhandler.pdf.DocumentPdf pdf;
 
-    public PublicDocumentResource(AccessLinks links, TenantAccess access, FileStore files, EntityManager em) {
+    public PublicDocumentResource(AccessLinks links, TenantAccess access, FileStore files, EntityManager em,
+            io.github.projectopenubl.xhandler.pdf.DocumentPdf pdf) {
+        this.pdf = pdf;
         this.links = links;
         this.access = access;
         this.files = files;
@@ -54,16 +57,16 @@ public class PublicDocumentResource {
     public PublicDocument get(@PathParam("token") String token) {
         Document doc = open(token);
         Company company = Company.findById(doc.companyId);
-        List<String> available = DocumentFile.<DocumentFile>list("documentId", doc.id).stream()
+        java.util.List<String> available = DocumentFile.<DocumentFile>list("documentId", doc.id).stream()
                 .map(f -> switch (f.kind) {
                     case "xml_signed" -> "xml";
                     case "cdr_zip" -> "cdr";
-                    case "pdf" -> "pdf";
                     default -> null;
                 })
                 .filter(java.util.Objects::nonNull)
-                .sorted()
-                .toList();
+                .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
+        available.add("pdf");
+        java.util.Collections.sort(available);
         return new PublicDocument(company.ruc, company.razonSocial, doc.tipoComprobante, doc.serieNumero(), doc.fechaEmision,
                 doc.moneda, doc.total, publicStatus(doc.status), available);
     }
@@ -77,14 +80,16 @@ public class PublicDocumentResource {
             case "pdf" -> "pdf";
             default -> throw ApiException.notFound();
         };
-        record Download(String key, String name) {}
+        record Download(byte[] content, String name) {}
         Download download = QuarkusTransaction.requiringNew().call(() -> {
             Document doc = open(token);
-            DocumentFile file = DocumentFile.of(doc.id, stored).orElseThrow(ApiException::notFound);
+            byte[] content = "pdf".equals(kind)
+                    ? pdf.render(doc.id, links.url(token))
+                    : files.get(DocumentFile.of(doc.id, stored).orElseThrow(ApiException::notFound).storageKey);
             markDelivered(doc.id);
-            return new Download(file.storageKey, DocumentResource.fileName(null, doc, kind));
+            return new Download(content, DocumentResource.fileName(null, doc, kind));
         });
-        return Response.ok(files.get(download.key()))
+        return Response.ok(download.content())
                 .type(DocumentResource.contentType(kind))
                 .header("Content-Disposition", "attachment; filename=\"" + download.name() + "\"")
                 .build();
