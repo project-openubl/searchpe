@@ -72,6 +72,7 @@ public class AttemptHandler implements JobHandler {
     private final Event<DocumentStatusChanged> statusChanged;
     private final MeterRegistry metrics;
     private final Duration resolveSafety;
+    private final Duration lease;
 
     public AttemptHandler(
             TenantAccess access,
@@ -82,7 +83,8 @@ public class AttemptHandler implements JobHandler {
             Event<DocumentStatusChanged> statusChanged,
             MeterRegistry metrics,
             // SUNAT read timeout (120 s) + margin; nests inside the app → engine timeout (§10.8)
-            @ConfigProperty(name = "xhandler.documents.resolve-safety", defaultValue = "160s") Duration resolveSafety) {
+            @ConfigProperty(name = "xhandler.documents.resolve-safety", defaultValue = "160s") Duration resolveSafety,
+            io.github.projectopenubl.xhandler.jobs.JobConfig jobs) {
         this.access = access;
         this.routes = routes;
         this.engine = engine;
@@ -91,6 +93,7 @@ public class AttemptHandler implements JobHandler {
         this.statusChanged = statusChanged;
         this.metrics = metrics;
         this.resolveSafety = resolveSafety;
+        this.lease = jobs.lease();
     }
 
     @Override
@@ -107,18 +110,52 @@ public class AttemptHandler implements JobHandler {
         }
         Plan plan = (Plan) begun;
         long started = System.nanoTime();
+        Instant callStartedAt = Instant.now();
         Outcome outcome = execute(plan);
         metrics.timer("xhandler.sunat.attempt", "endpoint", plan.endpoint(), "outcome", outcome.kind().name().toLowerCase())
                 .record(Duration.ofNanos(System.nanoTime() - started));
-        // Store the CDR before transaction 2 (content-addressed: an orphan is harmless)
-        FileStore.Stored cdr = null;
-        if (outcome.cdrZip() != null) {
-            cdr = files.put(plan.tenantId(), Base64.getDecoder().decode(outcome.cdrZip()));
+        try {
+            // Store the CDR before transaction 2 (content-addressed: an orphan is harmless)
+            FileStore.Stored cdr = null;
+            if (outcome.cdrZip() != null) {
+                cdr = files.put(plan.tenantId(), Base64.getDecoder().decode(outcome.cdrZip()));
+            }
+            FileStore.Stored storedCdr = cdr;
+            boolean written = QuarkusTransaction.requiringNew().call(() -> finish(context, plan, outcome, storedCdr, callStartedAt));
+            return Map.of("action", plan.action().name().toLowerCase(), "outcome", outcome.kind().name().toLowerCase(),
+                    "written", written);
+        } catch (RuntimeException e) {
+            // SUNAT may have answered, but we could not record it: ask before anything else (§9.2.1)
+            if (plan.action() != Action.VERIFY_TICKET) {
+                markUnknown(context, plan);
+            }
+            throw e;
         }
-        FileStore.Stored storedCdr = cdr;
-        boolean written = QuarkusTransaction.requiringNew().call(() -> finish(context, plan, outcome, storedCdr));
-        return Map.of("action", plan.action().name().toLowerCase(), "outcome", outcome.kind().name().toLowerCase(),
-                "written", written);
+    }
+
+    /** After a failure past the send: the document goes to unknown (fenced), so the next attempt resolves first. */
+    private void markUnknown(JobContext context, Plan plan) {
+        try {
+            QuarkusTransaction.requiringNew().run(() -> {
+                access.enterAsPlatform(plan.tenantId());
+                Document doc = Document.findById(plan.documentId(), LockModeType.PESSIMISTIC_WRITE);
+                if (doc == null || doc.attempts != plan.attempt() || !Document.RETRYABLE.contains(doc.status)) {
+                    return;
+                }
+                String previous = doc.status;
+                doc.status = "unknown";
+                doc.attemptJobId = null;
+                doc.nextAttemptAt = plan.sendStartedAt().plus(resolveSafety);
+                doc.updatedAt = Instant.now();
+                DocumentEvent.record(doc, null, "unknown: the outcome could not be recorded", "platform:worker", context.correlationId());
+                if (!previous.equals(doc.status)) {
+                    statusChanged.fire(new DocumentStatusChanged(doc, previous, context.correlationId()));
+                }
+            });
+        } catch (RuntimeException e) {
+            // Recovery (lease expiry → resolve) still covers it
+            LOG.errorf(e, "could not move document %s to unknown", plan.documentId());
+        }
     }
 
     private Object begin(JobContext context, UUID documentId) {
@@ -131,6 +168,8 @@ public class AttemptHandler implements JobHandler {
             return "definitive";
         }
         if (doc.summaryDocumentId != null) {
+            // It follows its summary's outcome: no retry state of its own
+            doc.nextAttemptAt = null;
             return "in_summary";
         }
         if ("operator".equals(doc.holdReason)) {
@@ -153,6 +192,10 @@ public class AttemptHandler implements JobHandler {
         }
         DocumentFile xml = DocumentFile.of(doc.id, "xml_signed").orElse(null);
         if (xml == null) {
+            // Can't happen through emit; a person must look instead of re-leasing it forever
+            doc.nextAttemptAt = null;
+            doc.holdReason = "needs_attention";
+            DocumentEvent.record(doc, null, "no signed XML stored: needs attention", "platform:worker", context.correlationId());
             return "no_signed_xml";
         }
         Company company = Company.findById(doc.companyId);
@@ -170,6 +213,8 @@ public class AttemptHandler implements JobHandler {
         if (action != Action.VERIFY_TICKET) {
             doc.sendStartedAt = now;
         }
+        // Renew the lease: the attempt may have waited in the queue (§24.2)
+        doc.nextAttemptAt = now.plus(lease);
         doc.updatedAt = now;
         return new Plan(doc.id, doc.tenantId, doc.attempts, action, target, xml.storageKey, doc.ticket,
                 new EngineModels.DocumentKey(company.ruc, doc.tipoComprobante, doc.serie, doc.numero), doc.isFacturaFamily(),
@@ -221,11 +266,17 @@ public class AttemptHandler implements JobHandler {
 
     private Outcome afterSend(Plan plan, String xml, EngineModels.SendResponse response) {
         Outcome outcome = Outcome.ofSend(response);
-        return switch (outcome.kind()) {
-            case ALREADY_REGISTERED -> digestCheck(plan, xml, outcome);
-            case ALREADY_FINAL -> alreadyFinal(plan, xml, outcome);
-            default -> outcome;
-        };
+        try {
+            return switch (outcome.kind()) {
+                case ALREADY_REGISTERED -> digestCheck(plan, xml, outcome);
+                case ALREADY_FINAL -> alreadyFinal(plan, xml, outcome);
+                default -> outcome;
+            };
+        } catch (EngineException e) {
+            // The send happened: a failing follow-up can't make the document a local error
+            LOG.warnf("follow-up of %s for document %s failed: %s", outcome.kind(), plan.documentId(), e.getMessage());
+            return Outcome.of(Outcome.Kind.AMBIGUOUS, outcome.code(), outcome.description());
+        }
     }
 
     /**
@@ -240,6 +291,19 @@ public class AttemptHandler implements JobHandler {
                     ? new Outcome(Outcome.Kind.ACCEPTED, 0, null, "Registrado previamente (SUNAT beta, sin verificación)", List.of(),
                             null, null)
                     : collision(sunat);
+        }
+        if (plan.facturaFamily()) {
+            // Facturas: SUNAT's record comes with its CDR, which we keep (§9.2.2)
+            EngineModels.StatusCdrResponse status = engine.statusCdr(t.environment(), t.credentials(), plan.key());
+            if ("accepted".equals(status.status()) && status.cdrZip() != null) {
+                EngineModels.ValidityResponse same = engine.validityFile(xml, t.environment(), t.credentials());
+                if ("matches".equals(same.state())) {
+                    return new Outcome(Outcome.Kind.ACCEPTED, 0, null, status.description(), List.of(), null, status.cdrZip());
+                }
+                if ("differs".equals(same.state())) {
+                    return collision(sunat);
+                }
+            }
         }
         EngineModels.ValidityResponse validity = engine.validityFile(xml, t.environment(), t.credentials());
         return switch (validity.state()) {
@@ -277,7 +341,7 @@ public class AttemptHandler implements JobHandler {
                 "Colisión de numeración: SUNAT ya tiene este número con otros datos. " + sunat.description(), sunat.notes(), null, null);
     }
 
-    private boolean finish(JobContext context, Plan plan, Outcome outcome, FileStore.Stored cdr) {
+    private boolean finish(JobContext context, Plan plan, Outcome outcome, FileStore.Stored cdr, Instant callStartedAt) {
         access.enterAsPlatform(plan.tenantId());
         Document doc = Document.findById(plan.documentId(), LockModeType.PESSIMISTIC_WRITE);
         if (doc == null || doc.attempts != plan.attempt()) {
@@ -285,9 +349,10 @@ public class AttemptHandler implements JobHandler {
             return false;
         }
         if (outcome.kind() != Outcome.Kind.LOCAL_ERROR && outcome.kind() != Outcome.Kind.ENGINE_UNAVAILABLE) {
-            em.createNativeQuery("INSERT INTO xhandler.sunat_call (endpoint, healthy) VALUES (:endpoint, :healthy)")
+            em.createNativeQuery("INSERT INTO xhandler.sunat_call (endpoint, healthy, started_at) VALUES (:endpoint, :healthy, :started)")
                     .setParameter("endpoint", plan.endpoint())
                     .setParameter("healthy", outcome.healthy())
+                    .setParameter("started", callStartedAt)
                     .executeUpdate();
         }
         Instant now = Instant.now();
@@ -301,7 +366,12 @@ public class AttemptHandler implements JobHandler {
         }
         if (outcome.kind() == Outcome.Kind.TICKET) {
             doc.ticket = outcome.ticket();
+        } else if (outcome.kind() == Outcome.Kind.TICKET_LOST) {
+            // Never check a lost ticket again: resolution takes the lost-ticket path (§9.2.2)
+            doc.ticket = null;
         }
+        // The outcome is written: recovery must not turn it into unknown
+        doc.attemptJobId = null;
         double jitter = 0.8 + ThreadLocalRandom.current().nextDouble() * 0.4;
         Instant resolveNotBefore = plan.sendStartedAt() == null ? null : plan.sendStartedAt().plus(resolveSafety);
         applyAndRecord(doc, OutcomePolicy.decide(state(doc), outcome, now, jitter, resolveNotBefore), outcome, context.correlationId());

@@ -38,6 +38,10 @@ public class DirectConnections {
         try (Statement statement = connection.createStatement()) {
             // Same rights as pooled connections (TenantRlsInterceptor)
             statement.execute("SET ROLE xhandler_app");
+            // The server must notice a dead worker quickly too: its session holds the job locks,
+            // and recovery can't take them until PostgreSQL closes it (§10.4)
+            statement.execute("SET tcp_keepalives_idle = 10; SET tcp_keepalives_interval = 5; SET tcp_keepalives_count = 3; "
+                    + "SET tcp_user_timeout = 30000");
         }
         return connection;
     }

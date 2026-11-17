@@ -80,11 +80,10 @@ public class JobStore {
                 .getSingleResult());
     }
 
+    /** Every running job; cleanup fails those whose ownership lock it can take. */
     @Transactional(Transactional.TxType.MANDATORY)
-    public List<DeadJob> jobsOfDeadWorkers(Duration ttl) {
-        List<Object[]> rows = em.createNativeQuery(
-                        "SELECT id, seq, worker FROM xhandler.jobs_of_dead_workers(make_interval(secs => :ttl))", Object[].class)
-                .setParameter("ttl", (double) ttl.toSeconds())
+    public List<DeadJob> runningJobs() {
+        List<Object[]> rows = em.createNativeQuery("SELECT id, seq, worker FROM xhandler.running_jobs()", Object[].class)
                 .getResultList();
         return rows.stream().map(r -> new DeadJob((UUID) r[0], ((Number) r[1]).longValue(), (String) r[2])).toList();
     }

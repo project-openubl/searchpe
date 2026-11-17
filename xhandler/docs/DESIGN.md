@@ -580,7 +580,7 @@ ORDER BY priority_class, unblocked_at FOR UPDATE SKIP LOCKED LIMIT 1;
   2. lets in-flight SUNAT calls finish;
   3. writes their outcomes (still fenced on the document);
   4. exits the process, so Kubernetes restarts it.
-- **Recovery.** A singleton under `WORKER_CLEANUP` finds workers whose heartbeat is older than the TTL and whose job locks can be taken (`pg_try_advisory_lock` succeeds), and fails their running jobs. Their documents are never lost:
+- **Recovery.** A singleton under `WORKER_CLEANUP` fails every running job whose lock it can take (`pg_try_advisory_xact_lock(seq)` succeeds). A job's lock is taken before `start_job` commits and released only after `finish_job` commits (a worker that can't record the end keeps the lock), so a running job with a free lock is always orphaned, whatever its worker's heartbeat says. The lock connection sets server-side TCP keepalives (`tcp_keepalives_*`, `tcp_user_timeout`), so PostgreSQL drops a dead worker's session, and its locks, within about a minute. Their documents are never lost:
   - each stays non-definitive;
   - one that had `send_started_at` set moves to `unknown`;
   - the reconciler starts the next attempt when its `next_attempt_at` lease expires (§24.2). Recovery creates no jobs itself.
@@ -1135,7 +1135,7 @@ SUNAT will fail: outages, slowness, timeouts after accepting a document, garbage
 ### 24.2 Reconciler
 
 - A singleton under `pg_try_advisory_xact_lock(RECONCILE)` runs every second and on `NOTIFY xhandler_reconcile`.
-- **Endpoint state.** It alone owns the `sunat_endpoint` rows: breaker state (closed / open / half-open with cap 1) and a fixed, configured concurrency cap. It computes the breaker from the outcomes of the last 30 seconds of attempts. Workers never write these rows, so there's no hot row.
+- **Endpoint state.** It alone owns the `sunat_endpoint` rows: breaker state (closed / open / half-open with cap 1) and a fixed, configured concurrency cap (the admin API only pauses and caps). It computes the breaker from the outcomes of the last 30 seconds of attempts. Workers only append to `sunat_call`, so there's no hot row. The half-open probe is a call *started* after the endpoint went half-open, so a late answer to a call started before the outage can't close or reopen the breaker.
 - **Lease and create**, in one transaction:
 
   ```sql
@@ -1154,9 +1154,9 @@ SUNAT will fail: outages, slowness, timeouts after accepting a document, garbage
   -- then insert one attempt job per returned document, in the same transaction
   ```
 
-  - Because of the lease, a document never gets a second attempt while one is active: it doesn't look due until the lease expires.
-  - The attempt's outcome overwrites `next_attempt_at` (or clears it on a definitive answer).
-  - If the worker dies, the lease expires and the next pass retries the document. There's no "has an active job" check and no race between a finishing job and the reconciler.
+  - A document never gets a second attempt while one is active: it doesn't look due until the lease expires, the attempt renews the lease when it starts (it may have waited in the queue), and the reconciler skips documents that hold a waiting or running attempt (`reserved_resources @> {document:id}`, served by the partial GIN index). The last check matters when attempts queue behind a credential slot for longer than the lease.
+  - The attempt's outcome overwrites `next_attempt_at` (or clears it on a definitive answer), and clears `attempt_job_id`, so recovery never turns a recorded outcome into `unknown`.
+  - If the worker dies, recovery fails its job, the lease expires and the next pass retries the document. Documents that follow a summary carry no retry state and are skipped.
 - **Index.** A partial index on `(deadline_at) WHERE status IN ('pending_send','in_progress','unknown')`, filtered on `next_attempt_at`. It stays tiny in steady state and holds only the backlog during outages.
 - Voiding originals (`voiding`) are not reconciled; their RA/RC/RR document carries the retry state. Boletas moved into an RC have `next_attempt_at` cleared (§9.2.4).
 - **Deferred to post-v1, if metrics ask for them:** adaptive concurrency (AIMD) and tenant fairness. Facturas have a 3-day deadline, so minutes of unfairness during a drain are harmless.

@@ -32,7 +32,7 @@ public class Jobs {
         job.name = name;
         job.priorityClass = (short) priorityClass;
         job.args = args;
-        job.reservedResources = resources;
+        job.reservedResources = resources.toArray(String[]::new);
         job.correlationId = correlationId;
         job.runAt = Instant.now();
         job.createdAt = job.runAt;
@@ -42,29 +42,15 @@ public class Jobs {
         return job;
     }
 
-    /** Asks a job to stop: waiting jobs are canceled at once, running ones at their next safe point. */
+    /**
+     * Asks a job to stop: waiting jobs are canceled at once, running ones at their next safe point.
+     * One conditional update, never a read-modify-write of the row. Returns the new state, or null.
+     */
     @Transactional(Transactional.TxType.MANDATORY)
     public String cancel(UUID jobId) {
-        Job job = Job.findById(jobId, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
-        if (job == null) {
-            return null;
-        }
-        switch (job.state) {
-            case "waiting" -> {
-                job.state = "canceled";
-                job.finishedAt = Instant.now();
-            }
-            case "running" -> {
-                job.state = "canceling";
-                Job.getEntityManager().createNativeQuery("SELECT pg_notify('xhandler_job_cancel', :id)")
-                        .setParameter("id", jobId.toString())
-                        .getSingleResult();
-            }
-            default -> {
-                // Already finished or canceling: nothing to do
-            }
-        }
-        job.updatedAt = Instant.now();
-        return job.state;
+        Object state = Job.getEntityManager().createNativeQuery("SELECT xhandler.cancel_tenant_job(:id)")
+                .setParameter("id", jobId)
+                .getSingleResult();
+        return state == null ? null : state.toString();
     }
 }

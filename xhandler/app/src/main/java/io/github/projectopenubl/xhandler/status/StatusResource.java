@@ -13,21 +13,22 @@ import java.util.List;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 /**
- * Platform status (DESIGN.md §15), like Pulp's: versions, online workers, database, storage and
- * key vault health, and queue depth. Public, and free of tenant data.
+ * Platform status (DESIGN.md §15), like Pulp's: versions, online workers per role, database,
+ * storage and key vault health, and queue depth. Public (rate limited at the gateway), and free of
+ * tenant data and pod names.
  */
 @Path("/api/v1/status")
 public class StatusResource {
 
     public record Versions(String service, String engine, String xhandlerRust) {}
 
-    public record Worker(String name, String role, Instant lastHeartbeat) {}
+    public record Workers(String role, long online) {}
 
     public record Queue(int priorityClass, long waiting, long unblocked, long running, Instant oldestUnblocked) {}
 
     public record Status(
             Versions versions,
-            List<Worker> onlineWorkers,
+            List<Workers> workers,
             boolean database,
             boolean storage,
             boolean keyVault,
@@ -58,7 +59,7 @@ public class StatusResource {
     public Status status() {
         @SuppressWarnings("unchecked")
         List<Object[]> workers = em.createNativeQuery(
-                        "SELECT name, role, last_heartbeat FROM xhandler.worker WHERE last_heartbeat > now() - interval '30 seconds' ORDER BY name")
+                        "SELECT role, count(*) FROM xhandler.worker WHERE last_heartbeat > now() - interval '30 seconds' GROUP BY role ORDER BY role")
                 .getResultList();
         @SuppressWarnings("unchecked")
         List<Object[]> queues = em.createNativeQuery(
@@ -78,7 +79,7 @@ public class StatusResource {
         }
         return new Status(
                 new Versions(version, info == null ? null : info.engineVersion(), info == null ? null : info.xhandlerRustRev()),
-                workers.stream().map(w -> new Worker((String) w[0], (String) w[1], toInstant(w[2]))).toList(),
+                workers.stream().map(w -> new Workers((String) w[0], ((Number) w[1]).longValue())).toList(),
                 true,
                 files.healthy(),
                 vaultOk,

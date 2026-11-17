@@ -106,6 +106,26 @@ class AttemptTest {
         assertEquals("rejected", docs.get(tenant, doc.id()).status);
     }
 
+    @Inject
+    io.github.projectopenubl.xhandler.jobs.Jobs jobs;
+
+    @Test
+    void an_attempt_on_a_definitive_document_does_nothing() {
+        TestDocuments.Created doc = docs.pending(tenant, company, endpoint, d -> {
+            d.status = "accepted";
+            d.nextAttemptAt = null;
+        });
+        // An attempt job that got through anyway (stale lease, operator mistake)
+        UUID job = QuarkusTransaction.requiringNew().call(() -> jobs.enqueue(access.enterAsPlatform(tenant), "document.attempt", 2,
+                java.util.Map.of("document_id", doc.id().toString()), java.util.List.of("document:" + doc.id()), null).id);
+        await().atMost(WAIT).until(() -> QuarkusTransaction.requiringNew().call(() -> {
+            access.enterAsPlatform(tenant);
+            io.github.projectopenubl.xhandler.jobs.Job j = io.github.projectopenubl.xhandler.jobs.Job.findById(job);
+            return "completed".equals(j.state) && "definitive".equals(j.result.get("skipped"));
+        }));
+        assertEquals(0, sends(doc));
+    }
+
     @Test
     void transient_sunat_errors_are_retried_with_backoff() {
         EngineStub.on("/v1/send", body -> Reply.ok(sendAnswer("accepted", 0, null, null)));

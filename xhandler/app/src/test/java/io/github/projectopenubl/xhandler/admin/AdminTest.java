@@ -36,7 +36,7 @@ class AdminTest {
                 .body("database", equalTo(true))
                 .body("engine", equalTo(true))
                 .body("versions.engine", equalTo("0.0.0-stub"))
-                .body("online_workers.size()", greaterThanOrEqualTo(1));
+                .body("workers.find { it.role == 'all' }.online", greaterThanOrEqualTo(1));
     }
 
     @Test
@@ -57,8 +57,9 @@ class AdminTest {
 
         as("olga").post("/api/admin/v1/documents/" + doc.id() + "/hold").then().statusCode(200)
                 .body("hold_reason", equalTo("operator"));
-        as("olga").post("/api/admin/v1/documents/" + doc.id() + "/release").then().statusCode(200);
+        // Retrying a held document clears the hold and attempts now
         as("olga").post("/api/admin/v1/documents/" + doc.id() + "/retry").then().statusCode(200)
+                .body("hold_reason", org.hamcrest.Matchers.nullValue())
                 .body("next_attempt_at", notNullValue());
         await().atMost(Duration.ofSeconds(20)).until(() -> "accepted".equals(docs.get(tenant, doc.id()).status));
 
@@ -68,6 +69,19 @@ class AdminTest {
         // A definitive document can't be retried
         as("olga").post("/api/admin/v1/documents/" + doc.id() + "/retry").then().statusCode(409);
         as("olga").post("/api/admin/v1/documents/" + UUID.randomUUID() + "/retry").then().statusCode(404);
+    }
+
+    @Test
+    void releasing_a_held_document_makes_it_due() {
+        UUID tenant = tenantOf("alice");
+        UUID company = companies.verified(tenant, "fake");
+        TestDocuments.Created doc = docs.pending(tenant, company, "t-" + UUID.randomUUID() + ":invoice", d -> {
+            d.holdReason = "operator";
+            d.nextAttemptAt = java.time.Instant.now().plusSeconds(3600);
+        });
+        as("olga").post("/api/admin/v1/documents/" + doc.id() + "/release").then().statusCode(200)
+                .body("hold_reason", org.hamcrest.Matchers.nullValue());
+        await().atMost(Duration.ofSeconds(20)).until(() -> "accepted".equals(docs.get(tenant, doc.id()).status));
     }
 
     @Test

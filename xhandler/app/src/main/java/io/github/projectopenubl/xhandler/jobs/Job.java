@@ -33,8 +33,7 @@ public class Job extends PanacheEntityBase {
     public Instant runAt;
     public Instant unblockedAt;
 
-    @JdbcTypeCode(SqlTypes.ARRAY)
-    public List<String> reservedResources = List.of();
+    public String[] reservedResources = new String[0];
 
     public String credentialKey;
     public Integer credentialSlots;

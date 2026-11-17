@@ -100,11 +100,12 @@ public class JobResource {
             throw ApiException.conflict("job_not_cancelable", "Los envíos a SUNAT se controlan desde el documento.");
         }
         jobs.cancel(jobId);
+        Job.getEntityManager().refresh(job);
         return view(job);
     }
 
     static JobView view(Job j) {
         return new JobView(j.id, "xh:job:" + j.id, j.name, j.state, j.priorityClass, j.createdAt, j.unblockedAt, j.startedAt,
-                j.finishedAt, j.worker, j.attempt, j.reservedResources, j.createdResources, j.result, j.error, j.correlationId);
+                j.finishedAt, j.worker, j.attempt, List.of(j.reservedResources), j.createdResources, j.result, j.error, j.correlationId);
     }
 }

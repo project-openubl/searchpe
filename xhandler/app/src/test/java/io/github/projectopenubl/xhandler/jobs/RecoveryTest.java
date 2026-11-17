@@ -136,10 +136,6 @@ class RecoveryTest {
 
     @Test
     void an_outage_opens_the_breaker_and_the_backlog_drains_in_deadline_order() {
-        QuarkusTransaction.requiringNew().run(() -> em.createNativeQuery(
-                        "INSERT INTO xhandler.sunat_endpoint (id, concurrency_cap) VALUES (:id, 1)")
-                .setParameter("id", endpoint)
-                .executeUpdate());
         // SUNAT is down for this endpoint
         List<String> markers = new ArrayList<>();
         EngineStub.on("/v1/send", body -> markers.stream().anyMatch(body::contains)
@@ -153,6 +149,12 @@ class RecoveryTest {
             markers.add(doc.marker());
             created.add(doc);
         }
+        // The reconciler registered the endpoint when it saw the backlog; drain one at a time
+        await().atMost(WAIT).until(() -> !"none".equals(breaker()));
+        QuarkusTransaction.requiringNew().run(() -> em.createNativeQuery(
+                        "UPDATE xhandler.sunat_endpoint SET concurrency_cap = 1 WHERE id = :id")
+                .setParameter("id", endpoint)
+                .executeUpdate());
         await().atMost(WAIT).until(() -> "open".equals(breaker()));
         // No attempt is in flight once the breaker is open (it creates none)
         await().atMost(WAIT).until(() -> outstandingAttempts() == 0);
@@ -165,7 +167,8 @@ class RecoveryTest {
             markers.stream().filter(body::contains).findFirst().ifPresent(order::add);
             return Reply.ok(sendAnswer("accepted", 0, null, null));
         });
-        created.forEach(d -> docs.dueNow(tenant, d.id()));
+        // All due at once, so the reconciler sees the whole backlog in its first pass
+        docs.dueNow(tenant, created.stream().map(TestDocuments.Created::id).toList());
         await().atMost(Duration.ofSeconds(90)).until(() -> created.stream()
                 .allMatch(d -> "accepted".equals(docs.get(tenant, d.id()).status)));
 
@@ -200,7 +203,9 @@ class RecoveryTest {
                     .setParameter("args", "{\"document_id\":\"" + documentId + "\"}")
                     .setParameter("res", "{document:" + documentId + "}")
                     .getSingleResult();
-            // Unblock and start it as the ghost, in this transaction (the real worker can't see it yet)
+            // Unblock and start it as the ghost, in this transaction (the real worker can't see it
+            // yet), holding the UNBLOCK lock like the real unblocker
+            em.createNativeQuery("SELECT pg_advisory_xact_lock(7001, 1)").getSingleResult();
             em.createNativeQuery("SELECT xhandler.unblock_jobs()").getSingleResult();
             List<?> started = em.createNativeQuery("SELECT name FROM xhandler.start_job(:id, :w)")
                     .setParameter("id", job)

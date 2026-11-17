@@ -48,6 +48,8 @@ class UnblockerPropertyTest {
         String run = UUID.randomUUID().toString().substring(0, 8);
         QuarkusTransaction.begin();
         try {
+            // Hold the UNBLOCK lock like the real unblocker, so the live worker skips its passes
+            em.createNativeQuery("SELECT pg_advisory_xact_lock(7001, 1)").getSingleResult();
             List<TestJob> jobs = new ArrayList<>();
             int count = 5 + random.nextInt(25);
             for (int i = 0; i < count; i++) {
@@ -116,8 +118,8 @@ class UnblockerPropertyTest {
     }
 
     private boolean isUnblocked(UUID id) {
-        return !em.createNativeQuery("SELECT 1 FROM xhandler.claimable_jobs(100000) WHERE id = :id").setParameter("id", id)
-                .getResultList().isEmpty();
+        return em.createNativeQuery("SELECT unblocked_at FROM xhandler.job_summary(:id)").setParameter("id", id)
+                .getSingleResult() != null;
     }
 
     private static void checkNoOverlap(List<TestJob> jobs, Set<UUID> active, String label) {

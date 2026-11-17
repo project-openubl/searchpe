@@ -87,6 +87,17 @@ public class TestDocuments {
         update(tenantId, documentId, d -> d.nextAttemptAt = Instant.now().minus(Duration.ofSeconds(1)));
     }
 
+    /** Makes several documents due in one transaction. */
+    public void dueNow(UUID tenantId, java.util.List<UUID> documentIds) {
+        QuarkusTransaction.requiringNew().run(() -> {
+            access.enterAsPlatform(tenantId);
+            for (UUID id : documentIds.stream().sorted().toList()) {
+                Document doc = Document.findById(id, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+                doc.nextAttemptAt = Instant.now().minus(Duration.ofSeconds(1));
+            }
+        });
+    }
+
     public static LocalDate today() {
         return Deadlines.todayInLima();
     }
