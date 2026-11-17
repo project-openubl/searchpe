@@ -8,9 +8,9 @@ import {
 
 import {
   type CompanyView,
-  getV1TenantsByTenantIdCompanies,
-  getV1TenantsByTenantIdCompaniesByCompanyId,
-  type GetV1TenantsByTenantIdCompaniesData,
+  getCompany,
+  listCompanies,
+  type ListCompaniesData,
   type PageCompanyView,
 } from "@app/client/xhandler";
 import { useSelectedTenantId } from "@app/hooks/useSelectedTenantId";
@@ -20,8 +20,7 @@ import type { XhandlerAxiosError } from "../utils/openapiErrorTypes";
 
 export const CompaniesQueryKey = "companies";
 
-export type ICompanyListParams =
-  ListParams<GetV1TenantsByTenantIdCompaniesData>;
+export type ICompanyListParams = ListParams<ListCompaniesData>;
 
 export const companyKeys = {
   all: () => [CompaniesQueryKey] as const,
@@ -53,7 +52,7 @@ export const companiesListQueryOptions = ({
     queryKey: companyKeys.listQuery(tenantId, params),
     queryFn: async () =>
       (
-        await getV1TenantsByTenantIdCompanies({
+        await listCompanies({
           path: { tenantId },
           query: params,
           throwOnError: true,
@@ -83,7 +82,7 @@ export const companyDetailQueryOptions = ({
     queryKey: companyKeys.detail(tenantId, companyId),
     queryFn: async () =>
       (
-        await getV1TenantsByTenantIdCompaniesByCompanyId({
+        await getCompany({
           path: { tenantId, companyId },
           throwOnError: true,
         })

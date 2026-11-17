@@ -1,11 +1,10 @@
 {
-  "openapi" : "3.1.0",
   "components" : {
     "schemas" : {
       "AccessLink" : {
         "type" : "object",
         "properties" : {
-          "accessUrl" : {
+          "access_url" : {
             "type" : "string"
           }
         }
@@ -40,10 +39,10 @@
           "action" : {
             "type" : "string"
           },
-          "objectType" : {
+          "object_type" : {
             "type" : "string"
           },
-          "objectId" : {
+          "object_id" : {
             "type" : "string"
           },
           "details" : {
@@ -54,12 +53,12 @@
       },
       "Authorization" : {
         "type" : "object",
-        "required" : [ "authorizedAt", "evidenceBase64" ],
+        "required" : [ "authorized_at", "evidence_base64" ],
         "properties" : {
-          "authorizedAt" : {
+          "authorized_at" : {
             "$ref" : "#/components/schemas/LocalDate"
           },
-          "evidenceBase64" : {
+          "evidence_base64" : {
             "type" : "string",
             "pattern" : "\\S"
           }
@@ -71,19 +70,19 @@
           "id" : {
             "$ref" : "#/components/schemas/UUID"
           },
-          "authorizedAt" : {
+          "authorized_at" : {
             "$ref" : "#/components/schemas/LocalDate"
           },
           "evidence" : {
             "type" : "boolean"
           },
-          "registeredBy" : {
+          "registered_by" : {
             "type" : "string"
           },
-          "approvedAt" : {
+          "approved_at" : {
             "$ref" : "#/components/schemas/Instant"
           },
-          "revokedAt" : {
+          "revoked_at" : {
             "$ref" : "#/components/schemas/Instant"
           }
         }
@@ -91,15 +90,15 @@
       "BillingDetails" : {
         "type" : "object",
         "properties" : {
-          "billingRuc" : {
+          "billing_ruc" : {
             "type" : "string",
             "pattern" : "\\d{11}"
           },
-          "billingName" : {
+          "billing_name" : {
             "type" : "string",
             "maxLength" : 300
           },
-          "billingEmail" : {
+          "billing_email" : {
             "type" : "string"
           }
         }
@@ -115,7 +114,7 @@
             "type" : "string",
             "maxLength" : 300
           },
-          "senderName" : {
+          "sender_name" : {
             "type" : "string",
             "maxLength" : 200
           }
@@ -136,13 +135,13 @@
           "ruc" : {
             "type" : "string"
           },
-          "validFrom" : {
+          "valid_from" : {
             "$ref" : "#/components/schemas/Instant"
           },
-          "validUntil" : {
+          "valid_until" : {
             "$ref" : "#/components/schemas/Instant"
           },
-          "rucMatches" : {
+          "ruc_matches" : {
             "type" : "boolean"
           }
         }
@@ -167,43 +166,43 @@
           "ruc" : {
             "type" : "string"
           },
-          "razonSocial" : {
+          "razon_social" : {
             "type" : "string"
           },
-          "nombreComercial" : {
+          "nombre_comercial" : {
             "type" : "string"
           },
-          "sunatEnv" : {
+          "sunat_env" : {
             "type" : "string"
           },
-          "emissionMode" : {
+          "emission_mode" : {
             "type" : "string"
           },
-          "rucVerifiedAt" : {
+          "ruc_verified_at" : {
             "$ref" : "#/components/schemas/Instant"
           },
           "email" : {
             "type" : "string"
           },
-          "deliveredOnEmitDefault" : {
+          "delivered_on_emit_default" : {
             "type" : "boolean"
           },
-          "sendingPaused" : {
+          "sending_paused" : {
             "type" : "boolean"
           },
           "direccion" : {
             "type" : "string"
           },
-          "pdfFormat" : {
+          "pdf_format" : {
             "type" : "string"
           },
-          "emailOnAccept" : {
+          "email_on_accept" : {
             "type" : "boolean"
           },
-          "hasLogo" : {
+          "has_logo" : {
             "type" : "boolean"
           },
-          "submissionRoute" : {
+          "submission_route" : {
             "type" : "string"
           }
         }
@@ -211,34 +210,34 @@
       "ConformityView" : {
         "type" : "object",
         "properties" : {
-          "documentId" : {
+          "document_id" : {
             "$ref" : "#/components/schemas/UUID"
           },
-          "serieNumero" : {
+          "serie_numero" : {
             "type" : "string"
           },
-          "buyerRuc" : {
+          "buyer_ruc" : {
             "type" : "string"
           },
           "state" : {
             "type" : "string"
           },
-          "acceptedAt" : {
+          "accepted_at" : {
             "$ref" : "#/components/schemas/Instant"
           },
-          "windowEndsAt" : {
+          "window_ends_at" : {
             "$ref" : "#/components/schemas/Instant"
           },
-          "checkedAt" : {
+          "checked_at" : {
             "$ref" : "#/components/schemas/Instant"
           },
-          "checkDetail" : {
+          "check_detail" : {
             "type" : "string"
           },
-          "resolvedAt" : {
+          "resolved_at" : {
             "$ref" : "#/components/schemas/Instant"
           },
-          "suggestedCreditNote" : {
+          "suggested_credit_note" : {
             "type" : "object",
             "additionalProperties" : { }
           }
@@ -246,43 +245,24 @@
       },
       "CreateCompany" : {
         "type" : "object",
-        "required" : [ "ruc", "razonSocial" ],
+        "required" : [ "ruc", "razon_social" ],
         "properties" : {
           "ruc" : {
             "type" : "string",
             "pattern" : "\\d{11}"
           },
-          "razonSocial" : {
+          "razon_social" : {
             "type" : "string",
             "pattern" : "\\S",
             "maxLength" : 300
           },
-          "nombreComercial" : {
+          "nombre_comercial" : {
             "type" : "string",
             "maxLength" : 300
           }
         }
       },
-      "CreateSeries" : {
-        "type" : "object",
-        "required" : [ "tipoComprobante", "serie" ],
-        "properties" : {
-          "tipoComprobante" : {
-            "type" : "string",
-            "pattern" : "\\d{2}"
-          },
-          "serie" : {
-            "type" : "string",
-            "pattern" : "[A-Z0-9]{4}"
-          },
-          "nextNumber" : {
-            "type" : "integer",
-            "format" : "int64",
-            "minimum" : 1
-          }
-        }
-      },
-      "CreateTenant" : {
+      "CreatePartnerTenant" : {
         "type" : "object",
         "required" : [ "name" ],
         "properties" : {
@@ -291,17 +271,36 @@
             "pattern" : "\\S",
             "maxLength" : 200
           },
-          "ownerKind" : {
+          "owner_kind" : {
             "type" : "string",
             "pattern" : "user|client"
           },
-          "ownerSubject" : {
+          "owner_subject" : {
             "type" : "string",
             "maxLength" : 200
           }
         }
       },
-      "CreateTenant1" : {
+      "CreateSeries" : {
+        "type" : "object",
+        "required" : [ "tipo_comprobante", "serie" ],
+        "properties" : {
+          "tipo_comprobante" : {
+            "type" : "string",
+            "pattern" : "\\d{2}"
+          },
+          "serie" : {
+            "type" : "string",
+            "pattern" : "[A-Z0-9]{4}"
+          },
+          "next_number" : {
+            "type" : "integer",
+            "format" : "int64",
+            "minimum" : 1
+          }
+        }
+      },
+      "CreateTenant" : {
         "type" : "object",
         "required" : [ "name" ],
         "properties" : {
@@ -340,7 +339,7 @@
           "label" : {
             "type" : "string"
           },
-          "updatedAt" : {
+          "updated_at" : {
             "$ref" : "#/components/schemas/Instant"
           }
         }
@@ -365,10 +364,10 @@
           "id" : {
             "$ref" : "#/components/schemas/UUID"
           },
-          "eventId" : {
+          "event_id" : {
             "$ref" : "#/components/schemas/UUID"
           },
-          "eventType" : {
+          "event_type" : {
             "type" : "string"
           },
           "status" : {
@@ -378,20 +377,20 @@
             "type" : "integer",
             "format" : "int32"
           },
-          "nextAttemptAt" : {
+          "next_attempt_at" : {
             "$ref" : "#/components/schemas/Instant"
           },
-          "lastStatusCode" : {
+          "last_status_code" : {
             "type" : "integer",
             "format" : "int32"
           },
-          "lastError" : {
+          "last_error" : {
             "type" : "string"
           },
-          "deliveredAt" : {
+          "delivered_at" : {
             "$ref" : "#/components/schemas/Instant"
           },
-          "createdAt" : {
+          "created_at" : {
             "$ref" : "#/components/schemas/Instant"
           }
         }
@@ -405,16 +404,16 @@
           "prn" : {
             "type" : "string"
           },
-          "companyId" : {
+          "company_id" : {
             "$ref" : "#/components/schemas/UUID"
           },
-          "sunatEnv" : {
+          "sunat_env" : {
             "type" : "string"
           },
           "kind" : {
             "type" : "string"
           },
-          "tipoComprobante" : {
+          "tipo_comprobante" : {
             "type" : "string"
           },
           "serie" : {
@@ -424,38 +423,38 @@
             "type" : "integer",
             "format" : "int64"
           },
-          "serieNumero" : {
+          "serie_numero" : {
             "type" : "string"
           },
-          "fechaEmision" : {
+          "fecha_emision" : {
             "$ref" : "#/components/schemas/LocalDate"
           },
-          "deadlineAt" : {
+          "deadline_at" : {
             "$ref" : "#/components/schemas/Instant"
           },
           "status" : {
             "type" : "string"
           },
-          "holdReason" : {
+          "hold_reason" : {
             "type" : "string"
           },
-          "sunatCode" : {
+          "sunat_code" : {
             "type" : "integer",
             "format" : "int32"
           },
-          "sunatDescription" : {
+          "sunat_description" : {
             "type" : "string"
           },
-          "sunatNotes" : {
+          "sunat_notes" : {
             "type" : "array",
             "items" : {
               "type" : "string"
             }
           },
-          "codeClass" : {
+          "code_class" : {
             "type" : "string"
           },
-          "digestValue" : {
+          "digest_value" : {
             "type" : "string"
           },
           "moneda" : {
@@ -473,38 +472,38 @@
               "type" : "string"
             }
           },
-          "deliveredAt" : {
+          "delivered_at" : {
             "$ref" : "#/components/schemas/Instant"
           },
-          "deliveredSource" : {
+          "delivered_source" : {
             "type" : "string"
           },
           "attempts" : {
             "type" : "integer",
             "format" : "int32"
           },
-          "nextAttemptAt" : {
+          "next_attempt_at" : {
             "$ref" : "#/components/schemas/Instant"
           },
-          "firstSentAt" : {
+          "first_sent_at" : {
             "$ref" : "#/components/schemas/Instant"
           },
-          "cdrReceivedAt" : {
+          "cdr_received_at" : {
             "$ref" : "#/components/schemas/Instant"
           },
-          "affectedDocumentId" : {
+          "affected_document_id" : {
             "$ref" : "#/components/schemas/UUID"
           },
-          "summaryDocumentId" : {
+          "summary_document_id" : {
             "$ref" : "#/components/schemas/UUID"
           },
-          "voidedByDocumentId" : {
+          "voided_by_document_id" : {
             "$ref" : "#/components/schemas/UUID"
           },
-          "createdAt" : {
+          "created_at" : {
             "$ref" : "#/components/schemas/Instant"
           },
-          "accessUrl" : {
+          "access_url" : {
             "type" : "string"
           },
           "qr" : {
@@ -531,13 +530,13 @@
           "domain" : {
             "type" : "string"
           },
-          "txtName" : {
+          "txt_name" : {
             "type" : "string"
           },
-          "txtValue" : {
+          "txt_value" : {
             "type" : "string"
           },
-          "verifiedAt" : {
+          "verified_at" : {
             "$ref" : "#/components/schemas/Instant"
           }
         }
@@ -561,16 +560,16 @@
             },
             "maxItems" : 10
           },
-          "includeCdr" : {
+          "include_cdr" : {
             "type" : "boolean"
           }
         }
       },
       "EmissionMode" : {
         "type" : "object",
-        "required" : [ "emissionMode" ],
+        "required" : [ "emission_mode" ],
         "properties" : {
-          "emissionMode" : {
+          "emission_mode" : {
             "type" : "string",
             "pattern" : "software|pse"
           }
@@ -611,19 +610,19 @@
           "data" : {
             "$ref" : "#/components/schemas/JsonNode"
           },
-          "createdAt" : {
+          "created_at" : {
             "$ref" : "#/components/schemas/Instant"
           },
-          "updatedAt" : {
+          "updated_at" : {
             "$ref" : "#/components/schemas/Instant"
           }
         }
       },
       "EnvironmentChange" : {
         "type" : "object",
-        "required" : [ "sunatEnv" ],
+        "required" : [ "sunat_env" ],
         "properties" : {
-          "sunatEnv" : {
+          "sunat_env" : {
             "type" : "string",
             "pattern" : "fake|beta|production"
           }
@@ -648,16 +647,16 @@
           "actor" : {
             "type" : "string"
           },
-          "correlationId" : {
+          "correlation_id" : {
             "type" : "string"
           }
         }
       },
       "ExitRequest" : {
         "type" : "object",
-        "required" : [ "confirmName" ],
+        "required" : [ "confirm_name" ],
         "properties" : {
-          "confirmName" : {
+          "confirm_name" : {
             "type" : "string",
             "pattern" : "\\S"
           }
@@ -665,7 +664,7 @@
       },
       "GreCredentials" : {
         "type" : "object",
-        "required" : [ "username", "password", "clientId", "clientSecret" ],
+        "required" : [ "username", "password", "client_id", "client_secret" ],
         "properties" : {
           "username" : {
             "type" : "string",
@@ -677,12 +676,12 @@
             "pattern" : "\\S",
             "maxLength" : 200
           },
-          "clientId" : {
+          "client_id" : {
             "type" : "string",
             "pattern" : "\\S",
             "maxLength" : 200
           },
-          "clientSecret" : {
+          "client_secret" : {
             "type" : "string",
             "pattern" : "\\S",
             "maxLength" : 300
@@ -735,20 +734,20 @@
           "state" : {
             "type" : "string"
           },
-          "priorityClass" : {
+          "priority_class" : {
             "type" : "integer",
             "format" : "int32"
           },
-          "createdAt" : {
+          "created_at" : {
             "$ref" : "#/components/schemas/Instant"
           },
-          "unblockedAt" : {
+          "unblocked_at" : {
             "$ref" : "#/components/schemas/Instant"
           },
-          "startedAt" : {
+          "started_at" : {
             "$ref" : "#/components/schemas/Instant"
           },
-          "finishedAt" : {
+          "finished_at" : {
             "$ref" : "#/components/schemas/Instant"
           },
           "worker" : {
@@ -758,13 +757,13 @@
             "type" : "integer",
             "format" : "int32"
           },
-          "reservedResources" : {
+          "reserved_resources" : {
             "type" : "array",
             "items" : {
               "type" : "string"
             }
           },
-          "createdResources" : {
+          "created_resources" : {
             "type" : "array",
             "items" : {
               "type" : "string"
@@ -778,85 +777,15 @@
             "type" : "object",
             "additionalProperties" : { }
           },
-          "correlationId" : {
+          "correlation_id" : {
             "type" : "string"
           }
         }
       },
       "JsonNode" : {
         "type" : "object",
-        "properties" : {
-          "empty" : {
-            "type" : "boolean"
-          },
-          "valueNode" : {
-            "type" : "boolean"
-          },
-          "containerNode" : {
-            "type" : "boolean"
-          },
-          "missingNode" : {
-            "type" : "boolean"
-          },
-          "array" : {
-            "type" : "boolean"
-          },
-          "object" : {
-            "type" : "boolean"
-          },
-          "nodeType" : {
-            "$ref" : "#/components/schemas/JsonNodeType"
-          },
-          "pojo" : {
-            "type" : "boolean"
-          },
-          "number" : {
-            "type" : "boolean"
-          },
-          "integralNumber" : {
-            "type" : "boolean"
-          },
-          "floatingPointNumber" : {
-            "type" : "boolean"
-          },
-          "short" : {
-            "type" : "boolean"
-          },
-          "int" : {
-            "type" : "boolean"
-          },
-          "long" : {
-            "type" : "boolean"
-          },
-          "float" : {
-            "type" : "boolean"
-          },
-          "double" : {
-            "type" : "boolean"
-          },
-          "bigDecimal" : {
-            "type" : "boolean"
-          },
-          "bigInteger" : {
-            "type" : "boolean"
-          },
-          "textual" : {
-            "type" : "boolean"
-          },
-          "boolean" : {
-            "type" : "boolean"
-          },
-          "null" : {
-            "type" : "boolean"
-          },
-          "binary" : {
-            "type" : "boolean"
-          }
-        }
-      },
-      "JsonNodeType" : {
-        "type" : "string",
-        "enum" : [ "ARRAY", "BINARY", "BOOLEAN", "MISSING", "NULL", "NUMBER", "OBJECT", "POJO", "STRING" ]
+        "additionalProperties" : true,
+        "description" : "JSON libre"
       },
       "LocalDate" : {
         "type" : "string",
@@ -880,13 +809,13 @@
       },
       "LookupRequest" : {
         "type" : "object",
-        "required" : [ "ruc", "tipoComprobante", "serie", "numero", "fechaEmision", "total", "captcha" ],
+        "required" : [ "ruc", "tipo_comprobante", "serie", "numero", "fecha_emision", "total", "captcha" ],
         "properties" : {
           "ruc" : {
             "type" : "string",
             "pattern" : "\\d{11}"
           },
-          "tipoComprobante" : {
+          "tipo_comprobante" : {
             "type" : "string",
             "pattern" : "\\d{2}"
           },
@@ -898,7 +827,7 @@
             "type" : "integer",
             "format" : "int64"
           },
-          "fechaEmision" : {
+          "fecha_emision" : {
             "$ref" : "#/components/schemas/LocalDate"
           },
           "total" : {
@@ -937,18 +866,18 @@
       },
       "NewRequest" : {
         "type" : "object",
-        "required" : [ "subjectDocType", "subjectDocNumber", "kind" ],
+        "required" : [ "subject_doc_type", "subject_doc_number", "kind" ],
         "properties" : {
-          "subjectDocType" : {
+          "subject_doc_type" : {
             "type" : "string",
             "pattern" : "[0-9A-Z]{1,2}"
           },
-          "subjectDocNumber" : {
+          "subject_doc_number" : {
             "type" : "string",
             "pattern" : "\\S",
             "maxLength" : 20
           },
-          "subjectName" : {
+          "subject_name" : {
             "type" : "string",
             "maxLength" : 200
           },
@@ -965,7 +894,7 @@
       "NotificationSettings" : {
         "type" : "object",
         "properties" : {
-          "notificationEmail" : {
+          "notification_email" : {
             "type" : "string"
           }
         }
@@ -985,38 +914,37 @@
           "body" : {
             "type" : "string"
           },
-          "documentId" : {
+          "document_id" : {
             "$ref" : "#/components/schemas/UUID"
           },
-          "createdAt" : {
+          "created_at" : {
             "$ref" : "#/components/schemas/Instant"
           },
-          "readAt" : {
+          "read_at" : {
             "$ref" : "#/components/schemas/Instant"
           }
         }
       },
       "ObjectNode" : {
-        "type" : "array",
-        "items" : {
-          "$ref" : "#/components/schemas/JsonNode"
-        }
+        "type" : "object",
+        "additionalProperties" : true,
+        "description" : "Objeto JSON libre"
       },
       "Ose" : {
         "type" : "object",
-        "required" : [ "name", "invoiceUrl", "username", "password" ],
+        "required" : [ "name", "invoice_url", "username", "password" ],
         "properties" : {
           "name" : {
             "type" : "string",
             "pattern" : "\\S",
             "maxLength" : 200
           },
-          "invoiceUrl" : {
+          "invoice_url" : {
             "type" : "string",
             "pattern" : "\\S",
             "maxLength" : 2000
           },
-          "perceptionUrl" : {
+          "perception_url" : {
             "type" : "string",
             "maxLength" : 2000
           },
@@ -1034,13 +962,13 @@
       },
       "OseLookupRequest" : {
         "type" : "object",
-        "required" : [ "ruc", "tipoComprobante", "serie", "numero", "captcha" ],
+        "required" : [ "ruc", "tipo_comprobante", "serie", "numero", "captcha" ],
         "properties" : {
           "ruc" : {
             "type" : "string",
             "pattern" : "\\d{11}"
           },
-          "tipoComprobante" : {
+          "tipo_comprobante" : {
             "type" : "string",
             "pattern" : "\\d{2}"
           },
@@ -1064,160 +992,200 @@
           "state" : {
             "type" : "string"
           },
-          "checkedAt" : {
+          "checked_at" : {
             "type" : "string"
           }
         }
       },
       "PageAuditEntry" : {
+        "description" : "Una página de resultados (`?limit=&offset=`). No incluye el total: una página con menos de `limit` elementos es la última.",
         "type" : "object",
+        "required" : [ "items", "limit", "offset" ],
         "properties" : {
           "items" : {
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/AuditEntry"
-            }
+            },
+            "description" : "Los elementos de la página, como mucho `limit`."
           },
           "limit" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "description" : "Tamaño de página aplicado (por defecto 50, máximo 200)."
           },
           "offset" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "description" : "Elementos saltados antes de esta página."
           }
         }
       },
       "PageCompanyView" : {
+        "description" : "Una página de resultados (`?limit=&offset=`). No incluye el total: una página con menos de `limit` elementos es la última.",
         "type" : "object",
+        "required" : [ "items", "limit", "offset" ],
         "properties" : {
           "items" : {
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/CompanyView"
-            }
+            },
+            "description" : "Los elementos de la página, como mucho `limit`."
           },
           "limit" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "description" : "Tamaño de página aplicado (por defecto 50, máximo 200)."
           },
           "offset" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "description" : "Elementos saltados antes de esta página."
           }
         }
       },
       "PageDeliveryView" : {
+        "description" : "Una página de resultados (`?limit=&offset=`). No incluye el total: una página con menos de `limit` elementos es la última.",
         "type" : "object",
+        "required" : [ "items", "limit", "offset" ],
         "properties" : {
           "items" : {
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/DeliveryView"
-            }
+            },
+            "description" : "Los elementos de la página, como mucho `limit`."
           },
           "limit" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "description" : "Tamaño de página aplicado (por defecto 50, máximo 200)."
           },
           "offset" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "description" : "Elementos saltados antes de esta página."
           }
         }
       },
       "PageDocumentView" : {
+        "description" : "Una página de resultados (`?limit=&offset=`). No incluye el total: una página con menos de `limit` elementos es la última.",
         "type" : "object",
+        "required" : [ "items", "limit", "offset" ],
         "properties" : {
           "items" : {
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/DocumentView"
-            }
+            },
+            "description" : "Los elementos de la página, como mucho `limit`."
           },
           "limit" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "description" : "Tamaño de página aplicado (por defecto 50, máximo 200)."
           },
           "offset" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "description" : "Elementos saltados antes de esta página."
           }
         }
       },
       "PageEntry" : {
+        "description" : "Una página de resultados (`?limit=&offset=`). No incluye el total: una página con menos de `limit` elementos es la última.",
         "type" : "object",
+        "required" : [ "items", "limit", "offset" ],
         "properties" : {
           "items" : {
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/Entry"
-            }
+            },
+            "description" : "Los elementos de la página, como mucho `limit`."
           },
           "limit" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "description" : "Tamaño de página aplicado (por defecto 50, máximo 200)."
           },
           "offset" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "description" : "Elementos saltados antes de esta página."
           }
         }
       },
       "PageJobView" : {
+        "description" : "Una página de resultados (`?limit=&offset=`). No incluye el total: una página con menos de `limit` elementos es la última.",
         "type" : "object",
+        "required" : [ "items", "limit", "offset" ],
         "properties" : {
           "items" : {
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/JobView"
-            }
+            },
+            "description" : "Los elementos de la página, como mucho `limit`."
           },
           "limit" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "description" : "Tamaño de página aplicado (por defecto 50, máximo 200)."
           },
           "offset" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "description" : "Elementos saltados antes de esta página."
           }
         }
       },
       "PageNotificationView" : {
+        "description" : "Una página de resultados (`?limit=&offset=`). No incluye el total: una página con menos de `limit` elementos es la última.",
         "type" : "object",
+        "required" : [ "items", "limit", "offset" ],
         "properties" : {
           "items" : {
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/NotificationView"
-            }
+            },
+            "description" : "Los elementos de la página, como mucho `limit`."
           },
           "limit" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "description" : "Tamaño de página aplicado (por defecto 50, máximo 200)."
           },
           "offset" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "description" : "Elementos saltados antes de esta página."
           }
         }
       },
       "PageReceptionView" : {
+        "description" : "Una página de resultados (`?limit=&offset=`). No incluye el total: una página con menos de `limit` elementos es la última.",
         "type" : "object",
+        "required" : [ "items", "limit", "offset" ],
         "properties" : {
           "items" : {
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/ReceptionView"
-            }
+            },
+            "description" : "Los elementos de la página, como mucho `limit`."
           },
           "limit" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "description" : "Tamaño de página aplicado (por defecto 50, máximo 200)."
           },
           "offset" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "description" : "Elementos saltados antes de esta página."
           }
         }
       },
@@ -1246,7 +1214,7 @@
           "email" : {
             "type" : "boolean"
           },
-          "inApp" : {
+          "in_app" : {
             "type" : "boolean"
           }
         }
@@ -1254,19 +1222,19 @@
       "PublicDocument" : {
         "type" : "object",
         "properties" : {
-          "emisorRuc" : {
+          "emisor_ruc" : {
             "type" : "string"
           },
-          "emisorRazonSocial" : {
+          "emisor_razon_social" : {
             "type" : "string"
           },
-          "tipoComprobante" : {
+          "tipo_comprobante" : {
             "type" : "string"
           },
-          "serieNumero" : {
+          "serie_numero" : {
             "type" : "string"
           },
-          "fechaEmision" : {
+          "fecha_emision" : {
             "$ref" : "#/components/schemas/LocalDate"
           },
           "moneda" : {
@@ -1289,7 +1257,7 @@
       "Queue" : {
         "type" : "object",
         "properties" : {
-          "priorityClass" : {
+          "priority_class" : {
             "type" : "integer",
             "format" : "int32"
           },
@@ -1305,7 +1273,7 @@
             "type" : "integer",
             "format" : "int64"
           },
-          "oldestUnblocked" : {
+          "oldest_unblocked" : {
             "$ref" : "#/components/schemas/Instant"
           }
         }
@@ -1333,16 +1301,16 @@
           "id" : {
             "$ref" : "#/components/schemas/UUID"
           },
-          "supplierRuc" : {
+          "supplier_ruc" : {
             "type" : "string"
           },
-          "tipoComprobante" : {
+          "tipo_comprobante" : {
             "type" : "string"
           },
-          "serieNumero" : {
+          "serie_numero" : {
             "type" : "string"
           },
-          "fechaEmision" : {
+          "fecha_emision" : {
             "$ref" : "#/components/schemas/LocalDate"
           },
           "moneda" : {
@@ -1351,19 +1319,19 @@
           "total" : {
             "type" : "number"
           },
-          "validityState" : {
+          "validity_state" : {
             "type" : "string"
           },
-          "validityCheckedAt" : {
+          "validity_checked_at" : {
             "$ref" : "#/components/schemas/Instant"
           },
-          "hasPdf" : {
+          "has_pdf" : {
             "type" : "boolean"
           },
-          "hasCdr" : {
+          "has_cdr" : {
             "type" : "boolean"
           },
-          "createdAt" : {
+          "created_at" : {
             "$ref" : "#/components/schemas/Instant"
           }
         }
@@ -1371,10 +1339,10 @@
       "ReplaceRequest" : {
         "type" : "object",
         "properties" : {
-          "acknowledgeDifferences" : {
+          "acknowledge_differences" : {
             "type" : "boolean"
           },
-          "confirmNotReceived" : {
+          "confirm_not_received" : {
             "type" : "boolean"
           }
         }
@@ -1412,13 +1380,13 @@
           "period" : {
             "type" : "string"
           },
-          "sunatEnv" : {
+          "sunat_env" : {
             "type" : "string"
           },
           "status" : {
             "type" : "string"
           },
-          "fileName" : {
+          "file_name" : {
             "type" : "string"
           },
           "rows" : {
@@ -1428,22 +1396,22 @@
           "detail" : {
             "type" : "string"
           },
-          "jobId" : {
+          "job_id" : {
             "$ref" : "#/components/schemas/UUID"
           },
-          "createdAt" : {
+          "created_at" : {
             "$ref" : "#/components/schemas/Instant"
           },
-          "doneAt" : {
+          "done_at" : {
             "$ref" : "#/components/schemas/Instant"
           }
         }
       },
       "RequestSession" : {
         "type" : "object",
-        "required" : [ "tenantId", "reason" ],
+        "required" : [ "tenant_id", "reason" ],
         "properties" : {
-          "tenantId" : {
+          "tenant_id" : {
             "$ref" : "#/components/schemas/UUID"
           },
           "reason" : {
@@ -1455,9 +1423,9 @@
       },
       "RouteChange" : {
         "type" : "object",
-        "required" : [ "submissionRoute" ],
+        "required" : [ "submission_route" ],
         "properties" : {
-          "submissionRoute" : {
+          "submission_route" : {
             "type" : "string",
             "pattern" : "sunat|ose"
           },
@@ -1469,19 +1437,19 @@
       "RouteView" : {
         "type" : "object",
         "properties" : {
-          "submissionRoute" : {
+          "submission_route" : {
             "type" : "string"
           },
-          "oseObligated" : {
+          "ose_obligated" : {
             "type" : "boolean"
           },
-          "oseName" : {
+          "ose_name" : {
             "type" : "string"
           },
-          "oseInvoiceUrl" : {
+          "ose_invoice_url" : {
             "type" : "string"
           },
-          "osePerceptionUrl" : {
+          "ose_perception_url" : {
             "type" : "string"
           }
         }
@@ -1492,20 +1460,20 @@
           "id" : {
             "$ref" : "#/components/schemas/UUID"
           },
-          "sunatEnv" : {
+          "sunat_env" : {
             "type" : "string"
           },
-          "tipoComprobante" : {
+          "tipo_comprobante" : {
             "type" : "string"
           },
           "serie" : {
             "type" : "string"
           },
-          "nextNumber" : {
+          "next_number" : {
             "type" : "integer",
             "format" : "int64"
           },
-          "isDefault" : {
+          "is_default" : {
             "type" : "boolean"
           },
           "active" : {
@@ -1525,16 +1493,16 @@
           "reason" : {
             "type" : "string"
           },
-          "requestedAt" : {
+          "requested_at" : {
             "$ref" : "#/components/schemas/Instant"
           },
-          "approvedBy" : {
+          "approved_by" : {
             "type" : "string"
           },
-          "expiresAt" : {
+          "expires_at" : {
             "$ref" : "#/components/schemas/Instant"
           },
-          "revokedAt" : {
+          "revoked_at" : {
             "$ref" : "#/components/schemas/Instant"
           }
         }
@@ -1542,7 +1510,7 @@
       "Settings" : {
         "type" : "object",
         "properties" : {
-          "nombreComercial" : {
+          "nombre_comercial" : {
             "type" : "string",
             "maxLength" : 300
           },
@@ -1550,30 +1518,30 @@
             "type" : "string",
             "maxLength" : 300
           },
-          "deliveredOnEmitDefault" : {
+          "delivered_on_emit_default" : {
             "type" : "boolean"
           },
           "direccion" : {
             "type" : "string",
             "maxLength" : 500
           },
-          "pdfFormat" : {
+          "pdf_format" : {
             "type" : "string",
             "pattern" : "a4|ticket80|ticket58"
           },
-          "pdfOptions" : {
+          "pdf_options" : {
             "type" : "object",
             "additionalProperties" : { }
           },
-          "emailOnAccept" : {
+          "email_on_accept" : {
             "type" : "boolean"
           },
-          "emailSubject" : {
+          "email_subject" : {
             "type" : "string",
             "pattern" : "[^\\r\\n]*",
             "maxLength" : 200
           },
-          "emailBody" : {
+          "email_body" : {
             "type" : "string",
             "maxLength" : 5000
           }
@@ -1581,9 +1549,9 @@
       },
       "SfsRequest" : {
         "type" : "object",
-        "required" : [ "fileName", "cab", "det" ],
+        "required" : [ "file_name", "cab", "det" ],
         "properties" : {
-          "fileName" : {
+          "file_name" : {
             "type" : "string",
             "pattern" : "\\S"
           },
@@ -1599,7 +1567,7 @@
       },
       "SireCredentials" : {
         "type" : "object",
-        "required" : [ "username", "password", "clientId", "clientSecret" ],
+        "required" : [ "username", "password", "client_id", "client_secret" ],
         "properties" : {
           "username" : {
             "type" : "string",
@@ -1611,12 +1579,12 @@
             "pattern" : "\\S",
             "maxLength" : 200
           },
-          "clientId" : {
+          "client_id" : {
             "type" : "string",
             "pattern" : "\\S",
             "maxLength" : 200
           },
-          "clientSecret" : {
+          "client_secret" : {
             "type" : "string",
             "pattern" : "\\S",
             "maxLength" : 300
@@ -1635,7 +1603,7 @@
           "period" : {
             "type" : "string"
           },
-          "sunatEnv" : {
+          "sunat_env" : {
             "type" : "string"
           },
           "status" : {
@@ -1647,16 +1615,16 @@
           "reconciliation" : {
             "$ref" : "#/components/schemas/JsonNode"
           },
-          "proposalFile" : {
+          "proposal_file" : {
             "type" : "boolean"
           },
-          "replacementFile" : {
+          "replacement_file" : {
             "type" : "boolean"
           },
-          "createdAt" : {
+          "created_at" : {
             "$ref" : "#/components/schemas/Instant"
           },
-          "updatedAt" : {
+          "updated_at" : {
             "$ref" : "#/components/schemas/Instant"
           }
         }
@@ -1690,7 +1658,7 @@
             "type" : "string",
             "pattern" : "\\S"
           },
-          "startTls" : {
+          "start_tls" : {
             "type" : "boolean"
           }
         }
@@ -1729,7 +1697,7 @@
           "storage" : {
             "type" : "boolean"
           },
-          "keyVault" : {
+          "key_vault" : {
             "type" : "boolean"
           },
           "engine" : {
@@ -1745,13 +1713,13 @@
       },
       "Submission" : {
         "type" : "object",
-        "required" : [ "fileName", "contentBase64" ],
+        "required" : [ "file_name", "content_base64" ],
         "properties" : {
-          "fileName" : {
+          "file_name" : {
             "type" : "string",
             "pattern" : "\\S"
           },
-          "contentBase64" : {
+          "content_base64" : {
             "type" : "string",
             "pattern" : "\\S"
           }
@@ -1766,7 +1734,7 @@
           "reason" : {
             "type" : "string"
           },
-          "createdAt" : {
+          "created_at" : {
             "$ref" : "#/components/schemas/Instant"
           }
         }
@@ -1800,11 +1768,11 @@
           "plan" : {
             "type" : "string"
           },
-          "productionDocuments" : {
+          "production_documents" : {
             "type" : "integer",
             "format" : "int64"
           },
-          "otherDocuments" : {
+          "other_documents" : {
             "type" : "integer",
             "format" : "int64"
           }
@@ -1825,7 +1793,7 @@
           "status" : {
             "type" : "string"
           },
-          "retentionYears" : {
+          "retention_years" : {
             "type" : "integer",
             "format" : "int32"
           }
@@ -1856,7 +1824,7 @@
           "engine" : {
             "type" : "string"
           },
-          "xhandlerRust" : {
+          "xhandler_rust" : {
             "type" : "string"
           }
         }
@@ -1867,10 +1835,10 @@
           "motivo" : {
             "type" : "string"
           },
-          "notDelivered" : {
+          "not_delivered" : {
             "type" : "boolean"
           },
-          "reversalCommunicatedAt" : {
+          "reversal_communicated_at" : {
             "$ref" : "#/components/schemas/LocalDate"
           }
         }
@@ -1893,7 +1861,7 @@
           "active" : {
             "type" : "boolean"
           },
-          "createdAt" : {
+          "created_at" : {
             "$ref" : "#/components/schemas/Instant"
           },
           "secret" : {
@@ -1912,18 +1880,41 @@
             "format" : "int64"
           }
         }
+      },
+      "ApiError" : {
+        "type" : "object",
+        "description" : "Error de la API (AGENTS.md: `{ kind, message, detail }`).",
+        "properties" : {
+          "kind" : {
+            "type" : "string",
+            "description" : "Código estable del error, p. ej. `not_found`, `invalid_request`, `invalid_document`."
+          },
+          "message" : {
+            "type" : "string",
+            "description" : "Mensaje para personas, en español."
+          },
+          "detail" : {
+            "type" : [ "string", "null" ],
+            "description" : "Detalle opcional (p. ej. el campo inválido o el código SUNAT)."
+          }
+        },
+        "required" : [ "kind", "message", "detail" ]
       }
     },
     "securitySchemes" : {
-      "SecurityScheme" : {
-        "type" : "openIdConnect",
-        "description" : "Authentication"
+      "bearer" : {
+        "description" : "Authentication",
+        "type" : "http",
+        "scheme" : "bearer",
+        "bearerFormat" : "JWT"
       }
     }
   },
+  "openapi" : "3.1.0",
   "paths" : {
     "/api/v1/exchange-rates" : {
       "get" : {
+        "operationId" : "getExchangeRate",
         "parameters" : [ {
           "name" : "date",
           "in" : "query",
@@ -1941,14 +1932,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Get",
-        "tags" : [ "Exchange Rate Resource" ]
+        "tags" : [ "Exchange Rate Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/ose/documents" : {
       "post" : {
+        "operationId" : "submitOseDocument",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -1970,6 +1988,26 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Submit",
@@ -1978,6 +2016,7 @@
     },
     "/api/v1/ose/documents/{ruc}-{tipo}-{serie}-{numero}/cdr" : {
       "get" : {
+        "operationId" : "getOseCdr",
         "parameters" : [ {
           "name" : "numero",
           "in" : "path",
@@ -2016,6 +2055,26 @@
                 "schema" : { }
               }
             }
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Cdr",
@@ -2024,6 +2083,7 @@
     },
     "/api/v1/partners" : {
       "get" : {
+        "operationId" : "listMyPartners",
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -2037,14 +2097,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Mine",
-        "tags" : [ "Partner Resource" ]
+        "tags" : [ "Partner Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/partners/{partnerId}/branding" : {
       "put" : {
+        "operationId" : "setPartnerBranding",
         "parameters" : [ {
           "name" : "partnerId",
           "in" : "path",
@@ -2077,14 +2164,41 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Branding",
-        "tags" : [ "Partner Resource" ]
+        "tags" : [ "Partner Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/partners/{partnerId}/tenants" : {
       "get" : {
+        "operationId" : "listPartnerTenants",
         "parameters" : [ {
           "name" : "partnerId",
           "in" : "path",
@@ -2112,12 +2226,39 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Tenants",
-        "tags" : [ "Partner Resource" ]
+        "tags" : [ "Partner Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       },
       "post" : {
+        "operationId" : "createPartnerTenant",
         "parameters" : [ {
           "name" : "partnerId",
           "in" : "path",
@@ -2130,7 +2271,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/CreateTenant"
+                "$ref" : "#/components/schemas/CreatePartnerTenant"
               }
             }
           },
@@ -2147,14 +2288,41 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Create Tenant",
-        "tags" : [ "Partner Resource" ]
+        "tags" : [ "Partner Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/public/documents/{token}" : {
       "get" : {
+        "operationId" : "getPublicDocument",
         "parameters" : [ {
           "name" : "token",
           "in" : "path",
@@ -2173,6 +2341,26 @@
                 }
               }
             }
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Get",
@@ -2181,6 +2369,7 @@
     },
     "/api/v1/public/documents/{token}/{kind}" : {
       "get" : {
+        "operationId" : "downloadPublicDocumentFile",
         "parameters" : [ {
           "name" : "kind",
           "in" : "path",
@@ -2204,6 +2393,26 @@
                 "schema" : { }
               }
             }
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "File",
@@ -2212,6 +2421,7 @@
     },
     "/api/v1/public/lago/webhooks" : {
       "post" : {
+        "operationId" : "receiveLagoWebhook",
         "parameters" : [ {
           "name" : "X-Lago-Signature",
           "in" : "header",
@@ -2238,6 +2448,26 @@
                 "schema" : { }
               }
             }
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Receive",
@@ -2246,6 +2476,7 @@
     },
     "/api/v1/public/lookup" : {
       "post" : {
+        "operationId" : "lookupDocument",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -2269,6 +2500,26 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Lookup",
@@ -2277,6 +2528,7 @@
     },
     "/api/v1/public/lookup/ose" : {
       "post" : {
+        "operationId" : "lookupOseDocument",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -2300,6 +2552,26 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Ose",
@@ -2308,6 +2580,7 @@
     },
     "/api/v1/public/nubefact/{companyId}" : {
       "post" : {
+        "operationId" : "callNubefact",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -2337,6 +2610,26 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Call",
@@ -2345,6 +2638,7 @@
     },
     "/api/v1/status" : {
       "get" : {
+        "operationId" : "getStatus",
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -2352,6 +2646,26 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/Status"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
                 }
               }
             }
@@ -2363,6 +2677,7 @@
     },
     "/api/v1/support/sessions" : {
       "post" : {
+        "operationId" : "requestSupportSession",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -2384,14 +2699,41 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Request",
-        "tags" : [ "Support Request Resource" ]
+        "tags" : [ "Support Request Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants" : {
       "get" : {
+        "operationId" : "listTenants",
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -2405,17 +2747,44 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "List",
-        "tags" : [ "Tenant Resource" ]
+        "tags" : [ "Tenant Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       },
       "post" : {
+        "operationId" : "createTenant",
         "requestBody" : {
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/CreateTenant1"
+                "$ref" : "#/components/schemas/CreateTenant"
               }
             }
           },
@@ -2432,14 +2801,41 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Create",
-        "tags" : [ "Tenant Resource" ]
+        "tags" : [ "Tenant Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}" : {
       "get" : {
+        "operationId" : "getTenant",
         "parameters" : [ {
           "name" : "tenantId",
           "in" : "path",
@@ -2458,14 +2854,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Get",
-        "tags" : [ "Tenant Resource" ]
+        "tags" : [ "Tenant Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/audit" : {
       "get" : {
+        "operationId" : "listAuditEntries",
         "parameters" : [ {
           "name" : "tenantId",
           "in" : "path",
@@ -2498,14 +2921,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "List",
-        "tags" : [ "Audit Resource" ]
+        "tags" : [ "Audit Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/billing" : {
       "get" : {
+        "operationId" : "getBilling",
         "parameters" : [ {
           "name" : "tenantId",
           "in" : "path",
@@ -2525,12 +2975,39 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Get",
-        "tags" : [ "Billing Resource" ]
+        "tags" : [ "Billing Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       },
       "put" : {
+        "operationId" : "updateBillingDetails",
         "parameters" : [ {
           "name" : "tenantId",
           "in" : "path",
@@ -2563,14 +3040,41 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Details",
-        "tags" : [ "Billing Resource" ]
+        "tags" : [ "Billing Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies" : {
       "get" : {
+        "operationId" : "listCompanies",
         "parameters" : [ {
           "name" : "tenantId",
           "in" : "path",
@@ -2603,12 +3107,39 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "List",
-        "tags" : [ "Company Resource" ]
+        "tags" : [ "Company Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       },
       "post" : {
+        "operationId" : "createCompany",
         "parameters" : [ {
           "name" : "tenantId",
           "in" : "path",
@@ -2638,14 +3169,41 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Create",
-        "tags" : [ "Company Resource" ]
+        "tags" : [ "Company Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}" : {
       "get" : {
+        "operationId" : "getCompany",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -2671,14 +3229,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Get",
-        "tags" : [ "Company Resource" ]
+        "tags" : [ "Company Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/adapter-tokens" : {
       "get" : {
+        "operationId" : "listAdapterTokens",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -2708,14 +3293,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "List Tokens",
-        "tags" : [ "Adapter Resource" ]
+        "tags" : [ "Adapter Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/adapter-tokens/nubefact" : {
       "post" : {
+        "operationId" : "createNubefactToken",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -2752,14 +3364,41 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Create Token",
-        "tags" : [ "Adapter Resource" ]
+        "tags" : [ "Adapter Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/adapter-tokens/{tokenId}" : {
       "delete" : {
+        "operationId" : "revokeAdapterToken",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -2790,14 +3429,41 @@
                 "schema" : { }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Revoke Token",
-        "tags" : [ "Adapter Resource" ]
+        "tags" : [ "Adapter Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/catalogs/{kind}" : {
       "get" : {
+        "operationId" : "listCatalogEntries",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -2850,12 +3516,39 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "List",
-        "tags" : [ "Catalog Resource" ]
+        "tags" : [ "Catalog Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       },
       "post" : {
+        "operationId" : "createCatalogEntry",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -2899,14 +3592,41 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Create",
-        "tags" : [ "Catalog Resource" ]
+        "tags" : [ "Catalog Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/catalogs/{kind}/{id}" : {
       "put" : {
+        "operationId" : "updateCatalogEntry",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -2959,12 +3679,39 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Update",
-        "tags" : [ "Catalog Resource" ]
+        "tags" : [ "Catalog Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       },
       "get" : {
+        "operationId" : "getCatalogEntry",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -3001,15 +3748,42 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/Entry"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
                 }
               }
             }
           }
         },
         "summary" : "Get",
-        "tags" : [ "Catalog Resource" ]
+        "tags" : [ "Catalog Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       },
       "delete" : {
+        "operationId" : "deleteCatalogEntry",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -3047,14 +3821,41 @@
                 "schema" : { }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Delete",
-        "tags" : [ "Catalog Resource" ]
+        "tags" : [ "Catalog Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/certificate" : {
       "put" : {
+        "operationId" : "uploadCertificate",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -3099,12 +3900,39 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Upload",
-        "tags" : [ "Certificate Resource" ]
+        "tags" : [ "Certificate Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       },
       "get" : {
+        "operationId" : "getCertificate",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -3130,14 +3958,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Get",
-        "tags" : [ "Certificate Resource" ]
+        "tags" : [ "Certificate Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/conformity" : {
       "get" : {
+        "operationId" : "listConformity",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -3172,14 +4027,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "List",
-        "tags" : [ "Conformity Resource" ]
+        "tags" : [ "Conformity Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/conformity/export" : {
       "get" : {
+        "operationId" : "exportConformity",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -3209,14 +4091,41 @@
                 "schema" : { }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Export",
-        "tags" : [ "Conformity Resource" ]
+        "tags" : [ "Conformity Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/credentials" : {
       "get" : {
+        "operationId" : "listCredentials",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -3245,14 +4154,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "List",
-        "tags" : [ "Credential Resource" ]
+        "tags" : [ "Credential Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/credentials/gre" : {
       "put" : {
+        "operationId" : "setGreCredentials",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -3291,14 +4227,41 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Put Gre",
-        "tags" : [ "Credential Resource" ]
+        "tags" : [ "Credential Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/credentials/lookup" : {
       "put" : {
+        "operationId" : "setLookupCredentials",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -3337,14 +4300,41 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Put Lookup",
-        "tags" : [ "Credential Resource" ]
+        "tags" : [ "Credential Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/credentials/sire" : {
       "put" : {
+        "operationId" : "setSireCredentials",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -3383,14 +4373,41 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Put Sire",
-        "tags" : [ "Credential Resource" ]
+        "tags" : [ "Credential Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/credentials/smtp" : {
       "put" : {
+        "operationId" : "setSmtpCredentials",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -3429,14 +4446,41 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Put Smtp",
-        "tags" : [ "Credential Resource" ]
+        "tags" : [ "Credential Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/credentials/sol" : {
       "put" : {
+        "operationId" : "setSolCredentials",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -3475,10 +4519,36 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Put Sol",
-        "tags" : [ "Credential Resource" ]
+        "tags" : [ "Credential Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/documents" : {
@@ -3533,13 +4603,40 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
-        "tags" : [ "Document Resource" ]
+        "tags" : [ "Document Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/documents/sfs" : {
       "post" : {
+        "operationId" : "emitSfsDocument",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -3582,14 +4679,41 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Sfs",
-        "tags" : [ "Adapter Resource" ]
+        "tags" : [ "Adapter Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/documents/ubl" : {
       "post" : {
+        "operationId" : "uploadUblDocument",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -3636,14 +4760,41 @@
                 "schema" : { }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Upload Ubl",
-        "tags" : [ "Adapter Resource" ]
+        "tags" : [ "Adapter Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/environment" : {
       "post" : {
+        "operationId" : "changeCompanyEnvironment",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -3682,14 +4833,41 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Environment",
-        "tags" : [ "Company Environment Resource" ]
+        "tags" : [ "Company Environment Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/logo" : {
       "put" : {
+        "operationId" : "uploadCompanyLogo",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -3732,14 +4910,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Logo",
-        "tags" : [ "Company Environment Resource" ]
+        "tags" : [ "Company Environment Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/lookup/{tipo}/{numero}" : {
       "get" : {
+        "operationId" : "lookupIdentity",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -3779,14 +4984,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Lookup",
-        "tags" : [ "Identity Lookup" ]
+        "tags" : [ "Identity Lookup" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/pse" : {
       "get" : {
+        "operationId" : "listPseAuthorizations",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -3815,14 +5047,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "List",
-        "tags" : [ "Pse Resource" ]
+        "tags" : [ "Pse Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/pse/authorization" : {
       "delete" : {
+        "operationId" : "revokePseAuthorization",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -3849,12 +5108,39 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Revoke",
-        "tags" : [ "Pse Resource" ]
+        "tags" : [ "Pse Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       },
       "post" : {
+        "operationId" : "authorizePse",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -3893,14 +5179,41 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Authorize",
-        "tags" : [ "Pse Resource" ]
+        "tags" : [ "Pse Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/pse/mode" : {
       "put" : {
+        "operationId" : "setEmissionMode",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -3939,14 +5252,41 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Mode",
-        "tags" : [ "Pse Resource" ]
+        "tags" : [ "Pse Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/receptions" : {
       "post" : {
+        "operationId" : "receiveDocument",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -3997,12 +5337,39 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Receive",
-        "tags" : [ "Reception Resource" ]
+        "tags" : [ "Reception Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       },
       "get" : {
+        "operationId" : "listReceptions",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -4054,14 +5421,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "List",
-        "tags" : [ "Reception Resource" ]
+        "tags" : [ "Reception Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/receptions/{receptionId}/files/{kind}" : {
       "get" : {
+        "operationId" : "downloadReceptionFile",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -4099,14 +5493,41 @@
                 "schema" : { }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "File",
-        "tags" : [ "Reception Resource" ]
+        "tags" : [ "Reception Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/reports" : {
       "get" : {
+        "operationId" : "listReports",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -4135,12 +5556,39 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "List",
-        "tags" : [ "Report Resource" ]
+        "tags" : [ "Report Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       },
       "post" : {
+        "operationId" : "createReport",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -4177,14 +5625,41 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Create",
-        "tags" : [ "Report Resource" ]
+        "tags" : [ "Report Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/reports/{reportId}" : {
       "get" : {
+        "operationId" : "getReport",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -4217,14 +5692,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Get",
-        "tags" : [ "Report Resource" ]
+        "tags" : [ "Report Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/reports/{reportId}/file" : {
       "get" : {
+        "operationId" : "downloadReportFile",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -4255,14 +5757,41 @@
                 "schema" : { }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "File",
-        "tags" : [ "Report Resource" ]
+        "tags" : [ "Report Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/route" : {
       "put" : {
+        "operationId" : "setRoute",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -4301,12 +5830,39 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Set",
-        "tags" : [ "Route Resource" ]
+        "tags" : [ "Route Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       },
       "get" : {
+        "operationId" : "getRoute",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -4332,14 +5888,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Get",
-        "tags" : [ "Route Resource" ]
+        "tags" : [ "Route Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/series" : {
       "get" : {
+        "operationId" : "listSeries",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -4368,12 +5951,39 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Series",
-        "tags" : [ "Company Resource" ]
+        "tags" : [ "Company Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       },
       "post" : {
+        "operationId" : "createSeries",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -4410,14 +6020,41 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Create Series",
-        "tags" : [ "Company Resource" ]
+        "tags" : [ "Company Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/settings" : {
       "put" : {
+        "operationId" : "updateCompanySettings",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -4456,14 +6093,41 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Settings",
-        "tags" : [ "Company Environment Resource" ]
+        "tags" : [ "Company Environment Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/sire/{book}/{period}" : {
       "get" : {
+        "operationId" : "getSirePeriod",
         "parameters" : [ {
           "name" : "book",
           "in" : "path",
@@ -4503,14 +6167,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Get",
-        "tags" : [ "Sire Resource" ]
+        "tags" : [ "Sire Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/sire/{book}/{period}/files/{kind}" : {
       "get" : {
+        "operationId" : "downloadSireFile",
         "parameters" : [ {
           "name" : "book",
           "in" : "path",
@@ -4555,14 +6246,41 @@
                 "schema" : { }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "File",
-        "tags" : [ "Sire Resource" ]
+        "tags" : [ "Sire Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/sire/{book}/{period}/proposal" : {
       "post" : {
+        "operationId" : "requestSireProposal",
         "parameters" : [ {
           "name" : "book",
           "in" : "path",
@@ -4600,14 +6318,41 @@
                 "schema" : { }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Request Proposal",
-        "tags" : [ "Sire Resource" ]
+        "tags" : [ "Sire Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/sire/{book}/{period}/replace" : {
       "post" : {
+        "operationId" : "replaceSireProposal",
         "parameters" : [ {
           "name" : "book",
           "in" : "path",
@@ -4658,14 +6403,41 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Replace",
-        "tags" : [ "Sire Resource" ]
+        "tags" : [ "Sire Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/verify" : {
       "post" : {
+        "operationId" : "verifyCompany",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "path",
@@ -4691,14 +6463,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Verify",
-        "tags" : [ "Company Environment Resource" ]
+        "tags" : [ "Company Environment Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/data-subject-requests" : {
       "get" : {
+        "operationId" : "listDataSubjectRequests",
         "parameters" : [ {
           "name" : "tenantId",
           "in" : "path",
@@ -4721,12 +6520,39 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "List",
-        "tags" : [ "Data Subject Requests" ]
+        "tags" : [ "Data Subject Requests" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       },
       "post" : {
+        "operationId" : "createDataSubjectRequest",
         "parameters" : [ {
           "name" : "tenantId",
           "in" : "path",
@@ -4759,14 +6585,41 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Create",
-        "tags" : [ "Data Subject Requests" ]
+        "tags" : [ "Data Subject Requests" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/data-subject-requests/{id}/close" : {
       "post" : {
+        "operationId" : "closeDataSubjectRequest",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4806,14 +6659,41 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Close",
-        "tags" : [ "Data Subject Requests" ]
+        "tags" : [ "Data Subject Requests" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/data-subject-requests/{id}/personal-data" : {
       "get" : {
+        "operationId" : "getDataSubjectPersonalData",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4840,10 +6720,36 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Personal Data",
-        "tags" : [ "Data Subject Requests" ]
+        "tags" : [ "Data Subject Requests" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/documents" : {
@@ -4932,10 +6838,36 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "List",
-        "tags" : [ "Document Resource" ]
+        "tags" : [ "Document Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/documents/{documentId}" : {
@@ -4966,10 +6898,36 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Get",
-        "tags" : [ "Document Resource" ]
+        "tags" : [ "Document Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/documents/{documentId}/access-link" : {
@@ -5000,10 +6958,36 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Access Link",
-        "tags" : [ "Document Resource" ]
+        "tags" : [ "Document Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/documents/{documentId}/access-links/revoke" : {
@@ -5032,14 +7016,41 @@
                 "schema" : { }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Revoke Access Links",
-        "tags" : [ "Document Resource" ]
+        "tags" : [ "Document Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/documents/{documentId}/conformity" : {
       "get" : {
+        "operationId" : "getDocumentConformity",
         "parameters" : [ {
           "name" : "documentId",
           "in" : "path",
@@ -5065,10 +7076,36 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Document",
-        "tags" : [ "Conformity Resource" ]
+        "tags" : [ "Conformity Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/documents/{documentId}/delivered" : {
@@ -5099,14 +7136,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Delivered",
-        "tags" : [ "Document Resource" ]
+        "tags" : [ "Document Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/documents/{documentId}/email" : {
       "post" : {
+        "operationId" : "emailDocument",
         "parameters" : [ {
           "name" : "documentId",
           "in" : "path",
@@ -5143,10 +7207,36 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Send",
-        "tags" : [ "Document Email Resource" ]
+        "tags" : [ "Document Email Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/documents/{documentId}/events" : {
@@ -5181,9 +7271,35 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
-        "tags" : [ "Document Resource" ]
+        "tags" : [ "Document Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/documents/{documentId}/files/{kind}" : {
@@ -5219,10 +7335,36 @@
                 "schema" : { }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "File",
-        "tags" : [ "Document Resource" ]
+        "tags" : [ "Document Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/documents/{documentId}/hold" : {
@@ -5253,10 +7395,36 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Hold",
-        "tags" : [ "Document Resource" ]
+        "tags" : [ "Document Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/documents/{documentId}/release" : {
@@ -5287,10 +7455,36 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Release",
-        "tags" : [ "Document Resource" ]
+        "tags" : [ "Document Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/documents/{documentId}/retry" : {
@@ -5322,9 +7516,35 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
-        "tags" : [ "Document Resource" ]
+        "tags" : [ "Document Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/documents/{documentId}/void" : {
@@ -5373,9 +7593,35 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
-        "tags" : [ "Document Resource" ]
+        "tags" : [ "Document Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/documents/{documentId}/void/cancel" : {
@@ -5406,14 +7652,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Cancel Void",
-        "tags" : [ "Document Resource" ]
+        "tags" : [ "Document Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/email-suppressions" : {
       "get" : {
+        "operationId" : "listEmailSuppressions",
         "parameters" : [ {
           "name" : "tenantId",
           "in" : "path",
@@ -5435,14 +7708,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "List",
-        "tags" : [ "Email Suppressions" ]
+        "tags" : [ "Email Suppressions" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/email-suppressions/{address}" : {
       "delete" : {
+        "operationId" : "removeEmailSuppression",
         "parameters" : [ {
           "name" : "address",
           "in" : "path",
@@ -5466,14 +7766,41 @@
                 "schema" : { }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Remove",
-        "tags" : [ "Email Suppressions" ]
+        "tags" : [ "Email Suppressions" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/exit" : {
       "post" : {
+        "operationId" : "exitTenant",
         "parameters" : [ {
           "name" : "tenantId",
           "in" : "path",
@@ -5506,14 +7833,41 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Exit",
-        "tags" : [ "Tenant Exit" ]
+        "tags" : [ "Tenant Exit" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/exports" : {
       "get" : {
+        "operationId" : "listExports",
         "parameters" : [ {
           "name" : "tenantId",
           "in" : "path",
@@ -5536,12 +7890,39 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Exports",
-        "tags" : [ "Tenant Exit" ]
+        "tags" : [ "Tenant Exit" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       },
       "post" : {
+        "operationId" : "createExport",
         "parameters" : [ {
           "name" : "tenantId",
           "in" : "path",
@@ -5558,14 +7939,41 @@
                 "schema" : { }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Export",
-        "tags" : [ "Tenant Exit" ]
+        "tags" : [ "Tenant Exit" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/exports/{exportId}/parts/{index}" : {
       "get" : {
+        "operationId" : "downloadExportPart",
         "parameters" : [ {
           "name" : "exportId",
           "in" : "path",
@@ -5597,14 +8005,41 @@
                 "schema" : { }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Part",
-        "tags" : [ "Tenant Exit" ]
+        "tags" : [ "Tenant Exit" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/jobs" : {
       "get" : {
+        "operationId" : "listJobs",
         "parameters" : [ {
           "name" : "tenantId",
           "in" : "path",
@@ -5649,14 +8084,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "List",
-        "tags" : [ "Job Resource" ]
+        "tags" : [ "Job Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/jobs/{jobId}" : {
       "get" : {
+        "operationId" : "getJob",
         "parameters" : [ {
           "name" : "jobId",
           "in" : "path",
@@ -5679,17 +8141,44 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/JobView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
                 }
               }
             }
           }
         },
         "summary" : "Get",
-        "tags" : [ "Job Resource" ]
+        "tags" : [ "Job Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/jobs/{jobId}/cancel" : {
       "post" : {
+        "operationId" : "cancelJob",
         "parameters" : [ {
           "name" : "jobId",
           "in" : "path",
@@ -5715,14 +8204,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Cancel",
-        "tags" : [ "Job Resource" ]
+        "tags" : [ "Job Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/members" : {
       "get" : {
+        "operationId" : "listMembers",
         "parameters" : [ {
           "name" : "tenantId",
           "in" : "path",
@@ -5744,12 +8260,39 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "List",
-        "tags" : [ "Member Resource" ]
+        "tags" : [ "Member Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       },
       "post" : {
+        "operationId" : "addMember",
         "parameters" : [ {
           "name" : "tenantId",
           "in" : "path",
@@ -5779,14 +8322,41 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Add",
-        "tags" : [ "Member Resource" ]
+        "tags" : [ "Member Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/notification-preferences" : {
       "put" : {
+        "operationId" : "setNotificationPreferences",
         "parameters" : [ {
           "name" : "tenantId",
           "in" : "path",
@@ -5824,12 +8394,39 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Set Preferences",
-        "tags" : [ "Notification Resource" ]
+        "tags" : [ "Notification Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       },
       "get" : {
+        "operationId" : "getNotificationPreferences",
         "parameters" : [ {
           "name" : "tenantId",
           "in" : "path",
@@ -5851,14 +8448,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Preferences",
-        "tags" : [ "Notification Resource" ]
+        "tags" : [ "Notification Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/notification-settings" : {
       "put" : {
+        "operationId" : "updateNotificationSettings",
         "parameters" : [ {
           "name" : "tenantId",
           "in" : "path",
@@ -5891,14 +8515,41 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Settings",
-        "tags" : [ "Notification Resource" ]
+        "tags" : [ "Notification Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/notifications" : {
       "get" : {
+        "operationId" : "listNotifications",
         "parameters" : [ {
           "name" : "tenantId",
           "in" : "path",
@@ -5937,14 +8588,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "List",
-        "tags" : [ "Notification Resource" ]
+        "tags" : [ "Notification Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/notifications/read-all" : {
       "post" : {
+        "operationId" : "markAllNotificationsRead",
         "parameters" : [ {
           "name" : "tenantId",
           "in" : "path",
@@ -5961,14 +8639,41 @@
                 "schema" : { }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Read All",
-        "tags" : [ "Notification Resource" ]
+        "tags" : [ "Notification Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/notifications/{id}/read" : {
       "post" : {
+        "operationId" : "markNotificationRead",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -5992,14 +8697,41 @@
                 "schema" : { }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Read",
-        "tags" : [ "Notification Resource" ]
+        "tags" : [ "Notification Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/sender-domains" : {
       "get" : {
+        "operationId" : "listSenderDomains",
         "parameters" : [ {
           "name" : "tenantId",
           "in" : "path",
@@ -6021,12 +8753,39 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "List",
-        "tags" : [ "Sender Domain Resource" ]
+        "tags" : [ "Sender Domain Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       },
       "post" : {
+        "operationId" : "addSenderDomain",
         "parameters" : [ {
           "name" : "tenantId",
           "in" : "path",
@@ -6056,14 +8815,41 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Add",
-        "tags" : [ "Sender Domain Resource" ]
+        "tags" : [ "Sender Domain Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/sender-domains/{domain}/verify" : {
       "post" : {
+        "operationId" : "verifySenderDomain",
         "parameters" : [ {
           "name" : "domain",
           "in" : "path",
@@ -6089,14 +8875,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Verify",
-        "tags" : [ "Sender Domain Resource" ]
+        "tags" : [ "Sender Domain Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/support-sessions" : {
       "get" : {
+        "operationId" : "listSupportSessions",
         "parameters" : [ {
           "name" : "tenantId",
           "in" : "path",
@@ -6118,14 +8931,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "List",
-        "tags" : [ "Support Resource" ]
+        "tags" : [ "Support Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/support-sessions/{sessionId}/approve" : {
       "post" : {
+        "operationId" : "approveSupportSession",
         "parameters" : [ {
           "name" : "sessionId",
           "in" : "path",
@@ -6148,17 +8988,44 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/SessionView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
                 }
               }
             }
           }
         },
         "summary" : "Approve",
-        "tags" : [ "Support Resource" ]
+        "tags" : [ "Support Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/support-sessions/{sessionId}/revoke" : {
       "post" : {
+        "operationId" : "revokeSupportSession",
         "parameters" : [ {
           "name" : "sessionId",
           "in" : "path",
@@ -6184,14 +9051,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Revoke",
-        "tags" : [ "Support Resource" ]
+        "tags" : [ "Support Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/webhooks" : {
       "get" : {
+        "operationId" : "listWebhooks",
         "parameters" : [ {
           "name" : "tenantId",
           "in" : "path",
@@ -6213,12 +9107,39 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "List",
-        "tags" : [ "Webhook Resource" ]
+        "tags" : [ "Webhook Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       },
       "post" : {
+        "operationId" : "createWebhook",
         "parameters" : [ {
           "name" : "tenantId",
           "in" : "path",
@@ -6248,14 +9169,41 @@
           },
           "400" : {
             "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Create",
-        "tags" : [ "Webhook Resource" ]
+        "tags" : [ "Webhook Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/webhooks/{webhookId}" : {
       "delete" : {
+        "operationId" : "deleteWebhook",
         "parameters" : [ {
           "name" : "tenantId",
           "in" : "path",
@@ -6279,14 +9227,41 @@
                 "schema" : { }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Delete",
-        "tags" : [ "Webhook Resource" ]
+        "tags" : [ "Webhook Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/webhooks/{webhookId}/deliveries" : {
       "get" : {
+        "operationId" : "listWebhookDeliveries",
         "parameters" : [ {
           "name" : "tenantId",
           "in" : "path",
@@ -6332,14 +9307,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Deliveries",
-        "tags" : [ "Webhook Resource" ]
+        "tags" : [ "Webhook Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/webhooks/{webhookId}/deliveries/{deliveryId}/redeliver" : {
       "post" : {
+        "operationId" : "redeliverWebhook",
         "parameters" : [ {
           "name" : "deliveryId",
           "in" : "path",
@@ -6372,14 +9374,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Redeliver",
-        "tags" : [ "Webhook Resource" ]
+        "tags" : [ "Webhook Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/api/v1/tenants/{tenantId}/webhooks/{webhookId}/test" : {
       "post" : {
+        "operationId" : "testWebhook",
         "parameters" : [ {
           "name" : "tenantId",
           "in" : "path",
@@ -6405,14 +9434,41 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "summary" : "Test",
-        "tags" : [ "Webhook Resource" ]
+        "tags" : [ "Webhook Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
       }
     },
     "/ol-ti-itcpfegem/billService" : {
       "post" : {
+        "operationId" : "oseSoapBillServiceSunatPath",
         "requestBody" : {
           "content" : {
             "text/xml" : {
@@ -6450,6 +9506,7 @@
     },
     "/ose/billService" : {
       "post" : {
+        "operationId" : "oseSoapBillService",
         "requestBody" : {
           "content" : {
             "text/xml" : {

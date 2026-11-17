@@ -14,7 +14,7 @@ The snippets use a made-up xhandler `series` resource; swap in the real generate
 
 1. **Find the operation** in `client/openapi/<backend>.json` and its generated function and
    types in `src/app/client/<backend>/sdk.gen.ts` / `types.gen.ts` (names come from method +
-   path: `getV1TenantsByTenantIdCompaniesByCompanyIdSeries`). Missing? Refresh the spec
+   path: `listSeries`). Missing? Refresh the spec
    (`npm run openapi:refresh`) or ask for the endpoint; never hand-write the call.
 2. **Check it doesn't exist.** A list endpoint has one generic query; pass new `params` or
    `options` instead of adding a hook.
@@ -46,7 +46,7 @@ Invalidate `seriesKeys.list(tenantId, companyId)` after a create.
 
 ```ts
 export type ISeriesListParams =
-  ListParams<GetV1TenantsByTenantIdCompaniesByCompanyIdSeriesData>;
+  ListParams<ListSeriesData>;
 
 type SeriesListOptions = Omit<
   UseQueryOptions<PageSeriesView, XhandlerAxiosError>,
@@ -70,7 +70,7 @@ export const seriesListQueryOptions = ({
     queryKey: seriesKeys.listQuery(tenantId, companyId, params),
     queryFn: async () =>
       (
-        await getV1TenantsByTenantIdCompaniesByCompanyIdSeries({
+        await listSeries({
           path: { tenantId, companyId },
           query: params,
           throwOnError: true,
@@ -110,7 +110,7 @@ export const companyDetailQueryOptions = ({
     queryKey: companyKeys.detail(tenantId, companyId),
     queryFn: async () =>
       (
-        await getV1TenantsByTenantIdCompaniesByCompanyId({
+        await getCompany({
           path: { tenantId, companyId },
           throwOnError: true,
         })

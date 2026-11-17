@@ -27,7 +27,7 @@ Query functions call the generated SDK function with `throwOnError: true` and re
 ```ts
 queryFn: async () =>
   (
-    await getV1TenantsByTenantIdJobs({
+    await listJobs({
       path: { tenantId },
       query: params,
       throwOnError: true,
@@ -69,7 +69,7 @@ export const useJobsListQuery = ({
 ```
 
 - **`params`** — list/filter params, always required, typed from the generated data type
-  (`type IJobListParams = ListParams<GetV1TenantsByTenantIdJobsData>`). `ListParams` makes
+  (`type IJobListParams = ListParams<ListJobsData>`). `ListParams` makes
   `limit` required.
 - **`tenantId`** — passed explicitly to the pure `*QueryOptions`; the **hook** injects it with
   `useSelectedTenantId()`, so callers never pass it. Route loaders pass it from their params.

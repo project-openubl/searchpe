@@ -8,11 +8,11 @@ import {
 } from "@tanstack/react-query";
 
 import {
-  getV1TenantsByTenantIdJobs,
-  type GetV1TenantsByTenantIdJobsData,
+  cancelJob,
   type JobView,
+  listJobs,
+  type ListJobsData,
   type PageJobView,
-  postV1TenantsByTenantIdJobsByJobIdCancel,
 } from "@app/client/xhandler";
 import { useSelectedTenantId } from "@app/hooks/useSelectedTenantId";
 
@@ -22,7 +22,7 @@ import type { XhandlerAxiosError } from "../utils/openapiErrorTypes";
 
 export const JobsQueryKey = "jobs";
 
-export type IJobListParams = ListParams<GetV1TenantsByTenantIdJobsData>;
+export type IJobListParams = ListParams<ListJobsData>;
 
 /** A job's states (DESIGN.md §10.4); the spec types `state` as a plain string. */
 export const JOB_STATES = [
@@ -77,7 +77,7 @@ export const jobsListQueryOptions = ({
     queryKey: jobKeys.listQuery(tenantId, params),
     queryFn: async () =>
       (
-        await getV1TenantsByTenantIdJobs({
+        await listJobs({
           path: { tenantId },
           query: params,
           throwOnError: true,
@@ -105,7 +105,7 @@ export const useJobCancelMutation = (
   return useMutation<JobView, XhandlerAxiosError, JobView>({
     mutationFn: async (job) =>
       (
-        await postV1TenantsByTenantIdJobsByJobIdCancel({
+        await cancelJob({
           path: { tenantId, jobId: job.id ?? "" },
           throwOnError: true,
         })

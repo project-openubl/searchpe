@@ -1,10 +1,7 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import { xhandlerPublicClient } from "@app/axios-config/apiInit";
-import {
-  getV1PublicDocumentsByToken,
-  type PublicDocument,
-} from "@app/client/xhandler";
+import { getPublicDocument, type PublicDocument } from "@app/client/xhandler";
 
 import type { XhandlerAxiosError } from "../utils/openapiErrorTypes";
 
@@ -25,7 +22,7 @@ export const publicDocumentQueryOptions = ({ token }: { token: string }) =>
     queryKey: publicDocumentKeys.detail(token),
     queryFn: async () =>
       (
-        await getV1PublicDocumentsByToken({
+        await getPublicDocument({
           client: xhandlerPublicClient,
           path: { token },
           throwOnError: true,

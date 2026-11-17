@@ -25,7 +25,7 @@ export const useJobCancelMutation = (
   return useMutation<JobView, XhandlerAxiosError, JobView>({
     mutationFn: async (job) =>
       (
-        await postV1TenantsByTenantIdJobsByJobIdCancel({
+        await cancelJob({
           path: { tenantId, jobId: job.id ?? "" },
           throwOnError: true,
         })

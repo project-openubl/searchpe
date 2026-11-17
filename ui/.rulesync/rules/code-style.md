@@ -50,8 +50,9 @@ takes one destructured object, so each argument names itself at the call site:
 
 - API types come from the generated client barrels: `import type { CompanyView } from "@app/client/xhandler"`,
   `import type { VersionDto } from "@app/client/searchpe"`. Don't hand-write a type the client
-  already generates (request bodies, list params, responses). Error bodies are the exception:
-  the specs omit them, so they live in `queries/utils/openapiErrorTypes.ts`. Values the spec
+  already generates (request bodies, list params, responses). The `TError` aliases live in
+  `queries/utils/openapiErrorTypes.ts`: xhandler's wraps the generated `ApiError`; searchpe's
+  spec omits its error body, so that one is hand-written there. Values the spec
   types as a plain string but the server restricts (`JobView.state`) get an `as const` list and
   a guard next to their query.
 - Use `satisfies` to check a constant against a type without widening it

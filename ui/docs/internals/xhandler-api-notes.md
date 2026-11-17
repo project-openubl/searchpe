@@ -4,9 +4,9 @@ Behaviour of the xhandler API that shaped the code. The contract is xhandler `do
 §12; the conventions are in its `AGENTS.md`.
 
 - **Base path** `/api/v1`; the UI calls it as `/api/xhandler/v1`.
-- **JSON is snake_case** everywhere, including bodies the UI sends. The generated types are
-  snake_case thanks to the spec patch ([api-clients.md](api-clients.md)).
-- **Errors** are `{ kind, message, detail }`, `message` in Spanish
+- **JSON is snake_case** everywhere, including bodies the UI sends. The spec documents the
+  snake_case names, so the generated types match the wire ([api-clients.md](api-clients.md)).
+- **Errors** are `{ kind, message, detail }` (the spec's `ApiError`), `message` in Spanish
   ([ADR 0006](../adr/0006-api-error-display.md)).
 - **Tenancy.** Every tenant route is `/tenants/{tenantId}/…`; a foreign and an unknown tenant
   are both `404`. `GET /tenants` lists the user's memberships with their `role`

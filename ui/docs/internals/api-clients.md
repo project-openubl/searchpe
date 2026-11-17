@@ -17,28 +17,28 @@ generated folders are gitignored and rebuilt by `npm run generate` (`prepare` ru
 `client/config/specPatches.ts` patches each spec in memory (hey-api's `parser.patch.input`):
 
 - **Paths are rebased** from `/api/...` to `/...`, so the client's `baseURL` is the proxy prefix
-  and the proxies rewrite `/api/xhandler` → `/api`. Generated function names follow
-  (`getV1Status`, `getContribuyentes`).
+  and the proxies rewrite `/api/xhandler` → `/api`. searchpe's generated function names
+  follow (`getContribuyentes`); xhandler's come from its `operationId`s.
 - **xhandler: only `/api/v1/*`.** The SOAP endpoints (`/ose/billService`, …) aren't for the UI.
   The admin API is excluded from the spec by the service itself.
-- **xhandler: property names to snake_case.** The service serializes JSON with Jackson's
-  `SNAKE_CASE` strategy, but SmallRye documents the Java (camelCase) names. Until the spec is
-  fixed upstream the patch renames every schema property; once fixed it is a no-op.
-- **searchpe: no `/admin/*`, `/current-user/*`, `/templates/*`.** Basic-auth user management and
-  the old UI's settings script ([ADR 0004](../adr/0004-identity-and-permissions.md)).
+- **searchpe: no `/admin/*`, `/current-user/*`.** Basic-auth user management
+  ([ADR 0004](../adr/0004-identity-and-permissions.md)).
+
+xhandler's spec documents the snake_case names Jackson serializes (SmallRye's
+`property-naming-strategy`), so no property is renamed.
 
 ## Runtime wiring
 
 `initInterceptors()` (`axios-config/apiInit.ts`, called from `main.tsx`) points each generated
 client at its axios instance (`setConfig({ axios, baseURL })`). Query functions call the SDK
-functions with `throwOnError: true` and return `.data`; errors are `AxiosError`s typed with the
-hand-written bodies in `queries/utils/openapiErrorTypes.ts`. Public pages pass
-`client: xhandlerPublicClient` (no token).
+functions with `throwOnError: true` and return `.data`; errors are `AxiosError`s typed in
+`queries/utils/openapiErrorTypes.ts`: xhandler's with the generated `ApiError`, searchpe's with a
+hand-written body. Public pages pass `client: xhandlerPublicClient` (no token).
 
 ## Known spec gaps
 
-- xhandler operations have no `operationId`, so names derive from method + path and change if a
-  path changes.
-- Neither spec documents error bodies; xhandler's list pages (`Page*View`) have no total count
+- xhandler names every operation (`operationId`: `listJobs`, `getCompany`); searchpe doesn't,
+  so its names derive from method + path and change if a path changes.
+- searchpe documents no error body; xhandler's list pages (`Page*View`) have no total count
   (the pager estimates one page ahead).
 - searchpe's `VersionDto` documents both `isActive` and `active`; the JSON has `active`.

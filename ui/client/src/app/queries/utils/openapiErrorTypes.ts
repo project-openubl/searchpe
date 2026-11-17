@@ -1,21 +1,13 @@
 import type { AxiosError } from "axios";
 
-/**
- * Hand-authored error-body types: neither spec documents its error responses, so the generated
- * clients model no error shapes. Used as the `TError` of every query/mutation hook and read by
- * `getMutationErrorMessage` (ADR 0006).
- */
+import type { ApiError } from "@app/client/xhandler";
 
 /**
- * xhandler-service's error body for every 4xx/5xx it answers itself: `kind` is a stable code
- * for the UI's logic, `message` is Spanish text for the user, `detail` an optional precision
- * (a SUNAT code, the offending field).
+ * Error-body types used as the `TError` of every query/mutation hook and read by
+ * `getMutationErrorMessage` (ADR 0006). xhandler-service documents its body (`ApiError`:
+ * `kind` for the UI's logic, Spanish `message`, optional `detail`); searchpe's spec documents
+ * none, so its body is hand-written here.
  */
-export interface IXhandlerErrorData {
-  kind: string;
-  message: string;
-  detail?: string | null;
-}
 
 /** searchpe answers `{ message }` (`ErrorDto`) or, for framework errors, a plain body. */
 export interface ISearchpeErrorData {
@@ -23,7 +15,7 @@ export interface ISearchpeErrorData {
 }
 
 /** The `TError` of every xhandler-service query and mutation. */
-export type XhandlerAxiosError = AxiosError<IXhandlerErrorData>;
+export type XhandlerAxiosError = AxiosError<ApiError>;
 
 /** The `TError` of every searchpe query and mutation. */
 export type SearchpeAxiosError = AxiosError<ISearchpeErrorData | string>;

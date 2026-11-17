@@ -14,8 +14,8 @@ design is xhandler `docs/DESIGN.md` §12; behaviour notes are in
 
 - Base path `/api/v1`, called through the generated client (base URL `/api/xhandler`); never a
   hand-built URL.
-- JSON is **snake_case** in both directions. The generated types are snake_case because
-  `client/config/specPatches.ts` fixes the spec; don't convert names by hand.
+- JSON is **snake_case** in both directions. The spec documents the snake_case names, so the
+  generated types match the wire; don't convert names by hand.
 - Tenant data lives under `/tenants/{tenantId}/…`: the tenant comes from the URL through
   `useSelectedTenantId()` ([queries](queries.md)). A `404` there can mean a foreign tenant: show
   it as "no existe", never as "forbidden" ([ADR 0002](../../docs/adr/0002-navigation-partner-tenant-company.md)).
@@ -25,7 +25,7 @@ design is xhandler `docs/DESIGN.md` §12; behaviour notes are in
 
 ## Errors
 
-- Every error body is `{ kind, message, detail }` (`IXhandlerErrorData`): turn it into UI text
+- Every error body is `{ kind, message, detail }` (the generated `ApiError`): turn it into UI text
   with `getMutationErrorMessage({ error, fallback })`; never parse `error.response.data` ad hoc.
 - Branch on `getApiErrorKind(error)` (`invalid_document`, `wrong_password`, …), never on the
   Spanish `message`, which can change.

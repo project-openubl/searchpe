@@ -1,9 +1,7 @@
 import axios from "axios";
 
-import type {
-  ISearchpeErrorData,
-  IXhandlerErrorData,
-} from "@app/queries/utils/openapiErrorTypes";
+import type { ApiError } from "@app/client/xhandler";
+import type { ISearchpeErrorData } from "@app/queries/utils/openapiErrorTypes";
 
 /** A failure as the UI shows it (toast or form alert), ADR 0006. */
 export interface IMutationErrorMessage {
@@ -25,11 +23,11 @@ export const NETWORK_ERROR_DESCRIPTION =
 export const httpStatusDescription = (status: number): string =>
   `El servidor respondió con un error (HTTP ${status}).`;
 
-const isXhandlerErrorData = (data: unknown): data is IXhandlerErrorData =>
+const isXhandlerErrorData = (data: unknown): data is ApiError =>
   typeof data === "object" &&
   data !== null &&
-  typeof (data as IXhandlerErrorData).kind === "string" &&
-  typeof (data as IXhandlerErrorData).message === "string";
+  typeof (data as ApiError).kind === "string" &&
+  typeof (data as ApiError).message === "string";
 
 /** The server's own words for an error body of either backend, if it has any. */
 export const describeApiError = (

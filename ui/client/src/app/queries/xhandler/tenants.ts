@@ -6,8 +6,8 @@ import {
 } from "@tanstack/react-query";
 
 import {
-  getV1Tenants,
-  getV1TenantsByTenantId,
+  getTenant,
+  listTenants,
   type TenantSummary,
   type TenantView,
 } from "@app/client/xhandler";
@@ -33,7 +33,7 @@ export const myTenantsQueryOptions = queryOptions<
   XhandlerAxiosError
 >({
   queryKey: tenantKeys.mine(),
-  queryFn: async () => (await getV1Tenants({ throwOnError: true })).data,
+  queryFn: async () => (await listTenants({ throwOnError: true })).data,
   staleTime: 60 * 1000,
 });
 
@@ -52,7 +52,7 @@ export const tenantDetailQueryOptions = ({ tenantId }: { tenantId: string }) =>
     queryKey: tenantKeys.detail(tenantId),
     queryFn: async () =>
       (
-        await getV1TenantsByTenantId({
+        await getTenant({
           path: { tenantId },
           throwOnError: true,
         })
