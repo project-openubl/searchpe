@@ -40,7 +40,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -305,13 +304,13 @@ public class VersionService {
         Path csvPath = txtFile.getParentFile().toPath().resolve(UUID.randomUUID() + ".csv");
         File csvFile = csvPath.toFile();
         csvFile.createNewFile();
-        FileWriter csvFileWriter = new FileWriter(csvFile, StandardCharsets.ISO_8859_1);
+        FileWriter csvFileWriter = new FileWriter(csvFile, DataHelper.PADRON_CHARSET);
         csvFileWriter.write(CSV_HEADER);
 
         String row;
 
         try (
-                FileReader fileReader = new FileReader(txtFile, StandardCharsets.ISO_8859_1);
+                FileReader fileReader = new FileReader(txtFile, DataHelper.PADRON_CHARSET);
                 BufferedReader br = new BufferedReader(fileReader)
         ) {
             String line;
@@ -378,7 +377,7 @@ public class VersionService {
                     csvPath = txtFile.getParentFile().toPath().resolve(UUID.randomUUID() + ".csv");
                     csvFile = csvPath.toFile();
                     csvFile.createNewFile();
-                    csvFileWriter = new FileWriter(csvFile, StandardCharsets.ISO_8859_1);
+                    csvFileWriter = new FileWriter(csvFile, DataHelper.PADRON_CHARSET);
                     csvFileWriter.write(CSV_HEADER);
                 }
             }
@@ -404,7 +403,7 @@ public class VersionService {
     private void importCSVFile(Long versionId, File csvFile) {
         Long rowsInserted;
         try (
-                FileReader fileReader = new FileReader(csvFile);
+                FileReader fileReader = new FileReader(csvFile, DataHelper.PADRON_CHARSET);
                 BufferedReader bufferedReader = new BufferedReader(fileReader);
 
                 Connection connection = dataSource.getConnection()

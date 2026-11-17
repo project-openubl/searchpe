@@ -41,9 +41,11 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
         return ContribuyenteSearchResourceTest.class;
     }
 
-    @Test
-    public void getContribuyentes() {
-        // Given
+    /**
+     * Imports the padrón served by {@link io.github.project.openubl.searchpe.resources.config.SunatServer} into a new
+     * version and waits until the import completes.
+     */
+    private void importNewVersion() {
         VersionDto version = givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
@@ -65,6 +67,31 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
                             .extract().body().as(VersionDto.class);
                     return watchedVersion.getStatus() == Status.COMPLETED;
                 });
+    }
+
+    @Test
+    public void getContribuyenteKeepsSpanishCharacters() {
+        // Given
+        importNewVersion();
+
+        // Then
+        givenAuth("alice")
+                .header("Content-Type", "application/json")
+                .when()
+                .get("/api/contribuyentes/20100110513")
+                .then()
+                .statusCode(200)
+                .body(
+                        "ruc", is("20100110513"),
+                        // Ñ is written as a Unicode escape so the assertion does not depend on the encoding of this file
+                        "nombre", is("COMPA\u00d1IA MINERA MILPO S.A.A.")
+                );
+    }
+
+    @Test
+    public void getContribuyentes() {
+        // Given
+        importNewVersion();
 
         // Then
         givenAuth("alice")
@@ -84,27 +111,7 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
     @Test
     public void getContribuyentesUsingTextFilter() {
         // Given
-        VersionDto version = givenAuth("alice")
-                .header("Content-Type", "application/json")
-                .when()
-                .post("/api/versions")
-                .then()
-                .statusCode(200)
-                .body(notNullValue())
-                .extract().body().as(VersionDto.class);
-
-        assertNotNull(version);
-
-        await().atMost(3, TimeUnit.MINUTES)
-                .until(() -> {
-                    VersionDto watchedVersion = givenAuth("alice")
-                            .header("Content-Type", "application/json")
-                            .when()
-                            .get("/api/versions/" + version.getId())
-                            .then()
-                            .extract().body().as(VersionDto.class);
-                    return watchedVersion.getStatus() == Status.COMPLETED;
-                });
+        importNewVersion();
 
         // Then
         givenAuth("alice")
@@ -127,27 +134,7 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
     @Test
     public void getContribuyentesUsingTipoPersonaFilter() {
         // Given
-        VersionDto version = givenAuth("alice")
-                .header("Content-Type", "application/json")
-                .when()
-                .post("/api/versions")
-                .then()
-                .statusCode(200)
-                .body(notNullValue())
-                .extract().body().as(VersionDto.class);
-
-        assertNotNull(version);
-
-        await().atMost(3, TimeUnit.MINUTES)
-                .until(() -> {
-                    VersionDto watchedVersion = givenAuth("alice")
-                            .header("Content-Type", "application/json")
-                            .when()
-                            .get("/api/versions/" + version.getId())
-                            .then()
-                            .extract().body().as(VersionDto.class);
-                    return watchedVersion.getStatus() == Status.COMPLETED;
-                });
+        importNewVersion();
 
         // Then
         givenAuth("alice")
@@ -168,27 +155,7 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
     @Test
     public void getContribuyentesUsingFilterTextAndTipoPersonaFilter() {
         // Given
-        VersionDto version = givenAuth("alice")
-                .header("Content-Type", "application/json")
-                .when()
-                .post("/api/versions")
-                .then()
-                .statusCode(200)
-                .body(notNullValue())
-                .extract().body().as(VersionDto.class);
-
-        assertNotNull(version);
-
-        await().atMost(3, TimeUnit.MINUTES)
-                .until(() -> {
-                    VersionDto watchedVersion = givenAuth("alice")
-                            .header("Content-Type", "application/json")
-                            .when()
-                            .get("/api/versions/" + version.getId())
-                            .then()
-                            .extract().body().as(VersionDto.class);
-                    return watchedVersion.getStatus() == Status.COMPLETED;
-                });
+        importNewVersion();
 
         // Then
         givenAuth("alice")
