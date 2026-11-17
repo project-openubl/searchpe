@@ -213,6 +213,10 @@ public class EmitService {
         String tipo = DocumentTypes.tipoComprobante(kind, spec);
         String sunatEnv = company.sunatEnv;
 
+        if ("pse".equals(company.emissionMode) && "production".equals(sunatEnv) && !pseAuthorized(company)) {
+            throw ApiException.conflict("pse_not_authorized",
+                    "La empresa no tiene registrada su autorización a la plataforma como PSE en SUNAT Operaciones en Línea.");
+        }
         Routes.Assignment route = routes.assign(company, sunatEnv, tipo);
 
         fillProveedor(spec, company);
@@ -262,6 +266,7 @@ public class EmitService {
         doc.digestValue = signed.digestValue();
         doc.endpoint = route.endpoint();
         doc.credentialId = route.credentialId();
+        doc.emissionMode = company.emissionMode;
         doc.affectedDocumentId = affectedDocument(company.id, sunatEnv, spec);
         doc.nextAttemptAt = now;
         doc.progressAt = now;
@@ -332,6 +337,11 @@ public class EmitService {
             throw ApiException.invalid("invalid_document", "Una boleta mayor a S/ 700 debe identificar al comprador.",
                     "2514: equivalente S/ " + pen.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString());
         }
+    }
+
+    private boolean pseAuthorized(Company company) {
+        return !em.createNativeQuery("SELECT 1 FROM xhandler.pse_authorization WHERE company_id = :c AND revoked_at IS NULL")
+                .setParameter("c", company.id).getResultList().isEmpty();
     }
 
     /** D defaults to today in Lima; SUNAT refuses more than 2 days ahead (2329) and late documents lose their validity. */

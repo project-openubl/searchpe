@@ -80,6 +80,8 @@ public class Document extends PanacheEntityBase {
     public Instant cdrReceivedAt;
     public Instant reversalCommunicatedAt;
     public String voidReason;
+    /** software (the issuer signs and sends) or pse (the platform does, DESIGN.md §1.1) */
+    public String emissionMode = "software";
     public String lastOutcome;
     public int sameOutcomeCount;
     public Instant progressAt;

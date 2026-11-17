@@ -231,6 +231,9 @@ public class AttemptHandler implements JobHandler {
         }
         doc.attempts++;
         doc.attemptJobId = context.id();
+        // Throughput per PSE SOL user (the pool, §10.2); tenant credentials are not tagged (cardinality)
+        metrics.counter("xhandler.sunat.attempts", "mode", doc.emissionMode,
+                "credential", "pse".equals(doc.emissionMode) && doc.credentialId != null ? doc.credentialId.toString() : "tenant").increment();
         if (action != Action.VERIFY_TICKET) {
             doc.sendStartedAt = now;
         }

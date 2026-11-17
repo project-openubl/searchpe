@@ -191,6 +191,7 @@ public class Summaries {
                 : routes.assignLike(company, sunatEnv, tipo, followsRouteOf);
         doc.endpoint = route.endpoint();
         doc.credentialId = route.credentialId();
+        doc.emissionMode = company.emissionMode;
         doc.nextAttemptAt = now;
         doc.progressAt = now;
         doc.createdAt = now;

@@ -20,11 +20,13 @@ public class SigningService {
     private final Engine engine;
     private final KeyVault vault;
     private final HsmExecutor hsm;
+    private final PlatformKeys platformKeys;
 
-    public SigningService(Engine engine, KeyVault vault, HsmExecutor hsm) {
+    public SigningService(Engine engine, KeyVault vault, HsmExecutor hsm, PlatformKeys platformKeys) {
         this.engine = engine;
         this.vault = vault;
         this.hsm = hsm;
+        this.platformKeys = platformKeys;
     }
 
     /** A signed document; {@code signingKeyId} is null for SUNAT's demo key. */
@@ -40,6 +42,19 @@ public class SigningService {
 
     /** Signs for a given environment (a document's own, which may differ after a switch). */
     public Signed sign(Company company, String sunatEnv, String xml) {
+        if ("pse".equals(company.emissionMode)) {
+            // As PSE the platform signs with its own certificate (RS 199-2015 art. 5); the issuer stays liable
+            Optional<PlatformKeys.Key> pse = platformKeys.active("pse");
+            if (pse.isPresent()) {
+                EngineModels.SignPrepareResponse prepared = engine.signPrepare(xml);
+                byte[] signature = platformKeys.sign(pse.get(), Base64.getDecoder().decode(prepared.dataToSign()));
+                EngineModels.SignResponse signed = engine.signFinalize(xml, signature, pse.get().certificate());
+                return new Signed(signed.xml(), signed.digestValue(), null);
+            }
+            if ("production".equals(sunatEnv)) {
+                throw ApiException.invalid("no_platform_certificate", "La plataforma aún no tiene su certificado de PSE.", null);
+            }
+        }
         Optional<SigningKey> key = SigningKey.active(company.id);
         if (key.isEmpty()) {
             if (!"production".equals(sunatEnv)) {

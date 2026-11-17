@@ -29,9 +29,11 @@ public class Routes {
     public record Assignment(String endpoint, UUID credentialId) {}
 
     private final CredentialService credentials;
+    private final io.github.projectopenubl.xhandler.secrets.PlatformCredentials platformCredentials;
 
-    public Routes(CredentialService credentials) {
+    public Routes(CredentialService credentials, io.github.projectopenubl.xhandler.secrets.PlatformCredentials platformCredentials) {
         this.credentials = credentials;
+        this.platformCredentials = platformCredentials;
     }
 
     /** SUNAT service of a document type: billService (invoice), otroscpe (perception) or GRE (despatch). */
@@ -54,6 +56,12 @@ public class Routes {
     @Transactional(Transactional.TxType.MANDATORY)
     public Assignment assign(Company company, String sunatEnv, String tipoComprobante) {
         String service = service(tipoComprobante);
+        if ("pse".equals(company.emissionMode) && "production".equals(sunatEnv) && !"despatch".equals(service)) {
+            // As PSE the platform sends with its own SOL users, spread over the pool (§10.2)
+            UUID member = platformCredentials.pick("pse_sol").orElseThrow(() ->
+                    ApiException.invalid("no_credentials", "La plataforma no tiene usuarios SOL de PSE activos.", null));
+            return new Assignment(endpoint(sunatEnv, tipoComprobante), member);
+        }
         // Test environments never reach a real OSE: only production documents go through it
         boolean viaOse = "ose".equals(company.submissionRoute) && !"despatch".equals(service) && "production".equals(sunatEnv);
         if (!viaOse && company.oseObligated && "production".equals(sunatEnv) && !"despatch".equals(service)) {
@@ -119,6 +127,10 @@ public class Routes {
             urls = new EngineModels.Urls(ose.invoiceUrl, ose.perceptionUrl, null);
         }
         EngineModels.Credentials secret = null;
+        if ("pse".equals(document.emissionMode) && "production".equals(document.sunatEnv) && !document.isGuia()) {
+            Map<String, String> fields = platformCredentials.read(document.credentialId, "pse_sol", "send:" + document.id);
+            return new Target(environment, new EngineModels.Credentials(fields.get("username"), fields.get("password"), null, null), null);
+        }
         if (document.credentialId != null) {
             String purpose = "send:" + document.id;
             Map<String, String> fields = credentials.read(scope, company, kind, purpose).orElseThrow(() -> new MissingCredentials(
