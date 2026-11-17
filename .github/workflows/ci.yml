@@ -1,14 +1,20 @@
 name: CI
 
 on:
+  # Branches are tested through their pull requests; main after merging
   push:
-    branches-ignore:
-      - "dependabot/**"
+    branches:
+      - main
     paths-ignore:
       - "README.md"
   pull_request:
     paths-ignore:
       - "README.md"
+
+# A new push to a pull request cancels the run of the previous one
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   jvm-tests:
