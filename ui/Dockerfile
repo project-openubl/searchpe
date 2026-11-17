@@ -1,5 +1,6 @@
 # Builder image
-FROM registry.access.redhat.com/ubi9/nodejs-22:latest AS builder
+# Base images are pinned to explicit tags; bump them deliberately.
+FROM registry.access.redhat.com/ubi9/nodejs-22:9.9-1794504241 AS builder
 
 USER 1001
 COPY --chown=1001 . .
@@ -12,13 +13,9 @@ RUN \
   npm run dist
 
 # Runner image
-FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:latest
+FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:9.9-1794500978
 
-# Add ps package to allow liveness probe for k8s cluster
-# Add tar package to allow copying files with kubectl scp
-USER 0
-RUN microdnf -y install tar procps-ng && microdnf clean all
-
+# Probes are HTTP (/healthz) and entrypoint.sh needs only bash and coreutils: no extra packages.
 USER 1001
 
 LABEL name="openubl/openubl-ui" \

@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import {
   getApiErrorKind,
   getMutationErrorMessage,
+  httpStatusDescription,
   NETWORK_ERROR_DESCRIPTION,
   PERMISSION_DENIED_DESCRIPTION,
 } from "./apiError";
@@ -74,7 +75,17 @@ describe("getMutationErrorMessage", () => {
     expect(
       getMutationErrorMessage({ error, fallback: "No se pudo crear" })
         .description,
-    ).toBe("Request failed");
+    ).toBe("El servidor respondió con un error (HTTP 502).");
+  });
+
+  it("names the status in Spanish when the server says nothing", () => {
+    const error = httpError({ status: 500, data: undefined });
+
+    expect(
+      getMutationErrorMessage({ error, fallback: "No se pudo crear" })
+        .description,
+    ).toBe(httpStatusDescription(500));
+    expect(httpStatusDescription(500)).toContain("500");
   });
 
   it("says the server couldn't be reached when there is no response", () => {

@@ -28,7 +28,12 @@ tenant membership (owner, admin, operator, viewer; support reads only).
 - [ ] Until permissions load, or when they can't be read, nothing is disabled; the server still
       enforces every call. A searchpe running with authorization off allows everything.
 - [ ] A page the user may not use at all shows an unauthorized state in place of its content.
-- [ ] An expired session renews silently; if it can't, the user is signed out.
+- [ ] An expired session renews silently (one renewal shared by concurrent requests). If it
+      can't, xhandler pages send the user to log in again, back to the same page; searchpe's
+      section shows as unavailable and the rest of the app goes on. The UI never signs the user
+      out on its own.
+- [ ] Logging out lands on the public **Sesión cerrada** page (`/sesion-cerrada`), which never
+      starts a login by itself.
 
 ## Consequences
 

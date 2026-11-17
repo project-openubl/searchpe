@@ -21,6 +21,10 @@ export const PERMISSION_DENIED_DESCRIPTION =
 export const NETWORK_ERROR_DESCRIPTION =
   "No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.";
 
+/** The generic reason for an HTTP error without a server message; never axios' English text. */
+export const httpStatusDescription = (status: number): string =>
+  `El servidor respondió con un error (HTTP ${status}).`;
+
 const isXhandlerErrorData = (data: unknown): data is IXhandlerErrorData =>
   typeof data === "object" &&
   data !== null &&
@@ -77,5 +81,9 @@ export const getMutationErrorMessage = ({
       detail,
     };
   }
-  return { title: fallback, description: message ?? error.message, detail };
+  return {
+    title: fallback,
+    description: message ?? httpStatusDescription(error.response.status),
+    detail,
+  };
 };

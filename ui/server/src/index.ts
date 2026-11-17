@@ -11,10 +11,17 @@ import { createHttpTerminator } from "http-terminator";
 import {
   brandingStrings,
   encodeEnv,
+  hasUnsafePathSegments,
+  INVALID_API_PATH_ERROR,
   OPENUBL_ENV,
-  SERVER_ENV_KEYS,
+  resolveApiProxyPath,
 } from "@openubl-ui/common";
-import proxies from "./proxies.js";
+import proxies, { type IBackendProxy } from "./proxies.js";
+import {
+  originOf,
+  securityHeaders,
+  staticCacheControl,
+} from "./securityHeaders.js";
 
 const debugMode = process.env.DEBUG === "1";
 if (debugMode) {
@@ -29,14 +36,37 @@ const port = OPENUBL_ENV.PORT ? parseInt(OPENUBL_ENV.PORT, 10) : 8080;
 const app = express();
 app.set("x-powered-by", false);
 
+app.use(securityHeaders({ oidcOrigin: originOf(OPENUBL_ENV.OIDC_SERVER_URL) }));
+
 // Liveness/readiness for HTTP probes; it says nothing about the backends.
 app.get("/healthz", (_, res) => {
   res.status(200).json({ status: "UP" });
 });
 
-app.use(createProxyMiddleware(proxies.xhandler));
-if (OPENUBL_ENV.SEARCHPE_ENABLED === "true") {
-  app.use(createProxyMiddleware(proxies.searchpe));
+// No API path that could climb out of its prefix (`..`, encoded slashes, backslashes) reaches a
+// proxy, and none lands outside the backend's `/api/` after the rewrite.
+app.use("/api", (req, res, next) => {
+  if (hasUnsafePathSegments(req.originalUrl)) {
+    res.status(400).json(INVALID_API_PATH_ERROR);
+    return;
+  }
+  next();
+});
+
+const mountProxy = ({ route, options }: IBackendProxy) => {
+  app.use(route.prefix, (req, res, next) => {
+    if (resolveApiProxyPath(req.originalUrl, route) === undefined) {
+      res.status(400).json(INVALID_API_PATH_ERROR);
+      return;
+    }
+    next();
+  });
+  app.use(createProxyMiddleware(options));
+};
+
+mountProxy(proxies.xhandler);
+if (proxies.searchpe) {
+  mountProxy(proxies.searchpe);
 }
 
 // An API path no proxy took (searchpe not deployed) is a 404, never the SPA's index.html.
@@ -48,9 +78,24 @@ app.use("/api", (_, res) => {
 });
 
 app.engine("ejs", ejs.renderFile);
-app.use(express.json());
 app.set("views", pathToClientDist);
-app.use(express.static(pathToClientDist));
+app.use(
+  express.static(pathToClientDist, {
+    index: false,
+    setHeaders: (res, filePath) => {
+      res.setHeader(
+        "Cache-Control",
+        staticCacheControl(path.relative(pathToClientDist, filePath)),
+      );
+    },
+  }),
+);
+
+// The browser learns whether searchpe exists from the proxy the server mounted, never its URL.
+const clientEnv = {
+  ...OPENUBL_ENV,
+  SEARCHPE_ENABLED: proxies.searchpe ? "true" : "false",
+};
 
 // Handle any request that hasn't already been handled by express.static or proxy
 app.get("*splat", (_, res) => {
@@ -61,8 +106,10 @@ app.get("*splat", (_, res) => {
       To serve the UI through Express as in production, run: <pre>npm run start</pre>
     `);
   } else {
+    res.setHeader("Cache-Control", "no-store");
     res.render("index.html.ejs", {
-      _env: encodeEnv(OPENUBL_ENV, SERVER_ENV_KEYS),
+      _env: encodeEnv(clientEnv),
+      nonce: res.locals.nonce as string,
       branding: brandingStrings,
     });
   }

@@ -1,11 +1,12 @@
 import type { Options } from "http-proxy-middleware";
 
 import {
+  type IApiProxyRoute,
+  matchesProxyPrefix,
   OPENUBL_ENV,
-  rewriteSearchpeApiPath,
-  rewriteXhandlerApiPath,
-  SEARCHPE_PROXY_PREFIX,
-  XHANDLER_PROXY_PREFIX,
+  resolveApiProxyPath,
+  SEARCHPE_API_ROUTE,
+  XHANDLER_API_ROUTE,
 } from "@openubl-ui/common";
 
 type Logger = {
@@ -23,24 +24,45 @@ const logger: Logger =
         error: console.error,
       };
 
+/** A proxied backend: its route (prefix, rewrite, allowed paths) and the proxy's options. */
+export interface IBackendProxy {
+  route: IApiProxyRoute;
+  options: Options;
+}
+
+const backendProxy = (
+  route: IApiProxyRoute,
+  target: string,
+): IBackendProxy => ({
+  route,
+  options: {
+    pathFilter: (path) => matchesProxyPrefix(path, route.prefix),
+    target,
+    // The path guard in front of the proxy already answered 400 to anything this can't map;
+    // the fallback is a path no backend serves, never the unmapped one.
+    pathRewrite: (path) => resolveApiProxyPath(path, route) ?? "/api/-",
+    logger,
+    changeOrigin: true,
+    xfwd: true,
+  },
+});
+
 /**
  * One proxy per backend. The browser calls them on this origin (no CORS) and sends its own
- * `Authorization: Bearer` header, which passes through untouched.
+ * `Authorization: Bearer` header, which passes through untouched. searchpe only exists when
+ * `SEARCHPE_API_URL` is set: no target, no proxy.
  */
-export default {
-  xhandler: {
-    pathFilter: XHANDLER_PROXY_PREFIX,
-    target: OPENUBL_ENV.XHANDLER_API_URL ?? "http://localhost:8080",
-    pathRewrite: rewriteXhandlerApiPath,
-    logger,
-    changeOrigin: true,
-  },
-  // Only mounted when SEARCHPE_API_URL is set (searchpe is optional).
-  searchpe: {
-    pathFilter: SEARCHPE_PROXY_PREFIX,
-    target: OPENUBL_ENV.SEARCHPE_API_URL,
-    pathRewrite: rewriteSearchpeApiPath,
-    logger,
-    changeOrigin: true,
-  },
-} satisfies Record<string, Options>;
+export const proxies: {
+  xhandler: IBackendProxy;
+  searchpe: IBackendProxy | undefined;
+} = {
+  xhandler: backendProxy(
+    XHANDLER_API_ROUTE,
+    OPENUBL_ENV.XHANDLER_API_URL ?? "http://localhost:8080",
+  ),
+  searchpe: OPENUBL_ENV.SEARCHPE_API_URL
+    ? backendProxy(SEARCHPE_API_ROUTE, OPENUBL_ENV.SEARCHPE_API_URL)
+    : undefined,
+};
+
+export default proxies;

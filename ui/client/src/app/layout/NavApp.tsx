@@ -6,6 +6,7 @@ import { Link, useLocation, useMatchRoute } from "@tanstack/react-router";
 import { Nav, NavExpandable, NavItem, NavList } from "@patternfly/react-core";
 
 import { useApiStatus } from "@app/hooks/useApiStatus";
+import { useAuth } from "@app/hooks/useAuth";
 import { useSelectedTenantId } from "@app/hooks/useSelectedTenantId";
 import { useMyTenantsQuery } from "@app/queries/xhandler/tenants";
 import { useLastTenantStore } from "@app/stores/useLastTenantStore";
@@ -36,13 +37,15 @@ const UnavailableItem: React.FC<IUnavailableItemProps> = ({ isLoading }) => (
 export const NavApp: React.FC<INavAppProps> = ({ onSelect }) => {
   const matchRoute = useMatchRoute();
   const { xhandler, searchpe } = useApiStatus();
+  const auth = useAuth();
 
   // Tenant pages carry the tenant in the URL; elsewhere the last one opened (if still a
   // membership) or the only one.
   const selectedTenantId = useSelectedTenantId();
   const lastTenantId = useLastTenantStore((state) => state.lastTenantId);
+  // Only with a session: a 404 page outside the private routes renders this shell without one.
   const { data: tenants } = useMyTenantsQuery({
-    options: { enabled: xhandler.isAvailable },
+    options: { enabled: xhandler.isAvailable && auth.isAuthenticated() },
   });
   const tenantId =
     selectedTenantId ||

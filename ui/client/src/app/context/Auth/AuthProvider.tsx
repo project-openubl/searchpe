@@ -5,7 +5,7 @@ import {
   useAuth as useOidcAuth,
 } from "react-oidc-context";
 
-import { oidcClientSettings, oidcSignoutArgs } from "@app/oidc";
+import { currentPageState, oidcSignoutArgs, userManager } from "@app/oidc";
 import { useLastTenantStore } from "@app/stores/useLastTenantStore";
 
 import { AuthContext, type IAuthContext } from "./AuthContext";
@@ -17,8 +17,8 @@ interface IAuthProviderProps {
 /** OIDC (Keycloak) is the only login; public routes never call `login` (ADR 0003). */
 export const AuthProvider: React.FC<IAuthProviderProps> = ({ children }) => (
   <OidcProvider
-    {...oidcClientSettings}
-    automaticSilentRenew={true}
+    // The same UserManager the axios interceptors renew tokens with.
+    userManager={userManager}
     onSigninCallback={(user) => {
       // Back to the page that started the login, without the code/state params.
       const target =
@@ -44,14 +44,14 @@ const OidcAuthBridge: React.FC<IOidcAuthBridgeProps> = ({ children }) => {
       // A failure (Keycloak unreachable) lands in `auth.error`, which the shell shows.
       auth
         .signinRedirect({
-          url_state:
-            redirectTo ?? window.location.pathname + window.location.search,
+          url_state: redirectTo ?? currentPageState(),
         })
         .catch(() => undefined);
     },
     [auth],
   );
 
+  // Keycloak sends the user back to the public "Sesión cerrada" page, which starts no login.
   const logout = useCallback(async () => {
     useLastTenantStore.getState().reset();
     await auth.signoutRedirect(oidcSignoutArgs);

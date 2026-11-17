@@ -44,8 +44,11 @@ Put each scenario in the **cheapest layer that can prove it**:
 ## Data and capabilities
 
 - The stack is real and shared: tests create what they need through the UI or the API and never
-  depend on fixed ids. Data the stack may lack (a tenant for the e2e user, a padrón version)
-  makes the test `test.skip(condition, "reason")`, never fail.
+  depend on fixed ids. `auth.setup.ts` signs the e2e user up for an organization when they have
+  none, so organization specs run on a fresh stack. Other data the stack may lack (a padrón
+  version) makes the test `test.skip(condition, "reason")`, never fail.
+- Nothing triggers an expensive external job by default: creating a padrón version (a real SUNAT
+  download) runs only with `E2E_SEARCHPE_IMPORT=true`.
 - searchpe is optional: its specs start with
   `test.skip(!SEARCHPE_ENABLED, "searchpe isn't part of this stack")`.
 - Tests and scripts use SUNAT **beta** or the fake only, never production.

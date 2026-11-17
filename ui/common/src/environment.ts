@@ -40,13 +40,18 @@ export type OpenublEnvType = {
   BRANDING?: string;
 };
 
-/** Keys in `OpenublEnv` that are server-only and not sent to the client. */
-export const SERVER_ENV_KEYS = [
-  "PORT",
-  "XHANDLER_API_URL",
-  "SEARCHPE_API_URL",
-  "BRANDING",
-];
+/**
+ * The only keys of `OpenublEnv` sent to the browser (`window._env`). An allowlist: a new server
+ * setting (a backend URL, a secret) stays on the server unless it is added here on purpose.
+ */
+export const CLIENT_ENV_KEYS = [
+  "NODE_ENV",
+  "VERSION",
+  "OIDC_CLIENT_ID",
+  "OIDC_SERVER_URL",
+  "OIDC_SCOPE",
+  "SEARCHPE_ENABLED",
+] as const satisfies readonly (keyof OpenublEnvType)[];
 
 /** Path prefix the browser uses for xhandler-service; the proxies send it to `/api`. */
 export const XHANDLER_PROXY_PREFIX = "/api/xhandler";

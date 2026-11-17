@@ -1,7 +1,7 @@
 import type { UseQueryOptions } from "@tanstack/react-query";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
-import { SEARCHPE_PROXY_PREFIX } from "@openubl-ui/common";
+import { SEARCHPE_HEALTH_PATH } from "@openubl-ui/common";
 
 import { searchpeAxios } from "@app/axios-config/apiInit";
 
@@ -16,7 +16,7 @@ export interface ISearchpeHealth {
 export const SearchpeHealthQueryKey = "searchpe-health";
 
 /**
- * `GET /q/health/ready` (public; the proxy maps `/api/searchpe/q/health`), gates the searchpe
+ * `GET /q/health/ready` (public; the proxy maps exactly `/api/searchpe/q/health/ready`), gates the searchpe
  * navigation (ADR 0001). A `DOWN` answer is a 503, so it fails the query too.
  */
 export const searchpeHealthQueryOptions = queryOptions<
@@ -25,11 +25,7 @@ export const searchpeHealthQueryOptions = queryOptions<
 >({
   queryKey: [SearchpeHealthQueryKey],
   queryFn: async () =>
-    (
-      await searchpeAxios.get<ISearchpeHealth>(
-        `${SEARCHPE_PROXY_PREFIX}/q/health/ready`,
-      )
-    ).data,
+    (await searchpeAxios.get<ISearchpeHealth>(SEARCHPE_HEALTH_PATH)).data,
   staleTime: 60 * 1000,
   retry: false,
   refetchInterval: 60 * 1000,

@@ -17,9 +17,11 @@ export const whoamiQueryOptions = queryOptions<
   staleTime: 5 * 60 * 1000,
 });
 
-/** Never runs without searchpe deployed (`SEARCHPE_ENABLED`). */
-export const useWhoamiQuery = () =>
+/** Never runs without searchpe deployed (`SEARCHPE_ENABLED`); `enabled` gates it further. */
+export const useWhoamiQuery = ({
+  enabled = true,
+}: { enabled?: boolean } = {}) =>
   useQuery({
     ...whoamiQueryOptions,
-    enabled: ENV.SEARCHPE_ENABLED === "true",
+    enabled: ENV.SEARCHPE_ENABLED === "true" && enabled,
   });

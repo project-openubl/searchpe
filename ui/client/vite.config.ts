@@ -7,18 +7,20 @@ import path from "node:path";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import { playwright } from "@vitest/browser-playwright";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import { ViteEjsPlugin } from "vite-plugin-ejs";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 
 import {
   brandingStrings,
   encodeEnv,
+  hasUnsafePathSegments,
+  INVALID_API_PATH_ERROR,
   OPENUBL_ENV,
-  rewriteSearchpeApiPath,
-  rewriteXhandlerApiPath,
+  resolveApiProxyPath,
+  SEARCHPE_API_ROUTE,
   SEARCHPE_PROXY_PREFIX,
-  SERVER_ENV_KEYS,
+  XHANDLER_API_ROUTE,
   XHANDLER_PROXY_PREFIX,
 } from "@openubl-ui/common";
 
@@ -29,6 +31,39 @@ export const brandingAssetPath = () =>
     .replace(/(.)\/package.json$/, "$1")}/dist/branding`;
 
 const brandingPath: string = brandingAssetPath();
+
+const isSearchpeProxied = Boolean(OPENUBL_ENV.SEARCHPE_API_URL);
+
+/** The headers of the production server that don't break Vite's dev tooling (no CSP: HMR). */
+const securityHeaders = {
+  "Referrer-Policy": "no-referrer",
+  "X-Content-Type-Options": "nosniff",
+};
+
+/** The Express server's API path guard (server/src/index.ts), in front of Vite's proxies. */
+const apiPathGuard: Plugin = {
+  name: "api-path-guard",
+  configureServer(server) {
+    server.middlewares.use((req, res, next) => {
+      const url = req.url ?? "";
+      const route = [
+        XHANDLER_API_ROUTE,
+        ...(isSearchpeProxied ? [SEARCHPE_API_ROUTE] : []),
+      ].find(({ prefix }) => url === prefix || url.startsWith(`${prefix}/`));
+      const isRejected = url.startsWith("/api/")
+        ? hasUnsafePathSegments(url) ||
+          (route !== undefined && resolveApiProxyPath(url, route) === undefined)
+        : false;
+      if (!isRejected) {
+        next();
+        return;
+      }
+      res.statusCode = 400;
+      res.setHeader("Content-Type", "application/json; charset=utf-8");
+      res.end(JSON.stringify(INVALID_API_PATH_ERROR));
+    });
+  },
+};
 const manifestPath = path.resolve(brandingPath, "manifest.json");
 const faviconPath = path.resolve(brandingPath, "favicon.ico");
 
@@ -43,6 +78,7 @@ export default defineConfig({
       generatedRouteTree: "./src/routeTree.gen.ts",
     }),
     react(),
+    apiPathGuard,
     {
       name: "ignore-process-env",
       transform(code) {
@@ -74,7 +110,12 @@ export default defineConfig({
     ...(process.env.NODE_ENV === "development"
       ? [
           ViteEjsPlugin({
-            _env: encodeEnv(OPENUBL_ENV, SERVER_ENV_KEYS),
+            _env: encodeEnv({
+              ...OPENUBL_ENV,
+              SEARCHPE_ENABLED: isSearchpeProxied ? "true" : "false",
+            }),
+            // No CSP in development (Vite's HMR injects inline scripts), so no nonce either.
+            nonce: "",
             branding: brandingStrings,
           }),
         ]
@@ -128,8 +169,12 @@ export default defineConfig({
     },
     sourcemap: process.env.NODE_ENV === "development",
   },
+  preview: {
+    headers: securityHeaders,
+  },
   server: {
     port: 3000,
+    headers: securityHeaders,
     // `vitest run` needs no watcher, and each one holds an inotify instance (a per-user
     // limit that busy desktops exhaust). `npm test -w client -- --watch` still works without it
     // only through polling: set CHOKIDAR_USEPOLLING=1.
@@ -141,15 +186,17 @@ export default defineConfig({
     proxy: {
       [XHANDLER_PROXY_PREFIX]: {
         target: OPENUBL_ENV.XHANDLER_API_URL || "http://localhost:8080",
-        rewrite: rewriteXhandlerApiPath,
+        rewrite: XHANDLER_API_ROUTE.rewrite,
         changeOrigin: true,
+        xfwd: true,
       },
-      ...(OPENUBL_ENV.SEARCHPE_API_URL
+      ...(isSearchpeProxied
         ? {
             [SEARCHPE_PROXY_PREFIX]: {
               target: OPENUBL_ENV.SEARCHPE_API_URL,
-              rewrite: rewriteSearchpeApiPath,
+              rewrite: SEARCHPE_API_ROUTE.rewrite,
               changeOrigin: true,
+              xfwd: true,
             },
           }
         : {}),

@@ -12,6 +12,12 @@ test("lists an organization's jobs and filters them by state", async ({
   await jobsPage.expectLoaded();
 
   await page.getByRole("button", { name: "Filtrar por estado" }).click();
-  await page.getByRole("menuitem", { name: "Fallido" }).click();
+  await page.getByRole("option", { name: "Fallido" }).click();
   await expect(page).toHaveURL(/estado=failed/);
+
+  // One state at a time: a second pick replaces the first.
+  await page.getByRole("button", { name: "Filtrar por estado" }).click();
+  await page.getByRole("option", { name: "En espera" }).click();
+  await expect(page).toHaveURL(/estado=waiting/);
+  await expect(page).not.toHaveURL(/estado=failed/);
 });

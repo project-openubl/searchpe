@@ -11,7 +11,6 @@ import {
 } from "@patternfly/react-core";
 import {
   DataView,
-  DataViewCheckboxFilter,
   DataViewFilters,
   DataViewTable,
   DataViewTextFilter,
@@ -25,6 +24,7 @@ import { ConfirmActionModal } from "@app/components/ConfirmActionModal";
 import { dataViewBodyStates } from "@app/components/dataViewStates";
 import { DocumentTitle } from "@app/components/DocumentTitle";
 import { ListPagination } from "@app/components/ListPagination";
+import { SingleSelectFilter } from "@app/components/SingleSelectFilter";
 import { TableEmptyState } from "@app/components/TableEmptyState";
 import { TenantContextSelector } from "@app/components/TenantContextSelector";
 import {
@@ -213,12 +213,7 @@ export const JobList: React.FC = () => {
               <DataViewFilters
                 values={filters}
                 onChange={(_key, next) => {
-                  setFilters((prev) => ({
-                    ...prev,
-                    ...next,
-                    // The API filters one state: keep the newest pick.
-                    ...(next.estado ? { estado: next.estado.slice(-1) } : {}),
-                  }));
+                  setFilters((prev) => ({ ...prev, ...next }));
                   toFirstPage();
                 }}
               >
@@ -227,7 +222,8 @@ export const JobList: React.FC = () => {
                   title="Nombre"
                   placeholder="Filtrar por nombre"
                 />
-                <DataViewCheckboxFilter
+                {/* The API filters one state at a time. */}
+                <SingleSelectFilter
                   filterId="estado"
                   title="Estado"
                   placeholder="Filtrar por estado"

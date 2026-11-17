@@ -13,8 +13,8 @@ export const JOB_LIST_STATE = defineListState({
   filters: definePersistentState({
     key: "filters",
     schema: z.object({
-      // The API filters one state at a time.
-      estado: z.array(schemaFromGuard(isJobState)),
+      // The API filters one state at a time: a list of at most one (SingleSelectFilter).
+      estado: z.array(schemaFromGuard(isJobState)).max(1),
       nombre: z.string(),
     }),
     defaultValue: { estado: [], nombre: "" },
