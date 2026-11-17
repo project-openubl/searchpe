@@ -29,10 +29,7 @@ import io.quarkus.narayana.jta.RunOptions;
 import io.quarkus.panache.common.Sort;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.jboss.logging.Logger;
-import org.quartz.JobExecutionContext;
-import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
-import org.quartz.TriggerKey;
 
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -59,7 +56,6 @@ import jakarta.ws.rs.QueryParam;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Transactional
@@ -69,9 +65,6 @@ import java.util.stream.Collectors;
 public class VersionResource {
 
     private static final Logger logger = Logger.getLogger(VersionResource.class);
-
-    @Inject
-    Scheduler quartz;
 
     @Inject
     UserTransaction tx;
@@ -232,21 +225,8 @@ public class VersionResource {
                 throw new NotFoundException();
             }
 
-            try {
-                String[] versionTriggeredKey = version.triggerKey.split("\\.");
-                TriggerKey triggerKey = TriggerKey.triggerKey(versionTriggeredKey[0], versionTriggeredKey[1]);
-
-                Optional<JobExecutionContext> currentExecutingJob = quartz.getCurrentlyExecutingJobs().stream()
-                        .filter(jobExecutionContext -> jobExecutionContext.getTrigger().getKey().equals(triggerKey))
-                        .findFirst();
-                if (currentExecutingJob.isPresent()) {
-                    version.status = Status.CANCELLING;
-                } else {
-                    version.status = Status.CANCELLED;
-                }
-            } catch (SchedulerException e) {
-                throw new RuntimeException(e);
-            }
+            // Decided from the status rather than from the jobs running here: the import may run on another replica
+            version.status = version.status.afterCancellationRequest();
 
             version.persist();
         });

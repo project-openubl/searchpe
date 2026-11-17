@@ -1,5 +1,9 @@
 import { AxiosError, AxiosHeaders, InternalAxiosRequestConfig } from "axios";
-import { getAxiosErrorMessage } from "./modelUtils";
+import {
+  getAxiosErrorMessage,
+  isVersionCancellable,
+  isVersionFinished,
+} from "./modelUtils";
 
 describe("modelUtils", () => {
   const config: InternalAxiosRequestConfig = { headers: new AxiosHeaders() };
@@ -35,4 +39,23 @@ describe("modelUtils", () => {
     const errorMessage = getAxiosErrorMessage(mockAxiosError);
     expect(errorMessage).toBe(errorMsg);
   });
+
+  it.each([
+    ["SCHEDULED", false, true],
+    ["DOWNLOADING", false, true],
+    ["UNZIPPING", false, true],
+    ["IMPORTING", false, true],
+    ["INDEXING", false, true],
+    ["DELETING", false, true],
+    ["CANCELLING", false, false],
+    ["COMPLETED", true, false],
+    ["ERROR", true, false],
+    ["CANCELLED", true, false],
+  ] as const)(
+    "status %s: finished=%s, cancellable=%s",
+    (status, finished, cancellable) => {
+      expect(isVersionFinished(status)).toBe(finished);
+      expect(isVersionCancellable(status)).toBe(cancellable);
+    }
+  );
 });

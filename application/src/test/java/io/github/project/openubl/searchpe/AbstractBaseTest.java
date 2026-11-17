@@ -16,6 +16,12 @@
  */
 package io.github.project.openubl.searchpe;
 
+import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
+import io.github.project.openubl.searchpe.models.jpa.entity.Status;
+import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
+import io.quarkus.cache.Cache;
+import io.quarkus.cache.CacheName;
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.restassured.specification.RequestSpecification;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
@@ -23,14 +29,22 @@ import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 
+import jakarta.inject.Inject;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 
 import static io.restassured.RestAssured.given;
+import static org.awaitility.Awaitility.await;
 
 public abstract class AbstractBaseTest {
+
+    @Inject
+    @CacheName(VersionRepository.ACTIVE_VERSION_ID_CACHE)
+    Cache activeVersionIdCache;
 
     public abstract Class<?> getTestClass();
 
@@ -39,6 +53,8 @@ public abstract class AbstractBaseTest {
         Flyway flyway = flyway();
         flyway.clean();
         flyway.migrate();
+        // The database was replaced behind the application's back
+        activeVersionIdCache.invalidateAll().await().indefinitely();
     }
 
     @AfterEach
@@ -106,4 +122,21 @@ public abstract class AbstractBaseTest {
                 .then().extract().path("access_token").toString();
     }
 
+    /**
+     * Waits until the version reaches {@code status}, reading it straight from the database.
+     */
+    protected void awaitVersionStatus(Long versionId, Status status) {
+        await().atMost(3, TimeUnit.MINUTES).until(() -> QuarkusTransaction.requiringNew().call(() -> {
+            VersionEntity version = VersionEntity.findById(versionId);
+            return version.status == status;
+        }));
+    }
+
+    protected List<String> indexNamesOf(String table) {
+        return QuarkusTransaction.requiringNew().call(() -> VersionEntity.getEntityManager()
+                .createNativeQuery("select indexname from pg_indexes where tablename = :table order by indexname", String.class)
+                .setParameter("table", table)
+                .getResultList()
+        );
+    }
 }

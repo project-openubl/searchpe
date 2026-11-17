@@ -25,7 +25,6 @@ import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 
 import jakarta.inject.Inject;
-import java.util.Optional;
 
 @Mapper(componentModel = "cdi")
 public abstract class VersionMapper {
@@ -38,10 +37,9 @@ public abstract class VersionMapper {
 
     @AfterMapping
     public void setId(VersionEntity entity, @MappingTarget VersionDto dto) {
-        Optional<VersionEntity> activeVersion = versionRepository.findActive();
-
         dto.setId(entity.id);
-        dto.setActive(activeVersion.isPresent() && activeVersion.get().id.equals(entity.id));
+        // Cached: on a replica that didn't handle the change, the flag can lag for as long as the cache entry lives
+        dto.setActive(versionRepository.findActiveId().map(entity.id::equals).orElse(false));
     }
 
 }

@@ -20,10 +20,8 @@ import io.github.project.openubl.searchpe.models.FilterBean;
 import io.github.project.openubl.searchpe.models.PageBean;
 import io.github.project.openubl.searchpe.models.SearchResultBean;
 import io.github.project.openubl.searchpe.models.SortBean;
-import io.github.project.openubl.searchpe.models.TipoPersona;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteId;
-import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.utils.DataHelper;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
@@ -31,69 +29,59 @@ import io.quarkus.panache.common.Parameters;
 import io.quarkus.panache.common.Sort;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.transaction.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
-@Transactional
 @ApplicationScoped
 public class ContribuyenteRepository implements PanacheRepositoryBase<ContribuyenteEntity, ContribuyenteId> {
 
     public static final String[] SORT_BY_FIELDS = {"nombre"};
 
-    public Optional<ContribuyenteEntity> findByRuc(VersionEntity version, String ruc) {
+    public Optional<ContribuyenteEntity> findByRuc(long versionId, String ruc) {
         Parameters parameters = Parameters
-                .with("versionId", version.id)
+                .with("versionId", versionId)
                 .and("ruc", ruc);
-        return VersionEntity.find("From ContribuyenteEntity as c where c.id.versionId = :versionId and c.id.ruc = :ruc", parameters)
+        return find("From ContribuyenteEntity as c where c.id.versionId = :versionId and c.id.ruc = :ruc", parameters)
                 .singleResultOptional();
     }
 
-    public Optional<ContribuyenteEntity> findByDni(VersionEntity version, String dni) {
-        Parameters parameters = Parameters
-                .with("versionId", version.id)
-                .and("ruc", IntStream.range(1, 10).mapToObj(operand -> "10" + dni + operand).collect(Collectors.toList()));
-        return VersionEntity.find("From ContribuyenteEntity as c where c.id.versionId = :versionId and ruc in :ruc", parameters)
-                .<ContribuyenteEntity>list()
-                .stream().filter(contribuyente -> {
-                    Optional<String> dniFromRuc = DataHelper.getDniFromRuc(contribuyente.getRuc());
-                    return dniFromRuc.isPresent() && dniFromRuc.get().equals(dni);
-                })
-                .findFirst();
+    public Optional<ContribuyenteEntity> findByDni(long versionId, String dni) {
+        return DataHelper.getRucFromDni(dni).flatMap(ruc -> findByRuc(versionId, ruc));
     }
 
-    public SearchResultBean<ContribuyenteEntity> list(VersionEntity version, FilterBean filterBean, PageBean pageBean, List<SortBean> sortBy) {
+    public SearchResultBean<ContribuyenteEntity> list(long versionId, FilterBean filterBean, PageBean pageBean, List<SortBean> sortBy) {
         Sort sort = Sort.by();
         sortBy.forEach(f -> sort.and(f.getFieldName(), f.isAsc() ? Sort.Direction.Ascending : Sort.Direction.Descending));
 
         StringBuilder queryBuilder = new StringBuilder("From ContribuyenteEntity as c where ");
-        Parameters parameters = Parameters.with("versionId", version.id);
+        Parameters parameters = Parameters.with("versionId", versionId);
 
         List<String> queryConditions = new ArrayList<>();
 
         if (filterBean.getTipoPersona() != null) {
-            if (filterBean.getTipoPersona().equals(TipoPersona.JURIDICA)) {
-                queryConditions.add("c.id.ruc is not null");
-            }
-            if (filterBean.getTipoPersona().equals(TipoPersona.NATURAL)) {
-                queryConditions.add("c.dni is not null");
-            }
+            // SUNAT RUC prefixes: 10 is a natural person with a DNI (dni is derived from it), 20 is a legal entity.
+            // Other prefixes (15, 17, ...) match neither filter.
+            queryConditions.add(switch (filterBean.getTipoPersona()) {
+                case NATURAL -> "c.dni is not null";
+                case JURIDICA -> {
+                    parameters.and("rucPrefix", DataHelper.PERSONA_JURIDICA_RUC_PREFIX + "%");
+                    yield "c.id.ruc like :rucPrefix";
+                }
+            });
         }
 
         queryConditions.add("c.id.versionId = :versionId");
 
         if (filterBean.getFilterText() != null && !filterBean.getFilterText().isBlank()) {
+            // Served by the trigram index built in VersionService; keep the expression in sync
             queryConditions.add("lower(c.nombre) like :filterText");
             parameters.and("filterText", "%" + filterBean.getFilterText().toLowerCase() + "%");
         }
 
         queryBuilder.append(String.join(" and ", queryConditions));
 
-        PanacheQuery<ContribuyenteEntity> query = VersionEntity
-                .find(queryBuilder.toString(), sort, parameters)
+        PanacheQuery<ContribuyenteEntity> query = find(queryBuilder.toString(), sort, parameters)
                 .range(pageBean.getOffset(), pageBean.getOffset() + pageBean.getLimit() - 1);
 
         return SearchResultBean.<ContribuyenteEntity>builder()

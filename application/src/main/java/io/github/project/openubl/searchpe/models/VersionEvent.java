@@ -23,11 +23,17 @@ public interface VersionEvent {
         Long getVersion();
     }
 
-    interface UnzippingFileEvent {
+    interface ImportingDataEvent {
         Long getVersion();
     }
 
-    interface ImportingDataEvent {
+    /**
+     * Fired when the active version may have changed: a version completed or was deleted.
+     */
+    interface ActiveVersionChangedEvent {
+        /**
+         * @return the version that completed or was deleted, not necessarily the new active version
+         */
         Long getVersion();
     }
 

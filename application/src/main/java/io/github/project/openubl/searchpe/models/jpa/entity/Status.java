@@ -19,6 +19,9 @@ package io.github.project.openubl.searchpe.models.jpa.entity;
 public enum Status {
     SCHEDULED,
     DOWNLOADING,
+    /**
+     * No longer used: the padrón is read straight from the zip. Kept because versions imported before can have it.
+     */
     UNZIPPING,
     IMPORTING,
     INDEXING,
@@ -26,5 +29,33 @@ public enum Status {
     CANCELLED,
     COMPLETED,
     DELETING,
-    CANCELLING
+    CANCELLING;
+
+    /**
+     * @return whether the version reached a final status, so no job is working on it anymore
+     */
+    public boolean isFinished() {
+        return switch (this) {
+            case COMPLETED, ERROR, CANCELLED -> true;
+            case SCHEDULED, DOWNLOADING, UNZIPPING, IMPORTING, INDEXING, DELETING, CANCELLING -> false;
+        };
+    }
+
+    /**
+     * @return whether an import job is working on the version, as opposed to waiting to start or being over
+     */
+    public boolean isImportRunning() {
+        return switch (this) {
+            case DOWNLOADING, UNZIPPING, IMPORTING, INDEXING -> true;
+            case SCHEDULED, ERROR, CANCELLED, COMPLETED, DELETING, CANCELLING -> false;
+        };
+    }
+
+    /**
+     * @return the status a cancellation request moves the version to: a running import is asked to stop, and the
+     * status watcher of the replica running it records CANCELLED; anything else is cancelled right away
+     */
+    public Status afterCancellationRequest() {
+        return isImportRunning() || this == CANCELLING ? CANCELLING : CANCELLED;
+    }
 }

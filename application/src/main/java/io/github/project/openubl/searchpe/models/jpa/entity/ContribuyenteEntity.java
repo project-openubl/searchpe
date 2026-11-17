@@ -38,6 +38,11 @@ import jakarta.validation.constraints.NotNull;
 @Table(name = "contribuyente")
 public class ContribuyenteEntity extends PanacheEntityBase {
 
+    /**
+     * Name of the partition holding a version's rows, formatted with the version id as first argument.
+     */
+    public static final String VERSION_PARTITION_TABLE = "CONTRIBUYENTE_VERSION_%1$s";
+
     @EqualsAndHashCode.Include
     @EmbeddedId
     public ContribuyenteId id;

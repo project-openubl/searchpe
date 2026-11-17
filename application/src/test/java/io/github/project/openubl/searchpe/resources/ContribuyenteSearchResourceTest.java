@@ -24,12 +24,17 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.awaitility.Awaitility.await;
+import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.matchesPattern;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.startsWith;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @QuarkusTest
@@ -41,9 +46,11 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
         return ContribuyenteSearchResourceTest.class;
     }
 
-    @Test
-    public void getContribuyentes() {
-        // Given
+    /**
+     * Imports the padrón served by {@link io.github.project.openubl.searchpe.resources.config.SunatServer} into a new
+     * version, waits until the import completes and returns the version id.
+     */
+    private Long importNewVersion() {
         VersionDto version = givenAuth("alice")
                 .header("Content-Type", "application/json")
                 .when()
@@ -65,6 +72,46 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
                             .extract().body().as(VersionDto.class);
                     return watchedVersion.getStatus() == Status.COMPLETED;
                 });
+
+        return version.getId();
+    }
+
+    @Test
+    public void getContribuyenteKeepsSpanishCharacters() {
+        // Given
+        importNewVersion();
+
+        // Then
+        givenAuth("alice")
+                .header("Content-Type", "application/json")
+                .when()
+                .get("/api/contribuyentes/20100110513")
+                .then()
+                .statusCode(200)
+                .body(
+                        "ruc", is("20100110513"),
+                        // Ñ is written as a Unicode escape so the assertion does not depend on the encoding of this file
+                        "nombre", is("COMPA\u00d1IA MINERA MILPO S.A.A.")
+                );
+    }
+
+    /**
+     * VersionResourceTest#createVersion covers the advanced search being disabled, where only the RUC is indexed.
+     */
+    @Test
+    public void importIndexesNombreForTheAdvancedSearch() {
+        Long versionId = importNewVersion();
+
+        assertEquals(
+                List.of("ix_contribuyente_version_" + versionId + "_nombre", "ix_contribuyente_version_" + versionId + "_ruc"),
+                indexNamesOf("contribuyente_version_" + versionId)
+        );
+    }
+
+    @Test
+    public void getContribuyentes() {
+        // Given
+        importNewVersion();
 
         // Then
         givenAuth("alice")
@@ -84,27 +131,7 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
     @Test
     public void getContribuyentesUsingTextFilter() {
         // Given
-        VersionDto version = givenAuth("alice")
-                .header("Content-Type", "application/json")
-                .when()
-                .post("/api/versions")
-                .then()
-                .statusCode(200)
-                .body(notNullValue())
-                .extract().body().as(VersionDto.class);
-
-        assertNotNull(version);
-
-        await().atMost(3, TimeUnit.MINUTES)
-                .until(() -> {
-                    VersionDto watchedVersion = givenAuth("alice")
-                            .header("Content-Type", "application/json")
-                            .when()
-                            .get("/api/versions/" + version.getId())
-                            .then()
-                            .extract().body().as(VersionDto.class);
-                    return watchedVersion.getStatus() == Status.COMPLETED;
-                });
+        importNewVersion();
 
         // Then
         givenAuth("alice")
@@ -127,27 +154,7 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
     @Test
     public void getContribuyentesUsingTipoPersonaFilter() {
         // Given
-        VersionDto version = givenAuth("alice")
-                .header("Content-Type", "application/json")
-                .when()
-                .post("/api/versions")
-                .then()
-                .statusCode(200)
-                .body(notNullValue())
-                .extract().body().as(VersionDto.class);
-
-        assertNotNull(version);
-
-        await().atMost(3, TimeUnit.MINUTES)
-                .until(() -> {
-                    VersionDto watchedVersion = givenAuth("alice")
-                            .header("Content-Type", "application/json")
-                            .when()
-                            .get("/api/versions/" + version.getId())
-                            .then()
-                            .extract().body().as(VersionDto.class);
-                    return watchedVersion.getStatus() == Status.COMPLETED;
-                });
+        importNewVersion();
 
         // Then
         givenAuth("alice")
@@ -163,32 +170,27 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
                         "data.size()", is(10),
                         "data[0].dni", matchesPattern("^[0-9]{8}$")
                 );
+        givenAuth("alice")
+                .header("Content-Type", "application/json")
+                .when()
+                .get("/api/contribuyentes?tipoPersona=juridica")
+                .then()
+                .statusCode(200)
+                .body(
+                        "meta.offset", is(0),
+                        "meta.limit", is(10),
+                        // The fixture only has 10 and 20 prefixes: natural (20) + juridica (404) = all rows (424)
+                        "meta.count", is(404),
+                        "data.size()", is(10),
+                        "data.ruc", everyItem(startsWith("20")),
+                        "data.dni", everyItem(nullValue())
+                );
     }
 
     @Test
     public void getContribuyentesUsingFilterTextAndTipoPersonaFilter() {
         // Given
-        VersionDto version = givenAuth("alice")
-                .header("Content-Type", "application/json")
-                .when()
-                .post("/api/versions")
-                .then()
-                .statusCode(200)
-                .body(notNullValue())
-                .extract().body().as(VersionDto.class);
-
-        assertNotNull(version);
-
-        await().atMost(3, TimeUnit.MINUTES)
-                .until(() -> {
-                    VersionDto watchedVersion = givenAuth("alice")
-                            .header("Content-Type", "application/json")
-                            .when()
-                            .get("/api/versions/" + version.getId())
-                            .then()
-                            .extract().body().as(VersionDto.class);
-                    return watchedVersion.getStatus() == Status.COMPLETED;
-                });
+        importNewVersion();
 
         // Then
         givenAuth("alice")
@@ -214,10 +216,8 @@ public class ContribuyenteSearchResourceTest extends AbstractBaseTest {
                 .body(
                         "meta.offset", is(0),
                         "meta.limit", is(10),
-                        "meta.count", is(1),
-                        "data.size()", is(1),
-                        "data[0].ruc", is("10452159428"),
-                        "data[0].nombre", is("GARCIA CHANCO CARLOS AUGUSTO")
+                        "meta.count", is(0),
+                        "data.size()", is(0)
                 );
     }
 }

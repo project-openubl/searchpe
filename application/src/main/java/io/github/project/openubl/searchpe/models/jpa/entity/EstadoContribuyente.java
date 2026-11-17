@@ -19,7 +19,11 @@ package io.github.project.openubl.searchpe.models.jpa.entity;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 
 import java.util.Arrays;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @RegisterForReflection
 public enum EstadoContribuyente {
@@ -28,8 +32,17 @@ public enum EstadoContribuyente {
     BAJA_DE_OFICIO,
     BAJA_DEFINITIVA;
 
+    private static final Map<String, EstadoContribuyente> BY_NAME = Arrays.stream(values())
+            .collect(Collectors.toUnmodifiableMap(Enum::name, Function.identity()));
+
+    /**
+     * @param value the status as written in the padrón, e.g. {@code BAJA DE OFICIO}
+     * @return the status, or empty if {@code value} is null or unknown
+     */
     public static Optional<EstadoContribuyente> fromString(String value) {
-        String valueToCheck = value.toUpperCase().replaceAll(" ", "_");
-        return Arrays.stream(EstadoContribuyente.values()).filter(f -> f.toString().equals(valueToCheck)).findFirst();
+        if (value == null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(BY_NAME.get(value.toUpperCase(Locale.ROOT).replace(' ', '_')));
     }
 }

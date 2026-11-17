@@ -71,15 +71,4 @@ public class FileHelperTest {
         FileHelper.deleteFilesIfExists(new String[]{FOLDER_TEST.toAbsolutePath().toString()});
         assertFalse(Files.exists(FOLDER_TEST));
     }
-
-//    @Test
-//    public void test_unzipFile() throws Exception {
-//        Path unzipPath = FOLDER_TEST.resolve("unzipFolder");
-//
-//        FileHelper.unzipFile(new File("padron_reducido_ruc.zip"), unzipPath);
-//        assertTrue(Files.exists(unzipPath));
-//        assertTrue(Files.isDirectory(unzipPath));
-//        assertTrue(Files.exists(unzipPath.resolve("padron_reducido_ruc.txt")));
-//    }
-
 }

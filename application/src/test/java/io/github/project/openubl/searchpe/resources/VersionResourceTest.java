@@ -25,6 +25,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.awaitility.Awaitility.await;
@@ -71,7 +72,7 @@ public class VersionResourceTest extends AbstractBaseTest {
                         "size()", is(1),
                         "[0].id", is(3),
                         "[0].status", is("COMPLETED"),
-                        "[0].records", is(9_000_000)
+                        "[0].records", is(400)
                 );
 
     }
@@ -123,6 +124,15 @@ public class VersionResourceTest extends AbstractBaseTest {
     public void deleteVersion() {
         int versionId = 3;
 
+        // Given the active version id is cached
+        givenAuth("alice")
+                .header("Content-Type", "application/json")
+                .when()
+                .get("/" + versionId)
+                .then()
+                .statusCode(200)
+                .body("active", is(true));
+
         // When
         givenAuth("alice")
                 .header("Content-Type", "application/json")
@@ -154,7 +164,9 @@ public class VersionResourceTest extends AbstractBaseTest {
                         "size()", is(1),
                         "[0].id", is(2),
                         "[0].status", is("COMPLETED"),
-                        "[0].records", is(5_000_000)
+                        "[0].records", is(5_000_000),
+                        // Right away, not when the cached id expires
+                        "[0].active", is(true)
                 );
     }
 
@@ -198,6 +210,13 @@ public class VersionResourceTest extends AbstractBaseTest {
                         "[0].id", is(version.getId().intValue()),
                         "[0].status", is("COMPLETED")
                 );
-    }
 
+        // Only the new partition is indexed
+        assertEquals(
+                List.of("ix_contribuyente_version_" + version.getId() + "_ruc"),
+                indexNamesOf("contribuyente_version_" + version.getId())
+        );
+        // Partition of the previously active version, seeded by V9999.0.1__test.sql
+        assertEquals(List.of(), indexNamesOf("contribuyente_version_3"));
+    }
 }
