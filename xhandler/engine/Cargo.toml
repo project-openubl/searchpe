@@ -43,7 +43,7 @@ tracing-opentelemetry = "0.34"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 url = "2"
 # Same version and features as xhandler-rust (zips for SUNAT and the fake's CDRs)
-zip = { version = "7", default-features = false, features = ["deflate"] }
+zip = { version = "9", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
 http-body-util = "0.1"
