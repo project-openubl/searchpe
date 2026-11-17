@@ -95,7 +95,8 @@ public class DocumentControl {
             }
             doc.summaryDocumentId = null;
         }
-        if (!RETRY_FROM.contains(doc.status)) {
+        if (!RETRY_FROM.contains(doc.status) || "ticket_lost".equals(doc.codeClass)) {
+            // A summary resolved line by line must not be resent: its lines went to new summaries
             throw ApiException.conflict("document_not_retryable", "El documento no se puede reenviar en su estado actual.");
         }
         retryLocked(scope, doc);

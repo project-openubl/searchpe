@@ -47,7 +47,9 @@ public record Outcome(
         /** The engine sidecar didn't answer: the send may or may not have happened; not SUNAT's fault */
         ENGINE_UNAVAILABLE,
         /** A summary whose ticket was lost, resolved line by line through the validity service (§9.2.2) */
-        SUMMARY_RESOLVED
+        SUMMARY_RESOLVED,
+        /** A summary SUNAT may still be processing, or whose lines couldn't all be checked: ask again later */
+        SUMMARY_PENDING
     }
 
     public static Outcome of(Kind kind, Integer code, String description) {

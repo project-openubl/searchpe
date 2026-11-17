@@ -47,6 +47,33 @@ public class VoidingService {
         this.statusChanged = statusChanged;
     }
 
+    /**
+     * Cancels a void whose RA/RC/RR is stuck in exception (not in flight): the original goes back to
+     * its previous status. A rejected voiding does this by itself.
+     */
+    public Document cancelVoid(UUID tenantId, UUID documentId) {
+        return QuarkusTransaction.requiringNew().call(() -> {
+            TenantScope scope = access.enter(tenantId, Role.OPERATOR);
+            Document original = Document.findById(documentId, LockModeType.PESSIMISTIC_WRITE);
+            if (original == null) {
+                throw ApiException.notFound();
+            }
+            Document voiding = original.voidedByDocumentId == null ? null : Document.findById(original.voidedByDocumentId);
+            if (!"voiding".equals(original.status) || voiding == null || !"exception".equals(voiding.status)) {
+                throw ApiException.conflict("void_not_cancelable", "Solo se cancela una anulación cuyo resumen quedó con error.");
+            }
+            String previous = original.status;
+            original.status = original.statusBeforeVoiding == null ? "accepted" : original.statusBeforeVoiding;
+            original.statusBeforeVoiding = null;
+            original.voidedByDocumentId = null;
+            original.updatedAt = Instant.now();
+            DocumentEvent.record(original, null, "voiding " + voiding.serieNumero() + " canceled", scope.actor().auditName(), null);
+            auditor.record(scope, "document.void_canceled", "document", original.id);
+            statusChanged.fire(new DocumentStatusChanged(original, previous, null));
+            return original;
+        });
+    }
+
     /** Creates the RA/RC/RR and moves the original to voiding. Returns the voiding document. */
     public Document voidDocument(UUID tenantId, UUID documentId, VoidRequest request, String correlationId) {
         return QuarkusTransaction.requiringNew().call(() -> voidInTransaction(tenantId, documentId, request, correlationId));
@@ -67,7 +94,11 @@ public class VoidingService {
         if (original.isGuia()) {
             throw ApiException.conflict("void_in_sol_only", "Las guías de remisión solo se dan de baja en SUNAT Operaciones en Línea (SOL).");
         } else if ("20".equals(original.tipoComprobante) || "40".equals(original.tipoComprobante)) {
-            voiding = summaries.resumenReversiones(scope, company, original.sunatEnv, fecha, List.of(original), motivo, correlationId);
+            // A later RR of the same type and day replaces the earlier one at SUNAT (RS 117-2017 art.
+            // 38): each RR carries every reversal of that type, day and issue date made so far
+            List<Document> lines = new java.util.ArrayList<>(sameDayReversals(original));
+            lines.add(original);
+            voiding = summaries.resumenReversiones(scope, company, original.sunatEnv, fecha, lines, motivo, correlationId);
             voiding.deadlineAt = Deadlines.endOfDay(request.reversalCommunicatedAt().plusDays(7));
         } else if (original.isBoletaFamily()) {
             voiding = summaries.resumenDiario(scope, company, original.sunatEnv, fecha, List.of(original), "3", correlationId);
@@ -103,9 +134,24 @@ public class VoidingService {
         return voiding;
     }
 
+    /** Originals of today's RRs of the same company, environment, type and issue date (voided or voiding). */
+    private static List<Document> sameDayReversals(Document original) {
+        String serie = "RR-" + Summaries.BASIC.format(Deadlines.todayInLima());
+        List<UUID> rrs = Document.<Document>list("companyId = ?1 and sunatEnv = ?2 and tipoComprobante = 'RR' and serie = ?3 "
+                        + "and status not in ('rejected')", original.companyId, original.sunatEnv, serie).stream().map(d -> d.id).toList();
+        if (rrs.isEmpty()) {
+            return List.of();
+        }
+        return Document.<Document>list("voidedByDocumentId in ?1 and tipoComprobante = ?2 and fechaEmision = ?3 "
+                + "and status in ('voided', 'voiding') order by id", rrs, original.tipoComprobante, original.fechaEmision);
+    }
+
     private static void check(Document original, VoidRequest request) {
         if (request == null || request.motivo() == null || request.motivo().isBlank()) {
             throw ApiException.invalid("invalid_request", "Indique el motivo de la anulación.", null);
+        }
+        if (original.isSummary() || "ose_inbound".equals(original.origin) || "reception".equals(original.origin)) {
+            throw ApiException.conflict("not_voidable", "Este documento no se anula por este medio.");
         }
         if (!Document.ACCEPTED.contains(original.status) || original.voidedByDocumentId != null) {
             throw ApiException.conflict("not_voidable", "Solo se pueden anular documentos aceptados por SUNAT.");
@@ -118,6 +164,9 @@ public class VoidingService {
         if ("20".equals(original.tipoComprobante) || "40".equals(original.tipoComprobante)) {
             if (request.reversalCommunicatedAt() == null) {
                 throw ApiException.invalid("invalid_request", "Indique la fecha en que se comunicó la reversión al proveedor o cliente.", null);
+            }
+            if (request.reversalCommunicatedAt().isAfter(today) || request.reversalCommunicatedAt().isBefore(original.fechaEmision)) {
+                throw ApiException.invalid("invalid_request", "La fecha de comunicación de la reversión debe estar entre la emisión y hoy.", null);
             }
             if (!Deadlines.withinVoidingWindow(request.reversalCommunicatedAt(), today)) {
                 throw ApiException.conflict("void_window_passed", "Pasaron más de 7 días desde que se comunicó la reversión.");

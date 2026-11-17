@@ -197,6 +197,14 @@ public class DocumentResource {
         return Response.status(202).entity(DocumentView.of(voidingDocument)).build();
     }
 
+    /** Cancels a void whose RA/RC/RR ended in exception: the document goes back to its previous status. */
+    @POST
+    @Path("/documents/{documentId}/void/cancel")
+    @Operation(operationId = "cancelVoid")
+    public DocumentView cancelVoid(@PathParam("tenantId") UUID tenantId, @PathParam("documentId") UUID documentId) {
+        return DocumentView.of(voiding.cancelVoid(tenantId, documentId));
+    }
+
     /** The client attests the buyer received the document (§9.3): it can no longer be voided. */
     @POST
     @Path("/documents/{documentId}/delivered")

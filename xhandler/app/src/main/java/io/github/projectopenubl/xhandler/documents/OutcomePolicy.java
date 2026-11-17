@@ -27,6 +27,8 @@ public final class OutcomePolicy {
     static final int IDENTICAL_LIMIT = 10;
     /** "Existe un documento igual en proceso" (0140) and similar: wait before resolving */
     static final Duration RESOLVE_WAIT = Duration.ofMinutes(2);
+    /** SUNAT processes summaries asynchronously: ask again in an hour */
+    static final Duration SUMMARY_WAIT = Duration.ofHours(1);
 
     /** The document as the attempt found it. */
     public record State(String status, String lastOutcome, int sameOutcomeCount, Instant progressAt, String holdReason) {}
@@ -70,6 +72,7 @@ public final class OutcomePolicy {
                 yield retryAt(state, "unknown", key, now, earliest);
             }
             case ALREADY_REGISTERED -> retryAt(state, "unknown", key, now, now.plus(RESOLVE_WAIT));
+            case SUMMARY_PENDING -> retryAt(state, "unknown", key, now, now.plus(SUMMARY_WAIT));
             case ENGINE_UNAVAILABLE -> "in_progress".equals(state.status())
                     ? retry(state, "in_progress", key, now, step(TICKET_BACKOFF, state, key), jitter)
                     : retryAt(state, "unknown", key, now, later(now.plus(RESOLVE_WAIT), resolveNotBefore));

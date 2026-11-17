@@ -34,6 +34,8 @@ public class ExchangeRates implements JobHandler {
     public record Rate(LocalDate day, BigDecimal compra, BigDecimal venta, String source) {}
 
     static final DateTimeFormatter DMY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    /** An older rate means the import is broken: better no rate than a stale one. */
+    static final int MAX_AGE_DAYS = 10;
 
     private final EntityManager em;
     private final String url;
@@ -50,7 +52,8 @@ public class ExchangeRates implements JobHandler {
     public Optional<Rate> on(LocalDate day) {
         @SuppressWarnings("unchecked")
         List<Object[]> rows = em.createNativeQuery(
-                        "SELECT day, compra, venta, source FROM xhandler.exchange_rate WHERE day <= :day ORDER BY day DESC LIMIT 1")
+                        "SELECT day, compra, venta, source FROM xhandler.exchange_rate WHERE day <= :day AND day > :oldest ORDER BY day DESC LIMIT 1")
+                .setParameter("oldest", day.minusDays(MAX_AGE_DAYS))
                 .setParameter("day", day)
                 .getResultList();
         return rows.stream().findFirst().map(r -> new Rate(toDate(r[0]), (BigDecimal) r[1], (BigDecimal) r[2], (String) r[3]));
@@ -87,7 +90,14 @@ public class ExchangeRates implements JobHandler {
         if (parts.length < 3) {
             throw new IllegalArgumentException("unexpected exchange rate line: " + line);
         }
-        return new Rate(LocalDate.parse(parts[0].strip(), DMY), new BigDecimal(parts[1].strip()), new BigDecimal(parts[2].strip()), source);
+        Rate rate = new Rate(LocalDate.parse(parts[0].strip(), DMY), new BigDecimal(parts[1].strip()), new BigDecimal(parts[2].strip()), source);
+        BigDecimal low = BigDecimal.ONE;
+        BigDecimal high = BigDecimal.TEN;
+        if (rate.day().isAfter(LocalDate.now().plusDays(1)) || rate.compra().compareTo(low) < 0 || rate.venta().compareTo(low) < 0
+                || rate.compra().compareTo(high) > 0 || rate.venta().compareTo(high) > 0) {
+            throw new IllegalArgumentException("implausible exchange rate: " + line);
+        }
+        return rate;
     }
 
     static LocalDate toDate(Object value) {

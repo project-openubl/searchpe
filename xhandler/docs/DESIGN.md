@@ -130,7 +130,7 @@ Other rules:
 
 ### 3.2 Roles
 
-- **Submission route.** A company using an OSE cannot also send directly to SUNAT; only SEE-SOL stays available (RS 117-2017 art. 12.2). Principal taxpayers with 300 UIT or more of income must use an OSE or SEE-SOL. So each company's route is a **regulatory status the service derives and enforces**, not a free toggle. GRE is always direct. In the service: `company.submission_route` (`sunat` | `ose`) is set through `PUT …/companies/{id}/route` with the OSE's URLs and credentials (checked like any tenant-supplied host, §16); `company.ose_obligated` is set by the platform (admin API), and an obligated company can neither choose `sunat` nor emit through it in production. Documents sent through an OSE get the endpoint `ose:<id>:<service>`, so each OSE has its own breaker and cap.
+- **Submission route.** A company using an OSE cannot also send directly to SUNAT; only SEE-SOL stays available (RS 117-2017 art. 12.2). Principal taxpayers with 300 UIT or more of income must use an OSE or SEE-SOL. So each company's route is a **regulatory status the service derives and enforces**, not a free toggle. GRE is always direct. Only production documents go through the OSE (test environments never reach a real OSE). Documents sent through an OSE are never resolved through SUNAT's consult services (those take SOL credentials): an ambiguous one is resent to the OSE, and a summary without a ticket needs attention. In the service: `company.submission_route` (`sunat` | `ose`) is set through `PUT …/companies/{id}/route` with the OSE's URLs and credentials (checked like any tenant-supplied host, §16); `company.ose_obligated` is set by the platform (admin API), and an obligated company can neither choose `sunat` nor emit through it in production. Documents sent through an OSE get the endpoint `ose:<id>:<service>`, so each OSE has its own breaker and cap.
 - **PSE (RS 199-2015 art. 3, 5, 7).**
   - The PSE signs with its own certificate and its own SOL user; the issuer stays liable.
   - Registration needs ISO 27001, capital of 150 UIT or more, and at least 5 employees.
@@ -463,7 +463,7 @@ SUNAT's consult service (`billConsultService`: `getStatus`/`getStatusCdr`) exist
 | Factura and its notes | `getStatusCdr` → accepted (store the CDR) / rejected / "doesn't exist" → resend the same bytes | Resend the same bytes. Beta has no validity API, so a 1033 can't be checked: on the first attempt it is a number collision (beta's shared demo RUC is used by everyone), on a later attempt it is taken as our earlier send. Beta has no legal effect. |
 | Boleta and its notes (sent individually) | Resend the same bytes; 1033 → validity API (`estadoCp`) + digest check, then accepted **without a CDR** (boletas get no `getStatusCdr` coverage) | Same |
 | Summaries (RC/RA/RR) with a known ticket | Check the ticket | Same |
-| Summaries with a lost ticket | Check each line through the validity API (`validaCDPcriterios`). Lines SUNAT already has are done (accepted or voided); RC lines it lacks go back to the D+5 fallback, which puts them in a **new** RC with a new number; voidings it didn't register put the original back in its previous status and tell the tenant (the void is requested again). The summary ends in `exception` with `code_class = ticket_lost`. | No validity API: the summary needs attention |
+| Summaries with a lost ticket | Only once the ticket is known lost (0126/0127) or SUNAT had 6 hours to process the summary (until then: ask again hourly). Check each line through the validity API (`validaCDPcriterios`); any line SUNAT can't answer for, or `not_found` before 6 hours, means "ask again later", never a decision. Lines SUNAT already has are done (accepted or voided); RC lines it lacks go back to the D+5 fallback, which puts them in a **new** RC with a new number; voidings it didn't register put the original back in its previous status and tell the tenant (the void is requested again). The summary ends in `exception` with `code_class = ticket_lost`. | No validity API: the summary needs attention |
 | GRE (REST) | Query by document through the GRE API; resend the same bytes if absent | (no GRE beta) |
 
 #### 9.2.3 SUNAT codes 99–1999 ("not processed")
@@ -738,7 +738,7 @@ Emit never creates jobs. The reconciler sends the document (§24.2), usually wit
 
 ### 11.3 Voiding
 
-`POST …/documents/{id}/void` with `{motivo, not_delivered: true, reversal_communicated_at?}` answers `202` with the voiding document. Each request creates its own RA/RC/RR (several per day are allowed). The 2027 windows apply: RA and RC estado 3 up to the 7th calendar day after the document's issue date; RR up to the 7th day after the reversal was communicated (required for percepciones and retenciones). GRE can only be voided in SOL (409).
+`POST …/documents/{id}/void` with `{motivo, not_delivered: true, reversal_communicated_at?}` answers `202` with the voiding document. Each request creates its own RA or RC (several per day are allowed). RRs are cumulative: a later RR of the same type and day replaces the earlier one at SUNAT (RS 117-2017 art. 38), so each RR repeats that day's reversals of the same type and issue date. The voiding follows the original's route (an RA for a factura sent directly goes directly), whatever the company's route now. The 2027 windows apply: RA and RC estado 3 up to the 7th calendar day after the document's issue date; RR up to the 7th day after the reversal was communicated (required for percepciones and retenciones). GRE can only be voided in SOL (409).
 
 1. `POST /documents/{id}/void` checks the §9.3 guards.
 2. It builds the RA, RC (estado 3) or RR line and numbers it from `daily_counter`.
@@ -746,7 +746,8 @@ Emit never creates jobs. The reconciler sends the document (§24.2), usually wit
 4. It sets the voiding document's `next_attempt_at = now()`. The reconciler creates its attempts, and each attempt holds `document:{voiding_id}` and `document:{original}` for every original.
 5. Outcome:
    - voiding accepted: originals move to `voided`;
-   - voiding rejected: originals return to `status_before_voiding`, and the user is told.
+   - voiding rejected: originals return to `status_before_voiding`, and the user is told;
+   - voiding in `exception` (credentials, a permanent code): not a rejection. The RA/RC/RR can be fixed and resent, so the originals stay in `voiding`; the user may cancel the void instead (`POST …/documents/{id}/void/cancel`).
 
 ### 11.4 OSE inbound
 
@@ -907,7 +908,7 @@ This satisfies the processor's 2-year limit (DS 016-2024-JUS art. 31.2) while th
 - ISO 27001 controls: access control, logging, change management, secure development (OWASP), penetration tests, supplier management, backups.
 - Private keys only ever in clear text inside the HSM; every signature logged; secrets envelope-encrypted with rotation.
 - **SSRF.** Every outbound connection to a tenant-supplied host (webhook URLs, SMTP hosts, third-party OSE endpoints, lookup URLs) goes through an egress proxy:
-  - private, loopback, link-local and metadata ranges are denied, so it can't reach the engine on localhost, cloud metadata, or Keycloak admin;
+  - private, loopback, link-local and metadata ranges are denied, so it can't reach the engine on localhost, cloud metadata, or Keycloak admin. The engine's outbound calls (SUNAT, third-party OSEs) go through it too (`HTTPS_PROXY`), and the engine itself refuses non-https and internal literal addresses in tenant-supplied URLs in production;
   - DNS is resolved and pinned before connecting;
   - only allowed ports are open.
 - **Untrusted files** (UBL uploads, receptions, OSE ZIPs, SFTP drops):

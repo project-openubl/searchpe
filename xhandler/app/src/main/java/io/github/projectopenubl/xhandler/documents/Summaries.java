@@ -93,7 +93,8 @@ public class Summaries {
         for (Document line : lines) {
             comprobantes.add(rcLine(line, operacion));
         }
-        Document rc = summary(scope, company, sunatEnv, "SummaryDocuments", "RC", day, numero, spec, correlationId);
+        Document rc = summary(scope, company, sunatEnv, "SummaryDocuments", "RC", day, numero, spec, correlationId,
+                "3".equals(operacion) ? lines.get(0) : null);
         rc.deadlineAt = Deadlines.sendDeadline("RC", "RC", fechaComprobantes);
         return rc;
     }
@@ -117,7 +118,7 @@ public class Summaries {
             item.put("numero", original.numero);
             item.put("descripcion_sustento", motivo);
         }
-        Document ra = summary(scope, company, sunatEnv, "VoidedDocuments", "RA", day, numero, spec, correlationId);
+        Document ra = summary(scope, company, sunatEnv, "VoidedDocuments", "RA", day, numero, spec, correlationId, originals.get(0));
         ra.deadlineAt = Deadlines.endOfDay(day.plusDays(7));
         return ra;
     }
@@ -141,13 +142,18 @@ public class Summaries {
             item.put("numero", original.numero);
             item.put("descripcion_sustento", motivo);
         }
-        Document rr = summary(scope, company, sunatEnv, "Reversion", "RR", day, numero, spec, correlationId);
+        Document rr = summary(scope, company, sunatEnv, "Reversion", "RR", day, numero, spec, correlationId, originals.get(0));
         rr.deadlineAt = Deadlines.endOfDay(day.plusDays(7));
         return rr;
     }
 
     private Document summary(TenantScope scope, Company company, String sunatEnv, String kind, String tipo, LocalDate day, int numero,
             ObjectNode spec, String correlationId) {
+        return summary(scope, company, sunatEnv, kind, tipo, day, numero, spec, correlationId, null);
+    }
+
+    private Document summary(TenantScope scope, Company company, String sunatEnv, String kind, String tipo, LocalDate day, int numero,
+            ObjectNode spec, String correlationId, Document followsRouteOf) {
         ObjectNode document = json.createObjectNode();
         document.put("kind", kind);
         document.set("spec", spec);
@@ -180,7 +186,9 @@ public class Summaries {
         doc.deadlineAt = Deadlines.endOfDay(day.plusDays(7));
         doc.status = "pending_send";
         doc.digestValue = signed.digestValue();
-        Routes.Assignment route = routes.assign(company, sunatEnv, tipo);
+        Routes.Assignment route = followsRouteOf == null
+                ? routes.assign(company, sunatEnv, tipo)
+                : routes.assignLike(company, sunatEnv, tipo, followsRouteOf);
         doc.endpoint = route.endpoint();
         doc.credentialId = route.credentialId();
         doc.nextAttemptAt = now;

@@ -140,7 +140,10 @@ public class AdminResource {
         if (company == null) {
             throw ApiException.notFound();
         }
-        boolean value = Boolean.TRUE.equals(body == null ? null : body.get("ose_obligated"));
+        if (body == null || !body.containsKey("ose_obligated") || body.get("ose_obligated") == null) {
+            throw ApiException.invalid("invalid_request", "Indique ose_obligated (true o false).", null);
+        }
+        boolean value = body.get("ose_obligated");
         company.oseObligated = value;
         auditor.record(scope, "company.ose_obligated", "company", companyId, Map.of("value", value));
         return Map.of("company_id", companyId, "ose_obligated", value);

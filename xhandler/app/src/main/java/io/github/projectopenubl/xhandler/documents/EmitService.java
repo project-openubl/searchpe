@@ -280,8 +280,19 @@ public class EmitService {
         if (!"03".equals(tipo) || identity.total() == null || identity.moneda() == null || "PEN".equals(identity.moneda())) {
             return;
         }
-        BigDecimal rate = spec.hasNonNull("tipo_cambio") ? new BigDecimal(spec.get("tipo_cambio").asText())
-                : rates.on(fecha).map(io.github.projectopenubl.xhandler.rates.ExchangeRates.Rate::venta).orElse(null);
+        BigDecimal rate;
+        if (spec.hasNonNull("tipo_cambio")) {
+            try {
+                rate = new BigDecimal(spec.get("tipo_cambio").asText());
+            } catch (NumberFormatException e) {
+                throw ApiException.invalid("invalid_document", "tipo_cambio debe ser un número.", null);
+            }
+            if (rate.signum() <= 0) {
+                throw ApiException.invalid("invalid_document", "tipo_cambio debe ser mayor que cero.", null);
+            }
+        } else {
+            rate = rates.on(fecha).map(io.github.projectopenubl.xhandler.rates.ExchangeRates.Rate::venta).orElse(null);
+        }
         if (rate == null) {
             throw ApiException.invalid("invalid_document",
                     "No hay tipo de cambio para " + fecha + ": indique tipo_cambio en la boleta.", null);

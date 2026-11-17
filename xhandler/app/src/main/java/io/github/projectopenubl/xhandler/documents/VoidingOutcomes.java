@@ -34,6 +34,15 @@ public class VoidingOutcomes {
                 .withLock(LockModeType.PESSIMISTIC_WRITE)
                 .list();
         Instant now = Instant.now();
+        if ("exception".equals(voiding.status)) {
+            // Not a rejection: the voiding can still be fixed and resent, so the originals stay in
+            // voiding (the user may cancel the void instead, POST …/void/cancel)
+            for (Document original : originals) {
+                DocumentEvent.record(original, voiding.sunatCode, "voiding " + voiding.serieNumero() + " needs attention: "
+                        + voiding.sunatDescription, "platform:worker", change.correlationId());
+            }
+            return;
+        }
         boolean accepted = Document.ACCEPTED.contains(voiding.status) || "voided".equals(voiding.status);
         for (Document original : originals) {
             String previous = original.status;

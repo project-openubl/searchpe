@@ -174,8 +174,23 @@ class AllDocumentsTest {
         awaitStatus(id, "voided");
     }
 
+    /** A production company with its own certificate (production never signs with the demo key). */
+    UUID productionCompany() throws Exception {
+        String ruc = io.github.projectopenubl.xhandler.Api.randomRuc();
+        UUID production = companies.verified(tenant, "production", ruc);
+        java.io.File pfx = io.github.projectopenubl.xhandler.keys.TestCertificates.generate(ruc);
+        io.restassured.RestAssured.given().auth().oauth2(new io.quarkus.test.keycloak.client.KeycloakTestClient().getAccessToken("alice"))
+                .multiPart("file", pfx, "application/x-pkcs12").multiPart("password", io.github.projectopenubl.xhandler.keys.TestCertificates.PASSWORD)
+                .put(base + "/companies/" + production + "/certificate").then().statusCode(200);
+        as("alice").body(Map.of("username", ruc + "USER", "password", "x")).put(base + "/companies/" + production + "/credentials/sol")
+                .then().statusCode(200);
+        return production;
+    }
+
     @Test
-    void a_company_can_send_through_a_third_party_ose() {
+    void a_company_can_send_through_a_third_party_ose() throws Exception {
+        UUID production = productionCompany();
+        company = production;
         as("alice").body(Map.of("submission_route", "ose", "ose", Map.of("name", "OSE Uno", "invoice_url", "http://127.0.0.1:1/ose/billService",
                         "username", "20123456789OSEUSER", "password", "secreto")))
                 .put(base + "/companies/" + company + "/route").then().statusCode(200).body("submission_route", equalTo("ose"));
@@ -186,9 +201,66 @@ class AllDocumentsTest {
         assertTrue(send.contains("http://127.0.0.1:1/ose/billService"), send);
         assertTrue(send.contains("20123456789OSEUSER"), "sent with the OSE's credentials");
         // GRE always goes to SUNAT, whatever the route
+        as("alice").body(Map.of("username", "20123456789GREUSER", "password", "x", "client_id", "c", "client_secret", "s"))
+                .put(base + "/companies/" + company + "/credentials/gre").then().statusCode(200);
         String guia = emit(document("DespatchAdvice", Map.of()));
         awaitStatus(guia, "accepted");
         assertTrue(!EngineStub.lastBody("/v1/send").contains("/ose/"), "GRE never through the OSE");
+    }
+
+    @Test
+    void test_environments_never_use_the_ose_route() {
+        as("alice").body(Map.of("submission_route", "ose", "ose", Map.of("name", "OSE Uno", "invoice_url", "http://127.0.0.1:1/ose/billService",
+                        "username", "20123456789OSEUSER", "password", "secreto")))
+                .put(base + "/companies/" + company + "/route").then().statusCode(200);
+        String id = emit(document("Invoice", Map.of()));
+        awaitStatus(id, "accepted");
+        assertTrue(!EngineStub.lastBody("/v1/send").contains("/ose/"), "a sandbox document never reaches the real OSE");
+    }
+
+    @Test
+    void a_voiding_in_exception_keeps_the_original_voiding_until_canceled() {
+        EngineStub.on("/v1/send", body -> body.contains("RA-")
+                ? Reply.ok(sendAnswer("exception", 1034, "permanent_content", null))
+                : Reply.ok(sendAnswer("accepted", 0, null, null)));
+        String id = emit(document("Invoice", Map.of(), "delivered", false));
+        awaitStatus(id, "accepted");
+        String ra = as("alice").body(voidRequest()).post(base + "/documents/" + id + "/void").then().statusCode(202).extract().path("id");
+        awaitStatus(ra, "exception");
+        assertEquals("voiding", get(id).get("status"), "an exception is not a rejection: the RA can still be fixed and resent");
+        as("alice").post(base + "/documents/" + id + "/void/cancel").then().statusCode(200).body("status", equalTo("accepted"));
+        as("alice").post(base + "/documents/" + id + "/void/cancel").then().statusCode(409);
+    }
+
+    @Test
+    void the_voiding_window_includes_the_seventh_day() {
+        summariesByTicket(null);
+        String day7 = docs.pending(tenant, company, "t-" + UUID.randomUUID() + ":invoice", d -> {
+            d.status = "accepted";
+            d.nextAttemptAt = null;
+            d.fechaEmision = Deadlines.todayInLima().minusDays(7);
+        }).id().toString();
+        as("alice").body(voidRequest()).post(base + "/documents/" + day7 + "/void").then().statusCode(202);
+    }
+
+    @Test
+    void same_day_reversals_are_cumulative() {
+        summariesByTicket(null);
+        String first = emit(document("Retention", Map.of(), "delivered", false));
+        String second = emit(document("Retention", Map.of(), "delivered", false));
+        awaitStatus(first, "accepted");
+        awaitStatus(second, "accepted");
+        Map<String, Object> reversal = Map.of("motivo", "Reversión", "not_delivered", true, "reversal_communicated_at",
+                Deadlines.todayInLima().toString());
+        as("alice").body(reversal).post(base + "/documents/" + first + "/void").then().statusCode(202);
+        awaitStatus(first, "voided");
+        String firstNumero = (String) get(first).get("serie_numero");
+        as("alice").body(reversal).post(base + "/documents/" + second + "/void").then().statusCode(202);
+        // The second RR repeats the first reversal: a later RR of the day replaces the earlier one
+        String lastRr = EngineStub.requests().stream().filter(r -> r.path().equals("/v1/build") && r.body().contains("\"Reversion\""))
+                .reduce((a, b) -> b).orElseThrow().body();
+        assertTrue(lastRr.contains("\"numero\":" + firstNumero.split("-")[1]), lastRr);
+        awaitStatus(second, "voided");
     }
 
     @Test

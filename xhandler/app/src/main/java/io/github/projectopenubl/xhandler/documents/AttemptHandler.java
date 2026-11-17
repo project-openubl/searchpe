@@ -66,7 +66,19 @@ public class AttemptHandler implements JobHandler {
             boolean summary,
             Instant sendStartedAt,
             String endpoint,
-            List<Line> lines) {}
+            List<Line> lines,
+            boolean viaOse,
+            boolean ticketLost,
+            Instant firstSentAt) {
+
+        /** Consult and validity services are SUNAT's, with SOL credentials: not for documents sent through an OSE. */
+        boolean canConsult() {
+            return target.environment().hasConsultServices() && !viaOse;
+        }
+    }
+
+    /** A summary is only resolved line by line once its ticket is known lost or SUNAT had hours to process it. */
+    static final Duration SUMMARY_PROCESSING = Duration.ofHours(6);
 
     private final TenantAccess access;
     private final Routes routes;
@@ -225,12 +237,16 @@ public class AttemptHandler implements JobHandler {
         // Renew the lease: the attempt may have waited in the queue (§24.2)
         doc.nextAttemptAt = now.plus(lease);
         doc.updatedAt = now;
+        boolean viaOse = doc.endpoint.startsWith("ose:");
+        // validaCDPcriterios doesn't cover percepciones and retenciones: RR lines can't be checked
         List<Line> lines = action == Action.RESOLVE && doc.isSummary() && doc.ticket == null && target.environment().hasConsultServices()
+                && !viaOse && !"RR".equals(doc.tipoComprobante)
                 ? summaryLines(company, doc, target)
                 : List.of();
+        boolean ticketLost = doc.lastOutcome != null && doc.lastOutcome.startsWith("TICKET_LOST");
         return new Plan(doc.id, doc.tenantId, doc.attempts, action, target, xml.storageKey, doc.ticket,
                 new EngineModels.DocumentKey(company.ruc, doc.tipoComprobante, doc.serie, doc.numero), doc.isFacturaFamily(),
-                doc.isSummary(), doc.sendStartedAt, doc.endpoint, lines);
+                doc.isSummary(), doc.sendStartedAt, doc.endpoint, lines, viaOse, ticketLost, doc.firstSentAt);
     }
 
     /** The lines of a summary: documents it adds (RC estado 1) and documents it voids (RA, RR, RC estado 3). */
@@ -248,8 +264,10 @@ public class AttemptHandler implements JobHandler {
     }
 
     private static EngineModels.ValidityRequest validityCheck(Company company, Document d, Routes.Target target) {
+        // Anonymous boletas have no buyer document: SUNAT's convention is type 0 / number "-"
         return new EngineModels.ValidityRequest(target.environment(), target.credentials(),
-                new EngineModels.DocumentKey(company.ruc, d.tipoComprobante, d.serie, d.numero), d.customerTipo, d.customerNumero,
+                new EngineModels.DocumentKey(company.ruc, d.tipoComprobante, d.serie, d.numero),
+                d.customerTipo == null ? "0" : d.customerTipo, d.customerNumero == null ? "-" : d.customerNumero,
                 d.fechaEmision.toString(), d.total == null ? "0.00" : d.total.toPlainString());
     }
 
@@ -281,10 +299,26 @@ public class AttemptHandler implements JobHandler {
         if (plan.summary() && plan.ticket() != null) {
             return Outcome.ofSend(engine.verifyTicket(xml, plan.ticket(), t.environment(), t.credentials(), t.urls()));
         }
-        if (plan.summary() && plan.ticket() == null && plan.sendStartedAt() != null && !plan.lines().isEmpty()) {
+        if (plan.summary() && plan.ticket() == null && plan.viaOse() && plan.attempt() > 1) {
+            return Outcome.of(Outcome.Kind.PERMANENT, null, "Resumen sin ticket enviado por el OSE: resuélvalo con su OSE");
+        }
+        if (plan.summary() && plan.ticket() == null && "RR".equals(plan.key().tipoComprobante()) && plan.attempt() > 1) {
+            return Outcome.of(Outcome.Kind.PERMANENT, null, "Resumen de reversiones sin ticket: revise su estado en SUNAT Operaciones en Línea");
+        }
+        if (plan.summary() && plan.ticket() == null && !plan.lines().isEmpty()) {
+            boolean waitedEnough = plan.firstSentAt() != null && plan.firstSentAt().isBefore(Instant.now().minus(SUMMARY_PROCESSING));
+            if (!plan.ticketLost() && !waitedEnough) {
+                // SUNAT may still be processing it: never decide from SUNAT's view too early
+                return Outcome.of(Outcome.Kind.SUMMARY_PENDING, null, "Resumen sin ticket: SUNAT puede estar procesándolo");
+            }
             // Lost ticket: SUNAT's view of each line decides; the rest goes in a new summary (§9.2.2)
             for (Line line : plan.lines()) {
-                lineStates.put(line.documentId(), engine.validity(line.check()).state());
+                String state = engine.validity(line.check()).state();
+                if ("unknown".equals(state) || "not_delivered".equals(state) || ("not_found".equals(state) && !waitedEnough)) {
+                    // Every line must be known (and old enough to be truly absent) before anything moves
+                    return Outcome.of(Outcome.Kind.SUMMARY_PENDING, null, "No se pudo confirmar el estado de todas las líneas del resumen");
+                }
+                lineStates.put(line.documentId(), state);
             }
             return Outcome.of(Outcome.Kind.SUMMARY_RESOLVED, null, "Ticket perdido: líneas resueltas una por una con SUNAT");
         }
@@ -292,7 +326,7 @@ public class AttemptHandler implements JobHandler {
             return Outcome.of(Outcome.Kind.PERMANENT, null,
                     "Ticket perdido en SUNAT beta (sin servicio de consulta): revise el resumen manualmente");
         }
-        if (plan.facturaFamily() && t.environment().hasConsultServices()) {
+        if (plan.facturaFamily() && plan.canConsult()) {
             EngineModels.StatusCdrResponse status = engine.statusCdr(t.environment(), t.credentials(), plan.key());
             return switch (status.status()) {
                 case "accepted" -> new Outcome(Outcome.Kind.ACCEPTED, 0, null, status.description(), List.of(), null, status.cdrZip());
@@ -329,7 +363,8 @@ public class AttemptHandler implements JobHandler {
      */
     private Outcome digestCheck(Plan plan, String xml, Outcome sunat) {
         Routes.Target t = plan.target();
-        if (!t.environment().hasConsultServices()) {
+        if (!plan.canConsult()) {
+            // Beta, or a third-party OSE: no consult service to ask with these credentials
             return plan.attempt() > 1
                     ? new Outcome(Outcome.Kind.ACCEPTED, 0, null, "Registrado previamente (SUNAT beta, sin verificación)", List.of(),
                             null, null)
@@ -361,7 +396,7 @@ public class AttemptHandler implements JobHandler {
     /** 1032: already reported, voided or rejected. Production facturas can ask; otherwise it ends here. */
     private Outcome alreadyFinal(Plan plan, String xml, Outcome sunat) {
         Routes.Target t = plan.target();
-        if (plan.facturaFamily() && t.environment().hasConsultServices()) {
+        if (plan.facturaFamily() && plan.canConsult()) {
             EngineModels.StatusCdrResponse status = engine.statusCdr(t.environment(), t.credentials(), plan.key());
             return switch (status.status()) {
                 case "accepted" -> new Outcome(Outcome.Kind.ACCEPTED, 0, null, status.description(), List.of(), null, status.cdrZip());
@@ -370,7 +405,7 @@ public class AttemptHandler implements JobHandler {
                 default -> sunat;
             };
         }
-        if (t.environment().hasConsultServices()) {
+        if (plan.canConsult()) {
             EngineModels.ValidityResponse validity = engine.validityFile(xml, t.environment(), t.credentials());
             if ("matches".equals(validity.state())) {
                 return new Outcome(Outcome.Kind.ACCEPTED, 0, null, sunat.description(), List.of(), null, null);

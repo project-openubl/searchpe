@@ -54,7 +54,8 @@ public class Routes {
     @Transactional(Transactional.TxType.MANDATORY)
     public Assignment assign(Company company, String sunatEnv, String tipoComprobante) {
         String service = service(tipoComprobante);
-        boolean viaOse = "ose".equals(company.submissionRoute) && !"despatch".equals(service);
+        // Test environments never reach a real OSE: only production documents go through it
+        boolean viaOse = "ose".equals(company.submissionRoute) && !"despatch".equals(service) && "production".equals(sunatEnv);
         if (!viaOse && company.oseObligated && "production".equals(sunatEnv) && !"despatch".equals(service)) {
             throw ApiException.invalid("invalid_route",
                     "La empresa está obligada a emitir a través de un OSE: configure su OSE antes de emitir.", null);
@@ -79,6 +80,23 @@ public class Routes {
                     : "La empresa no tiene credenciales SOL para enviar a SUNAT.", null);
         }
         return new Assignment(endpoint(sunatEnv, tipoComprobante), credential.orElse(null));
+    }
+
+    /**
+     * The route of a document that follows another (a voiding): the same route family as the
+     * original — an RA for a factura sent directly goes directly, whatever the company's route now.
+     */
+    @Transactional(Transactional.TxType.MANDATORY)
+    public Assignment assignLike(Company company, String sunatEnv, String tipoComprobante, Document original) {
+        if (original.endpoint.startsWith("ose:")) {
+            return assign(company, sunatEnv, tipoComprobante);
+        }
+        String service = service(tipoComprobante);
+        Optional<UUID> credential = "production".equals(sunatEnv) ? credentialId(company, "sol") : Optional.empty();
+        if ("production".equals(sunatEnv) && credential.isEmpty()) {
+            throw ApiException.invalid("no_credentials", "La empresa no tiene credenciales SOL para enviar a SUNAT.", null);
+        }
+        return new Assignment(sunatEnv + ":" + service, credential.orElse(null));
     }
 
     private static Optional<UUID> credentialId(Company company, String kind) {

@@ -149,7 +149,35 @@ impl Endpoints {
     }
 }
 
-/// A valid URL; in production only https and never a loopback host
+/// True for addresses a tenant-supplied URL must never reach: loopback,
+/// private, link-local (cloud metadata), CGNAT, unique-local, unspecified.
+fn internal_ip(ip: std::net::IpAddr) -> bool {
+    match ip {
+        std::net::IpAddr::V4(v4) => {
+            let [a, b, ..] = v4.octets();
+            v4.is_loopback()
+                || v4.is_private()
+                || v4.is_link_local()
+                || v4.is_unspecified()
+                || v4.is_broadcast()
+                || a == 0
+                || (a == 100 && (64..=127).contains(&b))
+        }
+        std::net::IpAddr::V6(v6) => {
+            let first = v6.segments()[0];
+            v6.is_loopback()
+                || v6.is_unspecified()
+                || (first & 0xfe00) == 0xfc00
+                || (first & 0xffc0) == 0xfe80
+                || v6
+                    .to_ipv4_mapped()
+                    .is_some_and(|v4| internal_ip(std::net::IpAddr::V4(v4)))
+        }
+    }
+}
+
+/// A valid URL. In production: https only, and never a loopback or internal
+/// address (names are pinned by the egress proxy, HTTPS_PROXY, DESIGN.md §16).
 fn check_url(value: &str, environment: Environment) -> Result<(), ApiError> {
     let invalid =
         |why: &str| ApiError::new(ErrorKind::InvalidRequest, format!("urls: {value}: {why}"));
@@ -166,12 +194,14 @@ fn check_url(value: &str, environment: Environment) -> Result<(), ApiError> {
                 let domain = domain.to_ascii_lowercase();
                 domain == "localhost" || domain.ends_with(".localhost")
             }
-            Some(url::Host::Ipv4(ip)) => ip.is_loopback() || ip.is_unspecified(),
-            Some(url::Host::Ipv6(ip)) => ip.is_loopback() || ip.is_unspecified(),
+            Some(url::Host::Ipv4(ip)) => internal_ip(ip.into()),
+            Some(url::Host::Ipv6(ip)) => internal_ip(ip.into()),
             None => true,
         };
         if loopback {
-            return Err(invalid("loopback hosts are not allowed in production"));
+            return Err(invalid(
+                "loopback and internal hosts are not allowed in production",
+            ));
         }
     }
     Ok(())
@@ -703,6 +733,12 @@ mod tests {
         assert!(!check("https://localhost/billService"));
         assert!(!check("https://127.0.0.1:8443/billService"));
         assert!(!check("https://[::1]/billService"));
+        assert!(!check("https://169.254.169.254/latest/meta-data"));
+        assert!(!check("https://10.0.0.5/billService"));
+        assert!(!check("https://192.168.1.10/billService"));
+        assert!(!check("https://100.64.0.1/billService"));
+        assert!(!check("https://[fd00::1]/billService"));
+        assert!(!check("https://[::ffff:10.0.0.1]/billService"));
         assert!(!check("not a url"));
         assert!(check_url("http://127.0.0.1:8099/billService", Environment::Beta).is_ok());
         assert!(check_url("ftp://x/y", Environment::Fake).is_err());
