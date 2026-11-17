@@ -119,23 +119,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-java@v6
-        with:
-          java-version: 25
-          distribution: temurin
-          cache: maven
       - name: Build container image
-        run: |
-          mvn -U -B package --file pom.xml -DskipTests \
-          -Dquarkus.native.container-build=true \
-          -Dquarkus.container-image.push=false \
-          -Dquarkus.container-image.build=true \
-          -Dquarkus.container-image.registry=localhost:5000 \
-          -Dquarkus.container-image.group="" \
-          -Dquarkus.container-image.name=searchpe-operator \
-          -Dquarkus.container-image.tag=0.0.0 \
-          -P native \
-          -pl operator
+        run: docker build -t localhost:5000/searchpe-operator:0.0.0 operator
       - name: Save container image
         run: docker save -o searchpe-operator-container-image.tar localhost:5000/searchpe-operator:0.0.0
       - name: Upload container image
@@ -149,11 +134,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-java@v6
+      - uses: actions/setup-go@v7
         with:
-          java-version: 25
-          distribution: temurin
-          cache: maven
+          go-version-file: operator/go.mod
+          cache-dependency-path: operator/go.sum
       - name: Setup OLM CLIs
         run: |
           export ARCH=$(case $(uname -m) in x86_64) echo -n amd64 ;; aarch64) echo -n arm64 ;; *) echo -n $(uname -m) ;; esac)
@@ -161,48 +145,15 @@ jobs:
           
           # Opm
           export OPERATOR_SDK_DL_URL=https://github.com/operator-framework/operator-registry/releases/download/v1.26.2
-          curl -LO ${OPERATOR_SDK_DL_URL}/${OS}-${ARCH}-opm
+          curl -sSfLO ${OPERATOR_SDK_DL_URL}/${OS}-${ARCH}-opm
           chmod +x ${OS}-${ARCH}-opm && sudo mv ${OS}-${ARCH}-opm /usr/local/bin/opm
-      - name: Setup other tools
+      - uses: ./.github/actions/setup-operator-sdk
+      # Operator Tests validates the bundle
+      - name: Bundle
+        working-directory: operator
         run: |
-          sudo apt-get install -y groovy
-      - name: Build container image
-        run: |
-          mvn -U -B package --file pom.xml -DskipTests \
-          -Dquarkus.native.container-build=false \
-          -Dquarkus.container-image.push=false \
-          -Dquarkus.container-image.build=false \
-          -Dquarkus.container-image.registry=localhost:5000 \
-          -Dquarkus.container-image.group="" \
-          -Dquarkus.container-image.name=searchpe-operator \
-          -Dquarkus.operator-sdk.bundle.package-name=searchpe-operator \
-          -Dquarkus.operator-sdk.bundle.channels=alpha \
-          -Dquarkus.application.version=0.0.0 \
-          -Dquarkus.kubernetes.image-pull-policy=if-not-present \
-          -Dquarkus.kubernetes.env.vars.operator-searchpe-image=localhost:5000/searchpe:0.0.0 \
-          -Dquarkus.kubernetes.env.vars.operator-searchpe-image-pull-policy=IfNotPresent \
-          -pl operator
-          
-          groovy scripts/enrichCSV.groovy operator/target/bundle/searchpe-operator/manifests/searchpe-operator.clusterserviceversion.yaml 0.0.0
-          sed -i "/  annotations: ''/d" ./operator/target/bundle/searchpe-operator/manifests/searchpe-operator.clusterserviceversion.yaml
-      # The checks both catalogs run on a bundle (check_osdk_bundle_validate_*), as the release does
-      - name: Validate the operator bundle
-        env:
-          OPERATOR_SDK_VERSION: v1.42.3
-          OPERATOR_SDK_SHA256: 887a3bb0d63ccc4ca47a522d0c8ffac56d9d5246f6a2bd886b4ed23eb2e2672f
-        run: |
-          curl -sSfLo "$RUNNER_TEMP/operator-sdk" \
-            "https://github.com/operator-framework/operator-sdk/releases/download/$OPERATOR_SDK_VERSION/operator-sdk_linux_amd64"
-          echo "$OPERATOR_SDK_SHA256  $RUNNER_TEMP/operator-sdk" | sha256sum -c -
-          chmod +x "$RUNNER_TEMP/operator-sdk"
-          # operator-sdk takes 0.0.0, the version CI builds, for an unset version: validate a copy
-          # with a version, as a release's bundle has
-          bundle=$RUNNER_TEMP/bundle
-          cp -r operator/target/bundle/searchpe-operator "$bundle"
-          yq -i '.spec.version = "0.0.1" | .metadata.name = "searchpe-operator.v0.0.1"' \
-            "$bundle/manifests/searchpe-operator.clusterserviceversion.yaml"
-          "$RUNNER_TEMP/operator-sdk" bundle validate "$bundle" --select-optional name=operatorhub
-          "$RUNNER_TEMP/operator-sdk" bundle validate "$bundle" --select-optional suite=operatorframework
+          make bundle bundle-build IMG=localhost:5000/searchpe-operator:0.0.0 SEARCHPE_IMAGE=localhost:5000/searchpe:0.0.0 \
+            BUNDLE_IMG=localhost:5000/searchpe-operator-bundle:0.0.0
       - name: Init local Registry
         run: |
           docker run -d -p 5000:5000 --name registry registry:2
@@ -211,7 +162,6 @@ jobs:
         run: |
           # Bundle
           BUNDLE_IMAGE=localhost:5000/searchpe-operator-bundle:0.0.0
-          docker build -t $BUNDLE_IMAGE -f operator/target/bundle/searchpe-operator/bundle.Dockerfile operator/target/bundle/searchpe-operator
           docker push $BUNDLE_IMAGE
           
           # Catalog
@@ -349,6 +299,7 @@ jobs:
           kubectl get events -A --sort-by=.lastTimestamp | tail -100 || true
           kubectl logs -n operators -l postgres-operator.crunchydata.com/control-plane --tail=100 || true
           kubectl logs -n olm -l olm.catalogSource=searchpe-catalog-source --tail=50 || true
+          kubectl logs -n openubl -l app.kubernetes.io/name=searchpe-operator --tail=100 || true
           kubectl logs -n openubl --all-containers --prefix -l app.kubernetes.io/name=searchpe --tail=100 || true
       - uses: actions/upload-artifact@v7
         if: failure()

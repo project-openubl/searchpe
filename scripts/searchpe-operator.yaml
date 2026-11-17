@@ -26,3 +26,8 @@ spec:
   name: searchpe-operator
   source: searchpe-catalog-source
   sourceNamespace: olm
+  config:
+    env:
+      # The images are loaded in minikube
+      - name: SEARCHPE_IMAGE_PULL_POLICY
+        value: IfNotPresent

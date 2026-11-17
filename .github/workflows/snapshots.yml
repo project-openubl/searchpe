@@ -60,23 +60,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-java@v6
-        with:
-          java-version: 25
-          distribution: temurin
-          cache: maven
       - name: Build container image
-        run: |
-          mvn -U -B package --file pom.xml -DskipTests \
-          -Dquarkus.native.container-build=true \
-          -Dquarkus.container-image.push=false \
-          -Dquarkus.container-image.build=true \
-          -Dquarkus.container-image.registry=ghcr.io \
-          -Dquarkus.container-image.group=project-openubl \
-          -Dquarkus.container-image.name=searchpe/searchpe-operator \
-          -Dquarkus.container-image.tag=nightly \
-          -P native \
-          -pl operator
+        run: docker build -t ghcr.io/project-openubl/searchpe/searchpe-operator:nightly operator
       - name: Save container image
         run: docker save -o searchpe-operator-container-image.tar ghcr.io/project-openubl/searchpe/searchpe-operator:nightly
       - name: Upload container image
