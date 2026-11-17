@@ -1,140 +1,66 @@
-# Quick start
+# Searchpe operator
 
-## Minikube
+The Kubernetes operator of Searchpe, written in Go with [controller-runtime](https://github.com/kubernetes-sigs/controller-runtime).
+For each `Searchpe` resource (`searchpe.openubl.io/v1alpha1`) it runs the server with a Deployment and exposes it with a
+Service and an Ingress. OLM installs it from OperatorHub.
 
-Start minikube
+| Path                     | What                                                                                   |
+|--------------------------|----------------------------------------------------------------------------------------|
+| `api/v1alpha1`           | The `Searchpe` API. The CRD in `config/crd` is generated from it                       |
+| `internal/controller`    | The controller                                                                         |
+| `cmd`                    | The operator's entry point                                                             |
+| `config`                 | The kustomize manifests of the operator; `config/manifests` is the base of its bundle  |
+
+You need Go, make, Docker or Podman (`CONTAINER_TOOL=podman`) and kubectl: the other tools are `go tool` dependencies,
+or make downloads them to `bin/`. Run `make` to list the targets.
+
+## Develop
 
 ```shell
-minikube start --kubernetes-version
-minikube addons enable ingress
+make generate   # after changing the API or the kubebuilder markers
+make lint verify-generated test bundle bundle-validate  # what CI runs; the tests run against a Kubernetes API server
 ```
 
-## PostgreSQL
+The API must stay compatible with the resources users have: `api/v1alpha1/crd_test.go` checks the CRD keeps every field
+of the CRD of the Java operator, the previous implementation. `internal/controller/upgrade_test.go` checks that taking
+over the resources the Java operator created changes nothing, which would restart Searchpe or log its users out.
 
-Follow instructions from https://operatorhub.io/operator/postgresql
+### Run against a cluster
+
+With [minikube](https://minikube.sigs.k8s.io/), for instance:
 
 ```shell
-curl -sL https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.22.0/install.sh | bash -s v0.22.0
+minikube start --addons=ingress
+make install run   # the CRD, and the operator on your machine: keep it running, go on in another terminal
+```
+
+Searchpe needs PostgreSQL. With the [Crunchy PostgreSQL operator](https://operatorhub.io/operator/postgresql), as CI does:
+
+```shell
+curl -sL https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.46.0/install.sh | bash -s v0.46.0
 kubectl create -f https://operatorhub.io/install/postgresql.yaml
-kubectl get csv -n operators
+kubectl create namespace openubl
+kubectl apply -n openubl -f ../scripts/postgresql.yaml   # wait for its pods to be ready
+kubectl apply -n openubl -f ../scripts/searchpe.yaml
 ```
 
-Instantiate database:
+To run the operator in the cluster instead, build its image where the cluster can pull it, and deploy it to the
+`searchpe-system` namespace:
 
 ```shell
-cat << EOF | kubectl apply -f -
-apiVersion: postgres-operator.crunchydata.com/v1beta1
-kind: PostgresCluster
-metadata:
-  name: postgresql
-spec:
-  postgresVersion: 14
-  instances:
-    - name: pg-1
-      replicas: 1
-      dataVolumeClaimSpec:
-        accessModes:
-          - ReadWriteOnce
-        resources:
-          requests:
-            storage: 1Gi
-  backups:
-    pgbackrest:
-      repos:
-      - name: repo1
-        volume:
-          volumeClaimSpec:
-            accessModes:
-            - ReadWriteOnce
-            resources:
-              requests:
-                storage: 1Gi
-  users:
-    - name: foo
-      databases:
-        - searchpedb
-      options: "SUPERUSER"
-EOF
+make docker-build deploy IMG=<registry>/searchpe-operator:dev
 ```
 
-### Init Quarkus
-
-This Operator will be installed in the "operators" namespace and will be usable from all namespaces in the cluster.
-
-Create the CRDs:
+### Test the OLM bundle
 
 ```shell
-mvn clean package
-kubectl apply -f target/kubernetes/searchpes.searchpe.openubl.io-v1.yml
+make docker-build IMG=<registry>/searchpe-operator:dev
+make bundle bundle-validate bundle-build IMG=<registry>/searchpe-operator:dev BUNDLE_IMG=<registry>/searchpe-operator-bundle:dev
+docker push <registry>/searchpe-operator:dev && docker push <registry>/searchpe-operator-bundle:dev  # or podman
+bin/operator-sdk-v* run bundle <registry>/searchpe-operator-bundle:dev --install-mode OwnNamespace --namespace openubl  # the operator-sdk of make bundle
 ```
 
-Start the project in dev mode:
+## Release
 
-```shell
-mvn compile quarkus:dev
-```
-
-Enable debug in your IDE and then instantiate the operator:
-
-```shell
-kubectl apply -f src/main/resources/searchpe.yml
-```
-
-### Publish Operator
-
-Create operator container:
-
-```shell
-mvn clean package \
--Dquarkus.native.container-build=true \
--Dquarkus.container-image.build=true \
--Dquarkus.container-image.push=false \
--Dquarkus.container-image.registry=ghcr.io \
--Dquarkus.container-image.group=$USER \
--Dquarkus.container-image.name=searchpe-operator \
--Dquarkus.operator-sdk.bundle.package-name=searchpe-operator \
--Dquarkus.operator-sdk.bundle.channels=alpha \
--Dquarkus.application.version=test \
--P native
-podman push ghcr.io/$USER/searchpe-operator:test
-```
-
-Create bundle:
-
-```shell
-BUNDLE_IMAGE=ghcr.io/$USER/searchpe-operator-bundle:test
-podman build -t $BUNDLE_IMAGE -f target/bundle/searchpe-operator/bundle.Dockerfile target/bundle/searchpe-operator
-podman push $BUNDLE_IMAGE
-```
-
-Create catalog image:
-
-```shell
-CATALOG_IMAGE=ghcr.io/$USER/searchpe-operator-catalog:test
-opm index add \
-    --bundles $BUNDLE_IMAGE \
-    --tag $CATALOG_IMAGE \
-    --build-tool podman
-podman push $CATALOG_IMAGE
-```
-
-Create catalog:
-
-```shell
-cat <<EOF | kubectl apply -f -
-apiVersion: operators.coreos.com/v1alpha1
-kind: CatalogSource
-metadata:
-  name: searchpe-catalog-source
-  namespace: openshift-marketplace
-spec:
-  sourceType: grpc
-  image: $CATALOG_IMAGE
-EOF
-```
-
-Verify:
-
-```shell
-kubectl get csv -n operators searchpe-operator
-```
+The release workflow (`.github/workflows/release.yml`) publishes the image and attaches the bundle to the GitHub
+release; release-tools opens the OperatorHub pull requests from it.
