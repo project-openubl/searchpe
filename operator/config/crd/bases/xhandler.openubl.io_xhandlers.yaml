@@ -56,7 +56,7 @@ spec:
             properties:
               additionalOptions:
                 description: |-
-                  Configuration of the server.
+                  Configuration of the server (the app, and its migration Job),
                   expressed as a keys and values that can be either direct values or references to secrets.
                 items:
                   description: ValueOrSecret is a server option set either to a value
@@ -64,6 +64,7 @@ spec:
                   properties:
                     name:
                       description: Name of the environment variable.
+                      minLength: 1
                       type: string
                     secret:
                       description: SecretKeySelector selects a key of a Secret.
@@ -91,6 +92,8 @@ spec:
                       x-kubernetes-map-type: atomic
                     value:
                       type: string
+                  required:
+                  - name
                   type: object
                 type: array
               api:
@@ -230,6 +233,60 @@ spec:
                     format: int32
                     minimum: 0
                     type: integer
+                  runAsUser:
+                    description: |-
+                      The UID Squid runs as. Default is 31: the image runs as root otherwise, which runAsNonRoot
+                      refuses. On OpenShift (restricted-v2), set a UID of the namespace's range
+                      (openshift.io/sa.scc.uid-range).
+                    format: int64
+                    minimum: 1
+                    type: integer
+                type: object
+              engine:
+                description: The engine sidecar.
+                properties:
+                  additionalOptions:
+                    description: |-
+                      Configuration of the engine, expressed as a keys and values that can be either direct values
+                      or references to secrets. An option replaces the operator's variable of the same name.
+                    items:
+                      description: ValueOrSecret is a server option set either to
+                        a value or to the key of a secret.
+                      properties:
+                        name:
+                          description: Name of the environment variable.
+                          minLength: 1
+                          type: string
+                        secret:
+                          description: SecretKeySelector selects a key of a Secret.
+                          properties:
+                            key:
+                              description: The key of the secret to select from.  Must
+                                be a valid secret key.
+                              type: string
+                            name:
+                              default: ""
+                              description: |-
+                                Name of the referent.
+                                This field is effectively required, but due to backwards compatibility is
+                                allowed to be empty. Instances of this type with an empty value here are
+                                almost certainly wrong.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              type: string
+                            optional:
+                              description: Specify whether the Secret or its key must
+                                be defined
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        value:
+                          type: string
+                      required:
+                      - name
+                      type: object
+                    type: array
                 type: object
               engineImage:
                 description: |-
@@ -268,6 +325,10 @@ spec:
                   The deployment is, by default, exposed through a basic ingress (to the UI, or to the API when the UI is disabled).
                   You can change this behaviour by setting the enabled property to false.
                 properties:
+                  className:
+                    description: The IngressClass of the ingress. The cluster's default
+                      class otherwise.
+                    type: string
                   enabled:
                     default: true
                     type: boolean
@@ -276,6 +337,198 @@ spec:
                 description: Network policies that deny everything the pods don't
                   need.
                 properties:
+                  additionalEgress:
+                    description: |-
+                      Egress rules added to the policy of the api and worker pods: for instance, the SUNAT fake or a
+                      network HSM in the cluster.
+                    items:
+                      description: |-
+                        NetworkPolicyEgressRule describes a particular set of traffic that is allowed out of pods
+                        matched by a NetworkPolicySpec's podSelector. The traffic must match both ports and to.
+                        This type is beta-level in 1.8
+                      properties:
+                        ports:
+                          description: |-
+                            ports is a list of destination ports for outgoing traffic.
+                            Each item in this list is combined using a logical OR. If this field is
+                            empty or missing, this rule matches all ports (traffic not restricted by port).
+                            If this field is present and contains at least one item, then this rule allows
+                            traffic only if the traffic matches at least one port in the list.
+                          items:
+                            description: NetworkPolicyPort describes a port to allow
+                              traffic on
+                            properties:
+                              endPort:
+                                description: |-
+                                  endPort indicates that the range of ports from port to endPort if set, inclusive,
+                                  should be allowed by the policy. This field cannot be defined if the port field
+                                  is not defined or if the port field is defined as a named (string) port.
+                                  The endPort must be equal or greater than port.
+                                format: int32
+                                type: integer
+                              port:
+                                anyOf:
+                                - type: integer
+                                - type: string
+                                description: |-
+                                  port represents the port on the given protocol. This can either be a numerical or named
+                                  port on a pod. If this field is not provided, this matches all port names and
+                                  numbers.
+                                  If present, only traffic on the specified protocol AND port will be matched.
+                                x-kubernetes-int-or-string: true
+                              protocol:
+                                description: |-
+                                  protocol represents the protocol (TCP, UDP, or SCTP) which traffic must match.
+                                  If not specified, this field defaults to TCP.
+                                type: string
+                            type: object
+                          type: array
+                          x-kubernetes-list-type: atomic
+                        to:
+                          description: |-
+                            to is a list of destinations for outgoing traffic of pods selected for this rule.
+                            Items in this list are combined using a logical OR operation. If this field is
+                            empty or missing, this rule matches all destinations (traffic not restricted by
+                            destination). If this field is present and contains at least one item, this rule
+                            allows traffic only if the traffic matches at least one item in the to list.
+                          items:
+                            description: |-
+                              NetworkPolicyPeer describes a peer to allow traffic to/from. Only certain combinations of
+                              fields are allowed
+                            properties:
+                              ipBlock:
+                                description: |-
+                                  ipBlock defines policy on a particular IPBlock. If this field is set then
+                                  neither of the other fields can be.
+                                properties:
+                                  cidr:
+                                    description: |-
+                                      cidr is a string representing the IPBlock
+                                      Valid examples are "192.168.1.0/24" or "2001:db8::/64"
+                                    type: string
+                                  except:
+                                    description: |-
+                                      except is a slice of CIDRs that should not be included within an IPBlock
+                                      Valid examples are "192.168.1.0/24" or "2001:db8::/64"
+                                      Except values will be rejected if they are outside the cidr range
+                                    items:
+                                      type: string
+                                    type: array
+                                    x-kubernetes-list-type: atomic
+                                required:
+                                - cidr
+                                type: object
+                              namespaceSelector:
+                                description: |-
+                                  namespaceSelector selects namespaces using cluster-scoped labels. This field follows
+                                  standard label selector semantics; if present but empty, it selects all namespaces.
+
+                                  If podSelector is also set, then the NetworkPolicyPeer as a whole selects
+                                  the pods matching podSelector in the namespaces selected by namespaceSelector.
+                                  Otherwise it selects all pods in the namespaces selected by namespaceSelector.
+                                properties:
+                                  matchExpressions:
+                                    description: matchExpressions is a list of label
+                                      selector requirements. The requirements are
+                                      ANDed.
+                                    items:
+                                      description: |-
+                                        A label selector requirement is a selector that contains values, a key, and an operator that
+                                        relates the key and values.
+                                      properties:
+                                        key:
+                                          description: key is the label key that the
+                                            selector applies to.
+                                          type: string
+                                        operator:
+                                          description: |-
+                                            operator represents a key's relationship to a set of values.
+                                            Valid operators are In, NotIn, Exists and DoesNotExist.
+                                          type: string
+                                        values:
+                                          description: |-
+                                            values is an array of string values. If the operator is In or NotIn,
+                                            the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                            the values array must be empty. This array is replaced during a strategic
+                                            merge patch.
+                                          items:
+                                            type: string
+                                          type: array
+                                          x-kubernetes-list-type: atomic
+                                      required:
+                                      - key
+                                      - operator
+                                      type: object
+                                    type: array
+                                    x-kubernetes-list-type: atomic
+                                  matchLabels:
+                                    additionalProperties:
+                                      type: string
+                                    description: |-
+                                      matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                                      map is equivalent to an element of matchExpressions, whose key field is "key", the
+                                      operator is "In", and the values array contains only "value". The requirements are ANDed.
+                                    type: object
+                                type: object
+                                x-kubernetes-map-type: atomic
+                              podSelector:
+                                description: |-
+                                  podSelector is a label selector which selects pods. This field follows standard label
+                                  selector semantics; if present but empty, it selects all pods.
+
+                                  If namespaceSelector is also set, then the NetworkPolicyPeer as a whole selects
+                                  the pods matching podSelector in the Namespaces selected by NamespaceSelector.
+                                  Otherwise it selects the pods matching podSelector in the policy's own namespace.
+                                properties:
+                                  matchExpressions:
+                                    description: matchExpressions is a list of label
+                                      selector requirements. The requirements are
+                                      ANDed.
+                                    items:
+                                      description: |-
+                                        A label selector requirement is a selector that contains values, a key, and an operator that
+                                        relates the key and values.
+                                      properties:
+                                        key:
+                                          description: key is the label key that the
+                                            selector applies to.
+                                          type: string
+                                        operator:
+                                          description: |-
+                                            operator represents a key's relationship to a set of values.
+                                            Valid operators are In, NotIn, Exists and DoesNotExist.
+                                          type: string
+                                        values:
+                                          description: |-
+                                            values is an array of string values. If the operator is In or NotIn,
+                                            the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                            the values array must be empty. This array is replaced during a strategic
+                                            merge patch.
+                                          items:
+                                            type: string
+                                          type: array
+                                          x-kubernetes-list-type: atomic
+                                      required:
+                                      - key
+                                      - operator
+                                      type: object
+                                    type: array
+                                    x-kubernetes-list-type: atomic
+                                  matchLabels:
+                                    additionalProperties:
+                                      type: string
+                                    description: |-
+                                      matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                                      map is equivalent to an element of matchExpressions, whose key field is "key", the
+                                      operator is "In", and the values array contains only "value". The requirements are ANDed.
+                                    type: object
+                                type: object
+                                x-kubernetes-map-type: atomic
+                            type: object
+                          type: array
+                          x-kubernetes-list-type: atomic
+                      type: object
+                    type: array
                   databasePodSelector:
                     description: |-
                       Selects the database pods of the namespace (for instance, cnpg.io/cluster: xhandler-db). Port
@@ -330,11 +583,16 @@ spec:
                   ingressNamespaces:
                     description: |-
                       Namespaces whose pods may reach the api and the UI on port 8080: the gateway or ingress
-                      controller, and the monitoring. Default is envoy-gateway-system and monitoring.
+                      controller (for instance, ingress-nginx, or openshift-ingress on OpenShift), and the
+                      monitoring. At least one when the policies are enabled.
                     items:
                       type: string
                     type: array
                 type: object
+                x-kubernetes-validations:
+                - message: enabled network policies need at least one ingress namespace
+                  rule: '!has(self.enabled) || !self.enabled || (has(self.ingressNamespaces)
+                    && size(self.ingressNamespaces) > 0)'
               oidc:
                 description: In this section you can configure Oidc settings.
                 properties:
@@ -387,6 +645,21 @@ spec:
                     description: The RUC the CDR-OSE are issued for. Without it the
                       OSE intake answers "service unavailable".
                     pattern: ^[0-9]{11}$
+                    type: string
+                type: object
+                x-kubernetes-validations:
+                - message: with a ruc, the environment must be beta or production
+                  rule: '!has(self.ruc) || size(self.ruc) == 0 || (has(self.environment)
+                    && self.environment in [''beta'', ''production''])'
+              otel:
+                description: 'OpenTelemetry: where the app and the engine export their
+                  traces.'
+                properties:
+                  endpoint:
+                    description: |-
+                      OTLP over HTTP endpoint of the collector, for the app and the engine. For instance,
+                      'http://otel-collector:4318'. Without it the app's OpenTelemetry SDK is disabled and the engine
+                      exports nothing.
                     type: string
                 type: object
               publicUrl:
@@ -470,6 +743,33 @@ spec:
               ui:
                 description: The UI.
                 properties:
+                  caBundleConfigMap:
+                    description: |-
+                      A ConfigMap key with the CA certificates (PEM) the UI trusts on top of the system's
+                      (NODE_EXTRA_CA_CERTS): the CA of a Searchpe with TLS, for instance.
+                    properties:
+                      key:
+                        description: |-
+                          The key to select from the ConfigMap's Data field.
+                          Keys in the BinaryData field are not currently propagated to container env vars.
+                        type: string
+                      name:
+                        default: ""
+                        description: |-
+                          Name of the referent.
+                          This field is effectively required, but due to backwards compatibility is
+                          allowed to be empty. Instances of this type with an empty value here are
+                          almost certainly wrong.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        type: string
+                      optional:
+                        description: Specify whether the ConfigMap or its key must
+                          be defined
+                        type: boolean
+                    required:
+                    - key
+                    type: object
+                    x-kubernetes-map-type: atomic
                   enabled:
                     default: true
                     type: boolean
@@ -479,6 +779,13 @@ spec:
                     format: int32
                     minimum: 0
                     type: integer
+                  oidcClientId:
+                    default: xhandler-ui
+                    description: |-
+                      The OIDC client of the UI: a public client with PKCE. Its tokens need an audience mapper that
+                      adds the client id of oidc.clientId (xhandler-service's), which accepts them. Default is
+                      xhandler-ui.
+                    type: string
                   searchpeRef:
                     description: Name of a Searchpe of the namespace the UI looks
                       RUCs and DNIs up in.
@@ -2529,6 +2836,16 @@ spec:
                     minimum: 0
                     type: integer
                 type: object
+              zoneSpread:
+                default: Preferred
+                description: |-
+                  How the pods of the api, the worker, the UI and the egress proxy spread across zones:
+                  Preferred (ScheduleAnyway, the default) or Required (DoNotSchedule, which needs zone labels
+                  on the nodes).
+                enum:
+                - Preferred
+                - Required
+                type: string
             type: object
           status:
             description: XHandlerStatus is the observed state of an xhandler-service
@@ -2604,6 +2921,13 @@ spec:
         x-kubernetes-validations:
         - message: the name must have at most 40 characters
           rule: size(self.metadata.name) <= 40
+        - message: 'the name must be a DNS-1035 label: lowercase letters, digits and
+            ''-'', starting with a letter'
+          rule: self.metadata.name.matches('^[a-z]([-a-z0-9]*[a-z0-9])?$')
+        - message: the UI needs oidc.serverUrl
+          rule: has(self.spec) && ((has(self.spec.ui) && has(self.spec.ui.enabled)
+            && !self.spec.ui.enabled) || (has(self.spec.oidc) && has(self.spec.oidc.serverUrl)
+            && size(self.spec.oidc.serverUrl) > 0))
     served: true
     storage: true
     subresources:

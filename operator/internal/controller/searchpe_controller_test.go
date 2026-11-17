@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/config"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
@@ -158,6 +159,8 @@ func TestManagerWatchesTheResources(t *testing.T) {
 		Metrics:                metricsserver.Options{BindAddress: "0"},
 		HealthProbeBindAddress: "0",
 		Controller:             config.Controller{SkipNameValidation: ptr.To(true)},
+		// The cache of the operator, restricted for the XHandler controller
+		Cache: cache.Options{ByObject: XHandlerCacheByObject()},
 	})
 	if err != nil {
 		t.Fatal(err)

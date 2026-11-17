@@ -33,8 +33,10 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 
@@ -120,10 +122,17 @@ func (r *XHandlerReconciler) reconcile(ctx context.Context, cr *xhandlerv1alpha1
 		return ctrl.Result{}, nil
 	}
 
-	if err := r.reconcileEgressProxy(ctx, cr, images.egressProxy); err != nil {
+	// The egress proxy starts before the pods that use it, and stops after them: disabled, it
+	// stays until the api and worker Deployments no longer refer to it
+	proxyInUse, err := r.deploymentsUseEgressProxy(ctx, cr)
+	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("egress proxy: %w", err)
 	}
-	if err := r.reconcileNetworkPolicies(ctx, cr); err != nil {
+	proxy := xhEgressProxyEnabled(cr) || proxyInUse
+	if err := r.reconcileEgressProxy(ctx, cr, images.egressProxy, proxy); err != nil {
+		return ctrl.Result{}, fmt.Errorf("egress proxy: %w", err)
+	}
+	if err := r.reconcileNetworkPolicies(ctx, cr, proxy); err != nil {
 		return ctrl.Result{}, fmt.Errorf("network policies: %w", err)
 	}
 	if err := r.apply(ctx, xhService(cr, xhAPIName(cr), xhAppLabel, componentAPI, "http", xhAppPort)); err != nil {
@@ -154,6 +163,15 @@ func (r *XHandlerReconciler) reconcile(ctx context.Context, cr *xhandlerv1alpha1
 		}
 		if err := r.apply(ctx, deployment); err != nil {
 			return ctrl.Result{}, fmt.Errorf("%s deployment: %w", component, err)
+		}
+	}
+	if !xhEgressProxyEnabled(cr) && proxy {
+		// The Deployments no longer refer to it
+		if err := r.deleteEgressProxy(ctx, cr); err != nil {
+			return ctrl.Result{}, fmt.Errorf("egress proxy: %w", err)
+		}
+		if err := r.reconcileNetworkPolicies(ctx, cr, false); err != nil {
+			return ctrl.Result{}, fmt.Errorf("network policies: %w", err)
 		}
 	}
 
@@ -238,18 +256,19 @@ func objectMeta(cr *xhandlerv1alpha1.XHandler, name string) metav1.ObjectMeta {
 	return metav1.ObjectMeta{Name: name, Namespace: cr.Namespace}
 }
 
-func (r *XHandlerReconciler) reconcileEgressProxy(ctx context.Context, cr *xhandlerv1alpha1.XHandler, image string) error {
+// reconcileEgressProxy applies the egress proxy when it is enabled. Disabled, it deletes it unless
+// inUse: the api and worker Deployments still refer to it.
+func (r *XHandlerReconciler) reconcileEgressProxy(ctx context.Context, cr *xhandlerv1alpha1.XHandler, image string, inUse bool) error {
 	name := xhEgressProxyName(cr)
 	if !xhEgressProxyEnabled(cr) {
-		return r.deleteAll(ctx,
-			&appsv1.Deployment{ObjectMeta: objectMeta(cr, name)},
-			&corev1.Service{ObjectMeta: objectMeta(cr, name)},
-			&policyv1.PodDisruptionBudget{ObjectMeta: objectMeta(cr, name)},
-			&corev1.ConfigMap{ObjectMeta: objectMeta(cr, name)})
+		if inUse {
+			return nil
+		}
+		return r.deleteEgressProxy(ctx, cr)
 	}
 	for _, obj := range []runtime.ApplyConfiguration{
 		egressProxyConfigMap(cr),
-		egressProxyDeployment(cr, image, r.Config.ImagePullPolicy),
+		egressProxyDeployment(cr, image),
 		xhService(cr, name, xhEgressProxyLabel, componentEgressProxy, "proxy", egressProxyPort),
 		podDisruptionBudget(cr, name, xhEgressProxyLabel, componentEgressProxy),
 	} {
@@ -260,10 +279,47 @@ func (r *XHandlerReconciler) reconcileEgressProxy(ctx context.Context, cr *xhand
 	return nil
 }
 
-func (r *XHandlerReconciler) reconcileNetworkPolicies(ctx context.Context, cr *xhandlerv1alpha1.XHandler) error {
+func (r *XHandlerReconciler) deleteEgressProxy(ctx context.Context, cr *xhandlerv1alpha1.XHandler) error {
+	name := xhEgressProxyName(cr)
+	return r.deleteAll(ctx,
+		&appsv1.Deployment{ObjectMeta: objectMeta(cr, name)},
+		&corev1.Service{ObjectMeta: objectMeta(cr, name)},
+		&policyv1.PodDisruptionBudget{ObjectMeta: objectMeta(cr, name)},
+		&corev1.ConfigMap{ObjectMeta: objectMeta(cr, name)})
+}
+
+// deploymentsUseEgressProxy is true when the api or the worker Deployment refers to the egress
+// proxy.
+func (r *XHandlerReconciler) deploymentsUseEgressProxy(ctx context.Context, cr *xhandlerv1alpha1.XHandler) (bool, error) {
+	for _, name := range []string{xhAPIName(cr), xhWorkerName(cr)} {
+		deployment := &appsv1.Deployment{}
+		err := r.Get(ctx, client.ObjectKey{Namespace: cr.Namespace, Name: name}, deployment)
+		switch {
+		case apierrors.IsNotFound(err):
+			continue
+		case err != nil:
+			return false, fmt.Errorf("deployment %s: %w", name, err)
+		}
+		pod := deployment.Spec.Template.Spec
+		for _, container := range slices.Concat(pod.InitContainers, pod.Containers) {
+			for _, variable := range container.Env {
+				if variable.Name == "HTTPS_PROXY" || variable.Name == "XHANDLER_EGRESS_PROXY" {
+					return true, nil
+				}
+			}
+		}
+	}
+	return false, nil
+}
+
+func (r *XHandlerReconciler) reconcileNetworkPolicies(ctx context.Context, cr *xhandlerv1alpha1.XHandler, proxy bool) error {
 	var policies []string
 	if xhNetworkPoliciesEnabled(cr) {
-		for _, policy := range networkPolicies(cr) {
+		applyConfigurations, err := networkPolicies(cr, proxy)
+		if err != nil {
+			return err
+		}
+		for _, policy := range applyConfigurations {
 			if err := r.apply(ctx, policy); err != nil {
 				return err
 			}
@@ -281,7 +337,7 @@ func (r *XHandlerReconciler) reconcileNetworkPolicies(ctx context.Context, cr *x
 }
 
 // reconcileUI applies the UI, or deletes it when it is disabled. It is false when the Searchpe
-// the UI refers to doesn't exist: the UI isn't applied until it does.
+// the UI refers to doesn't exist: the UI runs without it until it does.
 func (r *XHandlerReconciler) reconcileUI(ctx context.Context, cr *xhandlerv1alpha1.XHandler, image string) (bool, error) {
 	name := xhUIName(cr)
 	if !xhUIEnabled(cr) {
@@ -292,20 +348,22 @@ func (r *XHandlerReconciler) reconcileUI(ctx context.Context, cr *xhandlerv1alph
 	}
 
 	var searchpeURL string
+	searchpeFound := true
 	if cr.Spec.UI != nil && cr.Spec.UI.SearchpeRef != "" {
 		searchpe := &v1alpha1.Searchpe{}
 		err := r.Get(ctx, client.ObjectKey{Namespace: cr.Namespace, Name: cr.Spec.UI.SearchpeRef}, searchpe)
-		if apierrors.IsNotFound(err) {
-			return false, nil
-		}
-		if err != nil {
+		switch {
+		case apierrors.IsNotFound(err):
+			searchpeFound = false
+		case err != nil:
 			return false, err
+		default:
+			scheme := "http"
+			if tlsEnabled(searchpe) {
+				scheme = "https"
+			}
+			searchpeURL = fmt.Sprintf("%s://%s:%d", scheme, serviceName(searchpe), servicePort(searchpe))
 		}
-		scheme := "http"
-		if tlsEnabled(searchpe) {
-			scheme = "https"
-		}
-		searchpeURL = fmt.Sprintf("%s://%s:%d", scheme, serviceName(searchpe), servicePort(searchpe))
 	}
 
 	for _, obj := range []runtime.ApplyConfiguration{
@@ -317,10 +375,21 @@ func (r *XHandlerReconciler) reconcileUI(ctx context.Context, cr *xhandlerv1alph
 			return false, err
 		}
 	}
-	return true, nil
+	return searchpeFound, nil
 }
 
 func (r *XHandlerReconciler) reconcileIngress(ctx context.Context, cr *xhandlerv1alpha1.XHandler) error {
+	// The Ingress of the first version of the operator was named after the XHandler alone
+	previous := &networkingv1.Ingress{}
+	err := r.Get(ctx, client.ObjectKey{Namespace: cr.Namespace, Name: cr.Name}, previous)
+	switch {
+	case err == nil && metav1.IsControlledBy(previous, cr):
+		if err := r.deleteAll(ctx, previous); err != nil {
+			return err
+		}
+	case err != nil && !apierrors.IsNotFound(err):
+		return err
+	}
 	if !xhIngressEnabled(cr) {
 		return r.deleteAll(ctx, &networkingv1.Ingress{ObjectMeta: objectMeta(cr, xhIngressName(cr))})
 	}
@@ -328,13 +397,24 @@ func (r *XHandlerReconciler) reconcileIngress(ctx context.Context, cr *xhandlerv
 }
 
 // reconcileMigration runs the migration Job of image, once: it is true when the Job has
-// succeeded. A failed Job stays, for its logs, until it is deleted: then a new one runs.
+// succeeded. A failed Job stays, for its logs, until it is deleted: then a new one runs. A
+// succeeded Job deleted by someone else isn't run again when the api and worker Deployments
+// already run after it.
 func (r *XHandlerReconciler) reconcileMigration(ctx context.Context, cr *xhandlerv1alpha1.XHandler, image string) (bool, ctrl.Result, error) {
 	name := xhMigrateJobName(cr, image)
 	job := &batchv1.Job{}
 	err := r.Get(ctx, client.ObjectKey{Namespace: cr.Namespace, Name: name}, job)
 	switch {
 	case apierrors.IsNotFound(err):
+		migrated, err := r.deploymentsMigrated(ctx, cr, xhMigrationHash(cr, image))
+		if err != nil {
+			return false, ctrl.Result{}, err
+		}
+		if migrated {
+			r.setCondition(cr, ConditionMigrated, metav1.ConditionTrue, "Succeeded",
+				fmt.Sprintf("Job %s succeeded, and was deleted", name))
+			return true, ctrl.Result{}, r.deleteOldMigrations(ctx, cr, name)
+		}
 		// The template of a Job can't change: it is applied once
 		if err := r.apply(ctx, migrateJob(cr, image, r.Config.ImagePullPolicy)); err != nil {
 			return false, ctrl.Result{}, fmt.Errorf("migration job: %w", err)
@@ -358,6 +438,23 @@ func (r *XHandlerReconciler) reconcileMigration(ctx context.Context, cr *xhandle
 		r.migrating(cr, name)
 		return false, ctrl.Result{RequeueAfter: migrationPollInterval}, nil
 	}
+}
+
+// deploymentsMigrated is true when the api and worker Deployments run after the migration hash.
+func (r *XHandlerReconciler) deploymentsMigrated(ctx context.Context, cr *xhandlerv1alpha1.XHandler, hash string) (bool, error) {
+	for _, name := range []string{xhAPIName(cr), xhWorkerName(cr)} {
+		deployment := &appsv1.Deployment{}
+		err := r.Get(ctx, client.ObjectKey{Namespace: cr.Namespace, Name: name}, deployment)
+		switch {
+		case apierrors.IsNotFound(err):
+			return false, nil
+		case err != nil:
+			return false, fmt.Errorf("deployment %s: %w", name, err)
+		case !metav1.IsControlledBy(deployment, cr) || deployment.Annotations[xhMigrationAnnotation] != hash:
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 func (r *XHandlerReconciler) migrating(cr *xhandlerv1alpha1.XHandler, job string) {
@@ -405,6 +502,17 @@ func deploymentAvailable(deployment *appsv1.Deployment) bool {
 		status.UpdatedReplicas == replicas &&
 		status.AvailableReplicas == replicas &&
 		status.Replicas == replicas
+}
+
+// XHandlerCacheByObject restricts the cache of the manager to the ConfigMaps, Jobs and
+// NetworkPolicies of the XHandlers: the controllers read no others.
+func XHandlerCacheByObject() map[client.Object]cache.ByObject {
+	selector := labels.SelectorFromSet(labels.Set{xhManagedByLabel: xhManagedBy})
+	return map[client.Object]cache.ByObject{
+		&corev1.ConfigMap{}:           {Label: selector},
+		&batchv1.Job{}:                {Label: selector},
+		&networkingv1.NetworkPolicy{}: {Label: selector},
+	}
 }
 
 // SetupWithManager registers the reconciler, which watches the resources it creates, and the

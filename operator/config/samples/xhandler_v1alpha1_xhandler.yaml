@@ -45,3 +45,4 @@ spec:
     enabled: true
   ui:
     searchpeRef: searchpe
+    oidcClientId: xhandler-ui

@@ -19,6 +19,7 @@ package v1alpha1
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -105,10 +106,43 @@ type XHandlerSpec struct {
 	// +optional
 	UI *UISpec `json:"ui,omitempty"`
 
-	// Configuration of the server.
+	// The engine sidecar.
+	// +optional
+	Engine *EngineSpec `json:"engine,omitempty"`
+
+	// OpenTelemetry: where the app and the engine export their traces.
+	// +optional
+	OTel *OTelSpec `json:"otel,omitempty"`
+
+	// How the pods of the api, the worker, the UI and the egress proxy spread across zones:
+	// Preferred (ScheduleAnyway, the default) or Required (DoNotSchedule, which needs zone labels
+	// on the nodes).
+	// +kubebuilder:validation:Enum=Preferred;Required
+	// +kubebuilder:default=Preferred
+	// +optional
+	ZoneSpread string `json:"zoneSpread,omitempty"`
+
+	// Configuration of the server (the app, and its migration Job),
 	// expressed as a keys and values that can be either direct values or references to secrets.
 	// +optional
 	AdditionalOptions []ValueOrSecret `json:"additionalOptions,omitempty"`
+}
+
+// EngineSpec configures the engine sidecar.
+type EngineSpec struct {
+	// Configuration of the engine, expressed as a keys and values that can be either direct values
+	// or references to secrets. An option replaces the operator's variable of the same name.
+	// +optional
+	AdditionalOptions []ValueOrSecret `json:"additionalOptions,omitempty"`
+}
+
+// OTelSpec configures OpenTelemetry.
+type OTelSpec struct {
+	// OTLP over HTTP endpoint of the collector, for the app and the engine. For instance,
+	// 'http://otel-collector:4318'. Without it the app's OpenTelemetry SDK is disabled and the engine
+	// exports nothing.
+	// +optional
+	Endpoint string `json:"endpoint,omitempty"`
 }
 
 // RoleSpec configures the deployment of a role.
@@ -123,8 +157,9 @@ type RoleSpec struct {
 // ValueOrSecret is a server option set either to a value or to the key of a secret.
 type ValueOrSecret struct {
 	// Name of the environment variable.
-	// +optional
-	Name string `json:"name,omitempty"`
+	// +kubebuilder:validation:MinLength=1
+	// +required
+	Name string `json:"name"`
 
 	// +optional
 	Value string `json:"value,omitempty"`
@@ -215,6 +250,7 @@ type StorageSpec struct {
 }
 
 // OSESpec configures the OSE role.
+// +kubebuilder:validation:XValidation:rule="!has(self.ruc) || size(self.ruc) == 0 || (has(self.environment) && self.environment in ['beta', 'production'])",message="with a ruc, the environment must be beta or production"
 type OSESpec struct {
 	// The RUC the CDR-OSE are issued for. Without it the OSE intake answers "service unavailable".
 	// +kubebuilder:validation:Pattern=`^[0-9]{11}$`
@@ -243,6 +279,10 @@ type IngressSpec struct {
 	// +kubebuilder:default=true
 	// +optional
 	Enabled *bool `json:"enabled,omitempty"`
+
+	// The IngressClass of the ingress. The cluster's default class otherwise.
+	// +optional
+	ClassName string `json:"className,omitempty"`
 }
 
 // EgressProxySpec configures the egress proxy.
@@ -260,18 +300,32 @@ type EgressProxySpec struct {
 	// +kubebuilder:validation:Minimum=0
 	// +optional
 	Instances *int32 `json:"instances,omitempty"`
+
+	// The UID Squid runs as. Default is 31: the image runs as root otherwise, which runAsNonRoot
+	// refuses. On OpenShift (restricted-v2), set a UID of the namespace's range
+	// (openshift.io/sa.scc.uid-range).
+	// +kubebuilder:validation:Minimum=1
+	// +optional
+	RunAsUser *int64 `json:"runAsUser,omitempty"`
 }
 
 // NetworkPoliciesSpec configures the network policies.
+// +kubebuilder:validation:XValidation:rule="!has(self.enabled) || !self.enabled || (has(self.ingressNamespaces) && size(self.ingressNamespaces) > 0)",message="enabled network policies need at least one ingress namespace"
 type NetworkPoliciesSpec struct {
 	// +kubebuilder:default=false
 	// +optional
 	Enabled *bool `json:"enabled,omitempty"`
 
 	// Namespaces whose pods may reach the api and the UI on port 8080: the gateway or ingress
-	// controller, and the monitoring. Default is envoy-gateway-system and monitoring.
+	// controller (for instance, ingress-nginx, or openshift-ingress on OpenShift), and the
+	// monitoring. At least one when the policies are enabled.
 	// +optional
 	IngressNamespaces []string `json:"ingressNamespaces,omitempty"`
+
+	// Egress rules added to the policy of the api and worker pods: for instance, the SUNAT fake or a
+	// network HSM in the cluster.
+	// +optional
+	AdditionalEgress []networkingv1.NetworkPolicyEgressRule `json:"additionalEgress,omitempty"`
 
 	// Selects the database pods of the namespace (for instance, cnpg.io/cluster: xhandler-db). Port
 	// 5432 of any address otherwise.
@@ -294,6 +348,18 @@ type UISpec struct {
 	// Name of a Searchpe of the namespace the UI looks RUCs and DNIs up in.
 	// +optional
 	SearchpeRef string `json:"searchpeRef,omitempty"`
+
+	// The OIDC client of the UI: a public client with PKCE. Its tokens need an audience mapper that
+	// adds the client id of oidc.clientId (xhandler-service's), which accepts them. Default is
+	// xhandler-ui.
+	// +kubebuilder:default=xhandler-ui
+	// +optional
+	OIDCClientID string `json:"oidcClientId,omitempty"`
+
+	// A ConfigMap key with the CA certificates (PEM) the UI trusts on top of the system's
+	// (NODE_EXTRA_CA_CERTS): the CA of a Searchpe with TLS, for instance.
+	// +optional
+	CABundleConfigMap *corev1.ConfigMapKeySelector `json:"caBundleConfigMap,omitempty"`
 }
 
 // XHandlerStatus is the observed state of an xhandler-service deployment.
@@ -317,6 +383,8 @@ type XHandlerStatus struct {
 // +kubebuilder:printcolumn:name="Reason",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].reason`
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 // +kubebuilder:validation:XValidation:rule="size(self.metadata.name) <= 40",message="the name must have at most 40 characters"
+// +kubebuilder:validation:XValidation:rule="self.metadata.name.matches('^[a-z]([-a-z0-9]*[a-z0-9])?$')",message="the name must be a DNS-1035 label: lowercase letters, digits and '-', starting with a letter"
+// +kubebuilder:validation:XValidation:rule="has(self.spec) && ((has(self.spec.ui) && has(self.spec.ui.enabled) && !self.spec.ui.enabled) || (has(self.spec.oidc) && has(self.spec.oidc.serverUrl) && size(self.spec.oidc.serverUrl) > 0))",message="the UI needs oidc.serverUrl"
 type XHandler struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

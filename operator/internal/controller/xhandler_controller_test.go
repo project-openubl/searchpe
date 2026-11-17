@@ -19,6 +19,7 @@ package controller
 
 import (
 	"context"
+	"maps"
 	"slices"
 	"strings"
 	"testing"
@@ -28,11 +29,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/config"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
@@ -46,6 +50,7 @@ const (
 	testEngineImage      = "ghcr.io/project-openubl/searchpe/xhandler-engine:nightly"
 	testUIImage          = "ghcr.io/project-openubl/searchpe/xhandler-ui:nightly"
 	testEgressProxyImage = "docker.io/ubuntu/squid:6.6-24.04_edge"
+	testOIDCServer       = "https://keycloak.example.com/realms/xhandler"
 )
 
 func newXHandlerReconciler() *XHandlerReconciler {
@@ -61,8 +66,13 @@ func newXHandlerReconciler() *XHandlerReconciler {
 	}
 }
 
+// newXHandler creates an XHandler of spec in a new namespace. The UI needs an OIDC server: spec
+// gets one when it has none.
 func newXHandler(t *testing.T, spec xhandlerv1alpha1.XHandlerSpec) *xhandlerv1alpha1.XHandler {
 	t.Helper()
+	if spec.OIDC == nil {
+		spec.OIDC = &xhandlerv1alpha1.OIDCSpec{ServerURL: testOIDCServer}
+	}
 	cr := &xhandlerv1alpha1.XHandler{
 		ObjectMeta: metav1.ObjectMeta{Name: "xh", Namespace: newNamespace(t)},
 		Spec:       spec,
@@ -229,7 +239,7 @@ func TestXHandlerMigratesThenDeploys(t *testing.T) {
 	uiService := &corev1.Service{}
 	get(ctx, t, cr.Namespace, "xh-ui", uiService)
 	ingress := &networkingv1.Ingress{}
-	get(ctx, t, cr.Namespace, "xh", ingress)
+	get(ctx, t, cr.Namespace, "xh-xhandler", ingress)
 	var pdbs []client.Object
 	for _, name := range []string{"xh-api", "xh-worker", "xh-ui"} {
 		pdb := &policyv1.PodDisruptionBudget{}
@@ -301,6 +311,18 @@ func TestXHandlerMigratesThenDeploys(t *testing.T) {
 		if app.ReadinessProbe.HTTPGet.Path != "/q/health/ready" || app.LivenessProbe.HTTPGet.Path != "/q/health/live" {
 			t.Errorf("%s: probes %s, %s", component, app.ReadinessProbe.HTTPGet.Path, app.LivenessProbe.HTTPGet.Path)
 		}
+		if probe := app.StartupProbe; probe == nil || probe.HTTPGet.Path != "/q/health/started" || probe.FailureThreshold != 30 || probe.PeriodSeconds != 5 {
+			t.Errorf("%s: startup probe %+v, want /q/health/started, 30 times every 5 s", component, probe)
+		}
+		if spread := pod.TopologySpreadConstraints[0].WhenUnsatisfiable; spread != corev1.ScheduleAnyway {
+			t.Errorf("%s: zone spread %s, want ScheduleAnyway by default", component, spread)
+		}
+		if deployment.Annotations[xhMigrationAnnotation] != xhMigrationHash(cr, testXHandlerImage) {
+			t.Errorf("%s: annotations %v, want the migration", component, deployment.Annotations)
+		}
+		if deployment.Labels[xhManagedByLabel] != xhManagedBy {
+			t.Errorf("%s: labels %v, want %s", component, deployment.Labels, xhManagedBy)
+		}
 		if !ptr.Deref(app.SecurityContext.ReadOnlyRootFilesystem, false) || !ptr.Deref(pod.SecurityContext.RunAsNonRoot, false) {
 			t.Errorf("%s: security context %+v, %+v", component, app.SecurityContext, pod.SecurityContext)
 		}
@@ -309,7 +331,9 @@ func TestXHandlerMigratesThenDeploys(t *testing.T) {
 			"XHANDLER_ENGINE_URL":             "http://localhost:8090",
 			"QUARKUS_FLYWAY_MIGRATE_AT_START": "false",
 			"XHANDLER_EGRESS_PROXY":           "",
+			"QUARKUS_OTEL_SDK_DISABLED":       "true",
 		})
+		assertEnv(t, engine, map[string]string{"OTEL_EXPORTER_OTLP_ENDPOINT": ""})
 	}
 
 	for _, name := range []string{"xh-api", "xh-worker"} {
@@ -386,6 +410,63 @@ func TestXHandlerFailedMigration(t *testing.T) {
 	get(t.Context(), t, cr.Namespace, job.Name, &batchv1.Job{})
 }
 
+func TestXHandlerNewDatabaseRunsANewMigration(t *testing.T) {
+	secret := func(name, key string) *corev1.SecretKeySelector {
+		return &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: name}, Key: key}
+	}
+	cr := newXHandler(t, xhandlerv1alpha1.XHandlerSpec{Database: &xhandlerv1alpha1.DatabaseSpec{
+		URL:                 "jdbc:postgresql://db:5432/xhandler",
+		OwnerUsernameSecret: secret("db-owner", "username"),
+		OwnerPasswordSecret: secret("db-owner", "password"),
+	}})
+	reconcileXHandler(t, nil, cr)
+	migrate(t, cr, testXHandlerImage)
+	names := []string{xhMigrateJobName(cr, testXHandlerImage)}
+
+	for _, change := range []func(*xhandlerv1alpha1.DatabaseSpec){
+		func(db *xhandlerv1alpha1.DatabaseSpec) { db.URL = "jdbc:postgresql://db2:5432/xhandler" },
+		func(db *xhandlerv1alpha1.DatabaseSpec) { db.OwnerUsernameSecret = secret("db-owner2", "username") },
+		func(db *xhandlerv1alpha1.DatabaseSpec) { db.OwnerPasswordSecret = secret("db-owner", "password2") },
+	} {
+		update(t, cr, func(spec *xhandlerv1alpha1.XHandlerSpec) { change(spec.Database) })
+		reconcileXHandler(t, nil, cr)
+		assertCondition(t, cr, ConditionMigrated, metav1.ConditionFalse, "Progressing")
+		name := xhMigrateJobName(cr, testXHandlerImage)
+		if slices.Contains(names, name) {
+			t.Fatalf("job %s again for a new database or owner", name)
+		}
+		names = append(names, name)
+		migrate(t, cr, testXHandlerImage)
+	}
+}
+
+// A succeeded Job deleted by someone else (a TTL, a cleanup) isn't run again.
+func TestXHandlerPrunedMigration(t *testing.T) {
+	ctx := t.Context()
+	cr := newXHandler(t, xhandlerv1alpha1.XHandlerSpec{})
+	reconcileXHandler(t, nil, cr)
+	migrate(t, cr, testXHandlerImage)
+
+	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: xhMigrateJobName(cr, testXHandlerImage), Namespace: cr.Namespace}}
+	if err := k8sClient.Delete(ctx, job, client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "the deletion of the job", func() bool {
+		return apierrors.IsNotFound(k8sClient.Get(ctx, client.ObjectKeyFromObject(job), &batchv1.Job{}))
+	})
+	reconcileXHandler(t, nil, cr)
+	assertCondition(t, cr, ConditionMigrated, metav1.ConditionTrue, "Succeeded")
+	assertCondition(t, cr, ConditionReady, metav1.ConditionFalse, "Progressing")
+	assertNotFound(t, cr.Namespace, job.Name, &batchv1.Job{})
+
+	// A new image does run its migration
+	const image = "quay.io/example/xhandler-service:v2"
+	update(t, cr, func(spec *xhandlerv1alpha1.XHandlerSpec) { spec.Image = image })
+	reconcileXHandler(t, nil, cr)
+	assertCondition(t, cr, ConditionMigrated, metav1.ConditionFalse, "Progressing")
+	get(ctx, t, cr.Namespace, xhMigrateJobName(cr, image), &batchv1.Job{})
+}
+
 func TestXHandlerSpec(t *testing.T) {
 	ctx := t.Context()
 	secret := func(name, key string) *corev1.SecretKeySelector {
@@ -428,7 +509,16 @@ func TestXHandlerSpec(t *testing.T) {
 			{Name: "XHANDLER_LAGO_API_KEY", Secret: secret("lago", "api-key")},
 			// Replaces the operator's value
 			{Name: "XHANDLER_PUBLIC_URL", Value: "https://facturas.example.com"},
+			// Not in the migration Job: it logs in as the owner
+			{Name: "QUARKUS_DATASOURCE_USERNAME", Value: "someone"},
 		},
+		Engine: &xhandlerv1alpha1.EngineSpec{AdditionalOptions: []xhandlerv1alpha1.ValueOrSecret{
+			{Name: "RUST_LOG", Value: "debug"},
+			{Name: "XHANDLER_SUNAT_FAKE_URL", Value: "http://other-fake:8099"},
+		}},
+		OTel:       &xhandlerv1alpha1.OTelSpec{Endpoint: "http://otel-collector.monitoring:4318"},
+		ZoneSpread: "Required",
+		Ingress:    &xhandlerv1alpha1.IngressSpec{ClassName: "nginx"},
 	})
 	reconcileXHandler(t, nil, cr)
 
@@ -441,8 +531,11 @@ func TestXHandlerSpec(t *testing.T) {
 	if migrateEnv["QUARKUS_OIDC_AUTH_SERVER_URL"].Value != "https://keycloak.example.com/realms/xhandler" {
 		t.Error("the migration lacks the OIDC server")
 	}
-	if _, ok := migrateEnv["XHANDLER_EMIT_PERMITS"]; ok {
-		t.Error("the migration has the additional options")
+	if migrateEnv["XHANDLER_EMIT_PERMITS"].Value != "8" {
+		t.Error("the migration lacks the additional options")
+	}
+	if migrateEnv["QUARKUS_OTEL_SDK_DISABLED"].Value != "true" {
+		t.Error("the migration exports traces")
 	}
 	if job.Spec.Template.Spec.ImagePullSecrets[0].Name != "registry" {
 		t.Error("the migration lacks the pull secret")
@@ -459,23 +552,29 @@ func TestXHandlerSpec(t *testing.T) {
 	pod := api.Spec.Template.Spec
 	app := pod.Containers[0]
 	assertEnv(t, app, map[string]string{
-		"QUARKUS_DATASOURCE_JDBC_URL":   "jdbc:postgresql://db:5432/xhandler",
-		"QUARKUS_OIDC_AUTH_SERVER_URL":  "https://keycloak.example.com/realms/xhandler",
-		"QUARKUS_OIDC_CLIENT_ID":        "xhandler-service",
-		"XHANDLER_VAULT_PKCS11_LIBRARY": "/opt/hsm/libCryptoki2.so",
-		"XHANDLER_STORAGE_S3_ENDPOINT":  "https://s3.example.com",
-		"XHANDLER_STORAGE_S3_BUCKET":    "documents",
-		"XHANDLER_STORAGE_S3_REGION":    "sa-east-1",
-		"XHANDLER_OSE_RUC":              "20123456789",
-		"XHANDLER_OSE_ENVIRONMENT":      "beta",
-		"XHANDLER_OSE_FORWARD_URL":      "https://ose.sunat.gob.pe/billService",
-		"XHANDLER_SUNAT_FAKE_URL":       "http://sunat-fake:8099",
-		"XHANDLER_EMIT_PERMITS":         "8",
-		"XHANDLER_PUBLIC_URL":           "https://facturas.example.com",
+		"QUARKUS_DATASOURCE_JDBC_URL":         "jdbc:postgresql://db:5432/xhandler",
+		"QUARKUS_OIDC_AUTH_SERVER_URL":        "https://keycloak.example.com/realms/xhandler",
+		"QUARKUS_OIDC_CLIENT_ID":              "xhandler-service",
+		"XHANDLER_VAULT_PKCS11_LIBRARY":       "/opt/hsm/libCryptoki2.so",
+		"XHANDLER_STORAGE_S3_ENDPOINT":        "https://s3.example.com",
+		"XHANDLER_STORAGE_S3_BUCKET":          "documents",
+		"XHANDLER_STORAGE_S3_REGION":          "sa-east-1",
+		"XHANDLER_OSE_RUC":                    "20123456789",
+		"XHANDLER_OSE_ENVIRONMENT":            "beta",
+		"XHANDLER_OSE_FORWARD_URL":            "https://ose.sunat.gob.pe/billService",
+		"XHANDLER_SUNAT_FAKE_URL":             "http://sunat-fake:8099",
+		"XHANDLER_EMIT_PERMITS":               "8",
+		"XHANDLER_PUBLIC_URL":                 "https://facturas.example.com",
+		"QUARKUS_DATASOURCE_USERNAME":         "someone",
+		"QUARKUS_OTEL_SDK_DISABLED":           "",
+		"QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT": "http://otel-collector.monitoring:4318",
+		"QUARKUS_OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf",
 	})
+	if spread := pod.TopologySpreadConstraints[0].WhenUnsatisfiable; spread != corev1.DoNotSchedule {
+		t.Errorf("zone spread %s, want DoNotSchedule when required", spread)
+	}
 	env := envOf(app)
 	for name, secretName := range map[string]string{
-		"QUARKUS_DATASOURCE_USERNAME":     "db-app",
 		"QUARKUS_DATASOURCE_PASSWORD":     "db-app",
 		"QUARKUS_OIDC_CREDENTIALS_SECRET": "oidc",
 		"XHANDLER_VAULT_PKCS11_PIN":       "hsm",
@@ -497,10 +596,26 @@ func TestXHandlerSpec(t *testing.T) {
 	}) {
 		t.Errorf("volumes %+v, want the HSM module", pod.Volumes)
 	}
-	assertEnv(t, pod.InitContainers[0], map[string]string{"XHANDLER_SUNAT_FAKE_URL": "http://sunat-fake:8099"})
+	assertEnv(t, pod.InitContainers[0], map[string]string{
+		"XHANDLER_SUNAT_FAKE_URL":     "http://other-fake:8099",
+		"RUST_LOG":                    "debug",
+		"OTEL_EXPORTER_OTLP_ENDPOINT": "http://otel-collector.monitoring:4318",
+	})
 
 	ingress := &networkingv1.Ingress{}
-	get(ctx, t, cr.Namespace, "xh", ingress)
+	get(ctx, t, cr.Namespace, "xh-xhandler", ingress)
+	if ptr.Deref(ingress.Spec.IngressClassName, "") != "nginx" {
+		t.Errorf("ingress class %v, want nginx", ingress.Spec.IngressClassName)
+	}
+	for name, value := range map[string]string{
+		"nginx.ingress.kubernetes.io/proxy-body-size":    "16m",
+		"nginx.ingress.kubernetes.io/proxy-read-timeout": "150",
+		"nginx.ingress.kubernetes.io/proxy-send-timeout": "150",
+	} {
+		if ingress.Annotations[name] != value {
+			t.Errorf("ingress annotation %s=%q, want %q", name, ingress.Annotations[name], value)
+		}
+	}
 	if len(ingress.Spec.TLS) != 1 || ingress.Spec.TLS[0].SecretName != "xhandler-tls" || ingress.Spec.TLS[0].Hosts[0] != "xhandler.example.com" {
 		t.Errorf("ingress TLS %+v", ingress.Spec.TLS)
 	}
@@ -508,13 +623,30 @@ func TestXHandlerSpec(t *testing.T) {
 	if rule.Host != "xhandler.example.com" {
 		t.Errorf("ingress host %q", rule.Host)
 	}
+	want := map[string]string{
+		"Prefix /":                "xh-ui",
+		"Prefix /api/xhandler":    "xh-ui",
+		"Prefix /api/searchpe":    "xh-ui",
+		"Prefix /api/v1":          "xh-api",
+		"Prefix /api/admin":       "xh-api",
+		"Prefix /ose":             "xh-api",
+		"Prefix /ol-ti-itcpfegem": "xh-api",
+		"Prefix /q/openapi":       "xh-api",
+		"Exact /q/openapi.json":   "xh-api",
+		"Prefix /q/swagger-ui":    "xh-api",
+	}
+	if got := ingressBackends(ingress); !maps.Equal(got, want) {
+		t.Errorf("ingress paths %v, want %v", got, want)
+	}
+}
+
+// ingressBackends are the services of the paths of the first rule of ingress, by "type path".
+func ingressBackends(ingress *networkingv1.Ingress) map[string]string {
 	backends := map[string]string{}
-	for _, path := range rule.HTTP.Paths {
-		backends[path.Path] = path.Backend.Service.Name
+	for _, path := range ingress.Spec.Rules[0].HTTP.Paths {
+		backends[string(ptr.Deref(path.PathType, ""))+" "+path.Path] = path.Backend.Service.Name
 	}
-	if backends["/"] != "xh-ui" || backends["/api"] != "xh-api" || backends["/ol-ti-itcpfegem"] != "xh-api" {
-		t.Errorf("ingress paths %v, want the UI, and the APIs to the api", backends)
-	}
+	return backends
 }
 
 func TestXHandlerPublicURLFromTheHostname(t *testing.T) {
@@ -544,10 +676,19 @@ func TestXHandlerIngressAndUIToggles(t *testing.T) {
 	assertNotFound(t, cr.Namespace, "xh-ui", &corev1.Service{})
 	assertNotFound(t, cr.Namespace, "xh-ui", &policyv1.PodDisruptionBudget{})
 	ingress := &networkingv1.Ingress{}
-	get(ctx, t, cr.Namespace, "xh", ingress)
-	paths := ingress.Spec.Rules[0].HTTP.Paths
-	if len(paths) != 1 || paths[0].Backend.Service.Name != "xh-api" {
-		t.Errorf("ingress paths %+v, want everything to the api without the UI", paths)
+	get(ctx, t, cr.Namespace, "xh-xhandler", ingress)
+	// Only the APIs: not / nor the rest of /q (metrics, health)
+	want := map[string]string{
+		"Prefix /api/v1":          "xh-api",
+		"Prefix /api/admin":       "xh-api",
+		"Prefix /ose":             "xh-api",
+		"Prefix /ol-ti-itcpfegem": "xh-api",
+		"Prefix /q/openapi":       "xh-api",
+		"Exact /q/openapi.json":   "xh-api",
+		"Prefix /q/swagger-ui":    "xh-api",
+	}
+	if got := ingressBackends(ingress); !maps.Equal(got, want) {
+		t.Errorf("ingress paths %v without the UI, want %v", got, want)
 	}
 
 	update(t, cr, func(spec *xhandlerv1alpha1.XHandlerSpec) {
@@ -555,28 +696,85 @@ func TestXHandlerIngressAndUIToggles(t *testing.T) {
 	})
 	reconcileXHandler(t, nil, cr)
 	reconcileXHandler(t, nil, cr)
-	assertNotFound(t, cr.Namespace, "xh", &networkingv1.Ingress{})
+	assertNotFound(t, cr.Namespace, "xh-xhandler", &networkingv1.Ingress{})
+}
+
+func TestXHandlerIngressLeavesOthersAlone(t *testing.T) {
+	ctx := t.Context()
+	cr := newXHandler(t, xhandlerv1alpha1.XHandlerSpec{})
+	pathType := networkingv1.PathTypePrefix
+	backend := networkingv1.IngressBackend{Service: &networkingv1.IngressServiceBackend{
+		Name: "other", Port: networkingv1.ServiceBackendPort{Number: 80}}}
+	other := &networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{Name: "xh", Namespace: cr.Namespace},
+		Spec: networkingv1.IngressSpec{Rules: []networkingv1.IngressRule{{IngressRuleValue: networkingv1.IngressRuleValue{
+			HTTP: &networkingv1.HTTPIngressRuleValue{Paths: []networkingv1.HTTPIngressPath{{Path: "/", PathType: &pathType, Backend: backend}}},
+		}}}},
+	}
+	if err := k8sClient.Create(ctx, other); err != nil {
+		t.Fatal(err)
+	}
+	reconcileXHandler(t, nil, cr)
+	get(ctx, t, cr.Namespace, "xh", other)
+	if metav1.GetControllerOf(other) != nil || other.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name != "other" {
+		t.Errorf("an unrelated ingress named after the XHandler was changed: %+v", other)
+	}
+	get(ctx, t, cr.Namespace, "xh-xhandler", &networkingv1.Ingress{})
+
+	// The ingress of the first version of the operator, named after the XHandler and owned by it, is deleted
+	if err := k8sClient.Delete(ctx, other); err != nil {
+		t.Fatal(err)
+	}
+	previous := &networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{Name: "xh", Namespace: cr.Namespace, OwnerReferences: []metav1.OwnerReference{{
+			APIVersion: xhandlerv1alpha1.GroupVersion.String(), Kind: "XHandler", Name: cr.Name, UID: cr.UID, Controller: ptr.To(true),
+		}}},
+		Spec: other.Spec,
+	}
+	waitFor(t, "the deletion of the unrelated ingress", func() bool {
+		return apierrors.IsNotFound(k8sClient.Get(ctx, client.ObjectKeyFromObject(other), &networkingv1.Ingress{}))
+	})
+	if err := k8sClient.Create(ctx, previous); err != nil {
+		t.Fatal(err)
+	}
+	reconcileXHandler(t, nil, cr)
+	waitFor(t, "the deletion of the previous ingress", func() bool {
+		return apierrors.IsNotFound(k8sClient.Get(ctx, client.ObjectKeyFromObject(previous), &networkingv1.Ingress{}))
+	})
 }
 
 func TestXHandlerEgressProxyAndNetworkPolicies(t *testing.T) {
 	ctx := t.Context()
-	cr := newXHandler(t, xhandlerv1alpha1.XHandlerSpec{SunatFakeURL: "http://sunat-fake:8099"})
+	cr := newXHandler(t, xhandlerv1alpha1.XHandlerSpec{
+		SunatFakeURL: "http://sunat-fake:8099",
+		OTel:         &xhandlerv1alpha1.OTelSpec{Endpoint: "http://otel-collector:4318"},
+	})
 	reconcileXHandler(t, nil, cr)
 	migrate(t, cr, testXHandlerImage)
 
+	sunatFake := networkingv1.NetworkPolicyEgressRule{
+		To:    []networkingv1.NetworkPolicyPeer{{PodSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": "sunat-fake"}}}},
+		Ports: []networkingv1.NetworkPolicyPort{{Port: ptr.To(intstr.FromInt32(8099))}},
+	}
 	update(t, cr, func(spec *xhandlerv1alpha1.XHandlerSpec) {
 		spec.EgressProxy = &xhandlerv1alpha1.EgressProxySpec{Enabled: ptr.To(true)}
 		spec.NetworkPolicies = &xhandlerv1alpha1.NetworkPoliciesSpec{
 			Enabled:             ptr.To(true),
+			IngressNamespaces:   []string{"ingress-nginx"},
 			DatabasePodSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"cnpg.io/cluster": "xhandler-db"}},
+			AdditionalEgress:    []networkingv1.NetworkPolicyEgressRule{sunatFake},
 		}
 	})
 	reconcileXHandler(t, nil, cr)
 
 	proxy := &appsv1.Deployment{}
 	get(ctx, t, cr.Namespace, "xh-egress-proxy", proxy)
-	if image := proxy.Spec.Template.Spec.Containers[0].Image; image != testEgressProxyImage {
-		t.Errorf("proxy image %s, want %s", image, testEgressProxyImage)
+	squid := proxy.Spec.Template.Spec.Containers[0]
+	if squid.Image != testEgressProxyImage || squid.ImagePullPolicy != corev1.PullIfNotPresent {
+		t.Errorf("proxy image %s (%s), want %s if not present", squid.Image, squid.ImagePullPolicy, testEgressProxyImage)
+	}
+	if podSecurity := proxy.Spec.Template.Spec.SecurityContext; ptr.Deref(podSecurity.RunAsUser, 0) != 31 || !ptr.Deref(podSecurity.RunAsNonRoot, false) {
+		t.Errorf("proxy security context %+v, want non-root, 31 by default", podSecurity)
 	}
 	configMap := &corev1.ConfigMap{}
 	get(ctx, t, cr.Namespace, "xh-egress-proxy", configMap)
@@ -590,7 +788,7 @@ func TestXHandlerEgressProxyAndNetworkPolicies(t *testing.T) {
 	get(ctx, t, cr.Namespace, "xh-api", api)
 	assertEnv(t, api.Spec.Template.Spec.InitContainers[0], map[string]string{
 		"HTTPS_PROXY": "http://xh-egress-proxy:3128",
-		"NO_PROXY":    "localhost,127.0.0.1,.svc,.cluster.local,sunat-fake",
+		"NO_PROXY":    "localhost,127.0.0.1,.svc,.cluster.local,sunat-fake,otel-collector",
 	})
 	assertEnv(t, api.Spec.Template.Spec.Containers[0], map[string]string{"XHANDLER_EGRESS_PROXY": "xh-egress-proxy:3128"})
 
@@ -606,24 +804,51 @@ func TestXHandlerEgressProxyAndNetworkPolicies(t *testing.T) {
 	}) {
 		t.Errorf("egress rules %+v, want the database pods", egress.Spec.Egress)
 	}
+	if !slices.ContainsFunc(egress.Spec.Egress, func(rule networkingv1.NetworkPolicyEgressRule) bool {
+		return equality.Semantic.DeepEqual(rule.To, sunatFake.To) && len(rule.Ports) == 1 && rule.Ports[0].Port.IntValue() == 8099
+	}) {
+		t.Errorf("egress rules %+v, want the additional one", egress.Spec.Egress)
+	}
 	ingress := &networkingv1.NetworkPolicy{}
 	get(ctx, t, cr.Namespace, "xh-ingress", ingress)
-	if values := ingress.Spec.Ingress[0].From[0].NamespaceSelector.MatchExpressions[0].Values; !slices.Equal(values, defaultIngressNamespaces) {
-		t.Errorf("ingress namespaces %v, want %v", values, defaultIngressNamespaces)
+	if values := ingress.Spec.Ingress[0].From[0].NamespaceSelector.MatchExpressions[0].Values; !slices.Equal(values, []string{"ingress-nginx"}) {
+		t.Errorf("ingress namespaces %v, want ingress-nginx", values)
 	}
 
+	// Disabled while a migration runs: the proxy stays as long as the old pods use it
+	const image = "quay.io/example/xhandler-service:v2"
 	update(t, cr, func(spec *xhandlerv1alpha1.XHandlerSpec) {
 		spec.EgressProxy.Enabled = ptr.To(false)
+		spec.Image = image
 	})
 	reconcileXHandler(t, nil, cr)
+	assertCondition(t, cr, ConditionReady, metav1.ConditionFalse, "Migrating")
+	get(ctx, t, cr.Namespace, "xh-egress-proxy", &appsv1.Deployment{})
+	get(ctx, t, cr.Namespace, "xh-egress-proxy", &corev1.Service{})
+	get(ctx, t, cr.Namespace, "xh-egress-proxy", &networkingv1.NetworkPolicy{})
+	get(ctx, t, cr.Namespace, "xh-egress", egress)
+	if !slices.ContainsFunc(egress.Spec.Egress, func(rule networkingv1.NetworkPolicyEgressRule) bool {
+		return len(rule.Ports) == 1 && rule.Ports[0].Port.IntValue() == egressProxyPort
+	}) {
+		t.Errorf("egress rules %+v, want the proxy while the pods use it", egress.Spec.Egress)
+	}
+
+	// Once the Deployments no longer use it, it goes
+	migrate(t, cr, image)
 	assertNotFound(t, cr.Namespace, "xh-egress-proxy", &appsv1.Deployment{})
 	assertNotFound(t, cr.Namespace, "xh-egress-proxy", &corev1.ConfigMap{})
 	assertNotFound(t, cr.Namespace, "xh-egress-proxy", &corev1.Service{})
 	assertNotFound(t, cr.Namespace, "xh-egress-proxy", &policyv1.PodDisruptionBudget{})
 	assertNotFound(t, cr.Namespace, "xh-egress-proxy", &networkingv1.NetworkPolicy{})
-	get(ctx, t, cr.Namespace, "xh-egress", &networkingv1.NetworkPolicy{})
+	get(ctx, t, cr.Namespace, "xh-egress", egress)
+	if slices.ContainsFunc(egress.Spec.Egress, func(rule networkingv1.NetworkPolicyEgressRule) bool {
+		return len(rule.Ports) == 1 && rule.Ports[0].Port.IntValue() == egressProxyPort
+	}) {
+		t.Errorf("egress rules %+v, want no proxy", egress.Spec.Egress)
+	}
 	get(ctx, t, cr.Namespace, "xh-api", api)
 	assertEnv(t, api.Spec.Template.Spec.InitContainers[0], map[string]string{"HTTPS_PROXY": "", "NO_PROXY": ""})
+	assertEnv(t, api.Spec.Template.Spec.Containers[0], map[string]string{"XHANDLER_EGRESS_PROXY": ""})
 
 	update(t, cr, func(spec *xhandlerv1alpha1.XHandlerSpec) {
 		spec.NetworkPolicies.Enabled = ptr.To(false)
@@ -634,16 +859,35 @@ func TestXHandlerEgressProxyAndNetworkPolicies(t *testing.T) {
 	}
 }
 
+func TestXHandlerEgressProxyUser(t *testing.T) {
+	cr := newXHandler(t, xhandlerv1alpha1.XHandlerSpec{
+		EgressProxy: &xhandlerv1alpha1.EgressProxySpec{Enabled: ptr.To(true), RunAsUser: ptr.To[int64](1000680000)},
+	})
+	reconcileXHandler(t, nil, cr)
+	proxy := &appsv1.Deployment{}
+	get(t.Context(), t, cr.Namespace, "xh-egress-proxy", proxy)
+	if user := ptr.Deref(proxy.Spec.Template.Spec.SecurityContext.RunAsUser, 0); user != 1000680000 {
+		t.Errorf("proxy user %d, want the spec's", user)
+	}
+}
+
+// A Searchpe's deletion takes SEARCHPE_API_URL off the UI, which keeps running.
 func TestXHandlerUISearchpe(t *testing.T) {
 	ctx := t.Context()
 	cr := newXHandler(t, xhandlerv1alpha1.XHandlerSpec{
-		OIDC: &xhandlerv1alpha1.OIDCSpec{ServerURL: "https://keycloak.example.com/realms/xhandler", ClientID: "xhandler-ui"},
-		UI:   &xhandlerv1alpha1.UISpec{SearchpeRef: "searchpe", Instances: ptr.To[int32](1)},
+		OIDC: &xhandlerv1alpha1.OIDCSpec{ServerURL: testOIDCServer, ClientID: "xhandler-service"},
+		UI: &xhandlerv1alpha1.UISpec{
+			SearchpeRef:       "searchpe",
+			Instances:         ptr.To[int32](1),
+			CABundleConfigMap: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "searchpe-ca"}, Key: "service-ca.crt"},
+		},
 	})
 	reconcileXHandler(t, nil, cr)
 	migrate(t, cr, testXHandlerImage)
 	assertCondition(t, cr, ConditionReady, metav1.ConditionFalse, "SearchpeNotFound")
-	assertNotFound(t, cr.Namespace, "xh-ui", &appsv1.Deployment{})
+	ui := &appsv1.Deployment{}
+	get(ctx, t, cr.Namespace, "xh-ui", ui)
+	assertEnv(t, ui.Spec.Template.Spec.Containers[0], map[string]string{"SEARCHPE_API_URL": ""})
 
 	searchpe := &v1alpha1.Searchpe{
 		ObjectMeta: metav1.ObjectMeta{Name: "searchpe", Namespace: cr.Namespace},
@@ -653,7 +897,6 @@ func TestXHandlerUISearchpe(t *testing.T) {
 		t.Fatal(err)
 	}
 	reconcileXHandler(t, nil, cr)
-	ui := &appsv1.Deployment{}
 	get(ctx, t, cr.Namespace, "xh-ui", ui)
 	if replicas := ptr.Deref(ui.Spec.Replicas, 0); replicas != 1 {
 		t.Errorf("UI replicas %d, want 1", replicas)
@@ -663,11 +906,33 @@ func TestXHandlerUISearchpe(t *testing.T) {
 		t.Errorf("UI image %s, want %s", container.Image, testUIImage)
 	}
 	assertEnv(t, container, map[string]string{
-		"XHANDLER_API_URL": "http://xh-api:8080",
-		"SEARCHPE_API_URL": "https://searchpe-searchpe-service:8443",
-		"OIDC_SERVER_URL":  "https://keycloak.example.com/realms/xhandler",
-		"OIDC_CLIENT_ID":   "xhandler-ui",
+		"XHANDLER_API_URL":    "http://xh-api:8080",
+		"SEARCHPE_API_URL":    "https://searchpe-searchpe-service:8443",
+		"OIDC_SERVER_URL":     testOIDCServer,
+		"OIDC_CLIENT_ID":      "xhandler-ui",
+		"NODE_EXTRA_CA_CERTS": "/etc/xhandler-ui/ca/ca.crt",
 	})
+	if container.ReadinessProbe.HTTPGet == nil || container.ReadinessProbe.HTTPGet.Path != "/healthz" ||
+		container.LivenessProbe.HTTPGet == nil || container.LivenessProbe.HTTPGet.Path != "/healthz" {
+		t.Errorf("UI probes %+v, %+v, want GET /healthz", container.ReadinessProbe, container.LivenessProbe)
+	}
+	if !slices.ContainsFunc(ui.Spec.Template.Spec.Volumes, func(v corev1.Volume) bool {
+		return v.ConfigMap != nil && v.ConfigMap.Name == "searchpe-ca" && len(v.ConfigMap.Items) == 1 &&
+			v.ConfigMap.Items[0].Key == "service-ca.crt" && v.ConfigMap.Items[0].Path == "ca.crt"
+	}) {
+		t.Errorf("UI volumes %+v, want the CA bundle", ui.Spec.Template.Spec.Volumes)
+	}
+
+	if err := k8sClient.Delete(ctx, searchpe); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "the deletion of the Searchpe", func() bool {
+		return apierrors.IsNotFound(k8sClient.Get(ctx, client.ObjectKeyFromObject(searchpe), &v1alpha1.Searchpe{}))
+	})
+	reconcileXHandler(t, nil, cr)
+	assertCondition(t, cr, ConditionReady, metav1.ConditionFalse, "SearchpeNotFound")
+	get(ctx, t, cr.Namespace, "xh-ui", ui)
+	assertEnv(t, ui.Spec.Template.Spec.Containers[0], map[string]string{"SEARCHPE_API_URL": "", "OIDC_CLIENT_ID": "xhandler-ui"})
 }
 
 func TestXHandlerMissingImages(t *testing.T) {
@@ -701,7 +966,7 @@ func TestXHandlerMissingImages(t *testing.T) {
 func TestXHandlerReconcileErrorIsAReadyCondition(t *testing.T) {
 	cr := newXHandler(t, xhandlerv1alpha1.XHandlerSpec{
 		// Rejected by the API server: no "=" in the name of a variable
-		AdditionalOptions: []xhandlerv1alpha1.ValueOrSecret{{Name: "A=B", Value: "c"}},
+		Engine: &xhandlerv1alpha1.EngineSpec{AdditionalOptions: []xhandlerv1alpha1.ValueOrSecret{{Name: "A=B", Value: "c"}}},
 	})
 	reconcileXHandler(t, nil, cr)
 	finishJob(t, cr, testXHandlerImage, true)
@@ -714,19 +979,62 @@ func TestXHandlerReconcileErrorIsAReadyCondition(t *testing.T) {
 
 func TestXHandlerValidation(t *testing.T) {
 	namespace := newNamespace(t)
+	oidc := &xhandlerv1alpha1.OIDCSpec{ServerURL: testOIDCServer}
 	for name, cr := range map[string]*xhandlerv1alpha1.XHandler{
-		"long name": {ObjectMeta: metav1.ObjectMeta{Name: strings.Repeat("x", 41), Namespace: namespace}},
+		"long name":   {ObjectMeta: metav1.ObjectMeta{Name: strings.Repeat("x", 41), Namespace: namespace}, Spec: xhandlerv1alpha1.XHandlerSpec{OIDC: oidc}},
+		"digit first": {ObjectMeta: metav1.ObjectMeta{Name: "1xhandler", Namespace: namespace}, Spec: xhandlerv1alpha1.XHandlerSpec{OIDC: oidc}},
+		"dot":         {ObjectMeta: metav1.ObjectMeta{Name: "x.handler", Namespace: namespace}, Spec: xhandlerv1alpha1.XHandlerSpec{OIDC: oidc}},
 		"environment": {
 			ObjectMeta: metav1.ObjectMeta{Name: "environment", Namespace: namespace},
-			Spec:       xhandlerv1alpha1.XHandlerSpec{OSE: &xhandlerv1alpha1.OSESpec{Environment: "staging"}},
+			Spec:       xhandlerv1alpha1.XHandlerSpec{OIDC: oidc, OSE: &xhandlerv1alpha1.OSESpec{Environment: "staging"}},
 		},
 		"ruc": {
 			ObjectMeta: metav1.ObjectMeta{Name: "ruc", Namespace: namespace},
-			Spec:       xhandlerv1alpha1.XHandlerSpec{OSE: &xhandlerv1alpha1.OSESpec{RUC: "123"}},
+			Spec:       xhandlerv1alpha1.XHandlerSpec{OIDC: oidc, OSE: &xhandlerv1alpha1.OSESpec{RUC: "123"}},
+		},
+		"ruc on the fake": {
+			ObjectMeta: metav1.ObjectMeta{Name: "ruc-fake", Namespace: namespace},
+			Spec:       xhandlerv1alpha1.XHandlerSpec{OIDC: oidc, OSE: &xhandlerv1alpha1.OSESpec{RUC: "20123456789", Environment: "fake"}},
+		},
+		"ruc without environment": {
+			ObjectMeta: metav1.ObjectMeta{Name: "ruc-none", Namespace: namespace},
+			Spec:       xhandlerv1alpha1.XHandlerSpec{OIDC: oidc, OSE: &xhandlerv1alpha1.OSESpec{RUC: "20123456789"}},
+		},
+		"option without name": {
+			ObjectMeta: metav1.ObjectMeta{Name: "option", Namespace: namespace},
+			Spec:       xhandlerv1alpha1.XHandlerSpec{OIDC: oidc, AdditionalOptions: []xhandlerv1alpha1.ValueOrSecret{{Value: "x"}}},
+		},
+		"UI without OIDC": {ObjectMeta: metav1.ObjectMeta{Name: "no-oidc", Namespace: namespace}},
+		"network policies without ingress namespaces": {
+			ObjectMeta: metav1.ObjectMeta{Name: "policies", Namespace: namespace},
+			Spec:       xhandlerv1alpha1.XHandlerSpec{OIDC: oidc, NetworkPolicies: &xhandlerv1alpha1.NetworkPoliciesSpec{Enabled: ptr.To(true)}},
+		},
+		"zone spread": {
+			ObjectMeta: metav1.ObjectMeta{Name: "zones", Namespace: namespace},
+			Spec:       xhandlerv1alpha1.XHandlerSpec{OIDC: oidc, ZoneSpread: "Always"},
 		},
 	} {
 		if err := k8sClient.Create(t.Context(), cr); !apierrors.IsInvalid(err) {
 			t.Errorf("%s: create %v, want invalid", name, err)
+		}
+	}
+
+	for name, cr := range map[string]*xhandlerv1alpha1.XHandler{
+		"no UI without OIDC": {
+			ObjectMeta: metav1.ObjectMeta{Name: "no-ui", Namespace: namespace},
+			Spec:       xhandlerv1alpha1.XHandlerSpec{UI: &xhandlerv1alpha1.UISpec{Enabled: ptr.To(false)}},
+		},
+		"ruc on beta": {
+			ObjectMeta: metav1.ObjectMeta{Name: "ruc-beta", Namespace: namespace},
+			Spec:       xhandlerv1alpha1.XHandlerSpec{OIDC: oidc, OSE: &xhandlerv1alpha1.OSESpec{RUC: "20123456789", Environment: "beta"}},
+		},
+		"disabled network policies": {
+			ObjectMeta: metav1.ObjectMeta{Name: "no-policies", Namespace: namespace},
+			Spec:       xhandlerv1alpha1.XHandlerSpec{OIDC: oidc, NetworkPolicies: &xhandlerv1alpha1.NetworkPoliciesSpec{}},
+		},
+	} {
+		if err := k8sClient.Create(t.Context(), cr); err != nil {
+			t.Errorf("%s: create %v, want valid", name, err)
 		}
 	}
 }
@@ -748,6 +1056,8 @@ func TestXHandlerManagerWatches(t *testing.T) {
 		Metrics:                metricsserver.Options{BindAddress: "0"},
 		HealthProbeBindAddress: "0",
 		Controller:             config.Controller{SkipNameValidation: ptr.To(true)},
+		// The cache of the operator
+		Cache: cache.Options{ByObject: XHandlerCacheByObject()},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -763,7 +1073,10 @@ func TestXHandlerManagerWatches(t *testing.T) {
 		}
 	}()
 
-	cr := newXHandler(t, xhandlerv1alpha1.XHandlerSpec{UI: &xhandlerv1alpha1.UISpec{SearchpeRef: "searchpe"}})
+	cr := newXHandler(t, xhandlerv1alpha1.XHandlerSpec{
+		UI:          &xhandlerv1alpha1.UISpec{SearchpeRef: "searchpe"},
+		EgressProxy: &xhandlerv1alpha1.EgressProxySpec{Enabled: ptr.To(true)},
+	})
 	jobKey := client.ObjectKey{Namespace: cr.Namespace, Name: xhMigrateJobName(cr, testXHandlerImage)}
 	waitFor(t, "the migration job", func() bool { return k8sClient.Get(ctx, jobKey, &batchv1.Job{}) == nil })
 
@@ -780,6 +1093,17 @@ func TestXHandlerManagerWatches(t *testing.T) {
 	uiKey := client.ObjectKey{Namespace: cr.Namespace, Name: "xh-ui"}
 	waitFor(t, "the UI deployment", func() bool { return k8sClient.Get(ctx, uiKey, &appsv1.Deployment{}) == nil })
 
+	// A deleted ConfigMap, of the cache restricted to the operator's, is applied again
+	configMap := &corev1.ConfigMap{}
+	get(ctx, t, cr.Namespace, "xh-egress-proxy", configMap)
+	if err := k8sClient.Delete(ctx, configMap); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "a new egress proxy ConfigMap", func() bool {
+		recreated := &corev1.ConfigMap{}
+		return k8sClient.Get(ctx, client.ObjectKeyFromObject(configMap), recreated) == nil && recreated.UID != configMap.UID
+	})
+
 	// A deleted resource is applied again
 	api := &appsv1.Deployment{}
 	get(ctx, t, cr.Namespace, "xh-api", api)
@@ -792,7 +1116,7 @@ func TestXHandlerManagerWatches(t *testing.T) {
 	})
 
 	// The deployments' availability reconciles
-	for _, name := range []string{"xh-api", "xh-worker", "xh-ui"} {
+	for _, name := range []string{"xh-api", "xh-worker", "xh-ui", "xh-egress-proxy"} {
 		makeAvailable(t, cr.Namespace, name)
 	}
 	waitFor(t, "the Ready condition", func() bool {

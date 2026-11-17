@@ -55,6 +55,16 @@ const (
 	// Longer than a full SUNAT call (120 s) plus the app's shutdown timeout (135 s)
 	xhTerminationGracePeriod = 150
 	xhDefaultModuleMountPath = "/opt/hsm"
+	// The UID of Squid in the egress proxy image, which runs as root otherwise
+	egressProxyDefaultUser = 31
+	// Where the UI finds the CA bundle of ui.caBundleConfigMap
+	uiCABundleDir  = "/etc/xhandler-ui/ca"
+	uiCABundleFile = "ca.crt"
+	// The annotation of the api and worker Deployments with the hash of the migration (image,
+	// database, owner credentials) their pods run after
+	xhMigrationAnnotation = "xhandler.openubl.io/migration"
+	// Longer than a full SUNAT call (120 s): the SOAP intake waits for it
+	xhIngressTimeout = "150"
 
 	componentAPI         = "api"
 	componentWorker      = "worker"
@@ -68,6 +78,12 @@ const (
 	xhUILabel          = "xhandler-ui"
 	xhMigrateLabel     = "xhandler-migrate"
 	xhEgressProxyLabel = "egress-proxy"
+
+	// Every resource of an XHandler has the label xhManagedByLabel=xhManagedBy: the cache of the
+	// operator holds only these ConfigMaps, Jobs and NetworkPolicies. Not the Searchpe value
+	// (searchpe-operator): the selector of the Searchpe deployments selects every pod with it.
+	xhManagedByLabel = "app.kubernetes.io/managed-by"
+	xhManagedBy      = "xhandler-operator"
 )
 
 // The Squid configuration of the egress proxy: HTTPS CONNECT to port 443 of public addresses only.
@@ -89,9 +105,6 @@ pid_filename none
 // The ranges the pods never reach directly: private, CGNAT, link-local (metadata) and loopback.
 var privateRanges = []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "100.64.0.0/10", "169.254.0.0/16", "127.0.0.0/8"}
 
-// The namespaces whose pods reach the api and the UI when the spec names none.
-var defaultIngressNamespaces = []string{"envoy-gateway-system", "monitoring"}
-
 // xhImages are the images an XHandler runs.
 type xhImages struct {
 	app, engine, ui, egressProxy string
@@ -103,12 +116,29 @@ func xhAPIName(cr *xhandlerv1alpha1.XHandler) string         { return xhName(cr,
 func xhWorkerName(cr *xhandlerv1alpha1.XHandler) string      { return xhName(cr, componentWorker) }
 func xhUIName(cr *xhandlerv1alpha1.XHandler) string          { return xhName(cr, componentUI) }
 func xhEgressProxyName(cr *xhandlerv1alpha1.XHandler) string { return xhName(cr, componentEgressProxy) }
-func xhIngressName(cr *xhandlerv1alpha1.XHandler) string     { return cr.Name }
+func xhIngressName(cr *xhandlerv1alpha1.XHandler) string     { return xhName(cr, "xhandler") }
 
-// xhMigrateJobName is the name of the migration Job of image: a new image runs a new Job.
+// xhMigrationHash identifies a migration: the image, the database and the owner credentials. A new
+// one of any runs a new Job.
+func xhMigrationHash(cr *xhandlerv1alpha1.XHandler, image string) string {
+	parts := []string{image}
+	if db := cr.Spec.Database; db != nil {
+		parts = append(parts, db.URL)
+		for _, ref := range []*corev1.SecretKeySelector{db.OwnerUsernameSecret, db.OwnerPasswordSecret} {
+			if ref != nil {
+				parts = append(parts, ref.Name+"/"+ref.Key)
+			} else {
+				parts = append(parts, "")
+			}
+		}
+	}
+	sum := sha256.Sum256([]byte(strings.Join(parts, "\n")))
+	return hex.EncodeToString(sum[:])[:10]
+}
+
+// xhMigrateJobName is the name of the migration Job of image (and of the database of cr).
 func xhMigrateJobName(cr *xhandlerv1alpha1.XHandler, image string) string {
-	sum := sha256.Sum256([]byte(image))
-	return xhName(cr, componentMigrate+"-"+hex.EncodeToString(sum[:])[:10])
+	return xhName(cr, componentMigrate+"-"+xhMigrationHash(cr, image))
 }
 
 // The names of the network policies.
@@ -130,6 +160,7 @@ func xhSelector(cr *xhandlerv1alpha1.XHandler, name, component string) map[strin
 func xhLabels(cr *xhandlerv1alpha1.XHandler, name, component string) map[string]string {
 	labels := xhSelector(cr, name, component)
 	labels["app.kubernetes.io/part-of"] = "xhandler-service"
+	labels[xhManagedByLabel] = xhManagedBy
 	return labels
 }
 
@@ -177,6 +208,22 @@ func uiReplicas(cr *xhandlerv1alpha1.XHandler) int32 {
 		return xhDefaultReplicas
 	}
 	return ptr.Deref(cr.Spec.UI.Instances, xhDefaultReplicas)
+}
+
+// uiOIDCClientID is the OIDC client of the UI.
+func uiOIDCClientID(cr *xhandlerv1alpha1.XHandler) string {
+	if cr.Spec.UI == nil || cr.Spec.UI.OIDCClientID == "" {
+		return "xhandler-ui"
+	}
+	return cr.Spec.UI.OIDCClientID
+}
+
+// xhOTelEndpoint is the OTLP over HTTP endpoint of cr, empty without one.
+func xhOTelEndpoint(cr *xhandlerv1alpha1.XHandler) string {
+	if cr.Spec.OTel == nil {
+		return ""
+	}
+	return strings.TrimSpace(cr.Spec.OTel.Endpoint)
 }
 
 func egressProxyReplicas(cr *xhandlerv1alpha1.XHandler) int32 {
@@ -229,14 +276,18 @@ func resources(cpuRequest, memoryRequest, memoryLimit string) *corev1ac.Resource
 		WithLimits(corev1.ResourceList{corev1.ResourceMemory: resource.MustParse(memoryLimit)})
 }
 
-// spreadConstraints spread the pods evenly across zones (a lost zone's tainted nodes don't count)
-// and, if possible, across nodes.
-func spreadConstraints(selector map[string]string) []*corev1ac.TopologySpreadConstraintApplyConfiguration {
+// spreadConstraints spread the pods evenly across zones (a lost zone's tainted nodes don't count),
+// if possible unless zoneSpread is Required, and, if possible, across nodes.
+func spreadConstraints(cr *xhandlerv1alpha1.XHandler, selector map[string]string) []*corev1ac.TopologySpreadConstraintApplyConfiguration {
+	zones := corev1.ScheduleAnyway
+	if cr.Spec.ZoneSpread == "Required" {
+		zones = corev1.DoNotSchedule
+	}
 	return []*corev1ac.TopologySpreadConstraintApplyConfiguration{
 		corev1ac.TopologySpreadConstraint().
 			WithMaxSkew(1).
 			WithTopologyKey("topology.kubernetes.io/zone").
-			WithWhenUnsatisfiable(corev1.DoNotSchedule).
+			WithWhenUnsatisfiable(zones).
 			WithNodeTaintsPolicy(corev1.NodeInclusionPolicyHonor).
 			WithLabelSelector(metav1ac.LabelSelector().WithMatchLabels(selector)),
 		corev1ac.TopologySpreadConstraint().
@@ -286,6 +337,12 @@ func roleDeployment(cr *xhandlerv1alpha1.XHandler, images xhImages, pullPolicy c
 		WithImagePullPolicy(pullPolicy).
 		WithPorts(corev1ac.ContainerPort().WithName("http").WithProtocol(corev1.ProtocolTCP).WithContainerPort(xhAppPort)).
 		WithEnv(app.env...).
+		// Up to 150 s to start before the liveness probe counts
+		WithStartupProbe(corev1ac.Probe().
+			WithHTTPGet(corev1ac.HTTPGetAction().WithPath("/q/health/started").WithPort(intstr.FromString("http"))).
+			WithTimeoutSeconds(3).
+			WithPeriodSeconds(5).
+			WithFailureThreshold(30)).
 		WithReadinessProbe(corev1ac.Probe().
 			WithHTTPGet(corev1ac.HTTPGetAction().WithPath("/q/health/ready").WithPort(intstr.FromString("http"))).
 			WithTimeoutSeconds(3)).
@@ -299,7 +356,7 @@ func roleDeployment(cr *xhandlerv1alpha1.XHandler, images xhImages, pullPolicy c
 	pod := corev1ac.PodSpec().
 		WithAutomountServiceAccountToken(false).
 		WithTerminationGracePeriodSeconds(xhTerminationGracePeriod).
-		WithTopologySpreadConstraints(spreadConstraints(xhSelector(cr, xhAppLabel, component))...).
+		WithTopologySpreadConstraints(spreadConstraints(cr, xhSelector(cr, xhAppLabel, component))...).
 		WithSecurityContext(restrictedPodSecurityContext()).
 		WithInitContainers(engineContainer(cr, images.engine, pullPolicy)).
 		WithContainers(container).
@@ -311,7 +368,9 @@ func roleDeployment(cr *xhandlerv1alpha1.XHandler, images xhImages, pullPolicy c
 		name = xhWorkerName(cr)
 		replicas = roleReplicas(cr.Spec.Worker)
 	}
-	return rollingDeployment(cr, name, xhAppLabel, component, replicas, pod), nil
+	deployment := rollingDeployment(cr, name, xhAppLabel, component, replicas, pod).
+		WithAnnotations(map[string]string{xhMigrationAnnotation: xhMigrationHash(cr, images.app)})
+	return deployment, nil
 }
 
 // engineContainer is the engine sidecar. It listens on localhost only, which kubelet HTTP probes
@@ -320,14 +379,21 @@ func engineContainer(cr *xhandlerv1alpha1.XHandler, image string, pullPolicy cor
 	c := &serverConfig{}
 	c.value("XHANDLER_ENGINE_ADDR", xhEngineAddr)
 	c.value("XHANDLER_SUNAT_FAKE_URL", cr.Spec.SunatFakeURL)
+	otelEndpoint := xhOTelEndpoint(cr)
+	c.value("OTEL_EXPORTER_OTLP_ENDPOINT", otelEndpoint)
 	if xhEgressProxyEnabled(cr) {
 		c.value("HTTPS_PROXY", "http://"+xhEgressProxyAddress(cr))
 		noProxy := []string{"localhost", "127.0.0.1", ".svc", ".cluster.local"}
-		// The SUNAT fake runs in the cluster: the proxy denies private addresses
-		if fake, err := url.Parse(cr.Spec.SunatFakeURL); err == nil && fake.Hostname() != "" && !slices.Contains(noProxy, fake.Hostname()) {
-			noProxy = append(noProxy, fake.Hostname())
+		// The SUNAT fake and the collector run in the cluster: the proxy denies private addresses
+		for _, address := range []string{cr.Spec.SunatFakeURL, otelEndpoint} {
+			if u, err := url.Parse(address); err == nil && u.Hostname() != "" && !slices.Contains(noProxy, u.Hostname()) {
+				noProxy = append(noProxy, u.Hostname())
+			}
 		}
 		c.value("NO_PROXY", strings.Join(noProxy, ","))
+	}
+	if cr.Spec.Engine != nil {
+		c.env = withAdditionalOptions(c.env, cr.Spec.Engine.AdditionalOptions)
 	}
 
 	health := func() *corev1ac.ProbeApplyConfiguration {
@@ -402,6 +468,13 @@ func appConfig(cr *xhandlerv1alpha1.XHandler, component string) (*serverConfig, 
 
 	c.value("XHANDLER_PUBLIC_URL", xhPublicURL(cr))
 	c.value("XHANDLER_SUNAT_FAKE_URL", cr.Spec.SunatFakeURL)
+	if endpoint := xhOTelEndpoint(cr); endpoint != "" {
+		// The engine's exporter speaks OTLP over HTTP only: one endpoint for both
+		c.value("QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT", endpoint)
+		c.value("QUARKUS_OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf")
+	} else {
+		c.value("QUARKUS_OTEL_SDK_DISABLED", "true")
+	}
 	if xhEgressProxyEnabled(cr) {
 		// Webhooks to tenant-supplied hosts go through the proxy, which pins DNS
 		c.value("XHANDLER_EGRESS_PROXY", xhEgressProxyAddress(cr))
@@ -438,34 +511,49 @@ func withAdditionalOptions(env []*corev1ac.EnvVarApplyConfiguration, options []x
 	return env
 }
 
-// volumeApplyConfiguration is the volume name with source. Apply configurations are the JSON of
-// their objects.
+// volumeApplyConfiguration is the volume name with source.
 func volumeApplyConfiguration(name string, source *corev1.VolumeSource) (*corev1ac.VolumeApplyConfiguration, error) {
-	data, err := json.Marshal(corev1.Volume{Name: name, VolumeSource: *source})
-	if err != nil {
-		return nil, err
-	}
 	volume := &corev1ac.VolumeApplyConfiguration{}
-	if err := json.Unmarshal(data, volume); err != nil {
+	if err := convert(corev1.Volume{Name: name, VolumeSource: *source}, volume); err != nil {
 		return nil, err
 	}
 	return volume, nil
 }
 
+// convert sets the apply configuration ac to obj: apply configurations are the JSON of their
+// objects.
+func convert(obj, ac any) error {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(data, ac)
+}
+
 // migrateJob runs the database migrations of image, as the schema owner, and exits before the
-// application starts: no workers, no HTTP server, no role check.
+// application starts: no workers, no HTTP server, no role check. It gets the additional options,
+// except those that would change what it does or who it logs in as.
 func migrateJob(cr *xhandlerv1alpha1.XHandler, image string, pullPolicy corev1.PullPolicy) *batchv1ac.JobApplyConfiguration {
 	c := &serverConfig{}
-	c.value("QUARKUS_FLYWAY_MIGRATE_AT_START", "true")
-	c.value("QUARKUS_INIT_AND_EXIT", "true")
-	c.value("XHANDLER_ROLE", componentMigrate)
+	c.value("QUARKUS_OTEL_SDK_DISABLED", "true")
 	if oidc := cr.Spec.OIDC; oidc != nil {
 		c.value("QUARKUS_OIDC_AUTH_SERVER_URL", oidc.ServerURL)
 	}
 	if db := cr.Spec.Database; db != nil {
 		c.value("QUARKUS_DATASOURCE_JDBC_URL", db.URL)
-		c.secret("QUARKUS_DATASOURCE_USERNAME", db.OwnerUsernameSecret)
-		c.secret("QUARKUS_DATASOURCE_PASSWORD", db.OwnerPasswordSecret)
+	}
+	c.env = withAdditionalOptions(c.env, cr.Spec.AdditionalOptions)
+	fixed := &serverConfig{}
+	fixed.value("QUARKUS_FLYWAY_MIGRATE_AT_START", "true")
+	fixed.value("QUARKUS_INIT_AND_EXIT", "true")
+	fixed.value("XHANDLER_ROLE", componentMigrate)
+	if db := cr.Spec.Database; db != nil {
+		fixed.secret("QUARKUS_DATASOURCE_USERNAME", db.OwnerUsernameSecret)
+		fixed.secret("QUARKUS_DATASOURCE_PASSWORD", db.OwnerPasswordSecret)
+	}
+	for _, variable := range fixed.env {
+		c.env = slices.DeleteFunc(c.env, func(e *corev1ac.EnvVarApplyConfiguration) bool { return *e.Name == *variable.Name })
+		c.env = append(c.env, variable)
 	}
 
 	pod := corev1ac.PodSpec().
@@ -504,15 +592,28 @@ func uiDeployment(cr *xhandlerv1alpha1.XHandler, image string, pullPolicy corev1
 	c.value("SEARCHPE_API_URL", searchpeURL)
 	if oidc := cr.Spec.OIDC; oidc != nil {
 		c.value("OIDC_SERVER_URL", oidc.ServerURL)
-		c.value("OIDC_CLIENT_ID", oidc.ClientID)
+	}
+	c.value("OIDC_CLIENT_ID", uiOIDCClientID(cr))
+	mounts := []*corev1ac.VolumeMountApplyConfiguration{corev1ac.VolumeMount().WithName("tmp").WithMountPath("/tmp")}
+	volumes := []*corev1ac.VolumeApplyConfiguration{emptyDirVolume("tmp")}
+	if cr.Spec.UI != nil && cr.Spec.UI.CABundleConfigMap != nil {
+		ca := cr.Spec.UI.CABundleConfigMap
+		c.value("NODE_EXTRA_CA_CERTS", uiCABundleDir+"/"+uiCABundleFile)
+		mounts = append(mounts, corev1ac.VolumeMount().WithName("ca-bundle").WithMountPath(uiCABundleDir).WithReadOnly(true))
+		volumes = append(volumes, corev1ac.Volume().WithName("ca-bundle").
+			WithConfigMap(corev1ac.ConfigMapVolumeSource().
+				WithName(ca.Name).
+				WithItems(corev1ac.KeyToPath().WithKey(ca.Key).WithPath(uiCABundleFile))))
 	}
 
-	tcpProbe := func() *corev1ac.ProbeApplyConfiguration {
-		return corev1ac.Probe().WithTCPSocket(corev1ac.TCPSocketAction().WithPort(intstr.FromString("http"))).WithTimeoutSeconds(3)
+	healthz := func() *corev1ac.ProbeApplyConfiguration {
+		return corev1ac.Probe().
+			WithHTTPGet(corev1ac.HTTPGetAction().WithPath("/healthz").WithPort(intstr.FromString("http"))).
+			WithTimeoutSeconds(3)
 	}
 	pod := corev1ac.PodSpec().
 		WithAutomountServiceAccountToken(false).
-		WithTopologySpreadConstraints(spreadConstraints(xhSelector(cr, xhUILabel, componentUI))...).
+		WithTopologySpreadConstraints(spreadConstraints(cr, xhSelector(cr, xhUILabel, componentUI))...).
 		WithSecurityContext(restrictedPodSecurityContext()).
 		WithContainers(corev1ac.Container().
 			WithName("ui").
@@ -520,12 +621,12 @@ func uiDeployment(cr *xhandlerv1alpha1.XHandler, image string, pullPolicy corev1
 			WithImagePullPolicy(pullPolicy).
 			WithPorts(corev1ac.ContainerPort().WithName("http").WithProtocol(corev1.ProtocolTCP).WithContainerPort(xhAppPort)).
 			WithEnv(c.env...).
-			WithReadinessProbe(tcpProbe()).
-			WithLivenessProbe(tcpProbe()).
+			WithReadinessProbe(healthz()).
+			WithLivenessProbe(healthz()).
 			WithResources(resources("50m", "64Mi", "256Mi")).
 			WithSecurityContext(restrictedSecurityContext()).
-			WithVolumeMounts(corev1ac.VolumeMount().WithName("tmp").WithMountPath("/tmp"))).
-		WithVolumes(emptyDirVolume("tmp"))
+			WithVolumeMounts(mounts...)).
+		WithVolumes(volumes...)
 	return rollingDeployment(cr, xhUIName(cr), xhUILabel, componentUI, uiReplicas(cr), pod)
 }
 
@@ -555,14 +656,14 @@ func podDisruptionBudget(cr *xhandlerv1alpha1.XHandler, name, appName, component
 			WithSelector(metav1ac.LabelSelector().WithMatchLabels(xhSelector(cr, appName, component))))
 }
 
-// xhIngress exposes the UI, or the api when the UI is disabled. With the UI, what clients other
-// than browsers call (the REST and SOAP APIs, the buyers' links, the API reference) still goes
-// to the api.
+// xhIngress exposes the UI, which proxies its own APIs (/api/xhandler, /api/searchpe), and what
+// clients other than browsers call: the REST and SOAP APIs, the buyers' links and the API reference,
+// to the api. Without the UI, only the latter: never the metrics or the health checks (/q).
 func xhIngress(cr *xhandlerv1alpha1.XHandler) *networkingv1ac.IngressApplyConfiguration {
-	path := func(prefix, service string) *networkingv1ac.HTTPIngressPathApplyConfiguration {
+	path := func(pathType networkingv1.PathType, value, service string) *networkingv1ac.HTTPIngressPathApplyConfiguration {
 		return networkingv1ac.HTTPIngressPath().
-			WithPath(prefix).
-			WithPathType(networkingv1.PathTypePrefix).
+			WithPath(value).
+			WithPathType(pathType).
 			WithBackend(networkingv1ac.IngressBackend().
 				WithService(networkingv1ac.IngressServiceBackend().
 					WithName(service).
@@ -570,12 +671,16 @@ func xhIngress(cr *xhandlerv1alpha1.XHandler) *networkingv1ac.IngressApplyConfig
 	}
 	var paths []*networkingv1ac.HTTPIngressPathApplyConfiguration
 	if xhUIEnabled(cr) {
-		for _, prefix := range []string{"/api", "/ose", "/ol-ti-itcpfegem", "/q/openapi", "/q/swagger-ui"} {
-			paths = append(paths, path(prefix, xhAPIName(cr)))
+		for _, prefix := range []string{"/api/xhandler", "/api/searchpe"} {
+			paths = append(paths, path(networkingv1.PathTypePrefix, prefix, xhUIName(cr)))
 		}
-		paths = append(paths, path("/", xhUIName(cr)))
-	} else {
-		paths = append(paths, path("/", xhAPIName(cr)))
+	}
+	for _, prefix := range []string{"/api/v1", "/api/admin", "/ose", "/ol-ti-itcpfegem", "/q/openapi", "/q/swagger-ui"} {
+		paths = append(paths, path(networkingv1.PathTypePrefix, prefix, xhAPIName(cr)))
+	}
+	paths = append(paths, path(networkingv1.PathTypeExact, "/q/openapi.json", xhAPIName(cr)))
+	if xhUIEnabled(cr) {
+		paths = append(paths, path(networkingv1.PathTypePrefix, "/", xhUIName(cr)))
 	}
 
 	rule := networkingv1ac.IngressRule().WithHTTP(networkingv1ac.HTTPIngressRuleValue().WithPaths(paths...))
@@ -583,6 +688,9 @@ func xhIngress(cr *xhandlerv1alpha1.XHandler) *networkingv1ac.IngressApplyConfig
 		rule.WithHost(cr.Spec.Hostname)
 	}
 	spec := networkingv1ac.IngressSpec().WithRules(rule)
+	if className := cr.Spec.Ingress; className != nil && className.ClassName != "" {
+		spec.WithIngressClassName(className.ClassName)
+	}
 	if xhTLSEnabled(cr) {
 		tls := networkingv1ac.IngressTLS().WithSecretName(cr.Spec.TLS.Secret)
 		if cr.Spec.Hostname != "" {
@@ -598,8 +706,13 @@ func xhIngress(cr *xhandlerv1alpha1.XHandler) *networkingv1ac.IngressApplyConfig
 	}
 	return networkingv1ac.Ingress(xhIngressName(cr), cr.Namespace).
 		WithLabels(xhLabels(cr, appName, component)).
-		// The OSE's SOAP intake carries ZIPs of up to 10 MB in base64
-		WithAnnotations(map[string]string{"nginx.ingress.kubernetes.io/proxy-body-size": "16m"}).
+		WithAnnotations(map[string]string{
+			// The OSE's SOAP intake carries ZIPs of up to 10 MB in base64
+			"nginx.ingress.kubernetes.io/proxy-body-size": "16m",
+			// A synchronous SUNAT send takes up to 120 s
+			"nginx.ingress.kubernetes.io/proxy-read-timeout": xhIngressTimeout,
+			"nginx.ingress.kubernetes.io/proxy-send-timeout": xhIngressTimeout,
+		}).
 		WithOwnerReferences(xhOwnerReference(cr)).
 		WithSpec(spec)
 }
@@ -612,16 +725,19 @@ func egressProxyConfigMap(cr *xhandlerv1alpha1.XHandler) *corev1ac.ConfigMapAppl
 }
 
 // egressProxyDeployment runs Squid in the foreground (the image's entrypoint is a service manager).
-func egressProxyDeployment(cr *xhandlerv1alpha1.XHandler, image string, pullPolicy corev1.PullPolicy) *appsv1ac.DeploymentApplyConfiguration {
+// Its image is a third party's, pinned by tag: pulled if not present, whatever the pull policy of
+// the operator's images.
+func egressProxyDeployment(cr *xhandlerv1alpha1.XHandler, image string) *appsv1ac.DeploymentApplyConfiguration {
 	selector := xhSelector(cr, xhEgressProxyLabel, componentEgressProxy)
 	pod := corev1ac.PodSpec().
 		WithAutomountServiceAccountToken(false).
-		WithTopologySpreadConstraints(spreadConstraints(selector)...).
-		WithSecurityContext(restrictedPodSecurityContext().WithRunAsUser(31)).
+		WithTopologySpreadConstraints(spreadConstraints(cr, selector)...).
+		WithSecurityContext(restrictedPodSecurityContext().
+			WithRunAsUser(ptr.Deref(cr.Spec.EgressProxy.RunAsUser, egressProxyDefaultUser))).
 		WithContainers(corev1ac.Container().
 			WithName("squid").
 			WithImage(image).
-			WithImagePullPolicy(pullPolicy).
+			WithImagePullPolicy(corev1.PullIfNotPresent).
 			WithCommand("/usr/sbin/squid").
 			WithArgs("-N", "-f", "/etc/squid/squid.conf").
 			WithPorts(corev1ac.ContainerPort().WithName("proxy").WithProtocol(corev1.ProtocolTCP).WithContainerPort(egressProxyPort)).
@@ -640,8 +756,9 @@ func egressProxyDeployment(cr *xhandlerv1alpha1.XHandler, image string, pullPoli
 }
 
 // networkPolicies deny the xhandler pods everything they don't need. Tenant-supplied hosts are
-// reached on public addresses only; SUNAT and third-party OSEs through the egress proxy.
-func networkPolicies(cr *xhandlerv1alpha1.XHandler) []*networkingv1ac.NetworkPolicyApplyConfiguration {
+// reached on public addresses only; SUNAT and third-party OSEs through the egress proxy, when
+// proxy (which is true while the egress proxy runs, even disabled, until no pod uses it).
+func networkPolicies(cr *xhandlerv1alpha1.XHandler, proxy bool) ([]*networkingv1ac.NetworkPolicyApplyConfiguration, error) {
 	spec := cr.Spec.NetworkPolicies
 	appPods := metav1ac.LabelSelector().WithMatchLabels(map[string]string{
 		"app.kubernetes.io/name":     xhAppLabel,
@@ -656,9 +773,6 @@ func networkPolicies(cr *xhandlerv1alpha1.XHandler) []*networkingv1ac.NetworkPol
 	}
 
 	ingressNamespaces := spec.IngressNamespaces
-	if len(ingressNamespaces) == 0 {
-		ingressNamespaces = defaultIngressNamespaces
-	}
 	ingress := networkingv1ac.NetworkPolicyIngressRule().
 		WithFrom(networkingv1ac.NetworkPolicyPeer().
 			WithNamespaceSelector(metav1ac.LabelSelector().
@@ -680,7 +794,7 @@ func networkPolicies(cr *xhandlerv1alpha1.XHandler) []*networkingv1ac.NetworkPol
 				WithPodSelector(metav1ac.LabelSelector().WithMatchLabels(map[string]string{"app.kubernetes.io/name": "otel-collector"}))).
 			WithPorts(tcpPort(4317), tcpPort(4318)),
 	}
-	if xhEgressProxyEnabled(cr) {
+	if proxy {
 		egress = append(egress, networkingv1ac.NetworkPolicyEgressRule().
 			WithTo(networkingv1ac.NetworkPolicyPeer().
 				WithPodSelector(metav1ac.LabelSelector().WithMatchLabels(xhSelector(cr, xhEgressProxyLabel, componentEgressProxy)))).
@@ -690,6 +804,13 @@ func networkPolicies(cr *xhandlerv1alpha1.XHandler) []*networkingv1ac.NetworkPol
 	egress = append(egress, networkingv1ac.NetworkPolicyEgressRule().
 		WithTo(publicAddresses()).
 		WithPorts(tcpPort(443), tcpPort(25), tcpPort(465), tcpPort(587), tcpPort(2525)))
+	for i := range spec.AdditionalEgress {
+		rule := &networkingv1ac.NetworkPolicyEgressRuleApplyConfiguration{}
+		if err := convert(spec.AdditionalEgress[i], rule); err != nil {
+			return nil, fmt.Errorf("additional egress: %w", err)
+		}
+		egress = append(egress, rule)
+	}
 
 	names := xhNetworkPolicyNames(cr)
 	policies := []*networkingv1ac.NetworkPolicyApplyConfiguration{
@@ -704,18 +825,18 @@ func networkPolicies(cr *xhandlerv1alpha1.XHandler) []*networkingv1ac.NetworkPol
 	policies[2].Spec.WithEgress(egress...)
 	policies[3].Spec.WithEgress(dnsRule(), databaseRule(spec.DatabasePodSelector))
 
-	if xhEgressProxyEnabled(cr) {
-		proxy := policy(names[4], xhEgressProxyLabel,
+	if proxy {
+		proxyPolicy := policy(names[4], xhEgressProxyLabel,
 			metav1ac.LabelSelector().WithMatchLabels(xhSelector(cr, xhEgressProxyLabel, componentEgressProxy)),
 			networkingv1.PolicyTypeIngress, networkingv1.PolicyTypeEgress)
-		proxy.Spec.
+		proxyPolicy.Spec.
 			WithIngress(networkingv1ac.NetworkPolicyIngressRule().
 				WithFrom(networkingv1ac.NetworkPolicyPeer().WithPodSelector(appPods)).
 				WithPorts(tcpPort(egressProxyPort))).
 			WithEgress(dnsRule(), networkingv1ac.NetworkPolicyEgressRule().WithTo(publicAddresses()).WithPorts(tcpPort(443)))
-		policies = append(policies, proxy)
+		policies = append(policies, proxyPolicy)
 	}
-	return policies
+	return policies, nil
 }
 
 func tcpPort(port int32) *networkingv1ac.NetworkPolicyPortApplyConfiguration {

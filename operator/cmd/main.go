@@ -23,7 +23,8 @@
 //     RELATED_IMAGE_EGRESS_PROXY: the xhandler-service, engine, UI and egress proxy images of the
 //     XHandler resources that don't set one. An XHandler that needs a missing one isn't deployed:
 //     its Ready condition says why.
-//   - SEARCHPE_IMAGE_PULL_POLICY: the pull policy of every image, Always by default.
+//   - SEARCHPE_IMAGE_PULL_POLICY: the pull policy of the Searchpe and xhandler images, Always by
+//     default. The egress proxy image is pulled if not present.
 //   - WATCH_NAMESPACE: the namespace whose resources it reconciles. Every namespace when empty,
 //     which needs the permissions of its role in every namespace.
 package main
@@ -110,6 +111,8 @@ func main() {
 		// The operator stops right after the manager: the next one can lead at once
 		LeaderElectionReleaseOnCancel: true,
 	}
+	// The XHandler controller owns ConfigMaps, Jobs and NetworkPolicies: only its own are cached
+	options.Cache.ByObject = controller.XHandlerCacheByObject()
 	if namespace := os.Getenv("WATCH_NAMESPACE"); namespace != "" {
 		options.Cache.DefaultNamespaces = map[string]cache.Config{namespace: {}}
 	}

@@ -99,6 +99,15 @@ spec:
             description: Expose the deployment through an ingress
             x-descriptors:
               - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+          - path: ingress.className
+            displayName: Ingress class
+            description: The IngressClass of the ingress
+          - path: zoneSpread
+            displayName: Zone spread
+            description: Preferred (ScheduleAnyway) or Required (DoNotSchedule)
+          - path: otel.endpoint
+            displayName: OTLP endpoint
+            description: OTLP over HTTP endpoint of the collector, for the app and the engine
           - path: egressProxy.enabled
             displayName: Egress proxy
             description: Run an egress proxy for SUNAT, third-party OSEs and webhooks
@@ -117,6 +126,9 @@ spec:
           - path: ui.searchpeRef
             displayName: Searchpe
             description: Name of the Searchpe the UI looks RUCs and DNIs up in
+          - path: ui.oidcClientId
+            displayName: UI OIDC client id
+            description: The public (PKCE) OIDC client of the UI
         statusDescriptors:
           - path: conditions
             displayName: Conditions
