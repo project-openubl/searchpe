@@ -142,6 +142,9 @@ public class VersionService {
     @Inject
     Event<VersionEvent.ImportingDataEvent> importingVersionEvent;
 
+    @Inject
+    Event<VersionEvent.ActiveVersionChangedEvent> activeVersionChangedEvent;
+
     @Transactional
     public void deleteVersion(Long versionId) {
         String deletePartitionQuery = String.format(DELETE_PARTITION_SQL, versionId);
@@ -155,6 +158,7 @@ public class VersionService {
 
         ContribuyenteEntity.delete("id.versionId", versionId);
         VersionEntity.delete("id", versionId);
+        activeVersionChangedEvent.fire(() -> versionId);
     }
 
     @Transactional(Transactional.TxType.NEVER)
@@ -249,6 +253,8 @@ public class VersionService {
 
         createIndex(versionId, executorService);
         updateVersion(versionId, version -> version.status = Status.COMPLETED);
+        // No transaction here: updateVersion already committed, so the AFTER_SUCCESS observer runs immediately
+        activeVersionChangedEvent.fire(() -> versionId);
     }
 
     /**

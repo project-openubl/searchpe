@@ -16,8 +16,11 @@
  */
 package io.github.project.openubl.searchpe;
 
+import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
+import io.quarkus.cache.Cache;
+import io.quarkus.cache.CacheName;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.restassured.specification.RequestSpecification;
 import org.eclipse.microprofile.config.Config;
@@ -25,6 +28,8 @@ import org.eclipse.microprofile.config.ConfigProvider;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+
+import jakarta.inject.Inject;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -37,6 +42,10 @@ import static org.awaitility.Awaitility.await;
 
 public abstract class AbstractBaseTest {
 
+    @Inject
+    @CacheName(VersionRepository.ACTIVE_VERSION_ID_CACHE)
+    Cache activeVersionIdCache;
+
     public abstract Class<?> getTestClass();
 
     @BeforeEach
@@ -44,6 +53,8 @@ public abstract class AbstractBaseTest {
         Flyway flyway = flyway();
         flyway.clean();
         flyway.migrate();
+        // The database was replaced behind the application's back
+        activeVersionIdCache.invalidateAll().await().indefinitely();
     }
 
     @AfterEach

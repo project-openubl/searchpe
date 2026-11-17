@@ -28,7 +28,6 @@ import io.github.project.openubl.searchpe.models.TipoPersona;
 import io.github.project.openubl.searchpe.models.jpa.ContribuyenteRepository;
 import io.github.project.openubl.searchpe.models.jpa.VersionRepository;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
-import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.resources.interceptors.AllowAdvancedSearch;
 import io.github.project.openubl.searchpe.security.Permission;
 import io.micrometer.core.annotation.Counted;
@@ -40,7 +39,6 @@ import org.jboss.resteasy.reactive.RestResponse.ResponseBuilder;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.Max;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
@@ -52,7 +50,6 @@ import jakarta.ws.rs.QueryParam;
 import java.util.List;
 import java.util.Optional;
 
-@Transactional
 @ApplicationScoped
 @Path("/contribuyentes")
 public class ContribuyenteResource {
@@ -84,12 +81,10 @@ public class ContribuyenteResource {
             @QueryParam("limit") @DefaultValue("10") @Max(1_000) Integer limit,
             @QueryParam("sort_by") List<String> sortBy
     ) {
-        Optional<VersionEntity> versionOptional = versionRepository.findActive();
-        if (versionOptional.isEmpty()) {
+        Optional<Long> activeVersionId = versionRepository.findActiveId();
+        if (activeVersionId.isEmpty()) {
             return SearchResultDto.getEmptyResult(offset, limit);
         }
-
-        VersionEntity version = versionOptional.get();
 
         PageBean pageBean = PageBean.buildWith(offset, limit);
         List<SortBean> sortBeans = SortBean.buildWith(sortBy, ContribuyenteRepository.SORT_BY_FIELDS);
@@ -98,7 +93,7 @@ public class ContribuyenteResource {
                 .tipoPersona(tipoPersona != null ? TipoPersona.valueOf(tipoPersona.toUpperCase()) : null)
                 .build();
 
-        SearchResultBean<ContribuyenteEntity> list = contribuyenteRepository.list(version, filterBean, pageBean, sortBeans);
+        SearchResultBean<ContribuyenteEntity> list = contribuyenteRepository.list(activeVersionId.get(), filterBean, pageBean, sortBeans);
 
         return searchResultMapper.toDto(list, entity -> contribuyenteMapper.toDto(entity));
     }
@@ -117,15 +112,15 @@ public class ContribuyenteResource {
             return notFound;
         }
 
-        VersionEntity version = versionRepository.findActive().orElseThrow(NotFoundException::new);
+        long activeVersionId = versionRepository.findActiveId().orElseThrow(NotFoundException::new);
         if (numeroDocumento.trim().length() == 11) {
-            return contribuyenteRepository.findByRuc(version, numeroDocumento)
+            return contribuyenteRepository.findByRuc(activeVersionId, numeroDocumento)
                     .map(entity -> contribuyenteMapper.toDto(entity))
                     .map(dto -> ResponseBuilder.ok(dto).build())
                     .orElse(notFound);
         }
         if (numeroDocumento.trim().length() == 8) {
-            return contribuyenteRepository.findByDni(version, numeroDocumento)
+            return contribuyenteRepository.findByDni(activeVersionId, numeroDocumento)
                     .map(entity -> contribuyenteMapper.toDto(entity))
                     .map(dto -> ResponseBuilder.ok(dto).build())
                     .orElse(notFound);

@@ -18,6 +18,7 @@ package io.github.project.openubl.searchpe.models.jpa;
 
 import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
+import io.quarkus.cache.CacheResult;
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import io.quarkus.panache.common.Parameters;
 import io.quarkus.panache.common.Sort;
@@ -32,6 +33,12 @@ import java.util.Optional;
 @ApplicationScoped
 public class VersionRepository implements PanacheRepository<VersionEntity> {
 
+    public static final String ACTIVE_VERSION_ID_CACHE = "active-version-id";
+
+    /**
+     * Uncached. Use this rather than {@link #findActiveId()} for decisions that must not act on a stale value, such as
+     * choosing which versions to delete.
+     */
     public Optional<VersionEntity> findActive() {
         Sort sort = Sort.by("createdAt").descending();
         return VersionEntity.find(
@@ -39,6 +46,16 @@ public class VersionRepository implements PanacheRepository<VersionEntity> {
                 sort,
                 Parameters.with("status", Status.COMPLETED)
         ).firstResultOptional();
+    }
+
+    /**
+     * Cached id of the active version, which every lookup needs. The cache is invalidated when the active version
+     * changes on this instance (see {@link ActiveVersionCacheInvalidator}), and expires after a few seconds so other
+     * replicas pick up the change too.
+     */
+    @CacheResult(cacheName = ACTIVE_VERSION_ID_CACHE)
+    public Optional<Long> findActiveId() {
+        return findActive().map(version -> version.id);
     }
 
     /**
