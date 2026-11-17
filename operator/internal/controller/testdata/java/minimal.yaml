@@ -1,0 +1,169 @@
+apiVersion: searchpe.openubl.io/v1alpha1
+kind: Searchpe
+metadata:
+  name: minimal
+  namespace: default
+spec:
+  db:
+    passwordSecret:
+      key: password
+      name: postgresql-pguser-foo
+    url: jdbc:postgresql://postgresql-primary.openubl.svc:5432/searchpedb
+    usernameSecret:
+      key: user
+      name: postgresql-pguser-foo
+  sunat:
+    padronReducidoUrl: https://example.com/padron_reducido_ruc.zip
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: minimal
+    openubl-operator/cluster: searchpe
+  name: minimal-searchpe-deployment
+  namespace: default
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/managed-by: searchpe-operator
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/managed-by: searchpe-operator
+        app.kubernetes.io/name: minimal
+        openubl-operator/cluster: searchpe
+    spec:
+      containers:
+        - env:
+            - name: QUARKUS_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  key: user
+                  name: postgresql-pguser-foo
+            - name: QUARKUS_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: postgresql-pguser-foo
+            - name: QUARKUS_DATASOURCE_JDBC_URL
+              value: jdbc:postgresql://postgresql-primary.openubl.svc:5432/searchpedb
+            - name: SEARCHPE_SUNAT_PADRONREDUCIDOURL
+              value: https://example.com/padron_reducido_ruc.zip
+            - name: SEARCHPE_WORKSPACE_DIRECTORY
+              value: /mnt/workspace
+            - name: QUARKUS_PROFILE
+              value: prod
+          image: ghcr.io/project-openubl/searchpe/searchpe:nightly
+          imagePullPolicy: Always
+          livenessProbe:
+            failureThreshold: 150
+            httpGet:
+              path: /q/health/live
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: 20
+            periodSeconds: 2
+            successThreshold: 1
+            timeoutSeconds: 1
+          name: searchpe
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+            - containerPort: 8443
+              name: https
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 250
+            httpGet:
+              path: /q/health/ready
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: 20
+            periodSeconds: 2
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /mnt/workspace
+              name: searchpe-workspace
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - emptyDir: {}
+          name: searchpe-workspace
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: minimal
+    openubl-operator/cluster: searchpe
+  name: minimal-searchpe-service
+  namespace: default
+spec:
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+    - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+    - port: 8080
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app.kubernetes.io/managed-by: searchpe-operator
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: HTTP
+    route.openshift.io/termination: passthrough
+  labels:
+    app.kubernetes.io/name: minimal
+    openubl-operator/cluster: searchpe
+  name: minimal-searchpe-ingress
+  namespace: default
+spec:
+  defaultBackend:
+    service:
+      name: minimal-searchpe-service
+      port:
+        number: 8080
+  rules:
+    - http:
+        paths:
+          - backend:
+              service:
+                name: minimal-searchpe-service
+                port:
+                  number: 8080
+            pathType: ImplementationSpecific
+---
+apiVersion: v1
+data:
+  encryption-key: YTcxMzZmY2YtMThjNi00ODA2LWExMTctZWFiZTJmYmQ3YmE3
+kind: Secret
+metadata:
+  labels:
+    app.kubernetes.io/name: minimal
+    openubl-operator/cluster: searchpe
+  name: minimal-basic-auth-searchpe-secret
+  namespace: default
+type: Opaque
