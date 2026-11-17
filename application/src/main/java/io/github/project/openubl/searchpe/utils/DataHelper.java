@@ -22,6 +22,7 @@ import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteId;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 public class DataHelper {
 
@@ -30,6 +31,10 @@ public class DataHelper {
      * writes or reads those chunks must use it too.
      */
     public static final Charset PADRON_CHARSET = StandardCharsets.ISO_8859_1;
+
+    private static final String PERSONA_NATURAL_RUC_PREFIX = "10";
+    private static final Pattern DNI_PATTERN = Pattern.compile("\\d{8}");
+    private static final int[] RUC_CHECK_DIGIT_WEIGHTS = {5, 4, 3, 2, 7, 6, 5, 4, 3, 2};
 
     public static String[] readLine(String line, int size) {
         String[] result = new String[size];
@@ -88,9 +93,40 @@ public class DataHelper {
 
     public static Optional<String> getDniFromRuc(String ruc) {
         String dni = null;
-        if (ruc.startsWith("10")) {
-            dni = ruc.substring(2, ruc.length() - 1);
+        if (ruc.startsWith(PERSONA_NATURAL_RUC_PREFIX)) {
+            dni = ruc.substring(PERSONA_NATURAL_RUC_PREFIX.length(), ruc.length() - 1);
         }
         return Optional.ofNullable(dni);
+    }
+
+    /**
+     * Builds the RUC that SUNAT assigns to the natural person holding the given DNI: the {@code 10} prefix, the DNI
+     * and a modulo-11 check digit.
+     *
+     * @param dni an 8-digit DNI
+     * @return the RUC, or empty if {@code dni} is not made of exactly 8 digits
+     */
+    public static Optional<String> getRucFromDni(String dni) {
+        if (dni == null || !DNI_PATTERN.matcher(dni).matches()) {
+            return Optional.empty();
+        }
+        String rucWithoutCheckDigit = PERSONA_NATURAL_RUC_PREFIX + dni;
+        return Optional.of(rucWithoutCheckDigit + getRucCheckDigit(rucWithoutCheckDigit));
+    }
+
+    /**
+     * @param rucWithoutCheckDigit the first 10 digits of a RUC, already validated to be ASCII digits
+     */
+    private static int getRucCheckDigit(String rucWithoutCheckDigit) {
+        int sum = 0;
+        for (int i = 0; i < RUC_CHECK_DIGIT_WEIGHTS.length; i++) {
+            sum += (rucWithoutCheckDigit.charAt(i) - '0') * RUC_CHECK_DIGIT_WEIGHTS[i];
+        }
+        int checkDigit = 11 - sum % 11;
+        return switch (checkDigit) {
+            case 10 -> 0;
+            case 11 -> 1;
+            default -> checkDigit;
+        };
     }
 }
