@@ -206,8 +206,24 @@ public class EngineStub implements QuarkusTestResourceLifecycleManager {
         int start = xml.indexOf("<cbc:ID>");
         String id = start < 0 ? null : xml.substring(start + 8, xml.indexOf("</cbc:ID>"));
         var answer = JSON.createObjectNode();
-        answer.put("document_type", xml.substring(1, xml.indexOf('>')));
+        String type = xml.substring(1, xml.indexOf('>'));
+        answer.put("document_type", type);
         answer.put("serie_numero", id);
+        if (id != null && id.contains("-") && !id.startsWith("R")) {
+            answer.put("serie", id.substring(0, id.lastIndexOf('-')));
+            answer.put("numero", Long.parseLong(id.substring(id.lastIndexOf('-') + 1)));
+            answer.put("tipo_comprobante", switch (type) {
+                case "CreditNote" -> "07";
+                case "DebitNote" -> "08";
+                case "DespatchAdvice" -> "09";
+                case "Retention" -> "20";
+                case "Perception" -> "40";
+                default -> id.startsWith("B") ? "03" : "01";
+            });
+        }
+        answer.put("ruc", between(xml, "<ruc>", "</ruc>", null));
+        answer.put("fecha_emision", between(xml, "<fecha>", "</fecha>", null));
+        answer.put("digest_value", xml.contains("Signature") ? "digest-uploaded" : null);
         answer.put("moneda", between(xml, "<moneda>", "</moneda>", "PEN"));
         answer.put("total", "1180.00");
         String[] cliente = between(xml, "<cliente>", "</cliente>", "6|12121212121").split("\\|", -1);

@@ -105,16 +105,25 @@ public class EmitService {
     }
 
     public Emitted emit(UUID tenantId, UUID companyId, String idempotencyKey, EmitRequest request, String correlationId) {
-        return emit(tenantId, companyId, idempotencyKey, request, correlationId, false);
+        return emit(tenantId, companyId, idempotencyKey, request, correlationId, false, null, "api");
     }
 
     /** Emits as the platform (its own invoices, §14), not as a tenant member. */
     public Emitted emitAsPlatform(UUID tenantId, UUID companyId, String idempotencyKey, EmitRequest request, String correlationId) {
-        return emit(tenantId, companyId, idempotencyKey, request, correlationId, true);
+        return emit(tenantId, companyId, idempotencyKey, request, correlationId, true, null, "api");
+    }
+
+    /**
+     * An adapter's document with the client's own number (the serie comes from the request, §5). The
+     * caller already authenticated: {@code platform} opens the tenant without a member (token-based adapters).
+     */
+    public Emitted emitNumbered(UUID tenantId, UUID companyId, String idempotencyKey, EmitRequest request, long numero, String correlationId,
+            boolean platform) {
+        return emit(tenantId, companyId, idempotencyKey, request, correlationId, platform, numero, "adapter");
     }
 
     private Emitted emit(UUID tenantId, UUID companyId, String idempotencyKey, EmitRequest request, String correlationId,
-            boolean platform) {
+            boolean platform, Long numeroDado, String origin) {
         if (request == null || request.document() == null || !request.document().hasNonNull("kind")
                 || !request.document().path("spec").isObject()) {
             throw ApiException.invalid("invalid_request", "Envíe el documento como {\"document\": {\"kind\": ..., \"spec\": {...}}}.", null);
@@ -139,10 +148,14 @@ public class EmitService {
         boolean acquired = false;
         try {
             // Quotas only for a new document: a replay returns the stored answer above, whatever the
-            // usage now; the platform's own invoices never count (§14)
-            if (!platform) {
+            // usage now; the platform's own invoices never count (§14). Adapters count like the API.
+            if (!platform || "adapter".equals(origin)) {
                 QuarkusTransaction.requiringNew().run(() -> {
-                    access.enter(tenantId, Role.OPERATOR);
+                    if (platform) {
+                        access.enterAsPlatform(tenantId);
+                    } else {
+                        access.enter(tenantId, Role.OPERATOR);
+                    }
                     Company company = Company.findById(companyId);
                     if (company == null || company.deletedAt != null) {
                         throw ApiException.notFound();
@@ -158,7 +171,8 @@ public class EmitService {
             }
             UUID documentId = Ids.newId();
             JsonNode body = QuarkusTransaction.requiringNew().call(() ->
-                    emitInTransaction(tenantId, companyId, documentId, idempotencyKey, owned, request, correlationId, platform));
+                    emitInTransaction(tenantId, companyId, documentId, idempotencyKey, owned, request, correlationId, platform, numeroDado,
+                            origin));
             return new Emitted(201, body);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -194,7 +208,7 @@ public class EmitService {
     }
 
     private JsonNode emitInTransaction(UUID tenantId, UUID companyId, UUID documentId, String idempotencyKey, UUID claim,
-            EmitRequest request, String correlationId, boolean platform) {
+            EmitRequest request, String correlationId, boolean platform, Long numeroDado, String origin) {
         TenantScope scope = platform ? access.enterAsPlatform(tenantId) : access.enter(tenantId, Role.OPERATOR);
         // Waits on the series row (another emit holds it across engine, HSM and storage) are bounded
         em.createNativeQuery("SELECT set_config('lock_timeout', :timeout, true)").setParameter("timeout", lockTimeout).getSingleResult();
@@ -223,7 +237,9 @@ public class EmitService {
         LocalDate fecha = issueDate(spec);
         spec.put("fecha_emision", fecha.toString());
         String serie = chooseSerie(request, spec, company, tipo);
-        long numero = numbering.reserve(company.id, sunatEnv, tipo, serie);
+        long numero = numeroDado != null
+                ? numbering.claim(tenantId, company.id, sunatEnv, tipo, serie, numeroDado)
+                : numbering.reserve(company.id, sunatEnv, tipo, serie);
         spec.put("serie_numero", serie + "-" + numero);
 
         EngineModels.BuildResponse built = engine.build(document);
@@ -251,6 +267,7 @@ public class EmitService {
         doc.companyId = company.id;
         doc.sunatEnv = sunatEnv;
         doc.kind = kind;
+        doc.origin = origin;
         doc.tipoComprobante = tipo;
         doc.serie = serie;
         doc.numero = numero;

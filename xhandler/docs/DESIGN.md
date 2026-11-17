@@ -242,11 +242,13 @@ Mirrors xhandler-mobile's Rust bridge so the two stay aligned (a shared facade c
 | Input | Path |
 |---|---|
 | Native JSON (xbuilder, snake_case) | `POST /documents`. This is the internal format; every other input converts to it. |
-| UBL XML upload | Validated. Signed if unsigned (software/PSE). Stored and sent. |
-| SFS-style TXT | An adapter that converts to native JSON |
-| Nubefact-compatible JSON | An adapter that converts to native JSON, so their customers can switch by changing the URL and token |
+| UBL XML upload | `POST …/documents/ubl` (`application/xml`, up to 5 MB). Validated. Signed if unsigned (software/PSE). Stored and sent. |
+| SFS-style TXT | `POST …/documents/sfs` with the file name (`RUC-TT-SERIE-NUMERO`) and the .CAB/.NOT and .DET contents; converted to native JSON |
+| Nubefact-compatible JSON | `POST /api/v1/public/nubefact/{company}` with `Authorization: Token token="…"` (tokens per company, stored hashed, revocable): `generar_comprobante`, `consultar_comprobante`, `generar_anulacion`, `consultar_anulacion`, answered in Nubefact's shape, so their customers can switch by changing the URL and token. Sending is asynchronous: clients poll `consultar_comprobante`. |
 | OSE inbound | SOAP compatible with SUNAT's `billService` (`sendBill`, `sendSummary`, `sendPack`, `getStatus`, `getStatusCdr`); REST for signed XML; SFTP batch |
-| Supplier invoices (reception) | `POST /receptions`: XML plus optional PDF/CDR. Checked with SUNAT's validity API and stored. |
+| Supplier invoices (reception) | `POST …/receptions` (multipart: XML plus optional PDF/CDR). Checked with SUNAT's validity API and stored. |
+
+Adapter documents keep the client's own numbering: the series is created if needed and its counter moves past the number, so later service-numbered emits in it can't collide (the unique index is the backstop). They count toward quotas like API emits.
 
 ---
 
@@ -764,7 +766,7 @@ Emit never creates jobs. The reconciler sends the document (§24.2), usually wit
 
 ### 11.5 Supplier reception
 
-`POST /receptions` takes XML plus optional files, all treated as untrusted input (size and ZIP caps, DTDs disabled). It parses the document, checks it with SUNAT's validity API (`estadoCp`, `estadoRuc`), stores it, and indexes it for the purchases side of SIRE.
+`POST …/receptions` takes XML plus optional files, all treated as untrusted input (size caps; the engine refuses DTDs). The document must be addressed to the company (the buyer's RUC). It is checked with SUNAT's validity API (`validaCDPcriterios`, with the company's SOL user or the platform's validity credential; the SUNAT call runs outside any transaction), stored, and indexed by issue date for the purchases side of SIRE. Receptions SUNAT couldn't answer for are re-checked by a job.
 
 ### 11.6 Delivery
 
@@ -1033,7 +1035,7 @@ Infrastructure I1 (dev/staging) ─── I2 (production HA: sync replication, m
 | **P6** Billing, partners and developers | Monetization and DX | Done: plans and cached entitlements with quotas at emit (fail closed to the free plan after 24 h without Lago); usage outbox delivered to Lago; entitlement sync; partner API (tenants, usage, branding) with partner members acting on their tenants; self-invoicing from Lago's webhook; free-tier limits (no tenant SMTP; webhooks need a verified RUC); public API reference; SDK generation (TypeScript, Java); quickstarts; the sandbox (P3) and webhook tools (P3); `/api/v1/status` as the status page source. The Lago deployment itself belongs to the infrastructure track. | Done: quotas enforced; a partner onboards a tenant through the API; a Lago invoice becomes our factura |
 | **P7** PSE mode | Sign for tenants | Done: the platform's PSE certificate imported into the vault (`platform_key`, separate from tenant keys); a pool of platform SOL users (`platform_credential`, sealed, reads logged) that PSE documents are spread over, each a credential slot; PSE authorization tracking per company (registered with evidence, revocation notified, back to software mode); the emission mode recorded on each document; the engine's validation gate before signing (as for every document, P3); the rejected-CDR rate per half-year against the 10%/5% limits (report job, metric, admin API, logged breach); attempts counted per pool member. Platform documents in PSE mode in test environments sign with the PSE key when there is one, else the demo key. | Done: PSE-signed documents accepted against the fake with the platform's certificate and SOL user; rejected rate reported; per-credential attempt counts measured |
 | **M2** | **PSE ready** | Feeds C2 | |
-| **P8** Adapters and reception | More inputs | UBL XML upload, SFS TXT, Nubefact JSON, supplier reception with validity checks | Golden-file tests per adapter; receptions validated and stored |
+| **P8** Adapters and reception | More inputs | Done: UBL XML upload (validated, signed if unsigned, client numbering), SFS TXT (.CAB/.NOT + .DET), the Nubefact-compatible API with per-company tokens, supplier reception with validity checks (now and by a job) and file downloads. | Done: golden-file tests per adapter; uploads, SFS and Nubefact documents accepted against the fake; receptions validated and stored |
 | **P9** Tax compliance | SIRE, negociable, reports | SIRE automation, conformity tracking, CSV/Excel, legacy PLE | SIRE round trip against SUNAT; conformity tracked end to end |
 | **P10** OSE | Become an operator | SOAP billService (incl. sendPack) with WS-Security auth (`ose_client`), association-list checks, REST/SFTP intake with input hardening, full xvalidator validation, blocked lists, OSE CDR with its own key, `ose_submission` + 1-hour forwarding class with SLA metric, 1-month retention, public validity API, separate billing line | An external system switches by changing only the URL; forwarding under 1 hour under load; ready for SUNAT's tests |
 | **M3** | **OSE ready** | Feeds C3 | |

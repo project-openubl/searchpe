@@ -42,6 +42,30 @@ public class Numbering {
         return ((Number) next.get(0)).longValue();
     }
 
+    /**
+     * A number the client chose (adapters: UBL upload, SFS, Nubefact clients keep their own
+     * numbering). The series is created if it doesn't exist and its counter moves past the number,
+     * so later service-numbered emits can't collide. The unique index is the backstop.
+     */
+    @Transactional(Transactional.TxType.MANDATORY)
+    public long claim(UUID tenantId, UUID companyId, String sunatEnv, String tipoComprobante, String serie, long numero) {
+        if (numero < 1 || numero > 99_999_999) {
+            throw ApiException.invalid("invalid_document", "El número debe estar entre 1 y 99999999.", null);
+        }
+        if (!serie.matches("[A-Z0-9]{4}")) {
+            throw ApiException.invalid("invalid_document", "La serie debe tener 4 caracteres en mayúsculas o dígitos.", null);
+        }
+        em.createNativeQuery("""
+                        INSERT INTO xhandler.series (id, tenant_id, company_id, sunat_env, tipo_comprobante, serie, next_number)
+                        VALUES (:id, :t, :c, :env, :tipo, :serie, :next)
+                        ON CONFLICT (company_id, sunat_env, tipo_comprobante, serie)
+                        DO UPDATE SET next_number = greatest(series.next_number, excluded.next_number), updated_at = now()""")
+                .setParameter("id", io.github.projectopenubl.xhandler.api.Ids.newId()).setParameter("t", tenantId)
+                .setParameter("c", companyId).setParameter("env", sunatEnv).setParameter("tipo", tipoComprobante)
+                .setParameter("serie", serie).setParameter("next", numero + 1).executeUpdate();
+        return numero;
+    }
+
     /** RC/RA/RR numbers: {@code RC-YYYYMMDD-n}, per company, environment and Lima day (§8). */
     @Transactional(Transactional.TxType.MANDATORY)
     public int reserveDaily(UUID tenantId, UUID companyId, String sunatEnv, String kind, LocalDate day) {

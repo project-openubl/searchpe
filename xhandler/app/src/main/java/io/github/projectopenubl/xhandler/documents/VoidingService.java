@@ -76,11 +76,16 @@ public class VoidingService {
 
     /** Creates the RA/RC/RR and moves the original to voiding. Returns the voiding document. */
     public Document voidDocument(UUID tenantId, UUID documentId, VoidRequest request, String correlationId) {
-        return QuarkusTransaction.requiringNew().call(() -> voidInTransaction(tenantId, documentId, request, correlationId));
+        return QuarkusTransaction.requiringNew().call(() -> voidInTransaction(tenantId, documentId, request, correlationId, false));
     }
 
-    private Document voidInTransaction(UUID tenantId, UUID documentId, VoidRequest request, String correlationId) {
-        TenantScope scope = access.enter(tenantId, Role.OPERATOR);
+    /** The same, for an already-authenticated adapter client (Nubefact-compatible API). */
+    public Document voidDocumentAsPlatform(UUID tenantId, UUID documentId, VoidRequest request, String correlationId) {
+        return QuarkusTransaction.requiringNew().call(() -> voidInTransaction(tenantId, documentId, request, correlationId, true));
+    }
+
+    private Document voidInTransaction(UUID tenantId, UUID documentId, VoidRequest request, String correlationId, boolean platform) {
+        TenantScope scope = platform ? access.enterAsPlatform(tenantId) : access.enter(tenantId, Role.OPERATOR);
         Document original = Document.findById(documentId);
         if (original == null) {
             throw ApiException.notFound();
