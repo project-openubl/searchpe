@@ -105,12 +105,35 @@ public class EmitService {
     }
 
     public Emitted emit(UUID tenantId, UUID companyId, String idempotencyKey, EmitRequest request, String correlationId) {
+        return emit(tenantId, companyId, idempotencyKey, request, correlationId, false);
+    }
+
+    /** Emits as the platform (its own invoices, §14), not as a tenant member. */
+    public Emitted emitAsPlatform(UUID tenantId, UUID companyId, String idempotencyKey, EmitRequest request, String correlationId) {
+        return emit(tenantId, companyId, idempotencyKey, request, correlationId, true);
+    }
+
+    private Emitted emit(UUID tenantId, UUID companyId, String idempotencyKey, EmitRequest request, String correlationId,
+            boolean platform) {
         if (request == null || request.document() == null || !request.document().hasNonNull("kind")
                 || !request.document().path("spec").isObject()) {
             throw ApiException.invalid("invalid_request", "Envíe el documento como {\"document\": {\"kind\": ..., \"spec\": {...}}}.", null);
         }
-        // Authorize before touching the idempotency table
-        QuarkusTransaction.requiringNew().run(() -> access.enter(tenantId, Role.OPERATOR));
+        // Authorize before touching the idempotency table; the quota check needs the environment
+        QuarkusTransaction.requiringNew().run(() -> {
+            if (platform) {
+                access.enterAsPlatform(tenantId);
+            } else {
+                access.enter(tenantId, Role.OPERATOR);
+            }
+            Company company = Company.findById(companyId);
+            if (company == null || company.deletedAt != null) {
+                throw ApiException.notFound();
+            }
+            for (EmitQuota q : quota) {
+                q.checkEmit(tenantId, company.sunatEnv);
+            }
+        });
         UUID claim = null;
         if (idempotencyKey != null) {
             Idempotency.Begun begun = idempotency.begin(tenantId, idempotencyKey, hash(companyId, request));
@@ -122,16 +145,13 @@ public class EmitService {
         UUID owned = claim;
         boolean acquired = false;
         try {
-            for (EmitQuota q : quota) {
-                q.checkEmit(tenantId);
-            }
             acquired = permits.tryAcquire(permitTimeoutMillis, TimeUnit.MILLISECONDS);
             if (!acquired) {
                 throw new ApiException(503, "busy", "El servicio está ocupado. Intente nuevamente en unos segundos.");
             }
             UUID documentId = Ids.newId();
             JsonNode body = QuarkusTransaction.requiringNew().call(() ->
-                    emitInTransaction(tenantId, companyId, documentId, idempotencyKey, owned, request, correlationId));
+                    emitInTransaction(tenantId, companyId, documentId, idempotencyKey, owned, request, correlationId, platform));
             return new Emitted(201, body);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -167,8 +187,8 @@ public class EmitService {
     }
 
     private JsonNode emitInTransaction(UUID tenantId, UUID companyId, UUID documentId, String idempotencyKey, UUID claim,
-            EmitRequest request, String correlationId) {
-        TenantScope scope = access.enter(tenantId, Role.OPERATOR);
+            EmitRequest request, String correlationId, boolean platform) {
+        TenantScope scope = platform ? access.enterAsPlatform(tenantId) : access.enter(tenantId, Role.OPERATOR);
         // Waits on the series row (another emit holds it across engine, HSM and storage) are bounded
         em.createNativeQuery("SELECT set_config('lock_timeout', :timeout, true)").setParameter("timeout", lockTimeout).getSingleResult();
         // Lock order: company → series → documents (§10.8 rule 4). FOR SHARE: an environment

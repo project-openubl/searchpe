@@ -8,5 +8,6 @@ import java.util.UUID;
  */
 public interface EmitQuota {
 
-    void checkEmit(UUID tenantId);
+    /** Runs with the tenant open, in the emit's first transaction. */
+    void checkEmit(UUID tenantId, String sunatEnv);
 }

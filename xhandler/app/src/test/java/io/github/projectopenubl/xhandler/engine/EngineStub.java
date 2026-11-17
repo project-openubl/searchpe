@@ -37,6 +37,10 @@ public class EngineStub implements QuarkusTestResourceLifecycleManager {
     /** The stub's base URL (for providers it plays). */
     public static final java.util.concurrent.atomic.AtomicReference<String> BASE_URL = new java.util.concurrent.atomic.AtomicReference<>();
 
+    /** The plan Lago reports for every customer. */
+    public static final java.util.concurrent.atomic.AtomicReference<String> LAGO_PLAN =
+            new java.util.concurrent.atomic.AtomicReference<>("business");
+
     /** What the fake exchange-rate file answers. */
     public static final java.util.concurrent.atomic.AtomicReference<String> FX_LINE =
             new java.util.concurrent.atomic.AtomicReference<>("16/11/2026|3.380|3.390|");
@@ -90,6 +94,17 @@ public class EngineStub implements QuarkusTestResourceLifecycleManager {
         server.createContext("/v1/", this::handle);
         // SUNAT's exchange rate file (ExchangeRates job)
         server.createContext("/fx/", exchange -> respondText(exchange, FX_LINE.get()));
+        // Lago: usage events and subscriptions
+        server.createContext("/lago/", exchange -> {
+            String path = exchange.getRequestURI().getPath();
+            String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            REQUESTS.add(new Recorded(path, body + " " + exchange.getRequestHeaders().getFirst("Authorization")));
+            if (path.endsWith("/events/batch")) {
+                respond(exchange, 200, "{\"events\":[]}");
+            } else {
+                respond(exchange, 200, "{\"subscriptions\":[{\"status\":\"active\",\"plan_code\":\"" + LAGO_PLAN.get() + "\"}]}");
+            }
+        });
         // A RUC/DNI lookup provider: /lookup/{tipo}/{numero}
         server.createContext("/lookup/", exchange -> {
             String[] parts = exchange.getRequestURI().getPath().split("/");
@@ -104,7 +119,8 @@ public class EngineStub implements QuarkusTestResourceLifecycleManager {
         server.start();
         String base = "http://127.0.0.1:" + server.getAddress().getPort();
         BASE_URL.set(base);
-        return Map.of("quarkus.rest-client.engine.url", base, "xhandler.exchange-rates.url", base + "/fx/tipoCambio.txt");
+        return Map.of("quarkus.rest-client.engine.url", base, "xhandler.exchange-rates.url", base + "/fx/tipoCambio.txt",
+                "xhandler.lago.url", base + "/lago", "xhandler.lago.api-key", "lago-key");
     }
 
     @Override

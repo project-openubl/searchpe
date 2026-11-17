@@ -71,6 +71,15 @@ public class TenantAccess {
         if (role != null) {
             return Role.fromDb(role.toString());
         }
+        // Partners manage their tenants (DESIGN.md §1.2): partner admins administer, viewers see
+        Object partnerRole = em.createNativeQuery("SELECT xhandler.partner_role(:tenant, :kind, :subject)")
+                .setParameter("tenant", tenantId)
+                .setParameter("kind", actor.kind())
+                .setParameter("subject", actor.subject())
+                .getSingleResult();
+        if (partnerRole != null) {
+            return Role.fromDb(partnerRole.toString());
+        }
         if (actor.platformSupport()) {
             Object active = em.createNativeQuery("SELECT xhandler.has_support_session(:tenant, :operator)")
                     .setParameter("tenant", tenantId)

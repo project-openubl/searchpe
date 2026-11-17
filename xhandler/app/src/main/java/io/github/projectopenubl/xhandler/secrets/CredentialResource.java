@@ -30,8 +30,11 @@ public class CredentialResource {
     private final TenantAccess access;
     private final CredentialService credentials;
     private final io.github.projectopenubl.xhandler.webhooks.Egress egress;
+    private final io.github.projectopenubl.xhandler.billing.Entitlements entitlements;
 
-    public CredentialResource(TenantAccess access, CredentialService credentials, io.github.projectopenubl.xhandler.webhooks.Egress egress) {
+    public CredentialResource(TenantAccess access, CredentialService credentials, io.github.projectopenubl.xhandler.webhooks.Egress egress,
+            io.github.projectopenubl.xhandler.billing.Entitlements entitlements) {
+        this.entitlements = entitlements;
         this.access = access;
         this.credentials = credentials;
         this.egress = egress;
@@ -88,6 +91,7 @@ public class CredentialResource {
         Company company = CompanyResource.find(companyId);
         // A tenant-supplied host: it must resolve to public addresses (DESIGN.md §16)
         egress.checkHost(request.host());
+        entitlements.requireCustomSmtp(company);
         Credential stored = credentials.store(scope, company, "smtp", Map.of("host", request.host(), "port", String.valueOf(request.port()),
                 "username", request.username(), "password", request.password(), "from", request.from(),
                 "start_tls", String.valueOf(!Boolean.FALSE.equals(request.startTls()))), request.from());

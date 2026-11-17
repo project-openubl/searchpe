@@ -49,3 +49,7 @@ engine/target/
 
 # Claude Code worktrees
 .claude/worktrees/
+
+# Generated SDKs (sdk/generate.sh)
+sdk/typescript/
+sdk/java/

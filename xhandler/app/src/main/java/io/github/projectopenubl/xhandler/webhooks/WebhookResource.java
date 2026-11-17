@@ -49,8 +49,11 @@ public class WebhookResource {
     private final Egress egress;
     private final WebhookEvents events;
     private final Auditor auditor;
+    private final io.github.projectopenubl.xhandler.billing.Entitlements entitlements;
 
-    public WebhookResource(TenantAccess access, SecretBox box, Egress egress, WebhookEvents events, Auditor auditor) {
+    public WebhookResource(TenantAccess access, SecretBox box, Egress egress, WebhookEvents events, Auditor auditor,
+            io.github.projectopenubl.xhandler.billing.Entitlements entitlements) {
+        this.entitlements = entitlements;
         this.access = access;
         this.box = box;
         this.egress = egress;
@@ -62,6 +65,14 @@ public class WebhookResource {
     @Transactional
     public Response create(@PathParam("tenantId") UUID tenantId, @Valid CreateWebhook request) {
         TenantScope scope = access.enter(tenantId, Role.ADMIN);
+        if (!entitlements.usage(tenantId).plan().webhooks()) {
+            throw new ApiException(402, "plan_required", "Su plan no incluye webhooks.");
+        }
+        // Free tenants without a verified RUC can't point webhooks at arbitrary hosts (§26.8)
+        if ("free".equals(entitlements.usage(tenantId).plan().code())
+                && io.github.projectopenubl.xhandler.company.Company.count("rucVerifiedAt is not null and deletedAt is null") == 0) {
+            throw ApiException.conflict("ruc_not_verified", "Verifique el RUC de una empresa para usar webhooks.");
+        }
         egress.check(request.url());
         byte[] raw = new byte[32];
         RANDOM.nextBytes(raw);

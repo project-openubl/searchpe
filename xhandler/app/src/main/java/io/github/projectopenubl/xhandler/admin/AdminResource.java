@@ -55,9 +55,11 @@ public class AdminResource {
     private final KeyRotation rotation;
     private final Auditor auditor;
     private final EntityManager em;
+    private final io.github.projectopenubl.xhandler.billing.Entitlements entitlements;
 
     public AdminResource(PlatformAdmin admin, TenantAccess access, DocumentControl control, JobStore jobs, KeyRotation rotation,
-            Auditor auditor, EntityManager em) {
+            Auditor auditor, EntityManager em, io.github.projectopenubl.xhandler.billing.Entitlements entitlements) {
+        this.entitlements = entitlements;
         this.admin = admin;
         this.access = access;
         this.control = control;
@@ -163,6 +165,80 @@ public class AdminResource {
         io.github.projectopenubl.xhandler.email.EmailSuppressions.suppress(em, tenantId, address, reason);
         auditor.record(scope, "email.suppressed", "email", null, Map.of("address", address, "reason", reason));
         return Map.of("address", address, "reason", reason);
+    }
+
+    // --- partners and plans (§1.2, §14) ---------------------------------------------
+
+    @POST
+    @Path("/partners")
+    @Transactional
+    public Map<String, Object> createPartner(Map<String, String> body) {
+        admin.require();
+        String name = body == null ? null : body.get("name");
+        if (name == null || name.isBlank()) {
+            throw ApiException.invalid("invalid_request", "Indique el nombre del partner.", null);
+        }
+        UUID id = io.github.projectopenubl.xhandler.api.Ids.newId();
+        em.createNativeQuery("INSERT INTO xhandler.partner (id, name) VALUES (:id, :n)").setParameter("id", id).setParameter("n", name.strip())
+                .executeUpdate();
+        return Map.of("id", id, "name", name.strip());
+    }
+
+    @PUT
+    @Path("/partners/{partnerId}/members")
+    @Transactional
+    public Map<String, Object> partnerMember(@PathParam("partnerId") UUID partnerId, Map<String, String> body) {
+        admin.require();
+        String kind = body == null ? null : body.getOrDefault("kind", "user");
+        String subject = body == null ? null : body.get("subject");
+        String role = body == null ? null : body.getOrDefault("role", "admin");
+        if (subject == null || !java.util.Set.of("user", "client").contains(kind) || !java.util.Set.of("admin", "viewer").contains(role)) {
+            throw ApiException.invalid("invalid_request", "Indique subject, kind (user|client) y role (admin|viewer).", null);
+        }
+        em.createNativeQuery("INSERT INTO xhandler.partner_member (partner_id, kind, subject, role) VALUES (:p, :k, :s, :r) "
+                        + "ON CONFLICT (partner_id, kind, subject) DO UPDATE SET role = excluded.role")
+                .setParameter("p", partnerId).setParameter("k", kind).setParameter("s", subject).setParameter("r", role).executeUpdate();
+        return Map.of("partner_id", partnerId, "kind", kind, "subject", subject, "role", role);
+    }
+
+    /** The company that issues the platform's own invoices (self-invoicing, §14). */
+    @PUT
+    @Path("/billing/issuer")
+    @Transactional
+    public Map<String, Object> billingIssuer(Map<String, String> body) {
+        admin.require();
+        String tenant = body == null ? null : body.get("tenant_id");
+        String company = body == null ? null : body.get("company_id");
+        if (tenant == null || company == null) {
+            throw ApiException.invalid("invalid_request", "Indique tenant_id y company_id.", null);
+        }
+        UUID tenantId = UUID.fromString(tenant);
+        access.enterAsPlatform(tenantId);
+        if (Company.findById(UUID.fromString(company)) == null) {
+            throw ApiException.notFound();
+        }
+        for (Map.Entry<String, String> e : Map.of(io.github.projectopenubl.xhandler.billing.SelfInvoicing.ISSUER_TENANT, tenant,
+                io.github.projectopenubl.xhandler.billing.SelfInvoicing.ISSUER_COMPANY, company).entrySet()) {
+            em.createNativeQuery("INSERT INTO xhandler.platform_setting (key, value) VALUES (:k, :v) "
+                            + "ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = now()")
+                    .setParameter("k", e.getKey()).setParameter("v", e.getValue()).executeUpdate();
+        }
+        return Map.of("tenant_id", tenant, "company_id", company);
+    }
+
+    /** Sets a tenant's plan by hand (contracts outside Lago); Lago syncs don't overwrite it. */
+    @PUT
+    @Path("/tenants/{tenantId}/plan")
+    @Transactional
+    public Map<String, Object> plan(@PathParam("tenantId") UUID tenantId, Map<String, String> body) {
+        TenantScope scope = openTenant(tenantId);
+        String code = body == null ? null : body.get("plan");
+        if (code == null) {
+            throw ApiException.invalid("invalid_request", "Indique el plan.", null);
+        }
+        entitlements.setPlan(tenantId, code, "admin");
+        auditor.record(scope, "tenant.plan_set", "tenant", tenantId, Map.of("plan", code));
+        return Map.of("tenant_id", tenantId, "plan", code);
     }
 
     // --- endpoints (endpoint-status, hold/release per endpoint) ---------------------

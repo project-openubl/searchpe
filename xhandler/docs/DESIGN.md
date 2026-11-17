@@ -845,9 +845,10 @@ This satisfies the processor's 2-year limit (DS 016-2024-JUS art. 31.2) while th
 - Lago runs as its own deployment, with **its own Postgres and Redis** (Sidekiq). This is accepted: "no Redis" applies to xhandler-service, and Lago is a separate product. It is AGPL and used unmodified as a separate service.
 - If Lago is unreachable, emits continue on cached entitlements for up to 24 hours (§11.1), and usage events wait in the outbox.
 - The service writes usage events (documents accepted per type, OSE validations, receptions, storage) to `usage_event_outbox` in the business transaction. A job delivers them to Lago.
-- Entitlements (plan, quotas) are synced from Lago and cached. Quotas are enforced at emit.
-- Partners see their tenants' usage.
-- **The platform's own subscription invoices are issued as real comprobantes through xhandler-service**, because Lago's invoices are not comprobantes.
+- Entitlements (plan, quotas) are synced from Lago and cached (`entitlement`). Quotas are enforced at emit: production documents per month, beta and the sandbox per day (Lima), counted from the documents themselves (no hot counter row). Plans (`plan`: free, starter, business, enterprise) live in the service; prices and invoices in Lago. A plan set by a platform admin (contracts outside Lago) isn't overwritten by the sync. Notices at 80% and 100% (§26.6).
+- Usage events go to Lago's batch API with the outbox row id as `transaction_id` (Lago deduplicates).
+- Partners see their tenants' usage (`GET /api/v1/partners/{p}/tenants?month=`). Partner members (admin or viewer, set by the platform) act on their partner's tenants through the normal API, create tenants (`POST /api/v1/partners/{p}/tenants`) and brand PDFs and emails (`PUT …/branding`).
+- **The platform's own subscription invoices are issued as real comprobantes through xhandler-service**, because Lago's invoices are not comprobantes. Lago's `invoice.created` webhook (HMAC-signed, `X-Lago-Signature`) becomes a factura (a boleta without a billing RUC) from the platform's issuing company (admin API `billing/issuer`) to the tenant's billing details, emailed to its billing address; idempotent per Lago invoice.
 
 ---
 
@@ -1026,7 +1027,7 @@ Infrastructure I1 (dev/staging) ─── I2 (production HA: sync replication, m
 | **P4** All documents | Complete the set | Done: notes (series follow the affected document; the 2027 one-reference rule in the engine); percepción/retención; GRE through the REST API with its own credentials (SOL user + API client); voiding by RA, RC estado 3 and RR with the delivered guard, the 2027 windows and rollback when the voiding is rejected; the lost-ticket path for summaries; the derived submission route (SUNAT or a third-party OSE, OSE-obligated companies refused); SUNAT/SBS exchange rates and the S/ 700 check in foreign currency; the production switch gate (P3). | Done: every document type emits and is accepted against the fake; voiding accepted and rejected; a third-party OSE receives the documents with its credentials while GRE stays direct; invalid routes refused |
 | **P5** Delivery and catalogs | Reach buyers | Done: Qute PDFs rendered with OpenHTMLtoPDF (A4, 80/58 mm tickets, SUNAT QR, company logo, partner branding, Spanish, "pendiente" banner), email (platform sender or tenant SMTP, templates, attachments, on request or on acceptance, suppression list, sender-domain verification), the delivery log, tenant notifications (documents in exception or at risk, rejected after delivery, expiring certificates, SUNAT outages), buyer portal APIs (capability links, PDF, lookup by data with CAPTCHA and per-RUC limits), catalogs, RUC/DNI lookup with cache. SPF/DKIM/DMARC records belong to the platform's mail provider setup (infrastructure). | Done: a buyer fetches XML/CDR/PDF through the link; emails carry PDF, XML and CDR and are logged; notifications arrive in-app and by email |
 | **M1** | **Software-mode beta** | Pilot tenants | |
-| **P6** Billing, partners and developers | Monetization and DX | Lago pod, usage outbox, entitlements and quotas, partner APIs, white-label, self-invoicing through xhandler-service; developer experience: public API reference, published SDKs, sandbox with SUNAT-fake mode, quickstarts, webhook tools, status page (§26.2) | Quotas enforced; partner onboards a tenant through the API; Lago → our factura works |
+| **P6** Billing, partners and developers | Monetization and DX | Done: plans and cached entitlements with quotas at emit (fail closed to the free plan after 24 h without Lago); usage outbox delivered to Lago; entitlement sync; partner API (tenants, usage, branding) with partner members acting on their tenants; self-invoicing from Lago's webhook; free-tier limits (no tenant SMTP; webhooks need a verified RUC); public API reference; SDK generation (TypeScript, Java); quickstarts; the sandbox (P3) and webhook tools (P3); `/api/v1/status` as the status page source. The Lago deployment itself belongs to the infrastructure track. | Done: quotas enforced; a partner onboards a tenant through the API; a Lago invoice becomes our factura |
 | **P7** PSE mode | Sign for tenants | Platform PSE key in the HSM, pool of platform SOL users, PSE authorization tracking, xvalidator gate before sending, rejected-rate metric and alerts | PSE-signed documents accepted on beta; rejected rate reported per half-year; measured per-credential throughput |
 | **M2** | **PSE ready** | Feeds C2 | |
 | **P8** Adapters and reception | More inputs | UBL XML upload, SFS TXT, Nubefact JSON, supplier reception with validity checks | Golden-file tests per adapter; receptions validated and stored |
@@ -1247,8 +1248,9 @@ P11 load tests run at these figures, including an outage followed by a drain.
 
 ### 26.2 Developer experience
 
-- A public API reference generated from the OpenAPI spec.
-- SDKs generated and published for **TypeScript and Java** in v1; other languages later, from the same OpenAPI spec.
+- A public API reference generated from the OpenAPI spec (`/q/openapi`, `/q/swagger-ui`, public).
+- SDKs generated for **TypeScript and Java** in v1 (`sdk/generate.sh`, CI workflow `sdk.yml`); other languages later, from the same OpenAPI spec. Publishing them to npm and Maven Central is part of the release process.
+- Quickstarts in Spanish: `docs/quickstarts/`.
 - **Sandbox**: every new tenant starts on the **SUNAT fake**, with deterministic answers (accepted, rejected, 1033, outage). SUNAT beta is opt-in and uses the tenant's own SOL user. The shared demo credential would give every free tenant a single slot (N = 1), about one document per second for the whole platform.
 - Quickstarts per integration style: ERP, POS, the Nubefact adapter.
 - Webhook tools: a test-event sender, delivery logs and redelivery.

@@ -27,6 +27,9 @@ public class Tenant extends PanacheEntityBase {
     public boolean sendingPaused;
     /** Where tenant notifications are emailed (DESIGN.md §26.6) */
     public String notificationEmail;
+    public String billingRuc;
+    public String billingName;
+    public String billingEmail;
 
     @CreationTimestamp
     public Instant createdAt;
