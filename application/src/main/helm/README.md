@@ -59,10 +59,10 @@ helm delete my-release
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| resources.limits.cpu | string | `"500m"` |  |
-| resources.limits.memory | string | `"512Mi"` |  |
-| resources.requests.cpu | string | `"250m"` |  |
-| resources.requests.memory | string | `"64Mi"` |  |
+| resources.limits.cpu | string | `"1"` | The daily import is CPU-bound for a few minutes |
+| resources.limits.memory | string | `"768Mi"` | Headroom above the heap and non-heap memory |
+| resources.requests.cpu | string | `"100m"` | Mostly idle outside the daily import |
+| resources.requests.memory | string | `"600Mi"` | 384 MiB of heap plus about 200 MiB of non-heap memory |
 
 ## Global parameters
 
