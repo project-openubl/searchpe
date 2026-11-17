@@ -1,5 +1,10 @@
+# The Dockerfile builds from the Go sources, bundle.Dockerfile from bundle/ (make bundle)
 *
-!target/*-runner
-!target/*-runner.jar
-!target/lib/*
-!target/quarkus-app/*
+!go.mod
+!go.sum
+!api/
+!cmd/
+!internal/
+internal/**/testdata/
+**/*_test.go
+!bundle/

@@ -1,0 +1,18 @@
+name: Setup operator-sdk
+description: >
+  Installs operator-sdk, verified by its checksum, and sets OPERATOR_SDK to it for operator/Makefile.
+  Keep the version the same as OPERATOR_SDK_VERSION in operator/Makefile.
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        OPERATOR_SDK_VERSION: v1.42.3
+        OPERATOR_SDK_SHA256: 887a3bb0d63ccc4ca47a522d0c8ffac56d9d5246f6a2bd886b4ed23eb2e2672f
+      run: |
+        operator_sdk="$RUNNER_TEMP/operator-sdk"
+        curl -sSfLo "$operator_sdk" \
+          "https://github.com/operator-framework/operator-sdk/releases/download/$OPERATOR_SDK_VERSION/operator-sdk_linux_amd64"
+        echo "$OPERATOR_SDK_SHA256  $operator_sdk" | sha256sum -c -
+        chmod +x "$operator_sdk"
+        echo "OPERATOR_SDK=$operator_sdk" >> "$GITHUB_ENV"

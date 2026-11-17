@@ -1,2 +1,5 @@
 /bin/
 cover.out
+# make bundle
+/bundle/
+/bundle.Dockerfile

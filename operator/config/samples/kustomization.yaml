@@ -1,0 +1,3 @@
+# The examples of the CSV (alm-examples)
+resources:
+  - searchpe_v1alpha1_searchpe.yaml

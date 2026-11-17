@@ -1,0 +1,5 @@
+# The input of operator-sdk generate bundle (make bundle)
+resources:
+  - bases/searchpe-operator.clusterserviceversion.yaml
+  - ../default
+  - ../samples

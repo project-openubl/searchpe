@@ -79,6 +79,10 @@ jobs:
           version: v2.15.0
           working-directory: operator
       - run: make verify-generated test
+      # The checks both catalogs run on a bundle (check_osdk_bundle_validate_*), as the release does
+      - uses: ./.github/actions/setup-operator-sdk
+      - name: Bundle
+        run: make bundle bundle-validate
 
   application-container:
     name: Application container

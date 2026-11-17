@@ -1,0 +1,6 @@
+# The operator, for kubectl apply -k or make deploy
+namespace: searchpe-system
+resources:
+  - ../crd
+  - ../rbac
+  - ../manager

@@ -56,6 +56,21 @@ updates:
       gomod:
         update-types: ["minor", "patch"]
 
+  # Maintain the base images of operator/Dockerfile
+  - package-ecosystem: "docker"
+    directory: "/operator"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      docker:
+        update-types: ["minor", "patch"]
+
   # Maintain dependencies from package.json
   - package-ecosystem: "npm"
     directory: "/application/src/main/webapp"
