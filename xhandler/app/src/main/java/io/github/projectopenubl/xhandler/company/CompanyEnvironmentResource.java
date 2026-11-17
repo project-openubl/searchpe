@@ -29,6 +29,7 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /**
  * A company's settings, its SUNAT environment and its RUC verification (DESIGN.md §6, §8, §26.2).
@@ -76,6 +77,7 @@ public class CompanyEnvironmentResource {
         this.engine = engine;
     }
 
+    @Operation(operationId = "updateCompanySettings")
     @PUT
     @Path("/settings")
     @Transactional
@@ -117,6 +119,7 @@ public class CompanyEnvironmentResource {
     }
 
     /** The company logo for PDFs and emails: PNG or JPEG, up to 200 KB. */
+    @Operation(operationId = "uploadCompanyLogo")
     @PUT
     @Path("/logo")
     @jakarta.ws.rs.Consumes({"image/png", "image/jpeg"})
@@ -165,6 +168,7 @@ public class CompanyEnvironmentResource {
         }
     }
 
+    @Operation(operationId = "changeCompanyEnvironment")
     @POST
     @Path("/environment")
     @Transactional
@@ -225,6 +229,7 @@ public class CompanyEnvironmentResource {
      * consult service about one of the company's own numbers. Any answer other than an
      * authentication error proves the credentials work for that RUC. This claims the RUC.
      */
+    @Operation(operationId = "verifyCompany")
     @POST
     @Path("/verify")
     public CompanyResource.CompanyView verify(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId) {

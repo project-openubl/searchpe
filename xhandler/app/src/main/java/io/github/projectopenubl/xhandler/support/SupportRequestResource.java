@@ -14,6 +14,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.core.Response;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /** Support access, operator side: a platform operator asks a tenant for a session (DESIGN.md §26.1). */
 @Path("/api/v1/support/sessions")
@@ -29,6 +30,7 @@ public class SupportRequestResource {
         this.currentActor = currentActor;
     }
 
+    @Operation(operationId = "requestSupportSession")
     @POST
     @Transactional
     public Response request(@Valid RequestSession request) {

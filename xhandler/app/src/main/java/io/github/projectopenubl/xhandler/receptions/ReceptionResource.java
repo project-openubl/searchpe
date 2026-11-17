@@ -32,6 +32,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 
@@ -66,6 +67,7 @@ public class ReceptionResource {
         this.validity = validity;
     }
 
+    @Operation(operationId = "receiveDocument")
     @POST
     public Response receive(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId, @RestForm("xml") FileUpload xml,
             @RestForm("pdf") FileUpload pdf, @RestForm("cdr") FileUpload cdr) throws IOException {
@@ -133,6 +135,7 @@ public class ReceptionResource {
         })).build();
     }
 
+    @Operation(operationId = "listReceptions")
     @GET
     @Transactional
     public Page<ReceptionView> list(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId,
@@ -152,6 +155,7 @@ public class ReceptionResource {
         return new Page<>(ids.stream().map(this::find).toList(), size, start);
     }
 
+    @Operation(operationId = "downloadReceptionFile")
     @GET
     @Path("/{receptionId}/files/{kind}")
     @Transactional

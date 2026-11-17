@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /**
  * The OSE's REST channel (DESIGN.md §5, §11.4): the same check as {@code sendBill}, with the OSE
@@ -32,6 +33,7 @@ public class OseRestResource {
         this.intake = intake;
     }
 
+    @Operation(operationId = "submitOseDocument")
     @POST
     public Response submit(@HeaderParam("Authorization") String authorization, @Valid Submission submission) {
         OseClients.Client client = authenticate(authorization);
@@ -55,6 +57,7 @@ public class OseRestResource {
         }
     }
 
+    @Operation(operationId = "getOseCdr")
     @GET
     @Path("/{ruc}-{tipo}-{serie}-{numero}/cdr")
     public Response cdr(@HeaderParam("Authorization") String authorization, @PathParam("ruc") String ruc, @PathParam("tipo") String tipo,

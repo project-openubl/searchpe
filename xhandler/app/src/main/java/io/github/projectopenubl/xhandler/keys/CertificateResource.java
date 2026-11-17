@@ -22,6 +22,7 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 
@@ -45,6 +46,7 @@ public class CertificateResource {
     }
 
     /** Uploads a .pfx (multipart: {@code file}, {@code password}), replacing the active key. */
+    @Operation(operationId = "uploadCertificate")
     @PUT
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Transactional
@@ -121,6 +123,7 @@ public class CertificateResource {
         return view(key, company);
     }
 
+    @Operation(operationId = "getCertificate")
     @GET
     @Transactional
     public CertificateView get(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId) {

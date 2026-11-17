@@ -6,6 +6,7 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.QueryParam;
 import java.time.LocalDate;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /** The exchange rate of a day (default tipo_cambio on manual issuing, §26.7). Any signed-in user. */
 @Path("/api/v1/exchange-rates")
@@ -17,6 +18,7 @@ public class ExchangeRateResource {
         this.rates = rates;
     }
 
+    @Operation(operationId = "getExchangeRate")
     @GET
     @Transactional
     public ExchangeRates.Rate get(@QueryParam("date") LocalDate date) {

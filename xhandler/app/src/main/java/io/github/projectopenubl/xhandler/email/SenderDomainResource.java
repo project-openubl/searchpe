@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.UUID;
 import javax.naming.directory.Attribute;
 import javax.naming.directory.InitialDirContext;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /**
  * A tenant's own sender domain (DESIGN.md §26.5): proven with a DNS TXT record
@@ -53,6 +54,7 @@ public class SenderDomainResource {
         this.auditor = auditor;
     }
 
+    @Operation(operationId = "addSenderDomain")
     @POST
     @Transactional
     public Response add(@PathParam("tenantId") UUID tenantId, @Valid DomainRequest request) {
@@ -70,6 +72,7 @@ public class SenderDomainResource {
         return Response.status(201).entity(find(domain)).build();
     }
 
+    @Operation(operationId = "listSenderDomains")
     @GET
     @Transactional
     public List<DomainView> list(@PathParam("tenantId") UUID tenantId) {
@@ -80,6 +83,7 @@ public class SenderDomainResource {
         return rows.stream().map(SenderDomainResource::view).toList();
     }
 
+    @Operation(operationId = "verifySenderDomain")
     @POST
     @Path("/{domain}/verify")
     public DomainView verify(@PathParam("tenantId") UUID tenantId, @PathParam("domain") String domain) {

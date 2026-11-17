@@ -11,6 +11,7 @@ import jakarta.ws.rs.Path;
 import java.time.Instant;
 import java.util.List;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /**
  * Platform status (DESIGN.md §15), like Pulp's: versions, online workers per role, database,
@@ -54,6 +55,7 @@ public class StatusResource {
         this.version = version;
     }
 
+    @Operation(operationId = "getStatus")
     @GET
     @Transactional
     public Status status() {

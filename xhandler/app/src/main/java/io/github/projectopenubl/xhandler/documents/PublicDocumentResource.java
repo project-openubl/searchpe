@@ -17,6 +17,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /**
  * Buyer access by capability link (DESIGN.md §3.3, §12): no login, rate limited at the gateway.
@@ -52,6 +53,7 @@ public class PublicDocumentResource {
         this.em = em;
     }
 
+    @Operation(operationId = "getPublicDocument")
     @GET
     @Transactional
     public PublicDocument get(@PathParam("token") String token) {
@@ -73,6 +75,7 @@ public class PublicDocumentResource {
                 doc.moneda, doc.total, status, available);
     }
 
+    @Operation(operationId = "downloadPublicDocumentFile")
     @GET
     @Path("/{kind}")
     public Response file(@PathParam("token") String token, @PathParam("kind") String kind) {

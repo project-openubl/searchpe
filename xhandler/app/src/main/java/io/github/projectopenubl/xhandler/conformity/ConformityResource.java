@@ -21,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /**
  * Factura negociable conformity (DESIGN.md §11.8): per document, per company, and an export for
@@ -48,6 +49,7 @@ public class ConformityResource {
                    c.resolved_at, d.total, d.moneda, d.fecha_emision, d.customer_nombre
             FROM xhandler.conformity c JOIN xhandler.document d ON d.id = c.document_id""";
 
+    @Operation(operationId = "getDocumentConformity")
     @GET
     @Path("/documents/{documentId}/conformity")
     @Transactional
@@ -66,6 +68,7 @@ public class ConformityResource {
         return view(r, creditNote);
     }
 
+    @Operation(operationId = "listConformity")
     @GET
     @Path("/companies/{companyId}/conformity")
     @Transactional
@@ -77,6 +80,7 @@ public class ConformityResource {
     }
 
     /** For factoring: facturas negociables and their conformity, as CSV. */
+    @Operation(operationId = "exportConformity")
     @GET
     @Path("/companies/{companyId}/conformity/export")
     @Transactional

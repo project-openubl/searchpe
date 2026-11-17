@@ -15,6 +15,7 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.core.Response;
 import java.util.List;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /** Tenants of the caller, and self-service signup (DESIGN.md §6, §26.8). */
 @Path("/api/v1/tenants")
@@ -41,6 +42,7 @@ public class TenantResource {
         this.auditor = auditor;
     }
 
+    @Operation(operationId = "listTenants")
     @GET
     @Transactional
     public List<TenantSummary> list() {
@@ -56,6 +58,7 @@ public class TenantResource {
     }
 
     /** Self-service signup: a person creates a free tenant and becomes its owner. */
+    @Operation(operationId = "createTenant")
     @POST
     @Transactional
     public Response create(@Valid CreateTenant request) {
@@ -103,6 +106,7 @@ public class TenantResource {
         return Response.status(201).entity(view(tenant)).build();
     }
 
+    @Operation(operationId = "getTenant")
     @GET
     @Path("/{tenantId}")
     @Transactional

@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /**
  * RUC/DNI lookup behind one interface, {@code lookup(tipo, numero)} (DESIGN.md §17): the platform's
@@ -64,6 +65,7 @@ public class IdentityLookup {
         this.searchpeUrl = searchpeUrl;
     }
 
+    @Operation(operationId = "lookupIdentity")
     @GET
     public Identity lookup(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId, @PathParam("tipo") String tipo,
             @PathParam("numero") String numero) {

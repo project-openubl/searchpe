@@ -16,6 +16,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /** A tenant's plan, usage and billing details (DESIGN.md §14). */
 @Path("/api/v1/tenants/{tenantId}/billing")
@@ -34,6 +35,7 @@ public class BillingResource {
         this.auditor = auditor;
     }
 
+    @Operation(operationId = "getBilling")
     @GET
     @Transactional
     public Map<String, Object> get(@PathParam("tenantId") UUID tenantId) {
@@ -48,6 +50,7 @@ public class BillingResource {
         return view;
     }
 
+    @Operation(operationId = "updateBillingDetails")
     @PUT
     @Transactional
     public Map<String, Object> details(@PathParam("tenantId") UUID tenantId, @Valid BillingDetails details) {

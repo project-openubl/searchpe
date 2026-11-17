@@ -28,6 +28,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /**
  * Data-subject requests (Ley 29733 and DS 016-2024-JUS; DESIGN.md §16). The tenant is the
@@ -100,6 +101,7 @@ public class DataSubjectRequests {
         };
     }
 
+    @Operation(operationId = "createDataSubjectRequest")
     @POST
     @Transactional
     public Map<String, Object> create(@PathParam("tenantId") UUID tenantId, @Valid NewRequest request) {
@@ -107,6 +109,7 @@ public class DataSubjectRequests {
         return view(register(scope, request, "tenant"));
     }
 
+    @Operation(operationId = "listDataSubjectRequests")
     @GET
     @Transactional
     public List<Map<String, Object>> list(@PathParam("tenantId") UUID tenantId) {
@@ -117,6 +120,7 @@ public class DataSubjectRequests {
     }
 
     /** What the platform holds about the person: the documents issued to them (status and amounts, no files). */
+    @Operation(operationId = "getDataSubjectPersonalData")
     @GET
     @Path("/{id}/personal-data")
     @Transactional
@@ -138,6 +142,7 @@ public class DataSubjectRequests {
         return answer;
     }
 
+    @Operation(operationId = "closeDataSubjectRequest")
     @POST
     @Path("/{id}/close")
     @Transactional

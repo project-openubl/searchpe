@@ -35,6 +35,7 @@ import java.util.UUID;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /**
  * The platform's own subscription invoices are real comprobantes issued through the service
@@ -70,6 +71,7 @@ public final class SelfInvoicing {
             this.json = json;
         }
 
+        @Operation(operationId = "receiveLagoWebhook")
         @POST
         public Response receive(@HeaderParam("X-Lago-Signature") String signature, byte[] body) throws Exception {
             if (secret.isEmpty() || signature == null || !validSignature(secret.get(), body, signature)) {

@@ -24,6 +24,7 @@ import jakarta.ws.rs.core.Response;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /** Emailing documents to buyers (DESIGN.md §11.6): on request (202 + job), or when SUNAT accepts. */
 @Path("/api/v1/tenants/{tenantId}/documents/{documentId}/email")
@@ -51,6 +52,7 @@ public class DocumentEmailResource {
         this.em = em;
     }
 
+    @Operation(operationId = "emailDocument")
     @POST
     @Transactional
     public Response send(@PathParam("tenantId") UUID tenantId, @PathParam("documentId") UUID documentId, @Valid EmailRequest request) {

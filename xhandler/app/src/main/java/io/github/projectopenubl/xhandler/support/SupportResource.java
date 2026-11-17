@@ -15,6 +15,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /**
  * Support access (DESIGN.md §26.1), tenant side: the tenant's owner or an admin approves or revokes
@@ -36,6 +37,7 @@ public class SupportResource {
         this.auditor = auditor;
     }
 
+    @Operation(operationId = "listSupportSessions")
     @GET
     @Transactional
     public List<SessionView> list(@PathParam("tenantId") UUID tenantId) {
@@ -44,6 +46,7 @@ public class SupportResource {
         return sessions.stream().map(SupportResource::view).toList();
     }
 
+    @Operation(operationId = "approveSupportSession")
     @POST
     @Path("/{sessionId}/approve")
     @Transactional
@@ -60,6 +63,7 @@ public class SupportResource {
         return view(session);
     }
 
+    @Operation(operationId = "revokeSupportSession")
     @POST
     @Path("/{sessionId}/revoke")
     @Transactional

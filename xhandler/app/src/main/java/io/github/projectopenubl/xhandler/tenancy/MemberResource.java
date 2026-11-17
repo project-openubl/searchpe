@@ -17,6 +17,7 @@ import jakarta.ws.rs.core.Response;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /**
  * People and machine clients of a tenant. A machine client (an ERP using OAuth2 client
@@ -40,6 +41,7 @@ public class MemberResource {
         this.auditor = auditor;
     }
 
+    @Operation(operationId = "listMembers")
     @GET
     @Transactional
     public List<MemberView> list(@PathParam("tenantId") UUID tenantId) {
@@ -48,6 +50,7 @@ public class MemberResource {
         return members.stream().map(MemberResource::view).toList();
     }
 
+    @Operation(operationId = "addMember")
     @POST
     @Transactional
     public Response add(@PathParam("tenantId") UUID tenantId, @Valid AddMember request) {

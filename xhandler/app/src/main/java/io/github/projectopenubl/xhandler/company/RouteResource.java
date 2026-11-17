@@ -20,6 +20,7 @@ import jakarta.ws.rs.PathParam;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /**
  * A company's submission route (DESIGN.md §3.2): SUNAT directly, or a third-party OSE. GRE always
@@ -48,6 +49,7 @@ public class RouteResource {
         this.auditor = auditor;
     }
 
+    @Operation(operationId = "getRoute")
     @GET
     @Transactional
     public RouteView get(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId) {
@@ -55,6 +57,7 @@ public class RouteResource {
         return view(CompanyResource.find(companyId));
     }
 
+    @Operation(operationId = "setRoute")
     @PUT
     @Transactional
     public RouteView set(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId, @Valid RouteChange change) {

@@ -26,6 +26,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /**
  * Registers of sales and purchases as files (DESIGN.md §11.9): CSV and Excel for people, PLE for
@@ -57,6 +58,7 @@ public class ReportResource {
         this.auditor = auditor;
     }
 
+    @Operation(operationId = "createReport")
     @POST
     @Transactional
     public Response create(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId, @Valid ReportRequest request) {
@@ -77,6 +79,7 @@ public class ReportResource {
         return Response.status(202).entity(view(id)).build();
     }
 
+    @Operation(operationId = "listReports")
     @GET
     @Transactional
     public List<ReportView> list(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId) {
@@ -88,6 +91,7 @@ public class ReportResource {
         return ids.stream().map(this::view).toList();
     }
 
+    @Operation(operationId = "getReport")
     @GET
     @Path("/{reportId}")
     @Transactional
@@ -102,6 +106,7 @@ public class ReportResource {
         return view;
     }
 
+    @Operation(operationId = "downloadReportFile")
     @GET
     @Path("/{reportId}/file")
     @Transactional

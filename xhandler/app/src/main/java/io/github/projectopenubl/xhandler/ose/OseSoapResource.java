@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Optional;
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilderFactory;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.jboss.logging.Logger;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -42,6 +43,7 @@ public class OseSoapResource {
         this.metrics = metrics;
     }
 
+    @Operation(operationId = "oseSoapBillService")
     @POST
     @Consumes({"text/xml", "application/soap+xml", "application/xml"})
     @Produces("text/xml")

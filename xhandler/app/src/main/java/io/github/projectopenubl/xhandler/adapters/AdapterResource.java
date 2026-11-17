@@ -29,6 +29,7 @@ import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /** Inputs other than native JSON (DESIGN.md §5): UBL XML upload, SFS TXT, and tokens for the Nubefact-compatible API. */
 @Path("/api/v1/tenants/{tenantId}/companies/{companyId}")
@@ -58,6 +59,7 @@ public class AdapterResource {
     }
 
     /** A UBL XML built elsewhere: validated, signed if unsigned, stored and sent. */
+    @Operation(operationId = "uploadUblDocument")
     @POST
     @Path("/documents/ubl")
     @Consumes({"application/xml", "text/xml"})
@@ -68,6 +70,7 @@ public class AdapterResource {
     }
 
     /** SUNAT SFS TXT files (.CAB/.NOT + .DET) converted to native JSON; the document keeps its number. */
+    @Operation(operationId = "emitSfsDocument")
     @POST
     @Path("/documents/sfs")
     public Response sfs(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId,
@@ -87,6 +90,7 @@ public class AdapterResource {
     }
 
     /** A token for the Nubefact-compatible API (shown once). */
+    @Operation(operationId = "createNubefactToken")
     @POST
     @Path("/adapter-tokens/nubefact")
     @Transactional
@@ -107,6 +111,7 @@ public class AdapterResource {
     }
 
     /** The company's adapter tokens (never the token itself). */
+    @Operation(operationId = "listAdapterTokens")
     @jakarta.ws.rs.GET
     @Path("/adapter-tokens")
     @Transactional
@@ -129,6 +134,7 @@ public class AdapterResource {
         }).toList();
     }
 
+    @Operation(operationId = "revokeAdapterToken")
     @DELETE
     @Path("/adapter-tokens/{tokenId}")
     @Transactional

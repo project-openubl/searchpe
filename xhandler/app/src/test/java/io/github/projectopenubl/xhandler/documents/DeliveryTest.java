@@ -103,7 +103,7 @@ class DeliveryTest {
         EngineStub.on("/v1/send", body -> body.contains("F001-2") ? Reply.ok(sendAnswer("not_delivered", null, null, null))
                 : Reply.ok(sendAnswer("accepted", 0, null, null)));
         Response pending = emit(invoice(cliente()));
-        String pendingText = text(given().get(URI.create(pending.<String>path("access_url")).getPath() + "/pdf").then().statusCode(200)
+        String pendingText = text(given().get(apiPath(pending.<String>path("access_url")) + "/pdf").then().statusCode(200)
                 .extract().asByteArray());
         assertTrue(pendingText.contains("SIN VALOR LEGAL"), pendingText);
         // Production documents carry their status instead
@@ -121,7 +121,7 @@ class DeliveryTest {
         var mail = mailbox.getMailsSentTo("compras@comprador.pe").get(0);
         assertTrue(mail.getSubject().contains("F001-1"), mail.getSubject());
         assertEquals(3, mail.getAttachments().size(), "PDF, XML and CDR");
-        assertTrue(mail.getHtml().contains("/api/v1/public/documents/"), "with the buyer's link");
+        assertTrue(mail.getHtml().contains("/p/documentos/"), "with the buyer's link");
         await().atMost(WAIT).until(() -> "service".equals(as("alice").get(base + "/documents/" + id).then().extract().path("delivered_source")));
 
         as("alice").body(Map.of("to", List.of("not-an-email"))).post(base + "/documents/" + id + "/email").then().statusCode(422);
@@ -262,5 +262,11 @@ class DeliveryTest {
                 .body("txt_name", equalTo("_xhandler." + domain))
                 .body("txt_value", org.hamcrest.Matchers.startsWith("xhandler-verification="));
         as("alice").post(base + "/sender-domains/" + domain + "/verify").then().statusCode(409).body("kind", equalTo("dns_record_missing"));
+    }
+
+    /** The public API behind a buyer's link (the link is the UI page /p/documentos/{token}). */
+    static String apiPath(String accessUrl) {
+        String link = URI.create(accessUrl).getPath();
+        return "/api/v1/public/documents/" + link.substring(link.lastIndexOf('/') + 1);
     }
 }

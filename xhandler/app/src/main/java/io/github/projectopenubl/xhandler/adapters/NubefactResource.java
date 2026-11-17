@@ -18,6 +18,7 @@ import jakarta.ws.rs.core.Response;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /**
  * Nubefact-compatible API (DESIGN.md §5): {@code POST /api/v1/public/nubefact/{company}} with
@@ -46,6 +47,7 @@ public class NubefactResource {
 
     record Client(UUID tenantId, UUID companyId, String sunatEnv, UUID tokenId, String label) {}
 
+    @Operation(operationId = "callNubefact")
     @POST
     public Response call(@PathParam("companyId") UUID companyId, @HeaderParam("Authorization") String authorization, JsonNode request) {
         Client client = authenticate(companyId, authorization);

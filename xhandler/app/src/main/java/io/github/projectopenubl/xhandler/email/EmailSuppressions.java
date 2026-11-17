@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /**
  * Addresses a tenant no longer emails (DESIGN.md §26.5): hard bounces and complaints, recorded by
@@ -37,6 +38,7 @@ public class EmailSuppressions {
         this.auditor = auditor;
     }
 
+    @Operation(operationId = "listEmailSuppressions")
     @GET
     @Transactional
     public List<Suppression> list(@PathParam("tenantId") UUID tenantId) {
@@ -48,6 +50,7 @@ public class EmailSuppressions {
                 io.github.projectopenubl.xhandler.status.StatusResource.toInstant(r[2]))).toList();
     }
 
+    @Operation(operationId = "removeEmailSuppression")
     @DELETE
     @Path("/{address}")
     @Transactional

@@ -23,6 +23,8 @@ import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 /**
  * The partner API (DESIGN.md §1.2, §14): software vendors who resell the service create and manage
@@ -34,6 +36,7 @@ public class PartnerResource {
 
     public record PartnerView(UUID id, String name, String role) {}
 
+    @Schema(name = "CreatePartnerTenant")
     public record CreateTenant(@NotBlank @Size(max = 200) String name, @Pattern(regexp = "user|client") String ownerKind,
             @Size(max = 200) String ownerSubject) {}
 
@@ -52,6 +55,7 @@ public class PartnerResource {
         this.json = json;
     }
 
+    @Operation(operationId = "listMyPartners")
     @GET
     @Transactional
     public List<PartnerView> mine() {
@@ -62,6 +66,7 @@ public class PartnerResource {
         return rows.stream().map(r -> new PartnerView((UUID) r[0], (String) r[1], (String) r[2])).toList();
     }
 
+    @Operation(operationId = "createPartnerTenant")
     @POST
     @Path("/{partnerId}/tenants")
     @Transactional
@@ -78,6 +83,7 @@ public class PartnerResource {
     }
 
     /** The partner's tenants with their documents in a month (default: this month, Lima). */
+    @Operation(operationId = "listPartnerTenants")
     @GET
     @Path("/{partnerId}/tenants")
     @Transactional
@@ -100,6 +106,7 @@ public class PartnerResource {
                 ((Number) r[4]).longValue(), ((Number) r[5]).longValue())).toList();
     }
 
+    @Operation(operationId = "setPartnerBranding")
     @PUT
     @Path("/{partnerId}/branding")
     @Transactional

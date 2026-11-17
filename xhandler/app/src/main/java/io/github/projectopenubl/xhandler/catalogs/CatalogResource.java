@@ -27,6 +27,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /**
  * Optional catalogs of a company (DESIGN.md §17): customers, products, vehicles, drivers and
@@ -66,6 +67,7 @@ public class CatalogResource {
         this.json = json;
     }
 
+    @Operation(operationId = "listCatalogEntries")
     @GET
     @Transactional
     public Page<Entry> list(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId, @PathParam("kind") String kind,
@@ -90,6 +92,7 @@ public class CatalogResource {
         return new Page<>(rows.stream().map(this::entry).toList(), size, from);
     }
 
+    @Operation(operationId = "getCatalogEntry")
     @GET
     @Path("/{id}")
     @Transactional
@@ -102,6 +105,7 @@ public class CatalogResource {
         return entry;
     }
 
+    @Operation(operationId = "createCatalogEntry")
     @POST
     @Transactional
     public Response create(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId, @PathParam("kind") String kind,
@@ -112,6 +116,7 @@ public class CatalogResource {
         return Response.status(201).entity(upsert(company.tenantId, companyId, kind, data, null)).build();
     }
 
+    @Operation(operationId = "updateCatalogEntry")
     @PUT
     @Path("/{id}")
     @Transactional
@@ -123,6 +128,7 @@ public class CatalogResource {
         return upsert(tenantId, companyId, kind, data, id);
     }
 
+    @Operation(operationId = "deleteCatalogEntry")
     @DELETE
     @Path("/{id}")
     @Transactional

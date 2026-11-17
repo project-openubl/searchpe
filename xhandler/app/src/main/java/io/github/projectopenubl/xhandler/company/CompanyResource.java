@@ -25,6 +25,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /** Companies (RUCs) of a tenant and their series. */
 @Path("/api/v1/tenants/{tenantId}/companies")
@@ -66,6 +67,7 @@ public class CompanyResource {
         this.maxUnverifiedCompanies = maxUnverifiedCompanies;
     }
 
+    @Operation(operationId = "createCompany")
     @POST
     @Transactional
     public Response create(@PathParam("tenantId") UUID tenantId, @Valid CreateCompany request) {
@@ -96,6 +98,7 @@ public class CompanyResource {
         return Response.status(201).entity(view(company)).build();
     }
 
+    @Operation(operationId = "listCompanies")
     @GET
     @Transactional
     public Page<CompanyView> list(
@@ -107,6 +110,7 @@ public class CompanyResource {
         return new Page<>(companies.stream().map(CompanyResource::view).toList(), size, from);
     }
 
+    @Operation(operationId = "getCompany")
     @GET
     @Path("/{companyId}")
     @Transactional
@@ -115,6 +119,7 @@ public class CompanyResource {
         return view(find(companyId));
     }
 
+    @Operation(operationId = "listSeries")
     @GET
     @Path("/{companyId}/series")
     @Transactional
@@ -125,6 +130,7 @@ public class CompanyResource {
         return series.stream().map(CompanyResource::view).toList();
     }
 
+    @Operation(operationId = "createSeries")
     @POST
     @Path("/{companyId}/series")
     @Transactional

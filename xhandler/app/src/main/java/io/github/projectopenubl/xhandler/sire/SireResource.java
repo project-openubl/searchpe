@@ -25,6 +25,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /**
  * SIRE per company, register ({@code rvie} sales, {@code rce} purchases) and period (DESIGN.md
@@ -71,6 +72,7 @@ public class SireResource {
     }
 
     /** Asks SUNAT for its proposal (again, to start over after an error or a change). */
+    @Operation(operationId = "requestSireProposal")
     @POST
     @Path("/proposal")
     @Transactional
@@ -119,6 +121,7 @@ public class SireResource {
     }
 
     /** Submits the stored rows as the replacement of SUNAT's proposal. */
+    @Operation(operationId = "replaceSireProposal")
     @POST
     @Path("/replace")
     @Transactional
@@ -172,6 +175,7 @@ public class SireResource {
         return Response.status(202).entity(view(id)).build();
     }
 
+    @Operation(operationId = "getSirePeriod")
     @GET
     @Transactional
     public SirePeriodView get(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId, @PathParam("book") String book,
@@ -183,6 +187,7 @@ public class SireResource {
     }
 
     /** SUNAT's proposal ({@code proposal}) or the submitted replacement ({@code replacement}), as SUNAT's ZIP. */
+    @Operation(operationId = "downloadSireFile")
     @GET
     @Path("/files/{kind}")
     @Transactional

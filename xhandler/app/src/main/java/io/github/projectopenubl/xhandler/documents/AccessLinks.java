@@ -58,8 +58,12 @@ public class AccessLinks {
         return token;
     }
 
+    /**
+     * The buyer's page in the UI (printed in PDFs, sent in emails, returned as access_url): it reads
+     * {@code GET /api/v1/public/documents/{token}}, the API behind it.
+     */
     public String url(String token) {
-        return publicBaseUrl + "/api/v1/public/documents/" + token;
+        return publicBaseUrl + "/p/documentos/" + token;
     }
 
     /** The document a token opens, if valid (cross-tenant lookup through a SECURITY DEFINER function). */

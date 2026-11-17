@@ -27,6 +27,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /**
  * PSE mode of a company (DESIGN.md §1.1, §3.2): the tenant authorizes the platform in SUNAT's SOL
@@ -59,6 +60,7 @@ public class PseResource {
         this.platformKeys = platformKeys;
     }
 
+    @Operation(operationId = "listPseAuthorizations")
     @GET
     @Transactional
     public List<AuthorizationView> list(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId) {
@@ -74,6 +76,7 @@ public class PseResource {
     }
 
     /** Registers the SOL authorization; the evidence (a PDF or image of SOL's confirmation) is kept. */
+    @Operation(operationId = "authorizePse")
     @POST
     @Path("/authorization")
     @Transactional
@@ -119,6 +122,7 @@ public class PseResource {
     }
 
     /** The tenant revoked the platform in SOL: PSE stops, the company goes back to software mode. */
+    @Operation(operationId = "revokePseAuthorization")
     @DELETE
     @Path("/authorization")
     @Transactional
@@ -148,6 +152,7 @@ public class PseResource {
         return Map.of("company_id", companyId, "emission_mode", company.emissionMode);
     }
 
+    @Operation(operationId = "setEmissionMode")
     @PUT
     @Path("/mode")
     @Transactional

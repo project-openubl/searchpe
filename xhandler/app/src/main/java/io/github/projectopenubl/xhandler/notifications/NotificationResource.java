@@ -24,6 +24,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /** In-app notifications and their preferences (DESIGN.md §26.6). */
 @Path("/api/v1/tenants/{tenantId}")
@@ -45,6 +46,7 @@ public class NotificationResource {
         this.auditor = auditor;
     }
 
+    @Operation(operationId = "listNotifications")
     @GET
     @Path("/notifications")
     @Transactional
@@ -61,6 +63,7 @@ public class NotificationResource {
                 StatusResource.toInstant(r[5]), StatusResource.toInstant(r[6]))).toList(), size, from);
     }
 
+    @Operation(operationId = "markNotificationRead")
     @POST
     @Path("/notifications/{id}/read")
     @Transactional
@@ -74,6 +77,7 @@ public class NotificationResource {
         return Response.noContent().build();
     }
 
+    @Operation(operationId = "markAllNotificationsRead")
     @POST
     @Path("/notifications/read-all")
     @Transactional
@@ -83,6 +87,7 @@ public class NotificationResource {
         return Response.noContent().build();
     }
 
+    @Operation(operationId = "getNotificationPreferences")
     @GET
     @Path("/notification-preferences")
     @Transactional
@@ -94,6 +99,7 @@ public class NotificationResource {
         return rows.stream().map(r -> new Preference((String) r[0], (Boolean) r[1], (Boolean) r[2])).toList();
     }
 
+    @Operation(operationId = "setNotificationPreferences")
     @PUT
     @Path("/notification-preferences")
     @Transactional
@@ -110,6 +116,7 @@ public class NotificationResource {
         return preferences(tenantId);
     }
 
+    @Operation(operationId = "updateNotificationSettings")
     @PUT
     @Path("/notification-settings")
     @Transactional

@@ -201,7 +201,9 @@ class EmitTest {
         body.put("delivered", false);
         Response emitted = emit(body, null);
         String id = emitted.path("id");
-        String path = URI.create(emitted.<String>path("access_url")).getPath();
+        String link = URI.create(emitted.<String>path("access_url")).getPath();
+        assertTrue(link.startsWith("/p/documentos/"), "the buyer's page in the UI");
+        String path = "/api/v1/public/documents/" + link.substring(link.lastIndexOf('/') + 1);
         await().atMost(WAIT).until(() -> "accepted".equals(status(id)));
 
         given().get(path).then().statusCode(200)
@@ -284,7 +286,9 @@ class EmitTest {
     @Test
     void buyer_links_can_be_revoked() {
         Response emitted = emit(invoice(Map.of()), null);
-        String path = URI.create(emitted.<String>path("access_url")).getPath();
+        String link = URI.create(emitted.<String>path("access_url")).getPath();
+        assertTrue(link.startsWith("/p/documentos/"), "the buyer's page in the UI");
+        String path = "/api/v1/public/documents/" + link.substring(link.lastIndexOf('/') + 1);
         given().get(path).then().statusCode(200);
         as("alice").post(base + "/documents/" + emitted.path("id") + "/access-links/revoke").then().statusCode(204);
         given().get(path).then().statusCode(404);

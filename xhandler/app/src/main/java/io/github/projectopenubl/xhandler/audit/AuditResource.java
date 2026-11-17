@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /** A tenant's audit log, newest first: tenants can see who accessed their data (DESIGN.md §26.1). */
 @Path("/api/v1/tenants/{tenantId}/audit")
@@ -25,6 +26,7 @@ public class AuditResource {
         this.access = access;
     }
 
+    @Operation(operationId = "listAuditEntries")
     @GET
     @Transactional
     public Page<AuditEntry> list(

@@ -17,6 +17,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /** Company secrets. They can be written, but never read back through the API. */
 @Path("/api/v1/tenants/{tenantId}/companies/{companyId}/credentials")
@@ -42,6 +43,7 @@ public class CredentialResource {
         this.egress = egress;
     }
 
+    @Operation(operationId = "listCredentials")
     @GET
     @Transactional
     public List<CredentialView> list(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId) {
@@ -51,6 +53,7 @@ public class CredentialResource {
         return list.stream().map(c -> new CredentialView(c.kind, c.label, c.updatedAt)).toList();
     }
 
+    @Operation(operationId = "setSolCredentials")
     @PUT
     @Path("/sol")
     @Transactional
@@ -67,6 +70,7 @@ public class CredentialResource {
     public record GreCredentials(@NotBlank @Size(max = 100) String username, @NotBlank @Size(max = 200) String password,
             @NotBlank @Size(max = 200) String clientId, @NotBlank @Size(max = 300) String clientSecret) {}
 
+    @Operation(operationId = "setGreCredentials")
     @PUT
     @Path("/gre")
     @Transactional
@@ -86,6 +90,7 @@ public class CredentialResource {
     public record SireCredentials(@NotBlank @Size(max = 100) String username, @NotBlank @Size(max = 200) String password,
             @NotBlank @Size(max = 200) String clientId, @NotBlank @Size(max = 300) String clientSecret) {}
 
+    @Operation(operationId = "setSireCredentials")
     @PUT
     @Path("/sire")
     @Transactional
@@ -105,6 +110,7 @@ public class CredentialResource {
             @jakarta.validation.constraints.Max(65535) int port, @NotBlank @Size(max = 200) String username,
             @NotBlank @Size(max = 300) String password, @NotBlank @jakarta.validation.constraints.Email String from, Boolean startTls) {}
 
+    @Operation(operationId = "setSmtpCredentials")
     @PUT
     @Path("/smtp")
     @Transactional
@@ -124,6 +130,7 @@ public class CredentialResource {
     /** A commercial RUC/DNI lookup provider (DESIGN.md §17): URL with {tipo}/{numero}, and the tenant's token. */
     public record LookupCredentials(@NotBlank @Size(max = 2000) String url, @Size(max = 500) String token) {}
 
+    @Operation(operationId = "setLookupCredentials")
     @PUT
     @Path("/lookup")
     @Transactional

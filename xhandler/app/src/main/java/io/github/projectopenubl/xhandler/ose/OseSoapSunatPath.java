@@ -5,6 +5,7 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /** The OSE's SOAP channel at SUNAT's own path, for clients that keep it (only the host changes). */
 @Path("/ol-ti-itcpfegem/billService")
@@ -20,6 +21,7 @@ public class OseSoapSunatPath {
         this.metrics = metrics;
     }
 
+    @Operation(operationId = "oseSoapBillServiceSunatPath")
     @POST
     @Consumes({"text/xml", "application/soap+xml", "application/xml"})
     @Produces("text/xml")

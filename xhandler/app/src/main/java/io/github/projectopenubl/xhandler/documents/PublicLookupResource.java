@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.util.Optional;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /**
  * Lookup by printed data (DESIGN.md §12): RUC + serie-número + date + total is low-entropy, so it
@@ -60,6 +61,7 @@ public class PublicLookupResource {
         this.testMode = testMode;
     }
 
+    @Operation(operationId = "lookupDocument")
     @POST
     public LookupResult lookup(@Valid LookupRequest request) {
         if (!captchaValid(request.captcha())) {
@@ -96,6 +98,7 @@ public class PublicLookupResource {
      * period, whether a factura or nota got a CDR-OSE or an inconsistency notice, and for boletas
      * whether and when they were checked. Status only.
      */
+    @Operation(operationId = "lookupOseDocument")
     @POST
     @jakarta.ws.rs.Path("/ose")
     public OseLookupResult ose(@Valid OseLookupRequest request) {

@@ -27,6 +27,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /**
  * Webhook subscriptions, delivery logs, redelivery and test events (DESIGN.md §12, §26.2). The
@@ -61,6 +62,7 @@ public class WebhookResource {
         this.auditor = auditor;
     }
 
+    @Operation(operationId = "createWebhook")
     @POST
     @Transactional
     public Response create(@PathParam("tenantId") UUID tenantId, @Valid CreateWebhook request) {
@@ -90,6 +92,7 @@ public class WebhookResource {
         return Response.status(201).entity(view(subscription, secret)).build();
     }
 
+    @Operation(operationId = "listWebhooks")
     @GET
     @Transactional
     public List<WebhookView> list(@PathParam("tenantId") UUID tenantId) {
@@ -98,6 +101,7 @@ public class WebhookResource {
         return subscriptions.stream().map(s -> view(s, null)).toList();
     }
 
+    @Operation(operationId = "deleteWebhook")
     @DELETE
     @Path("/{webhookId}")
     @Transactional
@@ -111,6 +115,7 @@ public class WebhookResource {
     }
 
     /** Sends a {@code webhook.test} event to this subscription only (webhook tools, §26.2). */
+    @Operation(operationId = "testWebhook")
     @POST
     @Path("/{webhookId}/test")
     @Transactional
@@ -135,6 +140,7 @@ public class WebhookResource {
         return view(delivery);
     }
 
+    @Operation(operationId = "listWebhookDeliveries")
     @GET
     @Path("/{webhookId}/deliveries")
     @Transactional
@@ -152,6 +158,7 @@ public class WebhookResource {
         return new Page<>(page.stream().map(WebhookResource::view).toList(), size, start);
     }
 
+    @Operation(operationId = "redeliverWebhook")
     @POST
     @Path("/{webhookId}/deliveries/{deliveryId}/redeliver")
     @Transactional

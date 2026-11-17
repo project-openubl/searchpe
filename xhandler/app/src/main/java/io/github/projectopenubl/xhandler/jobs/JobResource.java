@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 /** A tenant's jobs, shaped like Pulp's tasks so xhandler-ui can reuse pulp-ui-2's patterns (§10.1). */
 @Path("/api/v1/tenants/{tenantId}/jobs")
@@ -45,6 +46,7 @@ public class JobResource {
         this.jobs = jobs;
     }
 
+    @Operation(operationId = "listJobs")
     @GET
     @Transactional
     public Page<JobView> list(
@@ -71,6 +73,7 @@ public class JobResource {
         return new Page<>(page.stream().map(JobResource::view).toList(), size, from);
     }
 
+    @Operation(operationId = "getJob")
     @GET
     @Path("/{jobId}")
     @Transactional
@@ -83,6 +86,7 @@ public class JobResource {
         return view(job);
     }
 
+    @Operation(operationId = "cancelJob")
     @POST
     @Path("/{jobId}/cancel")
     @Transactional

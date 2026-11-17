@@ -39,6 +39,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.jboss.logging.Logger;
 
 /**
@@ -70,6 +71,7 @@ public class TenantExit {
         this.auditor = auditor;
     }
 
+    @Operation(operationId = "createExport")
     @POST
     @Path("/exports")
     @Transactional
@@ -89,6 +91,7 @@ public class TenantExit {
         return Response.status(202).entity(view(id)).build();
     }
 
+    @Operation(operationId = "listExports")
     @GET
     @Path("/exports")
     @Transactional
@@ -105,6 +108,7 @@ public class TenantExit {
         return ids.stream().map(this::view).toList();
     }
 
+    @Operation(operationId = "downloadExportPart")
     @GET
     @Path("/exports/{exportId}/parts/{index}")
     @Transactional
@@ -126,6 +130,7 @@ public class TenantExit {
      * Leaves the platform: the organization's name typed, no document waiting for SUNAT, and an
      * export from the last 30 days that is newer than every document.
      */
+    @Operation(operationId = "exitTenant")
     @POST
     @Path("/exit")
     @Transactional
