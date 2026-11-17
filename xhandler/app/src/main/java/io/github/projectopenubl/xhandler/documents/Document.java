@@ -79,6 +79,7 @@ public class Document extends PanacheEntityBase {
     public Instant firstSentAt;
     public Instant cdrReceivedAt;
     public Instant reversalCommunicatedAt;
+    public String voidReason;
     public String lastOutcome;
     public int sameOutcomeCount;
     public Instant progressAt;

@@ -22,7 +22,8 @@ public class SummaryOutcomes {
 
     void onStatusChanged(@Observes DocumentStatusChanged change) {
         Document rc = change.document();
-        if (!"RC".equals(rc.tipoComprobante) || !rc.definitive()) {
+        if (!"RC".equals(rc.tipoComprobante) || !rc.definitive() || "ticket_lost".equals(rc.codeClass)) {
+            // A lost ticket was resolved line by line already (AttemptHandler)
             return;
         }
         List<Document> lines = Document.<Document>find("summaryDocumentId = ?1 order by id", rc.id)

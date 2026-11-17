@@ -56,6 +56,22 @@ public class CredentialResource {
         return new CredentialView(stored.kind, stored.label, Instant.now());
     }
 
+    /** GRE REST API (DESIGN.md §3.1): the SOL user plus the API client created in SOL. */
+    public record GreCredentials(@NotBlank @Size(max = 100) String username, @NotBlank @Size(max = 200) String password,
+            @NotBlank @Size(max = 200) String clientId, @NotBlank @Size(max = 300) String clientSecret) {}
+
+    @PUT
+    @Path("/gre")
+    @Transactional
+    public CredentialView putGre(
+            @PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId, @Valid GreCredentials request) {
+        TenantScope scope = access.enter(tenantId, Role.ADMIN);
+        Company company = CompanyResource.find(companyId);
+        Credential stored = credentials.store(scope, company, "gre", Map.of("username", request.username(), "password",
+                request.password(), "client_id", request.clientId(), "client_secret", request.clientSecret()), mask(request.username()));
+        return new CredentialView(stored.kind, stored.label, Instant.now());
+    }
+
     /** "20123456789MODDATOS" → "2012…ATOS" */
     static String mask(String value) {
         return value.length() <= 8 ? "…" : value.substring(0, 4) + "…" + value.substring(value.length() - 4);

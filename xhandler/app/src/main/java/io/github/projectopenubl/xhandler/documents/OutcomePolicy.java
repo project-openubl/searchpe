@@ -60,7 +60,7 @@ public final class OutcomePolicy {
             case ACCEPTED -> finalState(observed(outcome) ? "accepted_with_observations" : "accepted", key);
             case REJECTED -> finalState("rejected", key);
             case VOIDED -> finalState("voided", key);
-            case PERMANENT, LOCAL_ERROR, COLLISION -> finalState("exception", key);
+            case PERMANENT, LOCAL_ERROR, COLLISION, SUMMARY_RESOLVED -> finalState("exception", key);
             case ROUTE_CHANGE -> new Decision(state.status(), null, null, key, 1, true);
             case TICKET -> new Decision("in_progress", now.plus(TICKET_BACKOFF.get(0)), null, key, 1, true);
             case IN_PROGRESS -> retry(state, "in_progress", key, now, step(TICKET_BACKOFF, state, key), jitter);

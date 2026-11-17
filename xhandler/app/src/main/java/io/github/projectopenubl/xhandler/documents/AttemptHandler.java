@@ -49,6 +49,9 @@ public class AttemptHandler implements JobHandler {
         RESOLVE
     }
 
+    /** A line of a summary whose ticket was lost: checked on its own (§9.2.2). {@code adds}: estado 1 line. */
+    record Line(UUID documentId, boolean adds, EngineModels.ValidityRequest check) {}
+
     /** What transaction 1 decided, as plain data (entities never leave their transaction). */
     record Plan(
             UUID documentId,
@@ -62,7 +65,8 @@ public class AttemptHandler implements JobHandler {
             boolean facturaFamily,
             boolean summary,
             Instant sendStartedAt,
-            String endpoint) {}
+            String endpoint,
+            List<Line> lines) {}
 
     private final TenantAccess access;
     private final Routes routes;
@@ -114,7 +118,8 @@ public class AttemptHandler implements JobHandler {
         Plan plan = (Plan) begun;
         long started = System.nanoTime();
         Instant callStartedAt = Instant.now();
-        Outcome outcome = execute(plan);
+        Map<UUID, String> lineStates = new java.util.HashMap<>();
+        Outcome outcome = execute(plan, lineStates);
         metrics.timer("xhandler.sunat.attempt", "endpoint", plan.endpoint(), "outcome", outcome.kind().name().toLowerCase())
                 .record(Duration.ofNanos(System.nanoTime() - started));
         try {
@@ -124,7 +129,8 @@ public class AttemptHandler implements JobHandler {
                 cdr = files.put(plan.tenantId(), Base64.getDecoder().decode(outcome.cdrZip()));
             }
             FileStore.Stored storedCdr = cdr;
-            boolean written = QuarkusTransaction.requiringNew().call(() -> finish(context, plan, outcome, storedCdr, callStartedAt));
+            boolean written = QuarkusTransaction.requiringNew().call(() ->
+                    finish(context, plan, outcome, storedCdr, callStartedAt, lineStates));
             return Map.of("action", plan.action().name().toLowerCase(), "outcome", outcome.kind().name().toLowerCase(),
                     "written", written);
         } catch (RuntimeException e) {
@@ -219,19 +225,42 @@ public class AttemptHandler implements JobHandler {
         // Renew the lease: the attempt may have waited in the queue (§24.2)
         doc.nextAttemptAt = now.plus(lease);
         doc.updatedAt = now;
+        List<Line> lines = action == Action.RESOLVE && doc.isSummary() && doc.ticket == null && target.environment().hasConsultServices()
+                ? summaryLines(company, doc, target)
+                : List.of();
         return new Plan(doc.id, doc.tenantId, doc.attempts, action, target, xml.storageKey, doc.ticket,
                 new EngineModels.DocumentKey(company.ruc, doc.tipoComprobante, doc.serie, doc.numero), doc.isFacturaFamily(),
-                doc.isSummary(), doc.sendStartedAt, doc.endpoint);
+                doc.isSummary(), doc.sendStartedAt, doc.endpoint, lines);
     }
 
-    private Outcome execute(Plan plan) {
+    /** The lines of a summary: documents it adds (RC estado 1) and documents it voids (RA, RR, RC estado 3). */
+    private static List<Line> summaryLines(Company company, Document summary, Routes.Target target) {
+        List<Line> lines = new java.util.ArrayList<>();
+        List<Document> added = Document.list("summaryDocumentId = ?1 order by id", summary.id);
+        List<Document> voided = Document.list("voidedByDocumentId = ?1 order by id", summary.id);
+        for (Document d : added) {
+            lines.add(new Line(d.id, true, validityCheck(company, d, target)));
+        }
+        for (Document d : voided) {
+            lines.add(new Line(d.id, false, validityCheck(company, d, target)));
+        }
+        return lines;
+    }
+
+    private static EngineModels.ValidityRequest validityCheck(Company company, Document d, Routes.Target target) {
+        return new EngineModels.ValidityRequest(target.environment(), target.credentials(),
+                new EngineModels.DocumentKey(company.ruc, d.tipoComprobante, d.serie, d.numero), d.customerTipo, d.customerNumero,
+                d.fechaEmision.toString(), d.total == null ? "0.00" : d.total.toPlainString());
+    }
+
+    private Outcome execute(Plan plan, Map<UUID, String> lineStates) {
         String xml = new String(files.get(plan.xmlKey()), StandardCharsets.UTF_8);
         Routes.Target t = plan.target();
         try {
             return switch (plan.action()) {
                 case SEND -> afterSend(plan, xml, engine.send(xml, t.environment(), t.credentials(), t.urls()));
                 case VERIFY_TICKET -> Outcome.ofSend(engine.verifyTicket(xml, plan.ticket(), t.environment(), t.credentials(), t.urls()));
-                case RESOLVE -> resolve(plan, xml);
+                case RESOLVE -> resolve(plan, xml, lineStates);
             };
         } catch (EngineException e) {
             if (e.status() == 422) {
@@ -247,10 +276,21 @@ public class AttemptHandler implements JobHandler {
      * service; summaries with a ticket check it; everything else resends the same bytes (a 1033
      * then goes through the digest check).
      */
-    private Outcome resolve(Plan plan, String xml) {
+    private Outcome resolve(Plan plan, String xml, Map<UUID, String> lineStates) {
         Routes.Target t = plan.target();
         if (plan.summary() && plan.ticket() != null) {
             return Outcome.ofSend(engine.verifyTicket(xml, plan.ticket(), t.environment(), t.credentials(), t.urls()));
+        }
+        if (plan.summary() && plan.ticket() == null && plan.sendStartedAt() != null && !plan.lines().isEmpty()) {
+            // Lost ticket: SUNAT's view of each line decides; the rest goes in a new summary (§9.2.2)
+            for (Line line : plan.lines()) {
+                lineStates.put(line.documentId(), engine.validity(line.check()).state());
+            }
+            return Outcome.of(Outcome.Kind.SUMMARY_RESOLVED, null, "Ticket perdido: líneas resueltas una por una con SUNAT");
+        }
+        if (plan.summary() && plan.ticket() == null && !t.environment().hasConsultServices() && plan.attempt() > 1) {
+            return Outcome.of(Outcome.Kind.PERMANENT, null,
+                    "Ticket perdido en SUNAT beta (sin servicio de consulta): revise el resumen manualmente");
         }
         if (plan.facturaFamily() && t.environment().hasConsultServices()) {
             EngineModels.StatusCdrResponse status = engine.statusCdr(t.environment(), t.credentials(), plan.key());
@@ -344,7 +384,8 @@ public class AttemptHandler implements JobHandler {
                 "Colisión de numeración: SUNAT ya tiene este número con otros datos. " + sunat.description(), sunat.notes(), null, null);
     }
 
-    private boolean finish(JobContext context, Plan plan, Outcome outcome, FileStore.Stored cdr, Instant callStartedAt) {
+    private boolean finish(JobContext context, Plan plan, Outcome outcome, FileStore.Stored cdr, Instant callStartedAt,
+            Map<UUID, String> lineStates) {
         access.enterAsPlatform(plan.tenantId());
         Document doc = Document.findById(plan.documentId(), LockModeType.PESSIMISTIC_WRITE);
         if (doc == null || doc.attempts != plan.attempt()) {
@@ -375,10 +416,70 @@ public class AttemptHandler implements JobHandler {
         }
         // The outcome is written: recovery must not turn it into unknown
         doc.attemptJobId = null;
+        if (outcome.kind() == Outcome.Kind.SUMMARY_RESOLVED) {
+            applyLines(doc, plan, lineStates, context.correlationId());
+            doc.codeClass = "ticket_lost";
+        }
         double jitter = 0.8 + ThreadLocalRandom.current().nextDouble() * 0.4;
         Instant resolveNotBefore = plan.sendStartedAt() == null ? null : plan.sendStartedAt().plus(resolveSafety);
         applyAndRecord(doc, OutcomePolicy.decide(state(doc), outcome, now, jitter, resolveNotBefore), outcome, context.correlationId());
         return true;
+    }
+
+    /** Lost-ticket resolution of a summary's lines (§9.2.2), with the lines locked in id order. */
+    private void applyLines(Document summary, Plan plan, Map<UUID, String> states, String correlationId) {
+        Instant now = Instant.now();
+        for (Line line : plan.lines().stream().sorted(java.util.Comparator.comparing(Line::documentId)).toList()) {
+            Document d = Document.findById(line.documentId(), LockModeType.PESSIMISTIC_WRITE);
+            String state = states.getOrDefault(line.documentId(), "unknown");
+            String previous = d.status;
+            String note;
+            if (line.adds()) {
+                switch (state) {
+                    case "valid" -> {
+                        d.status = "accepted";
+                        note = "registered by SUNAT (resumen " + summary.serieNumero() + ", ticket lost)";
+                    }
+                    case "not_found" -> {
+                        // Not in SUNAT: the D+5 fallback puts it in a new resumen diario
+                        d.summaryDocumentId = null;
+                        d.codeClass = "route_change";
+                        note = "not registered by SUNAT: goes in a new resumen diario";
+                    }
+                    case "voided" -> {
+                        d.status = "voided";
+                        note = "SUNAT has it voided";
+                    }
+                    default -> {
+                        d.holdReason = "needs_attention";
+                        note = "SUNAT's state is unknown (" + state + "): needs attention";
+                    }
+                }
+            } else {
+                switch (state) {
+                    case "voided" -> {
+                        d.status = "voided";
+                        note = "voided (" + summary.serieNumero() + ", ticket lost)";
+                    }
+                    case "valid" -> {
+                        d.status = d.statusBeforeVoiding == null ? "accepted" : d.statusBeforeVoiding;
+                        d.statusBeforeVoiding = null;
+                        d.voidedByDocumentId = null;
+                        note = "voiding not registered by SUNAT (ticket lost): request it again";
+                    }
+                    default -> {
+                        d.holdReason = "needs_attention";
+                        note = "SUNAT's state is unknown (" + state + "): needs attention";
+                    }
+                }
+            }
+            d.nextAttemptAt = null;
+            d.updatedAt = now;
+            DocumentEvent.record(d, null, note, "platform:worker", correlationId);
+            if (!d.status.equals(previous)) {
+                statusChanged.fire(new DocumentStatusChanged(d, previous, correlationId));
+            }
+        }
     }
 
     private void applyAndRecord(Document doc, OutcomePolicy.Decision decision, Outcome outcome, String correlationId) {
@@ -398,7 +499,8 @@ public class AttemptHandler implements JobHandler {
             doc.sunatCode = outcome.code();
             doc.sunatDescription = outcome.description();
             doc.sunatNotes = outcome.notes();
-            doc.codeClass = outcome.kind() == Outcome.Kind.ROUTE_CHANGE ? "route_change" : outcome.codeClass();
+            doc.codeClass = outcome.kind() == Outcome.Kind.ROUTE_CHANGE ? "route_change"
+                    : outcome.kind() == Outcome.Kind.SUMMARY_RESOLVED ? "ticket_lost" : outcome.codeClass();
         }
         doc.updatedAt = now;
         DocumentEvent.record(doc, outcome.code(), describe(outcome), "platform:worker", correlationId);

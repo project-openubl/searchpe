@@ -63,6 +63,7 @@ public class EmitService {
     private final EntityManager em;
     private final ObjectMapper json;
     private final Instance<EmitQuota> quota;
+    private final io.github.projectopenubl.xhandler.rates.ExchangeRates rates;
     private final Semaphore permits;
     private final long permitTimeoutMillis;
 
@@ -80,6 +81,7 @@ public class EmitService {
             EntityManager em,
             ObjectMapper json,
             Instance<EmitQuota> quota,
+            io.github.projectopenubl.xhandler.rates.ExchangeRates rates,
             @ConfigProperty(name = "xhandler.emit.permits", defaultValue = "32") int permits,
             @ConfigProperty(name = "xhandler.emit.permit-timeout", defaultValue = "5s") Duration permitTimeout) {
         this.access = access;
@@ -95,6 +97,7 @@ public class EmitService {
         this.em = em;
         this.json = json;
         this.quota = quota;
+        this.rates = rates;
         this.permits = new Semaphore(permits);
         this.permitTimeoutMillis = permitTimeout.toMillis();
     }
@@ -158,11 +161,7 @@ public class EmitService {
         String tipo = DocumentTypes.tipoComprobante(kind, spec);
         String sunatEnv = company.sunatEnv;
 
-        Optional<UUID> credential = routes.credentialFor(company, tipo);
-        if ("production".equals(sunatEnv) && credential.isEmpty()) {
-            throw ApiException.invalid("no_credentials",
-                    "La empresa no tiene credenciales SOL" + ("09".equals(tipo) || "31".equals(tipo) ? "/GRE" : "") + " para enviar a SUNAT.", null);
-        }
+        Routes.Assignment route = routes.assign(company, sunatEnv, tipo);
 
         fillProveedor(spec, company);
         LocalDate fecha = spec.hasNonNull("fecha_emision") ? LocalDate.parse(spec.get("fecha_emision").asText()) : Deadlines.todayInLima();
@@ -182,6 +181,7 @@ public class EmitService {
         signatureLog.record(tenantId, documentId, serie + "-" + numero, signed.signingKeyId(), signed.digestValue(),
                 scope.actor().auditName());
         EngineModels.InspectResponse identity = engine.inspect(signed.xml());
+        checkBoletaBuyer(tipo, spec, identity, fecha);
 
         byte[] xml = signed.xml().getBytes(StandardCharsets.UTF_8);
         FileStore.Stored xmlFile = files.put(tenantId, xml);
@@ -208,8 +208,8 @@ public class EmitService {
         doc.total = identity.total() == null ? null : new BigDecimal(identity.total());
         doc.status = "pending_send";
         doc.digestValue = signed.digestValue();
-        doc.endpoint = Routes.endpoint(sunatEnv, tipo);
-        doc.credentialId = credential.orElse(null);
+        doc.endpoint = route.endpoint();
+        doc.credentialId = route.credentialId();
         doc.affectedDocumentId = affectedDocument(company.id, sunatEnv, spec);
         doc.nextAttemptAt = now;
         doc.progressAt = now;
@@ -243,6 +243,30 @@ public class EmitService {
             idempotency.complete(tenantId, idempotencyKey, 201, body);
         }
         return body;
+    }
+
+    /**
+     * A boleta above S/ 700 must identify its buyer (validator 2514, §3.1). The engine checks PEN;
+     * foreign-currency boletas are checked here at the document's tipo_cambio, or SUNAT's rate for D.
+     */
+    private void checkBoletaBuyer(String tipo, ObjectNode spec, EngineModels.InspectResponse identity, LocalDate fecha) {
+        if (!"03".equals(tipo) || identity.total() == null || identity.moneda() == null || "PEN".equals(identity.moneda())) {
+            return;
+        }
+        BigDecimal rate = spec.hasNonNull("tipo_cambio") ? new BigDecimal(spec.get("tipo_cambio").asText())
+                : rates.on(fecha).map(io.github.projectopenubl.xhandler.rates.ExchangeRates.Rate::venta).orElse(null);
+        if (rate == null) {
+            throw ApiException.invalid("invalid_document",
+                    "No hay tipo de cambio para " + fecha + ": indique tipo_cambio en la boleta.", null);
+        }
+        BigDecimal pen = new BigDecimal(identity.total()).multiply(rate);
+        String numero = identity.customerNumero() == null ? "" : identity.customerNumero().strip();
+        boolean anonymous = identity.customerTipo() == null || "0".equals(identity.customerTipo()) || "-".equals(identity.customerTipo())
+                || numero.isEmpty() || numero.chars().allMatch(c -> c == '0' || c == '-');
+        if (pen.compareTo(new BigDecimal("700")) > 0 && anonymous) {
+            throw ApiException.invalid("invalid_document", "Una boleta mayor a S/ 700 debe identificar al comprador.",
+                    "2514: equivalente S/ " + pen.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString());
+        }
     }
 
     private String chooseSerie(EmitRequest request, ObjectNode spec, Company company, String tipo) {

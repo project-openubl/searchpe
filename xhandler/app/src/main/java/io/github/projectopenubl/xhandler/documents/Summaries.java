@@ -167,8 +167,9 @@ public class Summaries {
         doc.deadlineAt = Deadlines.endOfDay(day.plusDays(7));
         doc.status = "pending_send";
         doc.digestValue = signed.digestValue();
-        doc.endpoint = Routes.endpoint(sunatEnv, tipo);
-        doc.credentialId = routes.credentialFor(company, tipo).orElse(null);
+        Routes.Assignment route = routes.assign(company, sunatEnv, tipo);
+        doc.endpoint = route.endpoint();
+        doc.credentialId = route.credentialId();
         doc.nextAttemptAt = now;
         doc.progressAt = now;
         doc.createdAt = now;

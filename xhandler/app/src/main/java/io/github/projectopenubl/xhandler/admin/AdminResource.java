@@ -129,6 +129,23 @@ public class AdminResource {
         return pauseCompany(tenantId, companyId, false);
     }
 
+    /** The OSE obligation is a regulatory status set by the platform (§3.2), not by the tenant. */
+    @PUT
+    @Path("/tenants/{tenantId}/companies/{companyId}/ose-obligated")
+    @Transactional
+    public Map<String, Object> oseObligated(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId,
+            Map<String, Boolean> body) {
+        TenantScope scope = openTenant(tenantId);
+        Company company = Company.findById(companyId, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+        if (company == null) {
+            throw ApiException.notFound();
+        }
+        boolean value = Boolean.TRUE.equals(body == null ? null : body.get("ose_obligated"));
+        company.oseObligated = value;
+        auditor.record(scope, "company.ose_obligated", "company", companyId, Map.of("value", value));
+        return Map.of("company_id", companyId, "ose_obligated", value);
+    }
+
     // --- endpoints (endpoint-status, hold/release per endpoint) ---------------------
 
     @GET

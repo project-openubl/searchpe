@@ -32,6 +32,7 @@ public class DocumentResource {
     public record AccessLink(String accessUrl) {}
 
     private final TenantAccess access;
+    private final VoidingService voiding;
     private final EmitService emit;
     private final DocumentControl control;
     private final AccessLinks links;
@@ -39,8 +40,9 @@ public class DocumentResource {
     private final Auditor auditor;
 
     public DocumentResource(TenantAccess access, EmitService emit, DocumentControl control, AccessLinks links, FileStore files,
-            Auditor auditor) {
+            Auditor auditor, VoidingService voiding) {
         this.access = access;
+        this.voiding = voiding;
         this.emit = emit;
         this.control = control;
         this.links = links;
@@ -177,6 +179,20 @@ public class DocumentResource {
     @Operation(operationId = "releaseDocument")
     public DocumentView release(@PathParam("tenantId") UUID tenantId, @PathParam("documentId") UUID documentId) {
         return DocumentView.of(control.release(access.enter(tenantId, Role.OPERATOR), documentId));
+    }
+
+    /**
+     * Voids an accepted document the buyer doesn't have (§9.3, §11.3): RA, RC estado 3 or RR. 202:
+     * SUNAT answers later; the document is {@code voiding} until then.
+     */
+    @POST
+    @Path("/documents/{documentId}/void")
+    @Operation(operationId = "voidDocument", summary = "Anula un documento aceptado y no entregado (RA, RC o RR)")
+    public Response voidDocument(@PathParam("tenantId") UUID tenantId, @PathParam("documentId") UUID documentId,
+            @HeaderParam("X-Correlation-Id") String correlationId, VoidingService.VoidRequest request) {
+        Document voidingDocument = voiding.voidDocument(tenantId, documentId, request,
+                correlationId != null ? correlationId : UUID.randomUUID().toString());
+        return Response.status(202).entity(DocumentView.of(voidingDocument)).build();
     }
 
     /** The client attests the buyer received the document (§9.3): it can no longer be voided. */

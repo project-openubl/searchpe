@@ -34,6 +34,9 @@ public class EngineStub implements QuarkusTestResourceLifecycleManager {
     }
 
     private static final List<Recorded> REQUESTS = new CopyOnWriteArrayList<>();
+    /** What the fake exchange-rate file answers. */
+    public static final java.util.concurrent.atomic.AtomicReference<String> FX_LINE =
+            new java.util.concurrent.atomic.AtomicReference<>("16/11/2026|3.380|3.390|");
     private static final Map<String, Function<String, Reply>> SCRIPTS = new ConcurrentHashMap<>();
 
     private HttpServer server;
@@ -82,8 +85,11 @@ public class EngineStub implements QuarkusTestResourceLifecycleManager {
         }
         server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
         server.createContext("/v1/", this::handle);
+        // SUNAT's exchange rate file (ExchangeRates job)
+        server.createContext("/fx/", exchange -> respondText(exchange, FX_LINE.get()));
         server.start();
-        return Map.of("quarkus.rest-client.engine.url", "http://127.0.0.1:" + server.getAddress().getPort());
+        String base = "http://127.0.0.1:" + server.getAddress().getPort();
+        return Map.of("quarkus.rest-client.engine.url", base, "xhandler.exchange-rates.url", base + "/fx/tipoCambio.txt");
     }
 
     @Override
@@ -154,7 +160,11 @@ public class EngineStub implements QuarkusTestResourceLifecycleManager {
             respond(exchange, 422, "{\"kind\":\"invalid_document\",\"message\":\"missing field `serie_numero`\"}");
             return;
         }
-        String xml = "<" + kind + "><cbc:ID>" + id + "</cbc:ID><ruc>" + spec.path("proveedor").path("ruc").asText() + "</ruc></" + kind + ">";
+        var cliente = spec.path("cliente");
+        String xml = "<" + kind + "><cbc:ID>" + id + "</cbc:ID><ruc>" + spec.path("proveedor").path("ruc").asText() + "</ruc>"
+                + "<moneda>" + spec.path("moneda").asText("PEN") + "</moneda>"
+                + "<cliente>" + cliente.path("tipo_documento_identidad").asText("6") + "|" + cliente.path("numero_documento_identidad").asText("")
+                + "</cliente></" + kind + ">";
         var answer = JSON.createObjectNode();
         answer.put("xml", xml);
         answer.set("enriched_json", document);
@@ -167,13 +177,29 @@ public class EngineStub implements QuarkusTestResourceLifecycleManager {
         var answer = JSON.createObjectNode();
         answer.put("document_type", xml.substring(1, xml.indexOf('>')));
         answer.put("serie_numero", id);
-        answer.put("moneda", "PEN");
+        answer.put("moneda", between(xml, "<moneda>", "</moneda>", "PEN"));
         answer.put("total", "1180.00");
-        answer.put("customer_tipo", "6");
-        answer.put("customer_numero", "12121212121");
+        String[] cliente = between(xml, "<cliente>", "</cliente>", "6|12121212121").split("\\|", -1);
+        answer.put("customer_tipo", cliente[0]);
+        answer.put("customer_numero", cliente.length > 1 ? cliente[1] : "");
         answer.put("signed", xml.contains("Signature"));
         answer.put("sha256", "0");
         return JSON.writeValueAsString(answer);
+    }
+
+    private static String between(String text, String open, String close, String fallback) {
+        int a = text.indexOf(open);
+        int b = text.indexOf(close);
+        return a < 0 || b < 0 ? fallback : text.substring(a + open.length(), b);
+    }
+
+    private static void respondText(HttpExchange exchange, String text) throws IOException {
+        byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
+        exchange.getResponseHeaders().set("Content-Type", "text/plain");
+        exchange.sendResponseHeaders(200, bytes.length);
+        try (var out = exchange.getResponseBody()) {
+            out.write(bytes);
+        }
     }
 
     private static void respond(HttpExchange exchange, int status, String json) throws IOException {

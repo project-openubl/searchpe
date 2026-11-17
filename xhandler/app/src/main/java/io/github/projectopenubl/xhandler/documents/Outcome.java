@@ -45,7 +45,9 @@ public record Outcome(
         /** Our side failed before SUNAT (invalid document or request) */
         LOCAL_ERROR,
         /** The engine sidecar didn't answer: the send may or may not have happened; not SUNAT's fault */
-        ENGINE_UNAVAILABLE
+        ENGINE_UNAVAILABLE,
+        /** A summary whose ticket was lost, resolved line by line through the validity service (§9.2.2) */
+        SUMMARY_RESOLVED
     }
 
     public static Outcome of(Kind kind, Integer code, String description) {

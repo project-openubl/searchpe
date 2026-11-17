@@ -29,6 +29,10 @@ public class Company extends PanacheEntityBase {
     public String email;
     /** Default of {@code delivered} on emit (usually true for POS, DESIGN.md §9.3) */
     public boolean deliveredOnEmitDefault = true;
+    /** sunat or ose (a third-party OSE, DESIGN.md §3.2) */
+    public String submissionRoute = "sunat";
+    /** Must send through an OSE (a regulatory status, set by the platform) */
+    public boolean oseObligated;
     public boolean active = true;
     /** Holds SUNAT attempts for all its documents (DESIGN.md §24.1) */
     public boolean sendingPaused;
