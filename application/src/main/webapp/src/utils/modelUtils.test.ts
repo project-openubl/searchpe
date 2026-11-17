@@ -1,6 +1,7 @@
 import { AxiosError, AxiosHeaders, InternalAxiosRequestConfig } from "axios";
 import {
   getAxiosErrorMessage,
+  getLoginUrl,
   isVersionCancellable,
   isVersionFinished,
 } from "./modelUtils";
@@ -58,4 +59,24 @@ describe("modelUtils", () => {
       expect(isVersionCancellable(status)).toBe(cancellable);
     }
   );
+
+  describe("getLoginUrl", () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("should be the root of this origin when the API is served here", () => {
+      expect(getLoginUrl()).toBe(`${window.location.origin}/`);
+    });
+
+    it("should keep the context path the API is served under", () => {
+      vi.stubGlobal("SEARCHPE_API_URL", "/searchpe/api");
+      expect(getLoginUrl()).toBe(`${window.location.origin}/searchpe/`);
+    });
+
+    it("should be the root of the API server when it is elsewhere", () => {
+      vi.stubGlobal("SEARCHPE_API_URL", "http://localhost:8080/api");
+      expect(getLoginUrl()).toBe("http://localhost:8080/");
+    });
+  });
 });
