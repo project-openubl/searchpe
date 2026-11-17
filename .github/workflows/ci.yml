@@ -61,6 +61,25 @@ jobs:
         working-directory: application/src/main/webapp
         run: npm run test -- --coverage
 
+  operator-tests:
+    name: Operator Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: operator
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: operator/go.mod
+          cache-dependency-path: operator/go.sum
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          # The same as GOLANGCI_LINT_VERSION in operator/Makefile
+          version: v2.15.0
+          working-directory: operator
+      - run: make verify-generated test
+
   application-container:
     name: Application container
     runs-on: ubuntu-latest
