@@ -62,7 +62,13 @@ public class VersionService {
      * Built on the version's own partition. Building it on the partitioned parent table would also scan every other
      * partition, and leave an empty index on each of them.
      */
-    private static final String CREATE_INDEX_SQL = "create index ix_contribuyente_version_%1$s_ruc on " + ContribuyenteEntity.VERSION_PARTITION_TABLE + " using hash (ruc)";
+    private static final String CREATE_RUC_INDEX_SQL = "create index ix_contribuyente_version_%1$s_ruc on " + ContribuyenteEntity.VERSION_PARTITION_TABLE + " using hash (ruc)";
+    /**
+     * Serves the advanced search in {@link io.github.project.openubl.searchpe.models.jpa.ContribuyenteRepository},
+     * {@code lower(nombre) like '%text%'}, whose leading wildcard can't use a b-tree. The expression must stay identical
+     * to the query's. Needs pg_trgm (V4.3.0).
+     */
+    private static final String CREATE_NOMBRE_INDEX_SQL = "create index ix_contribuyente_version_%1$s_nombre on " + ContribuyenteEntity.VERSION_PARTITION_TABLE + " using gin (lower(nombre) gin_trgm_ops)";
     private static final String ANALYZE_PARTITION_SQL = "analyze " + ContribuyenteEntity.VERSION_PARTITION_TABLE;
     /**
      * Versions imported before indexes were built on the partition have their index on the parent table, which doesn't
@@ -87,6 +93,9 @@ public class VersionService {
 
     @ConfigProperty(name = "searchpe.sunat.minRecordsRatio")
     double minRecordsRatio;
+
+    @ConfigProperty(name = "searchpe.allow.advancedSearch")
+    boolean allowAdvancedSearch;
 
     @Inject
     DataSource dataSource;
@@ -257,7 +266,13 @@ public class VersionService {
      */
     private void preparePartitionForQueries(Long versionId) {
         LOGGER.infof("Indexing and analyzing the partition of version %s", versionId);
-        executeUpdate(String.format(CREATE_INDEX_SQL, versionId));
+        executeUpdate(String.format(CREATE_RUC_INDEX_SQL, versionId));
+        // Only worth its build time when the advanced search is enabled. Enabling it later takes effect from the next
+        // import.
+        if (allowAdvancedSearch) {
+            LOGGER.infof("Building the advanced search index of version %s", versionId);
+            executeUpdate(String.format(CREATE_NOMBRE_INDEX_SQL, versionId));
+        }
         executeUpdate(String.format(ANALYZE_PARTITION_SQL, versionId));
     }
 

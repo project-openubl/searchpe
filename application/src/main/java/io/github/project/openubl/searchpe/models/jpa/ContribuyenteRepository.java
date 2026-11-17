@@ -74,6 +74,7 @@ public class ContribuyenteRepository implements PanacheRepositoryBase<Contribuye
         queryConditions.add("c.id.versionId = :versionId");
 
         if (filterBean.getFilterText() != null && !filterBean.getFilterText().isBlank()) {
+            // Served by the trigram index built in VersionService; keep the expression in sync
             queryConditions.add("lower(c.nombre) like :filterText");
             parameters.and("filterText", "%" + filterBean.getFilterText().toLowerCase() + "%");
         }
