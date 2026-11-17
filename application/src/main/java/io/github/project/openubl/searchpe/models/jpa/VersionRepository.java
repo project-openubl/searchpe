@@ -24,6 +24,8 @@ import io.quarkus.panache.common.Sort;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
+import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 
 @Transactional
@@ -39,4 +41,16 @@ public class VersionRepository implements PanacheRepository<VersionEntity> {
         ).firstResultOptional();
     }
 
+    /**
+     * Lists the versions that can be deleted: every finished version except the active one, plus versions that are
+     * still in progress but haven't been updated since {@code staleBefore} (their import or deletion died, e.g.
+     * because the pod was restarted).
+     */
+    public List<VersionEntity> listObsolete(Date staleBefore) {
+        Optional<VersionEntity> activeVersion = findActive();
+        return listAll().stream()
+                .filter(version -> activeVersion.map(active -> !active.equals(version)).orElse(true))
+                .filter(version -> version.status.isFinished() || version.updatedAt.before(staleBefore))
+                .toList();
+    }
 }

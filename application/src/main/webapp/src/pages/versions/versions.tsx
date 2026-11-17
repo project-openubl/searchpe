@@ -27,7 +27,11 @@ import { useConfirmationContext, useNotificationContext } from "shared/context";
 import { useTable, useTableControls } from "shared/hooks";
 
 import { Version } from "api/models";
-import { formatNumber, getAxiosErrorMessage } from "utils/modelUtils";
+import {
+  formatNumber,
+  getAxiosErrorMessage,
+  isVersionCancellable,
+} from "utils/modelUtils";
 import { fromNow } from "utils/dateUtils";
 
 const columns: SimpleTableColumn[] = [
@@ -106,12 +110,7 @@ export const Versions: React.FC = () => {
   const actionResolver = (row: Version): IAction[] => {
     const actions: IAction[] = [];
 
-    if (
-      row.status !== "COMPLETED" &&
-      row.status !== "ERROR" &&
-      row.status !== "CANCELLING" &&
-      row.status !== "CANCELLED"
-    ) {
+    if (isVersionCancellable(row.status)) {
       actions.push({
         title: "Cancelar",
         onClick: () => {

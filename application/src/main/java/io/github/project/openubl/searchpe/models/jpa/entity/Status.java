@@ -26,5 +26,15 @@ public enum Status {
     CANCELLED,
     COMPLETED,
     DELETING,
-    CANCELLING
+    CANCELLING;
+
+    /**
+     * @return whether the version reached a final status, so no job is working on it anymore
+     */
+    public boolean isFinished() {
+        return switch (this) {
+            case COMPLETED, ERROR, CANCELLED -> true;
+            case SCHEDULED, DOWNLOADING, UNZIPPING, IMPORTING, INDEXING, DELETING, CANCELLING -> false;
+        };
+    }
 }

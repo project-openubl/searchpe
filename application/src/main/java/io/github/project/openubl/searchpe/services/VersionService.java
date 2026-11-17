@@ -23,7 +23,6 @@ import io.github.project.openubl.searchpe.models.jpa.entity.Status;
 import io.github.project.openubl.searchpe.models.jpa.entity.VersionEntity;
 import io.github.project.openubl.searchpe.utils.DataHelper;
 import io.quarkus.narayana.jta.QuarkusTransaction;
-import io.quarkus.narayana.jta.RunOptions;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
@@ -40,17 +39,22 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -58,6 +62,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 @ApplicationScoped
 public class VersionService {
@@ -91,6 +96,18 @@ public class VersionService {
     private static final String CREATE_INDEX_SQL = "create index ix_contribuyente_ruc_version_%1$s on CONTRIBUYENTE using hash (ruc) where version_id=%1$s";
     private static final String DELETE_INDEX_SQL = "drop index if exists ix_contribuyente_ruc_version_%1$s";
     private static final String SELECT_INDEX_WATCH_SQL = "select count(*) from pg_stat_progress_create_index";
+
+    /**
+     * Longest time an import may run. Past it, the import is abandoned and the cleanup job considers the version stale.
+     */
+    public static final Duration IMPORT_TIMEOUT = Duration.ofHours(6);
+
+    /**
+     * Statuses a version goes through while it is being imported.
+     */
+    private static final Set<Status> IMPORT_STATUSES = EnumSet.of(
+            Status.SCHEDULED, Status.DOWNLOADING, Status.UNZIPPING, Status.IMPORTING, Status.INDEXING
+    );
 
     @ConfigProperty(name = "searchpe.sunat.filter")
     Optional<List<EstadoContribuyente>> sunatFilter;
@@ -143,108 +160,86 @@ public class VersionService {
 
         LOGGER.infof("Waiting for all tasks for Version %s to be completed", versionId);
         try {
-            boolean terminated = executorService.awaitTermination(6, TimeUnit.HOURS);
+            boolean terminated = executorService.awaitTermination(IMPORT_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
             if (terminated) {
                 LOGGER.infof("Executor service for Version %s gracefully terminated", versionId);
             } else {
                 LOGGER.errorf("Executor service for Version %s could not terminate in the expected time", versionId);
+                shutdownExecutorService(executorService);
+                markAsFailed(versionId);
             }
         } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(e);
         }
     }
 
     private void watchVersionStatus(Long versionId, ExecutorService executorService, Future<?> importTask) {
-        boolean isVersionBeingCancelled = QuarkusTransaction.call(
-                QuarkusTransaction.runOptions()
-                        .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
-                        .semantic(RunOptions.Semantic.DISALLOW_EXISTING),
-                () -> {
-                    VersionEntity watchedVersion = VersionEntity.findById(versionId);
-                    return watchedVersion.status.equals(Status.CANCELLING);
-                }
-        );
+        boolean isVersionBeingCancelled = QuarkusTransaction.requiringNew().call(() -> {
+            VersionEntity watchedVersion = VersionEntity.findById(versionId);
+            return watchedVersion.status.equals(Status.CANCELLING);
+        });
 
         if (isVersionBeingCancelled) {
             LOGGER.infof("Found Version %s in CANCELLING state. Shutting down import task", versionId);
             importTask.cancel(true);
-
-            QuarkusTransaction.run(
-                    QuarkusTransaction.runOptions()
-                            .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
-                            .semantic(RunOptions.Semantic.DISALLOW_EXISTING),
-                    () -> {
-                        VersionEntity watchedVersion = VersionEntity.findById(versionId);
-                        watchedVersion.status = Status.CANCELLED;
-                        watchedVersion.persist();
-                    }
-            );
+            markAsCancelled(versionId);
 
             LOGGER.infof("Shutting down all import tasks for Version %s", versionId);
             shutdownExecutorService(executorService);
         }
     }
 
+    /**
+     * Runs the import and guarantees that, whatever happens, the version doesn't stay in an in-progress status and the
+     * executor (including the status watcher) is shut down.
+     */
     private void initImport(Long versionId, ScheduledExecutorService executorService) {
-        File zipFile;
-        File unzippedFolder;
-        File txtFile;
-
         try {
-            // Download file
+            runImport(versionId, executorService);
+            LOGGER.infof("Import of Version %s finished successfully", versionId);
+        } catch (Exception e) {
+            if (e instanceof CancellationException || Thread.currentThread().isInterrupted()) {
+                LOGGER.infof("Import of Version %s was cancelled", versionId);
+            } else {
+                LOGGER.errorf(e, "Import of Version %s failed", versionId);
+            }
+            // Stop the chunk imports that are still running before recording the final status
+            shutdownExecutorService(executorService);
+            markAsFailed(versionId);
+        } finally {
+            shutdownExecutorService(executorService);
+        }
+    }
+
+    private void runImport(Long versionId, ScheduledExecutorService executorService) throws IOException {
+        File zipFile = null;
+        File unzippedFolder = null;
+        try {
             downloadingVersionEvent.fire(() -> versionId);
             zipFile = fileService.downloadFile();
 
-            // Unzip file
             unzippingVersionEvent.fire(() -> versionId);
             unzippedFolder = fileService.unzip(zipFile);
+            File txtFile = fileService.getFirstTxtFileFound(unzippedFolder.listFiles());
 
-            // Find .txt file
-            txtFile = fileService.getFirstTxtFileFound(unzippedFolder.listFiles());
-        } catch (IOException e) {
-            LOGGER.error(e);
-            return;
-        }
+            executeUpdate(String.format(CREATE_PARTITION_SQL, versionId, versionId + 1));
 
-        // Create Partition
-        executeUpdate(String.format(CREATE_PARTITION_SQL, versionId, versionId + 1));
-
-        // Persist data
-        int totalRowsImported;
-        try {
             importingVersionEvent.fire(() -> versionId);
-            totalRowsImported = processTxtFile(versionId, txtFile, executorService);
-        } catch (IOException e) {
-            LOGGER.error(e);
-            return;
+            int totalRowsImported = processTxtFile(versionId, txtFile, executorService);
+            updateVersion(versionId, version -> {
+                version.status = Status.INDEXING;
+                version.records = totalRowsImported;
+            });
+        } finally {
+            deleteWorkspaceFiles(zipFile, unzippedFolder);
         }
 
-        // Clear folders
-        try {
-            LOGGER.infof("Deleting directory %s", zipFile.toString());
-            LOGGER.infof("Deleting directory %s", unzippedFolder.toString());
-            zipFile.delete();
-            txtFile.delete();
-            FileUtils.deleteDirectory(unzippedFolder);
-        } catch (IOException e) {
-            LOGGER.error(e);
-        }
+        createIndex(versionId, executorService);
+        updateVersion(versionId, version -> version.status = Status.COMPLETED);
+    }
 
-        // Save final state of version
-        QuarkusTransaction.run(
-                QuarkusTransaction.runOptions()
-                        .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
-                        .semantic(RunOptions.Semantic.DISALLOW_EXISTING),
-                () -> {
-                    VersionEntity version = VersionEntity.findById(versionId);
-                    version.status = Status.INDEXING;
-                    version.updatedAt = new Date();
-                    version.records = totalRowsImported;
-                    version.persist();
-                }
-        );
-
-        // Create indexes
+    private void createIndex(Long versionId, ScheduledExecutorService executorService) {
         LOGGER.infof("Indexing version %s", versionId);
 
         executeUpdate(String.format(CREATE_INDEX_SQL, versionId));
@@ -273,22 +268,64 @@ public class VersionService {
                 throw new RuntimeException(e);
             }
         } while (waitIndexProcessing);
+    }
 
-        // Save final state of version
-        QuarkusTransaction.run(
-                QuarkusTransaction.runOptions()
-                        .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
-                        .semantic(RunOptions.Semantic.DISALLOW_EXISTING),
-                () -> {
-                    VersionEntity version = VersionEntity.findById(versionId);
-                    version.status = Status.COMPLETED;
-                    version.persist();
-                }
-        );
+    /**
+     * Loads the version in a new transaction, applies {@code changes} and refreshes {@code updatedAt}.
+     *
+     * @throws CancellationException if the version is being cancelled, so the import stops instead of overwriting the
+     *                               user's cancellation
+     */
+    private void updateVersion(Long versionId, Consumer<VersionEntity> changes) {
+        QuarkusTransaction.requiringNew().run(() -> {
+            VersionEntity version = VersionEntity.findById(versionId);
+            if (version.status == Status.CANCELLING || version.status == Status.CANCELLED) {
+                throw new CancellationException("Version " + versionId + " is being cancelled");
+            }
+            changes.accept(version);
+            version.updatedAt = new Date();
+            version.persist();
+        });
+    }
 
-        // Finish
-        LOGGER.infof("Import task finished successfully. Shutting down all import tasks for Version %s", versionId);
-        shutdownExecutorService(executorService);
+    private void markAsCancelled(Long versionId) {
+        updateStatus(versionId, Status.CANCELLING, Status.CANCELLED);
+    }
+
+    /**
+     * Records that the import ended without completing. A pending cancellation wins: CANCELLING becomes CANCELLED.
+     * Otherwise the import status becomes ERROR.
+     */
+    private void markAsFailed(Long versionId) {
+        markAsCancelled(versionId);
+        for (Status importStatus : IMPORT_STATUSES) {
+            updateStatus(versionId, importStatus, Status.ERROR);
+        }
+    }
+
+    /**
+     * Moves the version to {@code to} only if it is still in {@code from}, in a single statement so it can't race with
+     * the REST API or the status watcher. It bumps the {@code @Version} column, so a concurrent write of a stale entity
+     * fails instead of silently overwriting the new status.
+     */
+    private void updateStatus(Long versionId, Status from, Status to) {
+        QuarkusTransaction.requiringNew().run(() -> VersionEntity.update(
+                "status = ?1, updatedAt = ?2, version = version + 1 where id = ?3 and status = ?4",
+                to, new Date(), versionId, from
+        ));
+    }
+
+    private void deleteWorkspaceFiles(File zipFile, File unzippedFolder) {
+        try {
+            if (zipFile != null) {
+                Files.deleteIfExists(zipFile.toPath());
+            }
+            if (unzippedFolder != null) {
+                FileUtils.deleteDirectory(unzippedFolder);
+            }
+        } catch (IOException e) {
+            LOGGER.warn("Could not delete the import workspace files", e);
+        }
     }
 
     private void shutdownExecutorService(ExecutorService executorService) {
@@ -401,7 +438,6 @@ public class VersionService {
     }
 
     private void importCSVFile(Long versionId, File csvFile) {
-        Long rowsInserted;
         try (
                 FileReader fileReader = new FileReader(csvFile, DataHelper.PADRON_CHARSET);
                 BufferedReader bufferedReader = new BufferedReader(fileReader);
@@ -412,22 +448,16 @@ public class VersionService {
             CopyManager copyManager = new CopyManager(baseConnection);
 
             String sql = "COPY contribuyente (" + TABLE_COLUMNS + ") FROM STDIN (FORMAT csv, HEADER true, DELIMITER ',', FORCE_NULL (" + TABLE_COLUMNS + "))";
-            rowsInserted = copyManager.copyIn(sql, bufferedReader);
+            long rowsInserted = copyManager.copyIn(sql, bufferedReader);
 
-            QuarkusTransaction.run(QuarkusTransaction.runOptions()
-                    .exceptionHandler((throwable) -> RunOptions.ExceptionResult.ROLLBACK)
-                    .semantic(RunOptions.Semantic.DISALLOW_EXISTING), () -> {
-                VersionEntity version = VersionEntity.findById(versionId);
-                version.records = version.records + rowsInserted.intValue();
-                version.updatedAt = new Date();
-                version.persist();
-            });
-        } catch (IOException e) {
-            LOGGER.error(e);
-            throw new RuntimeException(e);
-        } catch (Throwable e) {
-            LOGGER.error(e);
-            throw new IllegalStateException(e);
+            // Bulk update, so concurrent chunks don't fail each other on the entity's optimistic lock. It only
+            // reports progress: the final count is set once all chunks are imported.
+            QuarkusTransaction.requiringNew().run(() -> VersionEntity.update(
+                    "records = records + ?1, updatedAt = ?2 where id = ?3",
+                    (int) rowsInserted, new Date(), versionId
+            ));
+        } catch (IOException | SQLException e) {
+            throw new IllegalStateException("Could not import " + csvFile, e);
         }
 
         csvFile.delete();
