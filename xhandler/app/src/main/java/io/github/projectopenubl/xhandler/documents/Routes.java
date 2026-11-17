@@ -31,7 +31,11 @@ public class Routes {
     private final CredentialService credentials;
     private final io.github.projectopenubl.xhandler.secrets.PlatformCredentials platformCredentials;
 
-    public Routes(CredentialService credentials, io.github.projectopenubl.xhandler.secrets.PlatformCredentials platformCredentials) {
+    private final io.github.projectopenubl.xhandler.audit.Auditor auditor;
+
+    public Routes(CredentialService credentials, io.github.projectopenubl.xhandler.secrets.PlatformCredentials platformCredentials,
+            io.github.projectopenubl.xhandler.audit.Auditor auditor) {
+        this.auditor = auditor;
         this.credentials = credentials;
         this.platformCredentials = platformCredentials;
     }
@@ -99,6 +103,12 @@ public class Routes {
         if (original.endpoint.startsWith("ose:")) {
             return assign(company, sunatEnv, tipoComprobante);
         }
+        if ("pse".equals(original.emissionMode) && "production".equals(sunatEnv)) {
+            // A PSE document is voided by the PSE too: the platform's pool
+            UUID member = platformCredentials.pick("pse_sol").orElseThrow(() ->
+                    ApiException.invalid("no_credentials", "La plataforma no tiene usuarios SOL de PSE activos.", null));
+            return new Assignment(endpoint(sunatEnv, tipoComprobante), member);
+        }
         String service = service(tipoComprobante);
         Optional<UUID> credential = "production".equals(sunatEnv) ? credentialId(company, "sol") : Optional.empty();
         if ("production".equals(sunatEnv) && credential.isEmpty()) {
@@ -129,6 +139,7 @@ public class Routes {
         EngineModels.Credentials secret = null;
         if ("pse".equals(document.emissionMode) && "production".equals(document.sunatEnv) && !document.isGuia()) {
             Map<String, String> fields = platformCredentials.read(document.credentialId, "pse_sol", "send:" + document.id);
+            auditor.record(scope, "platform_credential.used", "document", document.id, Map.of("purpose", "pse_sol"));
             return new Target(environment, new EngineModels.Credentials(fields.get("username"), fields.get("password"), null, null), null);
         }
         if (document.credentialId != null) {

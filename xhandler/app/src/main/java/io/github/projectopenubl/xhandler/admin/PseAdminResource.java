@@ -45,9 +45,12 @@ public class PseAdminResource {
     private final PlatformCredentials credentials;
     private final EntityManager em;
     private final Optional<LocalDate> registeredOn;
+    private final io.github.projectopenubl.xhandler.storage.FileStore files;
 
     public PseAdminResource(PlatformAdmin admin, PlatformKeys keys, PlatformCredentials credentials, EntityManager em,
-            @ConfigProperty(name = "xhandler.pse.registered-on") Optional<LocalDate> registeredOn) {
+            @ConfigProperty(name = "xhandler.pse.registered-on") Optional<LocalDate> registeredOn,
+            io.github.projectopenubl.xhandler.storage.FileStore files) {
+        this.files = files;
         this.admin = admin;
         this.keys = keys;
         this.credentials = credentials;
@@ -103,13 +106,77 @@ public class PseAdminResource {
         return Map.of("id", id, "active", false);
     }
 
+    @POST
+    @Path("/sol-users/{id}/activate")
+    @Transactional
+    public Map<String, Object> activate(@PathParam("id") UUID id) {
+        String who = admin.require();
+        if (!credentials.setActive(id, true)) {
+            throw ApiException.notFound();
+        }
+        AdminResource.PLATFORM_AUDIT.infof("admin %s activated PSE SOL user %s", who, id);
+        return Map.of("id", id, "active", true);
+    }
+
+    /** Authorizations registered by tenants, waiting for a platform admin to check the evidence. */
+    @GET
+    @Path("/authorizations/pending")
+    @Transactional
+    public List<Map<String, Object>> pending() {
+        admin.require();
+        @SuppressWarnings("unchecked")
+        List<Object[]> rows = em.createNativeQuery("""
+                        SELECT id, tenant_id, company_id, ruc, razon_social, authorized_at, evidence_ref IS NOT NULL, created_at
+                        FROM xhandler.pending_pse_authorizations()""").getResultList();
+        return rows.stream().map(r -> {
+            Map<String, Object> view = new java.util.LinkedHashMap<>();
+            view.put("id", r[0]);
+            view.put("tenant_id", r[1]);
+            view.put("company_id", r[2]);
+            view.put("ruc", r[3]);
+            view.put("razon_social", r[4]);
+            view.put("authorized_at", String.valueOf(r[5]));
+            view.put("evidence", r[6]);
+            return view;
+        }).toList();
+    }
+
+    @GET
+    @Path("/authorizations/{id}/evidence")
+    @Transactional
+    public jakarta.ws.rs.core.Response evidence(@PathParam("id") UUID id) {
+        String who = admin.require();
+        @SuppressWarnings("unchecked")
+        List<Object[]> rows = em.createNativeQuery("SELECT tenant_id, evidence_ref FROM xhandler.pse_authorization_evidence(:id)")
+                .setParameter("id", id).getResultList();
+        if (rows.isEmpty() || rows.get(0)[1] == null) {
+            throw ApiException.notFound();
+        }
+        AdminResource.PLATFORM_AUDIT.infof("admin %s read the evidence of PSE authorization %s", who, id);
+        return jakarta.ws.rs.core.Response.ok(files.get((String) rows.get(0)[1])).type("application/octet-stream").build();
+    }
+
+    @POST
+    @Path("/authorizations/{id}/approve")
+    @Transactional
+    public Map<String, Object> approve(@PathParam("id") UUID id) {
+        String who = admin.require();
+        List<?> tenant = em.createNativeQuery("SELECT xhandler.approve_pse_authorization(:id, :by)").setParameter("id", id).setParameter("by", who)
+                .getResultList();
+        if (tenant.isEmpty() || tenant.get(0) == null) {
+            throw ApiException.notFound();
+        }
+        AdminResource.PLATFORM_AUDIT.infof("admin %s approved PSE authorization %s", who, id);
+        return Map.of("id", id, "approved", true);
+    }
+
     /** The rejected-CDR rate of a half-year ({@code 2027-H1}); the current one by default. */
     @GET
     @Path("/rejected-rate")
     @Transactional
     public Rate rejectedRate(@QueryParam("period") String period) {
         admin.require();
-        return rate(em, period == null ? Report.periodOf(LocalDate.now()) : period, registeredOn);
+        return rate(em, period == null ? Report.periodOf(io.github.projectopenubl.xhandler.documents.Deadlines.todayInLima()) : period, registeredOn);
     }
 
     static Rate rate(EntityManager em, String period, Optional<LocalDate> registeredOn) {
@@ -127,8 +194,9 @@ public class PseAdminResource {
         long rejected = ((Number) r[1]).longValue();
         BigDecimal rate = accepted + rejected == 0 ? BigDecimal.ZERO
                 : BigDecimal.valueOf(rejected).divide(BigDecimal.valueOf(accepted + rejected), 4, RoundingMode.HALF_UP);
-        // RS 199-2015 art. 7: 10% during the first year as PSE, 5% afterwards
-        boolean firstYear = registeredOn.map(d -> from.isBefore(d.plusYears(1))).orElse(true);
+        // RS 199-2015 art. 7: 10% during the first year as PSE, 5% afterwards; without the registration
+        // date configured, the stricter limit applies (fail closed)
+        boolean firstYear = registeredOn.map(d -> from.isBefore(d.plusYears(1))).orElse(false);
         BigDecimal limit = firstYear ? new BigDecimal("0.10") : new BigDecimal("0.05");
         return new Rate(period, accepted, rejected, rate, limit, rate.compareTo(limit) > 0);
     }
@@ -139,13 +207,22 @@ public class PseAdminResource {
 
         private final EntityManager em;
         private final Optional<LocalDate> registeredOn;
-        private final AtomicReference<Double> current = new AtomicReference<>(0.0);
 
         public Report(EntityManager em, MeterRegistry metrics,
                 @ConfigProperty(name = "xhandler.pse.registered-on") Optional<LocalDate> registeredOn) {
             this.em = em;
             this.registeredOn = registeredOn;
-            metrics.gauge("xhandler.pse.rejected_rate", current, AtomicReference::get);
+            // Read from the database on scrape: every pod reports the same value, also after a restart
+            io.micrometer.core.instrument.Gauge.builder("xhandler.pse.rejected_rate", this, Report::latestRate).register(metrics);
+        }
+
+        double latestRate() {
+            try {
+                return QuarkusTransaction.requiringNew().call(() -> em.createNativeQuery("SELECT rate FROM xhandler.pse_report ORDER BY period DESC LIMIT 1")
+                        .getResultStream().findFirst().map(r -> ((Number) r).doubleValue()).orElse(0.0));
+            } catch (RuntimeException e) {
+                return Double.NaN;
+            }
         }
 
         @Override
@@ -155,7 +232,7 @@ public class PseAdminResource {
 
         @Override
         public Map<String, Object> run(JobContext context) {
-            LocalDate today = LocalDate.now();
+            LocalDate today = io.github.projectopenubl.xhandler.documents.Deadlines.todayInLima();
             String now = periodOf(today);
             String previous = periodOf(today.minusMonths(6));
             for (String period : List.of(previous, now)) {
@@ -167,16 +244,13 @@ public class PseAdminResource {
                                         rate = excluded.rate, computed_at = now()""")
                             .setParameter("p", period).setParameter("a", rate.accepted()).setParameter("r", rate.rejected())
                             .setParameter("rate", rate.rate()).executeUpdate();
-                    if (period.equals(now)) {
-                        current.set(rate.rate().doubleValue());
-                    }
                     if (rate.breached()) {
                         AdminResource.PLATFORM_AUDIT.errorf("PSE rejected-CDR rate %s in %s is above the %s limit", rate.rate(), period,
                                 rate.limit());
                     }
                 });
             }
-            return Map.of("period", now, "rate", current.get(), "at", Instant.now().toString());
+            return Map.of("period", now, "at", Instant.now().toString());
         }
 
         static String periodOf(LocalDate day) {

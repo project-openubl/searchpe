@@ -102,8 +102,8 @@ public class UblUploadService {
             String signedXml = xml;
             String digest = identity.digestValue();
             if (!identity.signed()) {
-                SigningService.Signed signed = signing.sign(company, company.sunatEnv, xml);
-                signatureLog.record(tenantId, documentId, identity.serie() + "-" + numero, signed.signingKeyId(), signed.digestValue(),
+                SigningService.Signed signed = signing.sign(company, company.sunatEnv, xml, tipo);
+                signatureLog.record(tenantId, documentId, identity.serie() + "-" + numero, signed.signingKeyId(), signed.platformKeyId(), signed.digestValue(),
                         scope.actor().auditName());
                 signedXml = signed.xml();
                 digest = signed.digestValue();
@@ -133,7 +133,7 @@ public class UblUploadService {
             doc.digestValue = digest;
             doc.endpoint = route.endpoint();
             doc.credentialId = route.credentialId();
-            doc.emissionMode = company.emissionMode;
+            doc.emissionMode = doc.isGuia() ? "software" : company.emissionMode;
             doc.nextAttemptAt = now;
             doc.progressAt = now;
             doc.createdAt = now;

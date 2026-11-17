@@ -167,7 +167,7 @@ public class Summaries {
         Document doc = new Document();
         doc.id = Ids.newId();
         String serie = tipo + "-" + BASIC.format(day);
-        signatureLog.record(company.tenantId, doc.id, serie + "-" + numero, signed.signingKeyId(), signed.digestValue(),
+        signatureLog.record(company.tenantId, doc.id, serie + "-" + numero, signed.signingKeyId(), signed.platformKeyId(), signed.digestValue(),
                 scope.actor().auditName());
         FileStore.Stored xml = files.put(company.tenantId, signed.xml().getBytes(StandardCharsets.UTF_8));
         FileStore.Stored input = files.put(company.tenantId, bytes(document));

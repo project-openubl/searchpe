@@ -67,9 +67,21 @@ class PseTest {
         UUID company = companies.verified(tenant, "production");
         String base = "/api/v1/tenants/" + tenant + "/companies/" + company;
         as("alice").body(Map.of("emission_mode", "pse")).put(base + "/pse/mode").then().statusCode(409).body("kind", equalTo("pse_not_authorized"));
-        as("alice").body(Map.of("authorized_at", io.github.projectopenubl.xhandler.documents.Deadlines.todayInLima().toString(),
-                "evidence_base64", Base64.getEncoder().encodeToString("captura de SOL".getBytes()))).post(base + "/pse/authorization")
-                .then().statusCode(200);
+        String today = io.github.projectopenubl.xhandler.documents.Deadlines.todayInLima().toString();
+        // The evidence must be a PDF or an image
+        as("alice").body(Map.of("authorized_at", today, "evidence_base64", Base64.getEncoder().encodeToString("captura de SOL".getBytes())))
+                .post(base + "/pse/authorization").then().statusCode(422);
+        String authorization = as("alice").body(Map.of("authorized_at", today,
+                        "evidence_base64", Base64.getEncoder().encodeToString("%PDF-1.4 captura de SOL".getBytes())))
+                .post(base + "/pse/authorization").then().statusCode(200).body("approved_at", org.hamcrest.Matchers.nullValue()).extract().path("id");
+        // Registered but not approved by the platform yet
+        as("alice").body(Map.of("emission_mode", "pse")).put(base + "/pse/mode").then().statusCode(409).body("kind", equalTo("pse_not_authorized"));
+        as("olga").get("/api/admin/v1/pse/authorizations/pending").then().statusCode(200).body("id", hasItem(authorization));
+        byte[] evidence = as("olga").get("/api/admin/v1/pse/authorizations/" + authorization + "/evidence").then().statusCode(200).extract().asByteArray();
+        assertTrue(new String(evidence).startsWith("%PDF"));
+        as("alice").get("/api/admin/v1/pse/authorizations/pending").then().statusCode(403);
+        as("olga").post("/api/admin/v1/pse/authorizations/" + authorization + "/approve").then().statusCode(200);
+        as("olga").post("/api/admin/v1/pse/authorizations/" + authorization + "/approve").then().statusCode(404);
         as("alice").body(Map.of("emission_mode", "pse")).put(base + "/pse/mode").then().statusCode(200).body("emission_mode", equalTo("pse"));
 
         // No company certificate and no company SOL user: the platform's are used
@@ -82,7 +94,7 @@ class PseTest {
         assertTrue(signer.getSubjectX500Principal().getName().contains(platformRuc), "signed with the platform's PSE certificate");
         assertTrue(EngineStub.lastBody("/v1/send").contains(user), "sent with the platform's SOL user");
 
-        as("olga").get("/api/admin/v1/pse/rejected-rate").then().statusCode(200).body("limit", equalTo(0.10f));
+        as("olga").get("/api/admin/v1/pse/rejected-rate").then().statusCode(200).body("limit", equalTo(0.05f));
 
         // Revoking goes back to software mode and tells the tenant
         as("alice").delete(base + "/pse/authorization").then().statusCode(200).body("emission_mode", equalTo("software"));

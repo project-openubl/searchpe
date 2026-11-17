@@ -24,11 +24,18 @@ public class SignatureLog {
     }
 
     public void record(UUID tenantId, UUID documentId, String serieNumero, UUID signingKeyId, String digestValue, String actor) {
+        record(tenantId, documentId, serieNumero, signingKeyId, null, digestValue, actor);
+    }
+
+    public void record(UUID tenantId, UUID documentId, String serieNumero, UUID signingKeyId, UUID platformKeyId, String digestValue,
+            String actor) {
         QuarkusTransaction.requiringNew().run(() -> {
             access.enterAsPlatform(tenantId);
             em.createNativeQuery("""
-                            INSERT INTO xhandler.signature_log (id, tenant_id, document_id, serie_numero, signing_key_id, digest_value, actor)
-                            VALUES (:id, :tenant, :document, :serie, :key, :digest, :actor)""")
+                            INSERT INTO xhandler.signature_log (id, tenant_id, document_id, serie_numero, signing_key_id, platform_key_id,
+                                digest_value, actor)
+                            VALUES (:id, :tenant, :document, :serie, :key, :platformKey, :digest, :actor)""")
+                    .setParameter("platformKey", platformKeyId)
                     .setParameter("id", Ids.newId())
                     .setParameter("tenant", tenantId)
                     .setParameter("document", documentId)

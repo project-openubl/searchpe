@@ -227,7 +227,8 @@ public class EmitService {
         String tipo = DocumentTypes.tipoComprobante(kind, spec);
         String sunatEnv = company.sunatEnv;
 
-        if ("pse".equals(company.emissionMode) && "production".equals(sunatEnv) && !pseAuthorized(company)) {
+        if ("pse".equals(company.emissionMode) && "production".equals(sunatEnv) && !"09".equals(tipo) && !"31".equals(tipo)
+                && !pseAuthorized(company)) {
             throw ApiException.conflict("pse_not_authorized",
                     "La empresa no tiene registrada su autorización a la plataforma como PSE en SUNAT Operaciones en Línea.");
         }
@@ -249,8 +250,8 @@ public class EmitService {
             String detail = validation.errors().stream().map(f -> f.code() + ": " + f.message()).collect(Collectors.joining("; "));
             throw ApiException.invalid("invalid_document", "El documento no cumple las validaciones de SUNAT.", detail);
         }
-        SigningService.Signed signed = signing.sign(company, sunatEnv, built.xml());
-        signatureLog.record(tenantId, documentId, serie + "-" + numero, signed.signingKeyId(), signed.digestValue(),
+        SigningService.Signed signed = signing.sign(company, sunatEnv, built.xml(), tipo);
+        signatureLog.record(tenantId, documentId, serie + "-" + numero, signed.signingKeyId(), signed.platformKeyId(), signed.digestValue(),
                 scope.actor().auditName());
         EngineModels.InspectResponse identity = engine.inspect(signed.xml());
         checkBoletaBuyer(tipo, spec, identity, fecha);
@@ -283,7 +284,8 @@ public class EmitService {
         doc.digestValue = signed.digestValue();
         doc.endpoint = route.endpoint();
         doc.credentialId = route.credentialId();
-        doc.emissionMode = company.emissionMode;
+        // GRE is always signed and sent by the issuer itself, never by the PSE
+        doc.emissionMode = doc.isGuia() ? "software" : company.emissionMode;
         doc.affectedDocumentId = affectedDocument(company.id, sunatEnv, spec);
         doc.nextAttemptAt = now;
         doc.progressAt = now;
@@ -357,7 +359,7 @@ public class EmitService {
     }
 
     private boolean pseAuthorized(Company company) {
-        return !em.createNativeQuery("SELECT 1 FROM xhandler.pse_authorization WHERE company_id = :c AND revoked_at IS NULL")
+        return !em.createNativeQuery("SELECT 1 FROM xhandler.pse_authorization WHERE company_id = :c AND revoked_at IS NULL AND approved_at IS NOT NULL")
                 .setParameter("c", company.id).getResultList().isEmpty();
     }
 

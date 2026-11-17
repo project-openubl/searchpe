@@ -81,6 +81,12 @@ public class PlatformCredentials {
     /** The secret fields of a credential; an inactive one is replaced by another active member. */
     @Transactional(Transactional.TxType.MANDATORY)
     public Map<String, String> read(UUID id, String purpose, String why) {
+        // The id must exist for this purpose; only an inactive (retired) member is replaced
+        boolean exists = !em.createNativeQuery("SELECT 1 FROM xhandler.platform_credential WHERE id = :id AND purpose = :p")
+                .setParameter("id", id).setParameter("p", purpose).getResultList().isEmpty();
+        if (!exists) {
+            throw new IllegalStateException("platform credential " + id + " is not a " + purpose + " credential");
+        }
         @SuppressWarnings("unchecked")
         List<Object[]> rows = em.createNativeQuery("""
                         SELECT id, ciphertext, wrapped_data_key, master_key_id, active FROM xhandler.platform_credential

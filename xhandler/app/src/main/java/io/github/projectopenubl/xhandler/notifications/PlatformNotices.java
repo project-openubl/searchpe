@@ -64,6 +64,16 @@ public final class PlatformNotices {
                     notified++;
                 }
             }
+            // The platform's own keys (PSE, OSE CDR): their expiry stops every company using them
+            QuarkusTransaction.requiringNew().run(() -> {
+                @SuppressWarnings("unchecked")
+                List<Object[]> platform = em.createNativeQuery("""
+                                SELECT purpose, valid_until FROM xhandler.platform_key WHERE status = 'active' AND valid_until < now() + interval '30 days'""")
+                        .getResultList();
+                for (Object[] key : platform) {
+                    org.jboss.logging.Logger.getLogger("xhandler.audit.platform").errorf("platform %s certificate expires at %s: replace it", key[0], key[1]);
+                }
+            });
             return Map.of("notified", notified);
         }
     }

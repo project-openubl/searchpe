@@ -29,8 +29,12 @@ public class SigningService {
         this.platformKeys = platformKeys;
     }
 
-    /** A signed document; {@code signingKeyId} is null for SUNAT's demo key. */
-    public record Signed(String xml, String digestValue, java.util.UUID signingKeyId) {}
+    /** A signed document: by a company key, the platform's key (PSE), or SUNAT's demo key (both null). */
+    public record Signed(String xml, String digestValue, java.util.UUID signingKeyId, java.util.UUID platformKeyId) {
+        public Signed(String xml, String digestValue, java.util.UUID signingKeyId) {
+            this(xml, digestValue, signingKeyId, null);
+        }
+    }
 
     /**
      * Must run with the company's tenant open (reads its signing key). Beta and the SUNAT fake
@@ -42,14 +46,21 @@ public class SigningService {
 
     /** Signs for a given environment (a document's own, which may differ after a switch). */
     public Signed sign(Company company, String sunatEnv, String xml) {
-        if ("pse".equals(company.emissionMode)) {
+        return sign(company, sunatEnv, xml, null);
+    }
+
+    /** {@code tipoComprobante}: GRE is never signed as PSE (it is always sent by the issuer itself). */
+    public Signed sign(Company company, String sunatEnv, String xml, String tipoComprobante) {
+        boolean guia = "09".equals(tipoComprobante) || "31".equals(tipoComprobante);
+        if ("pse".equals(company.emissionMode) && !guia) {
             // As PSE the platform signs with its own certificate (RS 199-2015 art. 5); the issuer stays liable
-            Optional<PlatformKeys.Key> pse = platformKeys.active("pse");
+            Optional<PlatformKeys.Key> pse = platformKeys.active("pse")
+                    .filter(k -> "production".equals(sunatEnv) || k.validUntil().isAfter(java.time.Instant.now()));
             if (pse.isPresent()) {
                 EngineModels.SignPrepareResponse prepared = engine.signPrepare(xml);
                 byte[] signature = platformKeys.sign(pse.get(), Base64.getDecoder().decode(prepared.dataToSign()));
                 EngineModels.SignResponse signed = engine.signFinalize(xml, signature, pse.get().certificate());
-                return new Signed(signed.xml(), signed.digestValue(), null);
+                return new Signed(signed.xml(), signed.digestValue(), null, pse.get().id());
             }
             if ("production".equals(sunatEnv)) {
                 throw ApiException.invalid("no_platform_certificate", "La plataforma aún no tiene su certificado de PSE.", null);

@@ -44,9 +44,40 @@ public class KeyRotation {
             credentials += counts[0];
             keys += counts[1];
         }
+        // The platform's own secrets and keys (PSE SOL pool, validity, OSE; PSE and OSE CDR keys)
+        int[] platform = QuarkusTransaction.requiringNew().call(this::rewrapPlatform);
+        credentials += platform[0];
+        keys += platform[1];
         LOG.infof("key rotation: %d tenants, %d credentials and %d signing keys re-wrapped with %s",
                 tenants.size(), credentials, keys, vault.currentMasterKeyId());
         return new Result(tenants.size(), credentials, keys);
+    }
+
+    private int[] rewrapPlatform() {
+        String current = vault.currentMasterKeyId();
+        @SuppressWarnings("unchecked")
+        List<Object[]> secrets = em.createNativeQuery("""
+                        SELECT id, ciphertext, wrapped_data_key, master_key_id FROM xhandler.platform_credential
+                        WHERE master_key_id <> :m FOR UPDATE""").setParameter("m", current).getResultList();
+        for (Object[] r : secrets) {
+            SecretBox.Sealed rewrapped = box.rewrap(new SecretBox.Sealed((byte[]) r[1], (byte[]) r[2], (String) r[3]));
+            em.createNativeQuery("UPDATE xhandler.platform_credential SET wrapped_data_key = :w, master_key_id = :m, updated_at = now() WHERE id = :id")
+                    .setParameter("w", rewrapped.wrappedDataKey()).setParameter("m", rewrapped.masterKeyId()).setParameter("id", r[0])
+                    .executeUpdate();
+        }
+        int keys = 0;
+        @SuppressWarnings("unchecked")
+        List<Object[]> platformKeys = em.createNativeQuery("SELECT id, key_ref FROM xhandler.platform_key FOR UPDATE").getResultList();
+        for (Object[] r : platformKeys) {
+            String rewrapped = vault.rewrapPrivateKey((String) r[1]);
+            if (!rewrapped.equals(r[1])) {
+                // key_ref is not updatable by the app role; the owner-run function does it
+                em.createNativeQuery("SELECT xhandler.rewrap_platform_key(:id, :ref)").setParameter("id", r[0]).setParameter("ref", rewrapped)
+                        .getSingleResult();
+                keys++;
+            }
+        }
+        return new int[] {secrets.size(), keys};
     }
 
     private List<UUID> tenantIds() {
