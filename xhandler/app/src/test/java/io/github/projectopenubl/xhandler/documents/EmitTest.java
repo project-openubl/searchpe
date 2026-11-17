@@ -206,7 +206,7 @@ class EmitTest {
 
         given().get(path).then().statusCode(200)
                 .body("serie_numero", equalTo("F001-1"))
-                .body("status", equalTo("aceptado"))
+                .body("status", equalTo("documento_de_prueba"))
                 .body("files", hasItem("xml"));
         as("alice").get(base + "/documents/" + id).then().body("delivered_at", org.hamcrest.Matchers.nullValue());
         given().get(path + "/xml").then().statusCode(200).contentType("application/xml");

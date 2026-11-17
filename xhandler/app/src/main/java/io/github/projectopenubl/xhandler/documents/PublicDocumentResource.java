@@ -67,8 +67,10 @@ public class PublicDocumentResource {
                 .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
         available.add("pdf");
         java.util.Collections.sort(available);
+        // A test-environment document must never read as a real one
+        String status = "production".equals(doc.sunatEnv) ? publicStatus(doc.status) : "documento_de_prueba";
         return new PublicDocument(company.ruc, company.razonSocial, doc.tipoComprobante, doc.serieNumero(), doc.fechaEmision,
-                doc.moneda, doc.total, publicStatus(doc.status), available);
+                doc.moneda, doc.total, status, available);
     }
 
     @GET

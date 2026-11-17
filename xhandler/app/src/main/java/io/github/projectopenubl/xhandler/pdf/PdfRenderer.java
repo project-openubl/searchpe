@@ -41,6 +41,8 @@ public class PdfRenderer {
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             PdfRendererBuilder builder = new PdfRendererBuilder();
             builder.useFastMode();
+            // Only data: URIs (QR, logo): templates never make the renderer fetch anything (SSRF)
+            builder.useUriResolver((base, uri) -> uri != null && uri.startsWith("data:") ? uri : null);
             builder.withHtmlContent(html, null);
             builder.toStream(out);
             builder.run();

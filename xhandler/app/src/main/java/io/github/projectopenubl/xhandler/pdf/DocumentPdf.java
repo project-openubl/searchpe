@@ -72,10 +72,12 @@ public class DocumentPdf {
             Map<String, Object> item = new HashMap<>();
             item.put("descripcion", detalle.path("descripcion").asText(""));
             item.put("cantidad", plain(detalle.path("cantidad")));
-            item.put("precio", money(detalle.has("precio_con_impuestos") ? detalle.path("precio_con_impuestos") : detalle.path("precio")));
-            item.put("importe", money(detalle.has("total_impuestos") && detalle.has("total_base_igv")
-                    ? decimal(detalle.path("total_base_igv")).add(decimal(detalle.path("igv")))
-                    : decimal(detalle.path("precio")).multiply(decimal(detalle.path("cantidad")))));
+            // The engine's per-line price with every tax (IGV, ISC, ICBPER); free lines are worth 0
+            boolean gratuito = detalle.path("igv_tipo").asText("").matches("1[1-7]|21|3[1-7]");
+            BigDecimal unit = gratuito ? BigDecimal.ZERO
+                    : decimal(detalle.has("precio_con_impuestos") ? detalle.path("precio_con_impuestos") : detalle.path("precio"));
+            item.put("precio", money(unit));
+            item.put("importe", money(unit.multiply(decimal(detalle.path("cantidad")))));
             items.add(item);
         }
         d.put("items", items);
@@ -87,7 +89,7 @@ public class DocumentPdf {
         d.put("total", doc.total != null ? money(doc.total) : money(decimal(spec.path("total_importe").path("importe"))));
         d.put("leyenda", text(spec.path("leyendas").path("1000")));
         d.put("digest", doc.digestValue);
-        d.put("estado", estado(doc.status));
+        d.put("estado", "production".equals(doc.sunatEnv) ? estado(doc.status) : "documento de prueba, sin valor legal");
 
         Map<String, Object> data = new HashMap<>();
         data.put("d", d);
@@ -98,7 +100,7 @@ public class DocumentPdf {
         data.put("logo", logo(company));
         data.put("qr", PdfRenderer.qrDataUri(Qr.of(company.ruc, doc, enriched(doc))));
         data.put("accessUrl", accessUrl);
-        data.put("banner", banner(doc.status));
+        data.put("banner", "production".equals(doc.sunatEnv) ? banner(doc.status) : "SIN VALOR LEGAL - DOCUMENTO DE PRUEBA");
         return renderer.render(company.pdfFormat == null ? "a4" : company.pdfFormat, data);
     }
 

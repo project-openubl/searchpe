@@ -96,7 +96,7 @@ class DeliveryTest {
         assertTrue(text.contains("FACTURA ELECTRÓNICA"), text);
         assertTrue(text.contains("F001-1"), text);
         assertTrue(text.contains("Comprador SAC"), text);
-        assertTrue(!text.contains("PENDIENTE"), "accepted: no pending banner");
+        assertTrue(text.contains("SIN VALOR LEGAL"), "a sandbox document says it has no legal value");
 
         // A ticket company, and a document still waiting for SUNAT
         as("alice").body(Map.of("pdf_format", "ticket80")).put(base + "/companies/" + company + "/settings").then().statusCode(200);
@@ -105,7 +105,10 @@ class DeliveryTest {
         Response pending = emit(invoice(cliente()));
         String pendingText = text(given().get(URI.create(pending.<String>path("access_url")).getPath() + "/pdf").then().statusCode(200)
                 .extract().asByteArray());
-        assertTrue(pendingText.contains("PENDIENTE DE RESPUESTA DE SUNAT"), pendingText);
+        assertTrue(pendingText.contains("SIN VALOR LEGAL"), pendingText);
+        // Production documents carry their status instead
+        assertTrue(io.github.projectopenubl.xhandler.pdf.DocumentPdfAccess.banner("pending_send").startsWith("PENDIENTE"));
+        assertEquals(null, io.github.projectopenubl.xhandler.pdf.DocumentPdfAccess.banner("accepted"));
     }
 
     @Test
@@ -125,10 +128,47 @@ class DeliveryTest {
     }
 
     @Test
-    void companies_can_email_buyers_when_sunat_accepts() {
+    void companies_can_email_buyers_when_sunat_accepts_production_documents() throws Exception {
+        // Sandbox documents are never emailed automatically
         as("alice").body(Map.of("email_on_accept", true)).put(base + "/companies/" + company + "/settings").then().statusCode(200);
-        emit(invoice(cliente())).then().statusCode(201);
+        String sandbox = emit(invoice(cliente())).then().statusCode(201).extract().path("id");
+        await().atMost(WAIT).until(() -> "accepted".equals(as("alice").get(base + "/documents/" + sandbox).then().extract().path("status")));
+        Thread.sleep(1000);
+        assertTrue(mailbox.getMailsSentTo("compras@comprador.pe").isEmpty());
+
+        String ruc = io.github.projectopenubl.xhandler.Api.randomRuc();
+        UUID production = companies.verified(tenant, "production", ruc);
+        java.io.File pfx = io.github.projectopenubl.xhandler.keys.TestCertificates.generate(ruc);
+        io.restassured.RestAssured.given().auth().oauth2(new io.quarkus.test.keycloak.client.KeycloakTestClient().getAccessToken("alice"))
+                .multiPart("file", pfx, "application/x-pkcs12").multiPart("password", io.github.projectopenubl.xhandler.keys.TestCertificates.PASSWORD)
+                .put(base + "/companies/" + production + "/certificate").then().statusCode(200);
+        as("alice").body(Map.of("username", ruc + "USER", "password", "x")).put(base + "/companies/" + production + "/credentials/sol").then().statusCode(200);
+        as("alice").body(Map.of("email_on_accept", true)).put(base + "/companies/" + production + "/settings").then().statusCode(200);
+        as("alice").body(invoice(cliente())).post(base + "/companies/" + production + "/documents").then().statusCode(201);
         await().atMost(WAIT).until(() -> !mailbox.getMailsSentTo("compras@comprador.pe").isEmpty());
+    }
+
+    @Test
+    void suppressed_addresses_in_cc_are_dropped() {
+        String id = emit(invoice(cliente())).then().statusCode(201).extract().path("id");
+        String bounced = "rebote-" + UUID.randomUUID() + "@comprador.pe";
+        as("olga").body(Map.of("address", bounced)).post("/api/admin/v1/tenants/" + tenant + "/email-suppressions").then().statusCode(200);
+        as("alice").body(Map.of("to", List.of("compras@comprador.pe"), "cc", List.of(bounced))).post(base + "/documents/" + id + "/email")
+                .then().statusCode(202);
+        await().atMost(WAIT).until(() -> !mailbox.getMailsSentTo("compras@comprador.pe").isEmpty());
+        assertTrue(mailbox.getMailsSentTo(bounced).isEmpty());
+    }
+
+    @Test
+    void a_lookup_keeps_what_the_user_entered() {
+        String path = base + "/companies/" + company;
+        as("alice").body(Map.of("tipo_documento_identidad", "6", "numero_documento_identidad", "20444444444", "nombre", "A mano",
+                "email", "contacto@cliente.pe")).post(path + "/catalogs/customer").then().statusCode(201);
+        as("alice").body(Map.of("url", EngineStub.BASE_URL.get() + "/lookup/{tipo}/{numero}")).put(path + "/credentials/lookup").then().statusCode(200);
+        as("alice").get(path + "/lookup/ruc/20444444444").then().statusCode(200);
+        as("alice").get(path + "/catalogs/customer?q=20444444444").then().statusCode(200)
+                .body("items[0].data.email", equalTo("contacto@cliente.pe"))
+                .body("items[0].data.nombre", equalTo("EMPRESA 20444444444 S.A.C."));
     }
 
     @Test

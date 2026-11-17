@@ -39,13 +39,12 @@ public class DocumentEmailResource {
     private final Jobs jobs;
     private final Auditor auditor;
     private final EntityManager em;
-    private final io.github.projectopenubl.xhandler.storage.FileStore files;
-    private final com.fasterxml.jackson.databind.ObjectMapper json;
+    private final long maxPerDay;
 
     public DocumentEmailResource(TenantAccess access, Jobs jobs, Auditor auditor, EntityManager em,
-            io.github.projectopenubl.xhandler.storage.FileStore files, com.fasterxml.jackson.databind.ObjectMapper json) {
-        this.files = files;
-        this.json = json;
+            @org.eclipse.microprofile.config.inject.ConfigProperty(name = "xhandler.mail.max-per-tenant-per-day", defaultValue = "2000")
+                    long maxPerDay) {
+        this.maxPerDay = maxPerDay;
         this.access = access;
         this.jobs = jobs;
         this.auditor = auditor;
@@ -60,6 +59,16 @@ public class DocumentEmailResource {
         if (doc == null) {
             throw ApiException.notFound();
         }
+        Company company = Company.findById(doc.companyId);
+        if (!"production".equals(doc.sunatEnv) && company.rucVerifiedAt == null) {
+            // Test documents from an unverified company (any RUC) must not reach third parties
+            throw ApiException.conflict("ruc_not_verified", "Verifique el RUC de la empresa para enviar documentos de prueba por correo.");
+        }
+        long sentToday = ((Number) em.createNativeQuery(
+                        "SELECT count(*) FROM xhandler.delivery WHERE channel = 'email' AND at > now() - interval '1 day'").getSingleResult()).longValue();
+        if (sentToday >= maxPerDay) {
+            throw new ApiException(429, "email_quota", "Alcanzó el máximo de correos del día.");
+        }
         List<String> cc = request.cc() == null ? List.of() : request.cc();
         for (String address : concat(request.to(), cc)) {
             if (!address.matches(EMAIL)) {
@@ -67,6 +76,7 @@ public class DocumentEmailResource {
             }
         }
         List<String> suppressed = request.to().stream().filter(a -> EmailSuppressions.suppressed(em, a)).toList();
+        cc = cc.stream().filter(a -> !EmailSuppressions.suppressed(em, a)).toList();
         if (suppressed.size() == request.to().size()) {
             throw ApiException.invalid("email_suppressed", "Los destinatarios rebotaron antes y no se les envía correo.", String.join(", ", suppressed));
         }
@@ -76,39 +86,24 @@ public class DocumentEmailResource {
         return Response.status(202).entity(new Queued(job.id, "xh:job:" + job.id)).build();
     }
 
-    /** Companies that ask for it email the buyer (the customer's email in the document) once SUNAT accepts. */
+    /**
+     * Companies that ask for it email the buyer once SUNAT accepts (production documents only). The
+     * job finds the buyer's address: this runs inside the transaction that recorded SUNAT's answer,
+     * so it does no I/O (§10.8).
+     */
     void onAccepted(@Observes DocumentStatusChanged change) {
         Document doc = change.document();
-        if (!Document.ACCEPTED.contains(doc.status) || Document.ACCEPTED.contains(change.previousStatus()) || doc.isSummary()) {
+        if (!Document.ACCEPTED.contains(doc.status) || Document.ACCEPTED.contains(change.previousStatus()) || doc.isSummary()
+                || !"production".equals(doc.sunatEnv)) {
             return;
         }
         Company company = Company.findById(doc.companyId);
         if (company == null || !company.emailOnAccept) {
             return;
         }
-        String address = customerEmail(doc);
-        if (address == null || !address.matches(EMAIL) || EmailSuppressions.suppressed(em, address)) {
-            return;
-        }
         jobs.enqueue(new TenantScope(doc.tenantId, Actor.PLATFORM, Role.PLATFORM), DocumentEmailJob.NAME, 3,
-                Map.of("document_id", doc.id.toString(), "to", List.of(address), "cc", List.of(), "include_cdr", false), List.of(),
-                change.correlationId());
-    }
-
-    /** The buyer's email as the client gave it ({@code cliente.contacto.email} in the input). */
-    private String customerEmail(Document doc) {
-        Object raw = em.createNativeQuery("SELECT storage_key FROM xhandler.document_file WHERE document_id = :d AND kind = 'input'")
-                .setParameter("d", doc.id).getResultStream().findFirst().orElse(null);
-        if (raw == null) {
-            return null;
-        }
-        try {
-            var input = json.readTree(files.get(raw.toString()));
-            var email = input.path("spec").path("cliente").path("contacto").path("email");
-            return email.isMissingNode() || email.isNull() ? null : email.asText();
-        } catch (java.io.IOException e) {
-            return null;
-        }
+                Map.of("document_id", doc.id.toString(), "to_customer", true, "to", List.of(), "cc", List.of(), "include_cdr", false),
+                List.of(), change.correlationId());
     }
 
     private static List<String> concat(List<String> a, List<String> b) {

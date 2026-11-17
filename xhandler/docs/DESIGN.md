@@ -768,11 +768,12 @@ Emit never creates jobs. The reconciler sends the document (§24.2), usually wit
 
 ### 11.6 Delivery
 
-- The PDF is rendered on demand from `enriched_json` + company data + status (so the banner always matches the current status; nothing is stored), by `GET …/files/pdf`, the buyer's link and emails.
+- The PDF is rendered on demand from `enriched_json` + company data + status (so the banner always matches the current status; nothing is stored), by `GET …/files/pdf`, the buyer's link and emails. The renderer only accepts `data:` URIs (QR, logo), so templates can't make it fetch anything; logos are re-encoded at upload, at most 2000 × 2000 pixels.
+- **Test documents never pass for real ones**: a sandbox or beta document's PDF says "SIN VALOR LEGAL - DOCUMENTO DE PRUEBA", the buyer portal answers `documento_de_prueba`, documents are emailed automatically only in production, and an unverified company (any RUC can be typed) can't email test documents at all.
   - Formats: A4 and 80/58 mm tickets.
   - Contents: SUNAT QR (`RUC|TIPO|SERIE|NUMERO|IGV|TOTAL|FECHA|TIPO_DOC|NUM_DOC|HASH|`, with GRE using SUNAT's QR), partner/tenant branding, and a "pendiente" banner until there is a definitive answer.
   - Templates are Qute code shipped with the service; companies customize them through options.
-- Email goes through the platform sender (Quarkus Mailer) or the tenant's SMTP (credential kind `smtp`, host checked as tenant-supplied), with per-company subject/body templates (`{tipo}`, `{serie_numero}`, `{razon_social}`, `{link}`…). Attachments: PDF, XML and optionally the CDR. Each email carries the buyer's capability link (§12). Emails go out as jobs: on request (`POST …/documents/{id}/email`, 202) or when SUNAT accepts, if the company enables `email_on_accept` and the document carries the buyer's email (`cliente.contacto.email`).
+- Email goes through the platform sender (Quarkus Mailer) or the tenant's SMTP (credential kind `smtp`: host re-checked at send time, ports 25/465/587/2525 only, failures reported to the tenant generically), with up to 2000 emails per tenant per day. The tenant's body template is sanitized (an allow-list of formatting tags, https/mailto links only) and subjects are one line. With a verified sender domain, mail goes out as the company's own address; with per-company subject/body templates (`{tipo}`, `{serie_numero}`, `{razon_social}`, `{link}`…). Attachments: PDF, XML and optionally the CDR. Each email carries the buyer's capability link (§12). Emails go out as jobs: on request (`POST …/documents/{id}/email`, 202) or when SUNAT accepts, if the company enables `email_on_accept` and the document carries the buyer's email (`cliente.contacto.email`).
 - `delivered_at` is set by the first successful delivery (`delivered_source = service`) or by the client's attestation (`client`, §9.3). It drives the voiding guard. Every delivery is logged.
 
 ### 11.7 SIRE
@@ -928,9 +929,9 @@ This satisfies the processor's 2-year limit (DS 016-2024-JUS art. 31.2) while th
 
 ## 17. Catalogs and lookup
 
-- Optional CRUD for customers, products, vehicles, drivers and addresses (`…/companies/{id}/catalogs/{kind}`). They live in one table typed by kind: each kind has its required fields and natural key (a customer by its identity document, a product by its code, a vehicle by its plate), validated by the app. Soft-deleted and sync-ready (§7.2).
+- Optional CRUD for customers, products, vehicles, drivers and addresses (`…/companies/{id}/catalogs/{kind}`). Reads of customers and drivers are audited (personal data). They live in one table typed by kind: each kind has its required fields and natural key (a customer by its identity document, a product by its code, a vehicle by its plate), validated by the app. Soft-deleted and sync-ready (§7.2).
 - A document may reference catalog entries or carry everything inline.
-- RUC/DNI lookup behind one interface, `lookup(tipo, numero)` (`…/lookup/{ruc|dni}/{numero}`): a commercial provider (credential kind `lookup`: URL template and the tenant's token, checked as a tenant-supplied host) or the platform's `searchpe` (`xhandler.lookup.searchpe-url`). Results are cached in the customer catalog.
+- RUC/DNI lookup behind one interface, `lookup(tipo, numero)` (`…/lookup/{ruc|dni}/{numero}`): a commercial provider (credential kind `lookup`: URL template and the tenant's token, checked as a tenant-supplied host) or the platform's `searchpe` (`xhandler.lookup.searchpe-url`). Results are merged into the customer catalog (fields the user entered are kept) and cached 30 days. Every lookup is audited and limited per tenant per hour.
 
 ---
 
@@ -1294,7 +1295,7 @@ Email (to the tenant's notification address) and in-app (`…/notifications`), s
 - quota at 80% and 100%;
 - conformity objected;
 - SIRE deadlines;
-- SUNAT outage started or ended.
+- SUNAT outage started or ended (debounced: "down" after 5 minutes with the breaker not closed, "up" only after a "down").
 
 ### 26.7 Exchange rates
 

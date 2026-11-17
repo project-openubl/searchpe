@@ -40,18 +40,20 @@ public class PublicLookupResource {
 
     public record LookupResult(String status) {}
 
-    static final int PER_RUC_PER_HOUR = 30;
 
     private final EntityManager em;
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
     private final Optional<String> verifyUrl;
     private final Optional<String> secret;
     private final boolean testMode;
+    private final int perRucPerHour;
 
     public PublicLookupResource(EntityManager em,
             @ConfigProperty(name = "xhandler.captcha.verify-url") Optional<String> verifyUrl,
             @ConfigProperty(name = "xhandler.captcha.secret") Optional<String> secret,
-            @ConfigProperty(name = "xhandler.captcha.test-mode", defaultValue = "false") boolean testMode) {
+            @ConfigProperty(name = "xhandler.captcha.test-mode", defaultValue = "false") boolean testMode,
+            @ConfigProperty(name = "xhandler.public-lookup.per-ruc-per-hour", defaultValue = "300") int perRucPerHour) {
+        this.perRucPerHour = perRucPerHour;
         this.em = em;
         this.verifyUrl = verifyUrl;
         this.secret = secret;
@@ -68,7 +70,7 @@ public class PublicLookupResource {
                             INSERT INTO xhandler.public_lookup_counter (bucket, key, hits) VALUES (date_trunc('hour', now()), :k, 1)
                             ON CONFLICT (bucket, key) DO UPDATE SET hits = public_lookup_counter.hits + 1 RETURNING hits""")
                     .setParameter("k", "ruc:" + request.ruc()).getSingleResult()).intValue();
-            if (hits > PER_RUC_PER_HOUR) {
+            if (hits > perRucPerHour) {
                 throw new ApiException(429, "too_many_requests", "Demasiadas consultas para este RUC. Intente más tarde.");
             }
             Object status = em.createNativeQuery("SELECT xhandler.public_document_status(:ruc, :tipo, :serie, :numero, :fecha, :total)")

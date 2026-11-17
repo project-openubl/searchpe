@@ -43,9 +43,19 @@ public class IdentityLookup {
     private final Egress egress;
     private final ObjectMapper json;
     private final Optional<String> searchpeUrl;
+    private final io.github.projectopenubl.xhandler.audit.Auditor auditor;
+    private final jakarta.persistence.EntityManager em;
+    private final int maxPerHour;
+
+    static final java.time.Duration CACHE_TTL = java.time.Duration.ofDays(30);
 
     public IdentityLookup(TenantAccess access, CredentialService credentials, CatalogResource catalogs, Egress egress, ObjectMapper json,
-            @ConfigProperty(name = "xhandler.lookup.searchpe-url") Optional<String> searchpeUrl) {
+            @ConfigProperty(name = "xhandler.lookup.searchpe-url") Optional<String> searchpeUrl,
+            io.github.projectopenubl.xhandler.audit.Auditor auditor, jakarta.persistence.EntityManager em,
+            @ConfigProperty(name = "xhandler.lookup.max-per-tenant-per-hour", defaultValue = "300") int maxPerHour) {
+        this.auditor = auditor;
+        this.em = em;
+        this.maxPerHour = maxPerHour;
         this.access = access;
         this.credentials = credentials;
         this.catalogs = catalogs;
@@ -76,8 +86,18 @@ public class IdentityLookup {
         Object cachedOrProvider = QuarkusTransaction.requiringNew().call(() -> {
             TenantScope scope = access.enter(tenantId, Role.OPERATOR);
             Company company = CompanyResource.find(companyId);
+            // Personal data: every lookup is audited, and limited per tenant (no free DNI → name oracle)
+            auditor.record(scope, "lookup.identity", "company", companyId, Map.of("tipo", tipo, "numero", numero));
+            int hits = ((Number) em.createNativeQuery("""
+                            INSERT INTO xhandler.public_lookup_counter (bucket, key, hits) VALUES (date_trunc('hour', now()), :k, 1)
+                            ON CONFLICT (bucket, key) DO UPDATE SET hits = public_lookup_counter.hits + 1 RETURNING hits""")
+                    .setParameter("k", "lookup:" + tenantId).getSingleResult()).intValue();
+            if (hits > maxPerHour) {
+                throw new ApiException(429, "too_many_requests", "Demasiadas consultas de RUC/DNI. Intente en una hora.");
+            }
             Optional<CatalogResource.Entry> cached = catalogs.byKey(companyId, "customer", catalogTipo + ":" + numero);
-            if (cached.isPresent() && cached.get().data().has("lookup_at")) {
+            if (cached.isPresent() && cached.get().data().has("lookup_at")
+                    && java.time.Instant.parse(cached.get().data().get("lookup_at").asText()).isAfter(java.time.Instant.now().minus(CACHE_TTL))) {
                 JsonNode d = cached.get().data();
                 return new Identity(tipo, numero, d.path("nombre").asText(), text(d, "direccion"), text(d, "estado"), text(d, "condicion"), true);
             }
@@ -125,7 +145,9 @@ public class IdentityLookup {
                 first(answer, "condicion", "condicionDomicilio"), false);
         QuarkusTransaction.requiringNew().run(() -> {
             access.enter(tenantId, Role.OPERATOR);
-            ObjectNode data = json.createObjectNode();
+            Optional<CatalogResource.Entry> existing = catalogs.byKey(companyId, "customer", catalogTipo + ":" + numero);
+            // Merge: fields the user entered (contact, email...) are kept; only the looked-up ones change
+            ObjectNode data = existing.map(e -> (ObjectNode) e.data().deepCopy()).orElseGet(json::createObjectNode);
             data.put("tipo_documento_identidad", catalogTipo);
             data.put("numero_documento_identidad", numero);
             data.put("nombre", identity.nombre());
@@ -139,8 +161,7 @@ public class IdentityLookup {
                 data.put("condicion", identity.condicion());
             }
             data.put("lookup_at", java.time.Instant.now().toString());
-            UUID existing = catalogs.byKey(companyId, "customer", catalogTipo + ":" + numero).map(CatalogResource.Entry::id).orElse(null);
-            catalogs.upsert(tenantId, companyId, "customer", data, existing);
+            catalogs.upsert(tenantId, companyId, "customer", data, existing.map(CatalogResource.Entry::id).orElse(null));
         });
         return identity;
     }

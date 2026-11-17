@@ -42,9 +42,11 @@ public class DocumentEmailJob implements JobHandler {
     private final CredentialService credentials;
     private final EmailSender sender;
     private final EntityManager em;
+    private final io.github.projectopenubl.xhandler.webhooks.Egress egress;
 
     public DocumentEmailJob(TenantAccess access, DocumentPdf pdf, FileStore files, AccessLinks links, CredentialService credentials,
-            EmailSender sender, EntityManager em) {
+            EmailSender sender, EntityManager em, io.github.projectopenubl.xhandler.webhooks.Egress egress) {
+        this.egress = egress;
         this.access = access;
         this.pdf = pdf;
         this.files = files;
@@ -62,8 +64,9 @@ public class DocumentEmailJob implements JobHandler {
     @Override
     public Map<String, Object> run(JobContext context) {
         UUID documentId = context.uuidArg("document_id");
-        List<String> to = strings(context.args().path("to"));
+        List<String> givenTo = strings(context.args().path("to"));
         List<String> cc = strings(context.args().path("cc"));
+        boolean toCustomer = context.args().path("to_customer").asBoolean(false);
         boolean includeCdr = context.args().path("include_cdr").asBoolean(false);
         record Prepared(EmailSender.Message message, EmailSender.Smtp smtp, List<String> skipped) {}
         Prepared prepared = QuarkusTransaction.requiringNew().call(() -> {
@@ -72,6 +75,11 @@ public class DocumentEmailJob implements JobHandler {
             Company company = Company.findById(doc.companyId);
             List<String> skipped = new ArrayList<>();
             List<String> recipients = new ArrayList<>();
+            List<String> to = new ArrayList<>(givenTo);
+            if (toCustomer) {
+                customerEmail(doc).ifPresent(to::add);
+            }
+            List<String> ccKept = cc.stream().filter(a -> !EmailSuppressions.suppressed(em, a)).toList();
             for (String address : to) {
                 if (EmailSuppressions.suppressed(em, address)) {
                     skipped.add(address);
@@ -92,10 +100,11 @@ public class DocumentEmailJob implements JobHandler {
                 DocumentFile.of(doc.id, "cdr_zip").ifPresent(f ->
                         attachments.add(new EmailSender.Attachment("R-" + base + ".zip", "application/zip", files.get(f.storageKey))));
             }
-            String subject = render(company.emailSubject, "{tipo} {serie_numero} - {razon_social}", doc, company, link);
-            String body = render(company.emailBody, DEFAULT_BODY, doc, company, link);
+            String subject = subject(company.emailSubject, doc, company);
+            String body = HtmlSanitizer.sanitize(render(company.emailBody, DEFAULT_BODY, doc, company, link));
             EmailSender.Smtp smtp = credentials.read(scope, company, "smtp", "email:" + doc.id).map(EmailSender::smtp).orElse(null);
-            return new Prepared(new EmailSender.Message(null, company.email, recipients, cc, subject, body, attachments), smtp, skipped);
+            return new Prepared(new EmailSender.Message(sender(company), company.email, recipients, ccKept, subject, body, attachments),
+                    smtp, skipped);
         });
         if (prepared.message() == null) {
             return Map.of("sent", 0, "skipped", prepared.skipped());
@@ -104,13 +113,24 @@ public class DocumentEmailJob implements JobHandler {
         String detail = null;
         try {
             if (prepared.smtp() != null) {
+                // Re-checked at send time: the host may resolve elsewhere since it was saved (§16)
+                if (!java.util.Set.of(25, 465, 587, 2525).contains(prepared.smtp().port())) {
+                    throw new SmtpRefused("Puerto SMTP no permitido.");
+                }
+                try {
+                    egress.checkHost(prepared.smtp().host());
+                } catch (io.github.projectopenubl.xhandler.api.ApiException e) {
+                    throw new SmtpRefused("El servidor SMTP apunta a una dirección no permitida.");
+                }
                 sender.sendTenantSmtp(prepared.smtp(), prepared.message());
             } else {
                 sender.sendPlatform(prepared.message());
             }
         } catch (RuntimeException e) {
+            // Logged here; the tenant sees a generic reason (no oracle on its SMTP target)
+            org.jboss.logging.Logger.getLogger(DocumentEmailJob.class).warnf("email for document %s failed: %s", documentId, e.getMessage());
             result = "failed";
-            detail = e.getMessage();
+            detail = e instanceof SmtpRefused refused ? refused.getMessage() : "No se pudo enviar el correo.";
         }
         String finalResult = result;
         String finalDetail = detail;
@@ -165,6 +185,48 @@ public class DocumentEmailJob implements JobHandler {
             text = text.replace(e.getKey(), escape(e.getValue()));
         }
         return text;
+    }
+
+    /** The subject: plain text, one line (no header injection). */
+    static String subject(String template, Document doc, Company company) {
+        String text = template == null || template.isBlank() ? "{tipo} {serie_numero} - {razon_social}" : template;
+        Map<String, String> values = Map.of("{tipo}", TIPOS.getOrDefault(doc.tipoComprobante, doc.tipoComprobante),
+                "{serie_numero}", doc.serieNumero(), "{razon_social}", company.razonSocial, "{fecha}", doc.fechaEmision.toString());
+        for (Map.Entry<String, String> e : values.entrySet()) {
+            text = text.replace(e.getKey(), e.getValue());
+        }
+        return text.replaceAll("[\\r\\n\\t]+", " ").strip();
+    }
+
+    /** The buyer's email as the client gave it ({@code cliente.contacto.email} in the input). */
+    private java.util.Optional<String> customerEmail(Document doc) {
+        return DocumentFile.of(doc.id, "input").map(f -> {
+            try {
+                JsonNode email = new com.fasterxml.jackson.databind.ObjectMapper().readTree(files.get(f.storageKey))
+                        .path("spec").path("cliente").path("contacto").path("email");
+                return email.isMissingNode() || email.isNull() ? null : email.asText();
+            } catch (java.io.IOException e) {
+                return null;
+            }
+        }).filter(a -> a.matches("[^@\\s<>\"]+@[^@\\s<>\"]+\\.[A-Za-z]{2,}"));
+    }
+
+    /** As the company's own address when the tenant verified its domain, else the platform's sender. */
+    private String sender(Company company) {
+        if (company.email == null || !company.email.contains("@")) {
+            return null;
+        }
+        String domain = company.email.substring(company.email.indexOf('@') + 1).toLowerCase(java.util.Locale.ROOT);
+        boolean verified = !em.createNativeQuery("SELECT 1 FROM xhandler.sender_domain WHERE domain = :d AND verified_at IS NOT NULL")
+                .setParameter("d", domain).getResultList().isEmpty();
+        return verified ? company.razonSocial.replaceAll("[\\r\\n\"<>]", "") + " <" + company.email + ">" : null;
+    }
+
+    /** An SMTP target refused at send time (the message is safe to show the tenant). */
+    static class SmtpRefused extends RuntimeException {
+        SmtpRefused(String message) {
+            super(message);
+        }
     }
 
     static String escape(String value) {

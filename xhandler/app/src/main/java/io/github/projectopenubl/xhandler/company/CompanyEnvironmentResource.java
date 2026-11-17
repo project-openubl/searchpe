@@ -52,7 +52,7 @@ public class CompanyEnvironmentResource {
             @Pattern(regexp = "a4|ticket80|ticket58") String pdfFormat,
             Map<String, Object> pdfOptions,
             Boolean emailOnAccept,
-            @Size(max = 200) String emailSubject,
+            @Size(max = 200) @Pattern(regexp = "[^\\r\\n]*", message = "debe ser una sola línea") String emailSubject,
             @Size(max = 5000) String emailBody) {}
 
     public record EnvironmentChange(@NotBlank @Pattern(regexp = "fake|beta|production") String sunatEnv) {}
@@ -99,7 +99,9 @@ public class CompanyEnvironmentResource {
             company.pdfFormat = settings.pdfFormat();
         }
         if (settings.pdfOptions() != null) {
-            company.pdfOptions = Map.copyOf(settings.pdfOptions());
+            Map<String, Object> options = new java.util.HashMap<>(settings.pdfOptions());
+            options.values().removeIf(java.util.Objects::isNull);
+            company.pdfOptions = Map.copyOf(options);
         }
         if (settings.emailOnAccept() != null) {
             company.emailOnAccept = settings.emailOnAccept();
@@ -130,9 +132,37 @@ public class CompanyEnvironmentResource {
         if (image.length > 200 * 1024) {
             throw ApiException.invalid("invalid_request", "El logo no debe pasar de 200 KB.", null);
         }
-        company.logoRef = files.put(company.tenantId, image).key();
+        company.logoRef = files.put(company.tenantId, reencode(image)).key();
         auditor.record(scope, "company.logo_changed", "company", companyId);
         return CompanyResource.view(company);
+    }
+
+    /**
+     * Checks the declared size before decoding (a small file can declare a huge image) and re-encodes
+     * it as PNG, so every PDF render decodes a known-small image.
+     */
+    static byte[] reencode(byte[] image) {
+        try (var input = javax.imageio.ImageIO.createImageInputStream(new java.io.ByteArrayInputStream(image))) {
+            var readers = javax.imageio.ImageIO.getImageReaders(input);
+            if (!readers.hasNext()) {
+                throw ApiException.invalid("invalid_request", "No se pudo leer el logo.", null);
+            }
+            var reader = readers.next();
+            try {
+                reader.setInput(input, true, true);
+                if (reader.getWidth(0) > 2000 || reader.getHeight(0) > 2000) {
+                    throw ApiException.invalid("invalid_request", "El logo no debe pasar de 2000 × 2000 píxeles.", null);
+                }
+                java.awt.image.BufferedImage decoded = reader.read(0);
+                var out = new java.io.ByteArrayOutputStream();
+                javax.imageio.ImageIO.write(decoded, "png", out);
+                return out.toByteArray();
+            } finally {
+                reader.dispose();
+            }
+        } catch (java.io.IOException e) {
+            throw ApiException.invalid("invalid_request", "No se pudo leer el logo.", null);
+        }
     }
 
     @POST

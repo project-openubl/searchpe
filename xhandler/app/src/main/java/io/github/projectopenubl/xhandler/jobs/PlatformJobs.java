@@ -81,7 +81,10 @@ public final class PlatformJobs {
         public Map<String, Object> run(JobContext context) {
             int purged = QuarkusTransaction.requiringNew().call(() -> ((Number) em.createNativeQuery(
                     "SELECT xhandler.purge_idempotency_keys(interval '24 hours')").getSingleResult()).intValue());
-            return Map.of("purged", purged);
+            // Rate-limit buckets older than a day are useless (public lookups, RUC/DNI lookups)
+            int buckets = QuarkusTransaction.requiringNew().call(() -> em.createNativeQuery(
+                    "DELETE FROM xhandler.public_lookup_counter WHERE bucket < now() - interval '1 day'").executeUpdate());
+            return Map.of("purged", purged, "rate_buckets", buckets);
         }
     }
 }

@@ -57,8 +57,10 @@ public class CatalogResource {
     private final TenantAccess access;
     private final EntityManager em;
     private final ObjectMapper json;
+    private final io.github.projectopenubl.xhandler.audit.Auditor auditor;
 
-    public CatalogResource(TenantAccess access, EntityManager em, ObjectMapper json) {
+    public CatalogResource(TenantAccess access, EntityManager em, ObjectMapper json, io.github.projectopenubl.xhandler.audit.Auditor auditor) {
+        this.auditor = auditor;
         this.access = access;
         this.em = em;
         this.json = json;
@@ -68,17 +70,20 @@ public class CatalogResource {
     @Transactional
     public Page<Entry> list(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId, @PathParam("kind") String kind,
             @QueryParam("q") String q, @QueryParam("limit") Integer limit, @QueryParam("offset") Integer offset) {
-        access.enter(tenantId, Role.VIEWER);
+        var scope = access.enter(tenantId, Role.VIEWER);
         check(kind);
         CompanyResource.find(companyId);
+        auditPersonalData(scope, kind, companyId, "list");
         int size = Page.limit(limit);
         int from = Page.offset(offset);
-        String filter = q == null || q.isBlank() ? "" : " AND (key ILIKE :q OR CAST(data AS text) ILIKE :q)";
+        // Searches values people look for (not JSON keys): key, name, description, document, plate
+        String filter = q == null || q.isBlank() ? "" : " AND (key ILIKE :q OR data ->> 'nombre' ILIKE :q OR data ->> 'descripcion' ILIKE :q"
+                + " OR data ->> 'numero_documento_identidad' ILIKE :q OR data ->> 'placa' ILIKE :q OR data ->> 'direccion' ILIKE :q)";
         var query = em.createNativeQuery("SELECT id, kind, key, CAST(data AS text), created_at, updated_at FROM xhandler.catalog_entry "
                         + "WHERE company_id = :c AND kind = :k AND deleted_at IS NULL" + filter + " ORDER BY key LIMIT :l OFFSET :o")
                 .setParameter("c", companyId).setParameter("k", kind).setParameter("l", size).setParameter("o", from);
         if (!filter.isEmpty()) {
-            query.setParameter("q", "%" + q.replace("%", "\\%").replace("_", "\\_") + "%");
+            query.setParameter("q", "%" + q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%");
         }
         @SuppressWarnings("unchecked")
         List<Object[]> rows = query.getResultList();
@@ -90,9 +95,11 @@ public class CatalogResource {
     @Transactional
     public Entry get(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId, @PathParam("kind") String kind,
             @PathParam("id") UUID id) {
-        access.enter(tenantId, Role.VIEWER);
+        var scope = access.enter(tenantId, Role.VIEWER);
         check(kind);
-        return find(companyId, kind, id);
+        Entry entry = find(companyId, kind, id);
+        auditPersonalData(scope, kind, companyId, id.toString());
+        return entry;
     }
 
     @POST
@@ -191,6 +198,13 @@ public class CatalogResource {
                     StatusResource.toInstant(r[5]));
         } catch (IOException e) {
             throw new java.io.UncheckedIOException(e);
+        }
+    }
+
+    /** Customers and drivers are people's data: reads are audited (§3.4). */
+    private void auditPersonalData(io.github.projectopenubl.xhandler.tenancy.TenantScope scope, String kind, UUID companyId, String what) {
+        if ("customer".equals(kind) || "driver".equals(kind)) {
+            auditor.record(scope, "catalog.read", kind, companyId, Map.of("entry", what));
         }
     }
 

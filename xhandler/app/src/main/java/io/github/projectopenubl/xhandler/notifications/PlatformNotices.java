@@ -90,17 +90,32 @@ public final class PlatformNotices {
         @Override
         public Map<String, Object> run(JobContext context) {
             record Change(String endpoint, String state) {}
+            // Debounced: an endpoint is "down" after 5 minutes with its breaker not closed, and "up"
+            // is only announced after a "down" notice. Breakers flap during partial outages.
             List<Change> changes = QuarkusTransaction.requiringNew().call(() -> {
+                em.createNativeQuery("""
+                                INSERT INTO xhandler.endpoint_alert (endpoint, state)
+                                SELECT e.id, 'suspect' FROM xhandler.sunat_endpoint e
+                                WHERE (e.id LIKE 'production:%' OR e.id LIKE 'ose:%') AND e.breaker_state <> 'closed'
+                                ON CONFLICT (endpoint) DO UPDATE SET state = 'suspect', at = now()
+                                WHERE endpoint_alert.state = 'up'""").executeUpdate();
+                em.createNativeQuery("""
+                                UPDATE xhandler.endpoint_alert a SET state = 'up', at = now() FROM xhandler.sunat_endpoint e
+                                WHERE e.id = a.endpoint AND a.state = 'suspect' AND e.breaker_state = 'closed'""").executeUpdate();
                 @SuppressWarnings("unchecked")
                 List<Object[]> rows = em.createNativeQuery("""
-                                SELECT e.id, CASE WHEN e.breaker_state = 'closed' THEN 'up' ELSE 'down' END
-                                FROM xhandler.sunat_endpoint e LEFT JOIN xhandler.endpoint_alert a ON a.endpoint = e.id
-                                WHERE (e.id LIKE 'production:%' OR e.id LIKE 'ose:%')
-                                  AND coalesce(a.state, 'up') <> CASE WHEN e.breaker_state = 'closed' THEN 'up' ELSE 'down' END""")
+                                SELECT a.endpoint, CASE WHEN a.state = 'suspect' THEN 'down' ELSE 'up' END
+                                FROM xhandler.endpoint_alert a JOIN xhandler.sunat_endpoint e ON e.id = a.endpoint
+                                WHERE (a.state = 'suspect' AND e.breaker_state <> 'closed' AND a.at < now() - interval '5 minutes')
+                                   OR (a.state = 'down' AND e.breaker_state = 'closed')""")
                         .getResultList();
                 return rows.stream().map(r -> new Change((String) r[0], (String) r[1])).toList();
             });
             for (Change change : changes) {
+                // Record the state first: a failing tenant must not make everyone be notified again
+                QuarkusTransaction.requiringNew().run(() -> em.createNativeQuery(
+                                "UPDATE xhandler.endpoint_alert SET state = :s, at = now() WHERE endpoint = :e")
+                        .setParameter("e", change.endpoint()).setParameter("s", change.state()).executeUpdate());
                 List<UUID> tenants = QuarkusTransaction.requiringNew().call(() -> {
                     @SuppressWarnings("unchecked")
                     List<Object[]> rows = em.createNativeQuery("SELECT tenant_id, documents FROM xhandler.tenants_waiting_on(:e)")
@@ -108,18 +123,18 @@ public final class PlatformNotices {
                     return rows.stream().map(r -> (UUID) r[0]).toList();
                 });
                 for (UUID tenant : tenants) {
-                    QuarkusTransaction.requiringNew().run(() -> {
-                        access.enterAsPlatform(tenant);
-                        boolean down = "down".equals(change.state());
-                        notifications.publish(tenant, Notifications.SUNAT_OUTAGE, down ? "SUNAT no responde" : "SUNAT volvió a responder",
-                                down ? "SUNAT no está respondiendo. Sus documentos están guardados y se enviarán automáticamente cuando vuelva."
-                                        : "SUNAT volvió a responder. Los documentos pendientes se están enviando por orden de plazo.", null);
-                    });
+                    try {
+                        QuarkusTransaction.requiringNew().run(() -> {
+                            access.enterAsPlatform(tenant);
+                            boolean down = "down".equals(change.state());
+                            notifications.publish(tenant, Notifications.SUNAT_OUTAGE, down ? "SUNAT no responde" : "SUNAT volvió a responder",
+                                    down ? "SUNAT no está respondiendo. Sus documentos están guardados y se enviarán automáticamente cuando vuelva."
+                                            : "SUNAT volvió a responder. Los documentos pendientes se están enviando por orden de plazo.", null);
+                        });
+                    } catch (RuntimeException e) {
+                        org.jboss.logging.Logger.getLogger(SunatHealth.class).warnf("outage notice for tenant %s failed: %s", tenant, e.getMessage());
+                    }
                 }
-                QuarkusTransaction.requiringNew().run(() -> em.createNativeQuery("""
-                                INSERT INTO xhandler.endpoint_alert (endpoint, state) VALUES (:e, :s)
-                                ON CONFLICT (endpoint) DO UPDATE SET state = excluded.state, at = now()""")
-                        .setParameter("e", change.endpoint()).setParameter("s", change.state()).executeUpdate());
             }
             return Map.of("changes", changes.size());
         }
