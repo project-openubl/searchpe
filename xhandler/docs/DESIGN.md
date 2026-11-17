@@ -981,7 +981,7 @@ How it runs (P11):
 
 ## 18. xhandler-ui
 
-xhandler-ui (sibling repo, separate container) is the only UI. It **must follow the design, patterns, skills, rules and tooling of [pulp-ui-2](https://github.com/pulp/pulp-ui-2)**:
+xhandler-ui (`ui/` at the root of this monorepo, separate container) is the only UI, for both xhandler-service and searchpe (RUC lookup). Its Express server proxies `/api/xhandler/*` to xhandler-service and `/api/searchpe/*` to searchpe; login is OIDC against the one Keycloak realm (public client `xhandler-ui`, audiences `xhandler-service` and `searchpe`). It **must follow the design, patterns, skills, rules and tooling of [pulp-ui-2](https://github.com/pulp/pulp-ui-2)**:
 
 - **Stack**:
   - React 19 + PatternFly 6, Vite, TypeScript;
@@ -1048,7 +1048,7 @@ xhandler-service/
 
 ## 21. Roadmap
 
-Four tracks run in parallel. In this repo, each phase is committed straight to `main`; work in other repos (xhandler-rust, xhandler-ui) goes in one single PR per repo. Every phase is followed by a senior-engineer review. Phases are internal milestones; the public v1 launches at GA with all three roles.
+Four tracks run in parallel. In this repo, each phase is committed straight to `main`; work in xhandler-rust goes in one single PR. xhandler-ui lives in this monorepo (`ui/`) and is committed to `main` like the service. Every phase is followed by a senior-engineer review. Phases are internal milestones; the public v1 launches at GA with all three roles.
 
 This is a deliberate choice, made after the design review. Launching all three roles at once means GA waits for OSE registration (capital, bank guarantee, audit, SUNAT tests). Pilot tenants at M1 and M2 can still run in production before GA.
 
@@ -1306,6 +1306,8 @@ P11 load tests run at these figures, including an outage followed by a drain.
 - Environments: `dev` (Dev Services), `staging` (SUNAT beta, production-like), `production`.
 - GitOps (Argo CD) with container images signed and scanned in CI.
 - Rolling deploys under the expand/contract migration rule (§15.1).
+- **The Kubernetes operator is the supported install path** (`operator/` in the monorepo, OLM bundle). Its `XHandler` kind (`xhandler.openubl.io/v1alpha1`) deploys the api and worker Deployments with the engine sidecar, the migration Job (run before the Deployments roll on an image or database change), the optional egress proxy and NetworkPolicies, and the UI with its Ingress. The `Searchpe` kind (`searchpe.openubl.io/v1alpha1`) deploys searchpe as its own pod. `deploy/base` and `deploy/monitoring` stay as the Kustomize reference for installs without OLM.
+- Images, all from one release tag: `searchpe`, `searchpe-operator`, `xhandler-service`, `xhandler-engine`, `xhandler-ui`, plus the operator bundle and catalog; `nightly` from `main`.
 - The engine's xhandler-rust dependency is pinned by revision. Bumping it is its own PR, gated on the golden files and the engine benchmarks.
 - Feature flags only for staged rollouts, not for regulation dates (§3.1).
 
@@ -1353,7 +1355,7 @@ A daily job imports the SBS/SUNAT exchange rate (purchase and sale) from SUNAT's
 
 ### 26.9 Repo conventions
 
-- xhandler-service gets `AGENTS.md`/`CLAUDE.md` mirroring xhandler-rust's conventions:
+- The monorepo (searchpe, xhandler, operator, ui; one top-level directory per service) and each directory get `AGENTS.md`/`CLAUDE.md` mirroring xhandler-rust's conventions:
   - SUNAT and domain concepts in Spanish (`Detalle`, `tipoComprobante`), infrastructure in English (`Job`, `Worker`, `…Service`, `…Repository`, `…Error`);
   - acronyms as words (`Igv`, `Sunat`, `Ruc`);
   - Java naming per Google Java Style.
