@@ -1,11 +1,18 @@
 import { defineConfig } from "@rsbuild/core";
 import { pluginReact } from "@rsbuild/plugin-react";
 
+// Quarkus in dev mode. The dev server proxies the API to it, and the UI sends
+// users there to log in.
+const DEV_BACKEND_URL = "http://localhost:8080";
+
 export default defineConfig({
   plugins: [pluginReact()],
   source: {
     entry: {
       index: "./src/index.tsx",
+    },
+    define: {
+      "process.env.SEARCHPE_DEV_BACKEND_URL": JSON.stringify(DEV_BACKEND_URL),
     },
   },
   html: {
@@ -22,7 +29,7 @@ export default defineConfig({
     port: 3000,
     // Same behaviour as the former CRA src/setupProxy.js
     proxy: {
-      "/api": "http://localhost:8080",
+      "/api": DEV_BACKEND_URL,
     },
   },
 });

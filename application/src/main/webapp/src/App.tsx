@@ -19,6 +19,7 @@ import { useWhoAmIQuery } from "queries/whoami";
 
 import { ConditionalRender, SimplePlaceholder } from "shared/components";
 import { ConfirmationContextProvider } from "shared/context";
+import { getLoginUrl } from "utils/modelUtils";
 
 const App: React.FC = () => {
   const whoAmI = useWhoAmIQuery();
@@ -29,7 +30,7 @@ const App: React.FC = () => {
         <EmptyState
           headingLevel="h2"
           icon={WarningTriangleIcon}
-          titleText="404 Forbidden"
+          titleText="403 Forbidden"
           variant={EmptyStateVariant.sm}
         >
           <EmptyStateBody>
@@ -41,8 +42,8 @@ const App: React.FC = () => {
               variant="primary"
               onClick={() => {
                 const loginPopUp = window.open(
-                  "http://localhost:8080",
-                  "example",
+                  getLoginUrl(),
+                  "searchpe-login",
                   "width=800,height=750"
                 );
                 const timer = setInterval(function () {

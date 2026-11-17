@@ -6,6 +6,16 @@ export const getBaseApiUrl = (): string => {
   return (window as any)["SEARCHPE_API_URL"] || "/api";
 };
 
+/**
+ * Page that starts the login flow: the root of the server hosting the API,
+ * which is this same origin in production. In development, the UI runs on its
+ * own server, which only proxies the API, so users log in on the backend.
+ */
+export const getLoginUrl = (): string =>
+  process.env.NODE_ENV === "development"
+    ? `${process.env.SEARCHPE_DEV_BACKEND_URL}/`
+    : new URL(".", new URL(getBaseApiUrl(), window.location.origin)).href;
+
 // Axios error
 
 export const getAxiosErrorMessage = (axiosError: AxiosError) => {
