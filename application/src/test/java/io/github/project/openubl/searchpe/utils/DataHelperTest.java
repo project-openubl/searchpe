@@ -54,7 +54,7 @@ public class DataHelperTest {
         File unzippedFolder = fileService.unzip(downloadedFile);
         File txtFile = fileService.getFirstTxtFileFound(unzippedFolder.listFiles());
 
-        try (BufferedReader br = new BufferedReader(new FileReader(txtFile))) {
+        try (BufferedReader br = new BufferedReader(new FileReader(txtFile, DataHelper.PADRON_CHARSET))) {
             String line;
             boolean skip = true;
 

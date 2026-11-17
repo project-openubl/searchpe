@@ -19,9 +19,17 @@ package io.github.project.openubl.searchpe.utils;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteEntity;
 import io.github.project.openubl.searchpe.models.jpa.entity.ContribuyenteId;
 
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 public class DataHelper {
+
+    /**
+     * Encoding of SUNAT's padrón reducido file. The import also uses it for its intermediate CSV chunks, so whoever
+     * writes or reads those chunks must use it too.
+     */
+    public static final Charset PADRON_CHARSET = StandardCharsets.ISO_8859_1;
 
     public static String[] readLine(String line, int size) {
         String[] result = new String[size];
