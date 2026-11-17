@@ -1,7 +1,7 @@
 name: Auto-merge Dependabot PRs
 
 # Approves Dependabot PRs and enables auto-merge; the merge happens only once the required
-# checks on main (JVM Tests, Native Tests, UI Tests, UI E2E Tests) pass.
+# checks on main (JVM Tests, Native Tests, UI Tests, Operator Tests, UI E2E Tests) pass.
 # See project-openubl/release-tools README.
 on:
   pull_request_target:

@@ -35,6 +35,27 @@ updates:
       maven:
         update-types: ["minor", "patch"]
 
+  # Maintain dependencies for operator/go.mod
+  - package-ecosystem: "gomod"
+    directory: "/operator"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      # The Kubernetes libraries and controller-runtime are released together and must move together
+      kubernetes:
+        patterns:
+          - "k8s.io/*"
+          - "sigs.k8s.io/*"
+        update-types: ["minor", "patch"]
+      gomod:
+        update-types: ["minor", "patch"]
+
   # Maintain dependencies from package.json
   - package-ecosystem: "npm"
     directory: "/application/src/main/webapp"

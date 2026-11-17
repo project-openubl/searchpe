@@ -1,0 +1,296 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.23.0
+  name: searchpes.searchpe.openubl.io
+spec:
+  group: searchpe.openubl.io
+  names:
+    kind: Searchpe
+    listKind: SearchpeList
+    plural: searchpes
+    singular: searchpe
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Searchpe is a deployment of the Searchpe server.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: SearchpeSpec is the desired state of a Searchpe deployment.
+            properties:
+              additionalOptions:
+                description: |-
+                  Configuration of the server.
+                  expressed as a keys and values that can be either direct values or references to secrets.
+                items:
+                  description: ValueOrSecret is a server option set either to a value
+                    or to the key of a secret.
+                  properties:
+                    name:
+                      type: string
+                    secret:
+                      description: SecretKeySelector selects a key of a Secret.
+                      properties:
+                        key:
+                          description: The key of the secret to select from.  Must
+                            be a valid secret key.
+                          type: string
+                        name:
+                          default: ""
+                          description: |-
+                            Name of the referent.
+                            This field is effectively required, but due to backwards compatibility is
+                            allowed to be empty. Instances of this type with an empty value here are
+                            almost certainly wrong.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          type: string
+                        optional:
+                          description: Specify whether the Secret or its key must
+                            be defined
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    value:
+                      type: string
+                  type: object
+                type: array
+              basicAuth:
+                description: In this section you can configure Basic Auth settings.
+                properties:
+                  enabled:
+                    description: Enable Basic Auth.
+                    type: boolean
+                  sessionEncryptionKeySecret:
+                    description: The encryption key that is used to store persistent
+                      logins (e.g. for form auth). Logins are stored in a persistent
+                      cookie that is encrypted with AES-256 using a key derived from
+                      a SHA-256 hash of the key that is provided here.
+                    properties:
+                      key:
+                        description: The key of the secret to select from.  Must be
+                          a valid secret key.
+                        type: string
+                      name:
+                        default: ""
+                        description: |-
+                          Name of the referent.
+                          This field is effectively required, but due to backwards compatibility is
+                          allowed to be empty. Instances of this type with an empty value here are
+                          almost certainly wrong.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        type: string
+                      optional:
+                        description: Specify whether the Secret or its key must be
+                          defined
+                        type: boolean
+                    required:
+                    - key
+                    type: object
+                    x-kubernetes-map-type: atomic
+                type: object
+              db:
+                description: In this section you can find all properties related to
+                  connect to a database.
+                properties:
+                  passwordSecret:
+                    description: The reference to a secret holding the password of
+                      the database user.
+                    properties:
+                      key:
+                        description: The key of the secret to select from.  Must be
+                          a valid secret key.
+                        type: string
+                      name:
+                        default: ""
+                        description: |-
+                          Name of the referent.
+                          This field is effectively required, but due to backwards compatibility is
+                          allowed to be empty. Instances of this type with an empty value here are
+                          almost certainly wrong.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        type: string
+                      optional:
+                        description: Specify whether the Secret or its key must be
+                          defined
+                        type: boolean
+                    required:
+                    - key
+                    type: object
+                    x-kubernetes-map-type: atomic
+                  url:
+                    description: The full database JDBC URL. For instance, 'jdbc:postgresql://localhost/searchpe'.
+                    type: string
+                  usernameSecret:
+                    description: The reference to a secret holding the username of
+                      the database user.
+                    properties:
+                      key:
+                        description: The key of the secret to select from.  Must be
+                          a valid secret key.
+                        type: string
+                      name:
+                        default: ""
+                        description: |-
+                          Name of the referent.
+                          This field is effectively required, but due to backwards compatibility is
+                          allowed to be empty. Instances of this type with an empty value here are
+                          almost certainly wrong.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        type: string
+                      optional:
+                        description: Specify whether the Secret or its key must be
+                          defined
+                        type: boolean
+                    required:
+                    - key
+                    type: object
+                    x-kubernetes-map-type: atomic
+                type: object
+              hostname:
+                description: In this section you can configure hostname and related
+                  properties.
+                properties:
+                  hostname:
+                    description: Hostname for the server.
+                    type: string
+                type: object
+              http:
+                description: In this section you can configure features related to
+                  HTTP and HTTPS
+                properties:
+                  tlsSecret:
+                    description: 'A secret containing the TLS configuration for HTTPS.
+                      Reference: https://kubernetes.io/docs/concepts/configuration/secret/#tls-secrets.'
+                    type: string
+                type: object
+              image:
+                description: Custom image to be used.
+                type: string
+              imagePullSecrets:
+                description: Secret(s) that might be used when pulling an image from
+                  a private container image registry or repository.
+                items:
+                  description: |-
+                    LocalObjectReference contains enough information to let you locate the
+                    referenced object inside the same namespace.
+                  properties:
+                    name:
+                      default: ""
+                      description: |-
+                        Name of the referent.
+                        This field is effectively required, but due to backwards compatibility is
+                        allowed to be empty. Instances of this type with an empty value here are
+                        almost certainly wrong.
+                        More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                      type: string
+                  type: object
+                  x-kubernetes-map-type: atomic
+                type: array
+              ingress:
+                description: |-
+                  The deployment is, by default, exposed through a basic ingress.
+                  You can change this behaviour by setting the enabled property to false.
+                properties:
+                  enabled:
+                    default: true
+                    type: boolean
+                type: object
+              instances:
+                default: 1
+                description: Number of instances. Default is 1.
+                format: int32
+                type: integer
+              oidc:
+                description: In this section you can configure Oidc settings.
+                properties:
+                  clientId:
+                    description: Oidc client id.
+                    type: string
+                  credentialsSecret:
+                    description: The reference to a secret holding the Oidc client
+                      secret.
+                    properties:
+                      key:
+                        description: The key of the secret to select from.  Must be
+                          a valid secret key.
+                        type: string
+                      name:
+                        default: ""
+                        description: |-
+                          Name of the referent.
+                          This field is effectively required, but due to backwards compatibility is
+                          allowed to be empty. Instances of this type with an empty value here are
+                          almost certainly wrong.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        type: string
+                      optional:
+                        description: Specify whether the Secret or its key must be
+                          defined
+                        type: boolean
+                    required:
+                    - key
+                    type: object
+                    x-kubernetes-map-type: atomic
+                  enabled:
+                    description: Enable Oidc Auth.
+                    type: boolean
+                  serverUrl:
+                    description: Oidc server url.
+                    type: string
+                type: object
+              sunat:
+                description: In this section you can configure SUNAT settings.
+                properties:
+                  padronReducidoCron:
+                    description: Cron for downloading the Padron Reducido.
+                    type: string
+                  padronReducidoUrl:
+                    description: Padron Reducido Url.
+                    type: string
+                type: object
+            type: object
+          status:
+            description: SearchpeStatus is the observed state of a Searchpe deployment.
+            properties:
+              conditions:
+                items:
+                  description: SearchpeStatusCondition is a condition of a Searchpe
+                    deployment.
+                  properties:
+                    message:
+                      type: string
+                    status:
+                      type: boolean
+                    type:
+                      type: string
+                  type: object
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
