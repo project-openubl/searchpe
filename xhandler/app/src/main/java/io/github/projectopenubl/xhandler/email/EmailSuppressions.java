@@ -18,6 +18,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 
 /**
  * Addresses a tenant no longer emails (DESIGN.md §26.5): hard bounces and complaints, recorded by
@@ -50,6 +51,7 @@ public class EmailSuppressions {
                 io.github.projectopenubl.xhandler.status.StatusResource.toInstant(r[2]))).toList();
     }
 
+    @APIResponse(responseCode = "204", description = "Dirección quitada de la lista de supresión.")
     @Operation(operationId = "removeEmailSuppression")
     @DELETE
     @Path("/{address}")

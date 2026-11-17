@@ -3,6 +3,7 @@ package io.github.projectopenubl.xhandler.privacy;
 import static io.github.projectopenubl.xhandler.Api.as;
 import static io.restassured.RestAssured.given;
 import static org.awaitility.Awaitility.await;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -71,7 +72,9 @@ class DataProtectionTest {
         as("olga").body(Map.of("kind", "user", "subject", sub, "role", "admin")).put("/api/admin/v1/partners/" + partner + "/members")
                 .then().statusCode(200);
         return UUID.fromString(as("alice").body(Map.of("name", name, "owner_kind", "user", "owner_subject", sub))
-                .post("/api/v1/partners/" + partner + "/tenants").then().statusCode(201).extract().path("id"));
+                .post("/api/v1/partners/" + partner + "/tenants").then().statusCode(201)
+                .body("keySet()", containsInAnyOrder("id", "name", "partner_id")).body("partner_id", equalTo(partner))
+                .extract().path("id"));
     }
 
     static String subject(String user) {
@@ -144,7 +147,9 @@ class DataProtectionTest {
         docs.update(tenant, pending, d -> d.status = "accepted");
         // and needs a fresh export (one an hour) and the name typed
         as("alice").body(Map.of("confirm_name", name)).post(base + "/exit").then().statusCode(409).body("kind", equalTo("export_required"));
-        String export = as("alice").post(base + "/exports").then().statusCode(202).extract().path("id");
+        String export = as("alice").post(base + "/exports").then().statusCode(202)
+                .body("keySet()", containsInAnyOrder("id", "status", "parts", "documents", "detail", "created_at", "done_at"))
+                .extract().path("id");
         as("alice").post(base + "/exports").then().statusCode(409).body("kind", equalTo("export_recent"));
         await().atMost(Duration.ofSeconds(30)).until(() -> "done".equals(
                 as("alice").get(base + "/exports").then().extract().path("find { it.id == '" + export + "' }.status")));

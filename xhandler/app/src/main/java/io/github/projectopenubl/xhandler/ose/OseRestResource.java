@@ -11,9 +11,11 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.core.Response;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 
 /**
  * The OSE's REST channel (DESIGN.md §5, §11.4): the same check as {@code sendBill}, with the OSE
@@ -25,6 +27,9 @@ public class OseRestResource {
 
     public record Submission(@NotBlank String fileName, @NotBlank String contentBase64) {}
 
+    /** The CDR-OSE: {@code result} is always {@code cdr} (an inconsistency is a 422). */
+    public record CdrResult(String result, String name, String cdrZipBase64) {}
+
     private final OseClients clients;
     private final OseIntake intake;
 
@@ -33,6 +38,8 @@ public class OseRestResource {
         this.intake = intake;
     }
 
+    @APIResponse(responseCode = "200", description = "El CDR-OSE del comprobante.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CdrResult.class)))
     @Operation(operationId = "submitOseDocument")
     @POST
     public Response submit(@HeaderParam("Authorization") String authorization, @Valid Submission submission) {
@@ -45,11 +52,7 @@ public class OseRestResource {
         }
         try {
             OseIntake.Cdr cdr = intake.sendBill(client, "rest", submission.fileName(), zip);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("result", "cdr");
-            body.put("name", cdr.name());
-            body.put("cdr_zip_base64", Base64.getEncoder().encodeToString(cdr.zip()));
-            return Response.ok(body).build();
+            return Response.ok(new CdrResult("cdr", cdr.name(), Base64.getEncoder().encodeToString(cdr.zip()))).build();
         } catch (OseIntake.Fault e) {
             throw inconsistency(e.code, e.getMessage());
         } catch (ZipGuard.Refused e) {
@@ -57,6 +60,9 @@ public class OseRestResource {
         }
     }
 
+    @APIResponse(responseCode = "200", description = "El CDR-OSE (ZIP).", content = {
+            @Content(mediaType = "application/zip", schema = @Schema(type = SchemaType.STRING, format = "binary"))
+    })
     @Operation(operationId = "getOseCdr")
     @GET
     @Path("/{ruc}-{tipo}-{serie}-{numero}/cdr")

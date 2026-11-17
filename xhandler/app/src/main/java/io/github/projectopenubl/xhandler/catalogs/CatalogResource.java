@@ -28,6 +28,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 
 /**
  * Optional catalogs of a company (DESIGN.md §17): customers, products, vehicles, drivers and
@@ -105,6 +108,8 @@ public class CatalogResource {
         return entry;
     }
 
+    @APIResponse(responseCode = "201", description = "Registro creado o actualizado.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Entry.class)))
     @Operation(operationId = "createCatalogEntry")
     @POST
     @Transactional
@@ -128,6 +133,7 @@ public class CatalogResource {
         return upsert(tenantId, companyId, kind, data, id);
     }
 
+    @APIResponse(responseCode = "204", description = "Registro eliminado.")
     @Operation(operationId = "deleteCatalogEntry")
     @DELETE
     @Path("/{id}")

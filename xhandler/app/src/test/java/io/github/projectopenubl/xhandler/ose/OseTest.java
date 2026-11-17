@@ -2,6 +2,7 @@ package io.github.projectopenubl.xhandler.ose;
 
 import static io.github.projectopenubl.xhandler.Api.as;
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -237,7 +238,8 @@ class OseTest {
         String name = ruc + "-01-F003-1";
         given().header("Authorization", basic).contentType("application/json")
                 .body(Map.of("file_name", name + ".zip", "content_base64", Base64.getEncoder().encodeToString(zip(Map.of(name + ".xml", xml("F003-1", true, ""))))))
-                .post("/api/v1/ose/documents").then().statusCode(200).body("result", equalTo("cdr"));
+                .post("/api/v1/ose/documents").then().statusCode(200).body("result", equalTo("cdr"))
+                .body("keySet()", containsInAnyOrder("result", "name", "cdr_zip_base64"));
         given().header("Authorization", basic).get("/api/v1/ose/documents/" + name + "/cdr").then().statusCode(200);
         given().header("Authorization", basic).contentType("application/json")
                 .body(Map.of("file_name", ruc + "-01-F003-2.zip", "content_base64", Base64.getEncoder().encodeToString(

@@ -18,6 +18,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 
 /**
  * Buyer access by capability link (DESIGN.md §3.3, §12): no login, rate limited at the gateway.
@@ -75,6 +79,11 @@ public class PublicDocumentResource {
                 doc.moneda, doc.total, status, available);
     }
 
+    @APIResponse(responseCode = "200", description = "El archivo: XML firmado, CDR (ZIP) o PDF.", content = {
+            @Content(mediaType = "application/xml", schema = @Schema(type = SchemaType.STRING, format = "binary")),
+            @Content(mediaType = "application/zip", schema = @Schema(type = SchemaType.STRING, format = "binary")),
+            @Content(mediaType = "application/pdf", schema = @Schema(type = SchemaType.STRING, format = "binary"))
+    })
     @Operation(operationId = "downloadPublicDocumentFile")
     @GET
     @Path("/{kind}")

@@ -4,6 +4,7 @@ import static io.github.projectopenubl.xhandler.Api.as;
 import static io.github.projectopenubl.xhandler.Api.tenantOf;
 import static io.restassured.RestAssured.given;
 import static org.awaitility.Awaitility.await;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
 
 import io.github.projectopenubl.xhandler.company.TestCompanies;
@@ -83,6 +84,7 @@ class AdapterTest {
     @Test
     void nubefact_clients_switch_by_changing_url_and_token() {
         String token = as("alice").body(Map.of("label", "ERP antiguo")).post(base + "/adapter-tokens/nubefact").then().statusCode(201)
+                .body("keySet()", containsInAnyOrder("id", "token", "url")).body("url", equalTo("/api/v1/public/nubefact/" + company))
                 .extract().path("token");
         String url = "/api/v1/public/nubefact/" + company;
         Map<String, Object> factura = Map.of("operacion", "generar_comprobante", "tipo_de_comprobante", 1, "serie", "F779",

@@ -22,6 +22,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 
 /** Issuing and tracking documents (DESIGN.md §11, §12). */
 @Path("/api/v1/tenants/{tenantId}")
@@ -54,6 +58,16 @@ public class DocumentResource {
 
     @POST
     @Path("/companies/{companyId}/documents")
+    @APIResponse(responseCode = "201", description = "Documento emitido (también la respuesta repetida de una Idempotency-Key ya usada, sin access_url).",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DocumentView.class)))
+    @APIResponse(responseCode = "402", description = "Sin cuota de documentos en el plan (quota_exceeded).",
+            content = @Content(mediaType = "application/json", schema = @Schema(ref = "ApiError")))
+    @APIResponse(responseCode = "409", description = "Conflicto: Idempotency-Key en proceso, número ya usado, empresa desactivada o no autorizada.",
+            content = @Content(mediaType = "application/json", schema = @Schema(ref = "ApiError")))
+    @APIResponse(responseCode = "422", description = "Documento o solicitud inválidos, o Idempotency-Key reutilizada con otra solicitud.",
+            content = @Content(mediaType = "application/json", schema = @Schema(ref = "ApiError")))
+    @APIResponse(responseCode = "503", description = "Servicio o serie ocupados (busy): reintente en unos segundos.",
+            content = @Content(mediaType = "application/json", schema = @Schema(ref = "ApiError")))
     @Operation(operationId = "emitDocument", summary = "Emite un documento: lo numera, valida y firma; SUNAT lo recibe después")
     public Response create(
             @PathParam("tenantId") UUID tenantId,
@@ -139,6 +153,12 @@ public class DocumentResource {
     @GET
     @Path("/documents/{documentId}/files/{kind}")
     @Transactional
+    @APIResponse(responseCode = "200", description = "El archivo: XML firmado, CDR (ZIP), PDF, o el JSON de entrada o enriquecido.", content = {
+            @Content(mediaType = "application/xml", schema = @Schema(type = SchemaType.STRING, format = "binary")),
+            @Content(mediaType = "application/zip", schema = @Schema(type = SchemaType.STRING, format = "binary")),
+            @Content(mediaType = "application/pdf", schema = @Schema(type = SchemaType.STRING, format = "binary")),
+            @Content(mediaType = "application/json", schema = @Schema(implementation = com.fasterxml.jackson.databind.JsonNode.class))
+    })
     @Operation(operationId = "downloadDocumentFile")
     public Response file(@PathParam("tenantId") UUID tenantId, @PathParam("documentId") UUID documentId,
             @PathParam("kind") String kind) {
@@ -190,6 +210,8 @@ public class DocumentResource {
      */
     @POST
     @Path("/documents/{documentId}/void")
+    @APIResponse(responseCode = "202", description = "Anulación enviada: el documento queda en voiding hasta la respuesta de SUNAT.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DocumentView.class)))
     @Operation(operationId = "voidDocument", summary = "Anula un documento aceptado y no entregado (RA, RC o RR)")
     public Response voidDocument(@PathParam("tenantId") UUID tenantId, @PathParam("documentId") UUID documentId,
             @HeaderParam("X-Correlation-Id") String correlationId, VoidingService.VoidRequest request) {
@@ -239,6 +261,7 @@ public class DocumentResource {
     @POST
     @Path("/documents/{documentId}/access-links/revoke")
     @Transactional
+    @APIResponse(responseCode = "204", description = "Enlaces revocados.")
     @Operation(operationId = "revokeDocumentAccessLinks")
     public Response revokeAccessLinks(@PathParam("tenantId") UUID tenantId, @PathParam("documentId") UUID documentId) {
         TenantScope scope = access.enter(tenantId, Role.OPERATOR);

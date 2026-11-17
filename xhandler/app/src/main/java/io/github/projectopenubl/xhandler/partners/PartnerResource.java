@@ -24,7 +24,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 
 /**
  * The partner API (DESIGN.md §1.2, §14): software vendors who resell the service create and manage
@@ -39,6 +41,8 @@ public class PartnerResource {
     @Schema(name = "CreatePartnerTenant")
     public record CreateTenant(@NotBlank @Size(max = 200) String name, @Pattern(regexp = "user|client") String ownerKind,
             @Size(max = 200) String ownerSubject) {}
+
+    public record PartnerTenant(UUID id, String name, UUID partnerId) {}
 
     public record TenantUsage(UUID id, String name, String status, String plan, long productionDocuments, long otherDocuments) {}
 
@@ -66,6 +70,8 @@ public class PartnerResource {
         return rows.stream().map(r -> new PartnerView((UUID) r[0], (String) r[1], (String) r[2])).toList();
     }
 
+    @APIResponse(responseCode = "201", description = "Cuenta creada para el socio.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = PartnerTenant.class)))
     @Operation(operationId = "createPartnerTenant")
     @POST
     @Path("/{partnerId}/tenants")
@@ -79,7 +85,7 @@ public class PartnerResource {
                 .setParameter("kind", request.ownerSubject() == null ? null : (request.ownerKind() == null ? "user" : request.ownerKind()))
                 .setParameter("subject", request.ownerSubject())
                 .getSingleResult();
-        return Response.status(201).entity(Map.of("id", id, "name", request.name().strip(), "partner_id", partnerId)).build();
+        return Response.status(201).entity(new PartnerTenant(id, request.name().strip(), partnerId)).build();
     }
 
     /** The partner's tenants with their documents in a month (default: this month, Lima). */

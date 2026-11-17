@@ -27,6 +27,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 
 /**
  * Registers of sales and purchases as files (DESIGN.md §11.9): CSV and Excel for people, PLE for
@@ -58,6 +62,8 @@ public class ReportResource {
         this.auditor = auditor;
     }
 
+    @APIResponse(responseCode = "202", description = "Reporte solicitado; lo genera un trabajo (job_id).",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ReportView.class)))
     @Operation(operationId = "createReport")
     @POST
     @Transactional
@@ -106,6 +112,12 @@ public class ReportResource {
         return view;
     }
 
+    @APIResponse(responseCode = "200", description = "El reporte: CSV, Excel, ZIP (SIRE) o texto (PLE).", content = {
+            @Content(mediaType = "text/csv", schema = @Schema(type = SchemaType.STRING, format = "binary")),
+            @Content(mediaType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", schema = @Schema(type = SchemaType.STRING, format = "binary")),
+            @Content(mediaType = "application/zip", schema = @Schema(type = SchemaType.STRING, format = "binary")),
+            @Content(mediaType = "text/plain", schema = @Schema(type = SchemaType.STRING, format = "binary"))
+    })
     @Operation(operationId = "downloadReportFile")
     @GET
     @Path("/{reportId}/file")

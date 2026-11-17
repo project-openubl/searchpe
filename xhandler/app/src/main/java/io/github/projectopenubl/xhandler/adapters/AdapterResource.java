@@ -30,6 +30,9 @@ import java.util.Base64;
 import java.util.Map;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 
 /** Inputs other than native JSON (DESIGN.md §5): UBL XML upload, SFS TXT, and tokens for the Nubefact-compatible API. */
 @Path("/api/v1/tenants/{tenantId}/companies/{companyId}")
@@ -38,6 +41,9 @@ public class AdapterResource {
     public record SfsRequest(@NotBlank String fileName, @NotBlank String cab, @NotBlank String det) {}
 
     public record TokenRequest(@NotBlank @Size(max = 100) String label) {}
+
+    /** A new adapter token: {@code token} is shown only here. */
+    public record NubefactToken(UUID id, String token, String url) {}
 
     private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -59,6 +65,8 @@ public class AdapterResource {
     }
 
     /** A UBL XML built elsewhere: validated, signed if unsigned, stored and sent. */
+    @APIResponse(responseCode = "201", description = "Documento recibido y emitido.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DocumentView.class)))
     @Operation(operationId = "uploadUblDocument")
     @POST
     @Path("/documents/ubl")
@@ -70,6 +78,16 @@ public class AdapterResource {
     }
 
     /** SUNAT SFS TXT files (.CAB/.NOT + .DET) converted to native JSON; the document keeps its number. */
+    @APIResponse(responseCode = "201", description = "Documento emitido (también la respuesta repetida de una Idempotency-Key ya usada, sin access_url).",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DocumentView.class)))
+    @APIResponse(responseCode = "402", description = "Sin cuota de documentos en el plan (quota_exceeded).",
+            content = @Content(mediaType = "application/json", schema = @Schema(ref = "ApiError")))
+    @APIResponse(responseCode = "409", description = "Conflicto: Idempotency-Key en proceso, número ya usado, empresa desactivada o no autorizada.",
+            content = @Content(mediaType = "application/json", schema = @Schema(ref = "ApiError")))
+    @APIResponse(responseCode = "422", description = "Documento o solicitud inválidos, o Idempotency-Key reutilizada con otra solicitud.",
+            content = @Content(mediaType = "application/json", schema = @Schema(ref = "ApiError")))
+    @APIResponse(responseCode = "503", description = "Servicio o serie ocupados (busy): reintente en unos segundos.",
+            content = @Content(mediaType = "application/json", schema = @Schema(ref = "ApiError")))
     @Operation(operationId = "emitSfsDocument")
     @POST
     @Path("/documents/sfs")
@@ -90,6 +108,8 @@ public class AdapterResource {
     }
 
     /** A token for the Nubefact-compatible API (shown once). */
+    @APIResponse(responseCode = "201", description = "Token creado; se muestra solo esta vez.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = NubefactToken.class)))
     @Operation(operationId = "createNubefactToken")
     @POST
     @Path("/adapter-tokens/nubefact")
@@ -107,7 +127,7 @@ public class AdapterResource {
                 .setParameter("id", id).setParameter("t", tenantId).setParameter("c", company.id).setParameter("h", hash(token))
                 .setParameter("l", request.label()).setParameter("by", scope.actor().auditName()).executeUpdate();
         auditor.record(scope, "adapter_token.created", "company", companyId, Map.of("kind", "nubefact", "label", request.label()));
-        return Response.status(201).entity(Map.of("id", id, "token", token, "url", "/api/v1/public/nubefact/" + company.id)).build();
+        return Response.status(201).entity(new NubefactToken(id, token, "/api/v1/public/nubefact/" + company.id)).build();
     }
 
     /** The company's adapter tokens (never the token itself). */
@@ -134,6 +154,7 @@ public class AdapterResource {
         }).toList();
     }
 
+    @APIResponse(responseCode = "204", description = "Token revocado.")
     @Operation(operationId = "revokeAdapterToken")
     @DELETE
     @Path("/adapter-tokens/{tokenId}")

@@ -25,6 +25,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 
 /** Emailing documents to buyers (DESIGN.md §11.6): on request (202 + job), or when SUNAT accepts. */
 @Path("/api/v1/tenants/{tenantId}/documents/{documentId}/email")
@@ -52,6 +55,8 @@ public class DocumentEmailResource {
         this.em = em;
     }
 
+    @APIResponse(responseCode = "202", description = "Correo encolado: lo envía un trabajo.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Queued.class)))
     @Operation(operationId = "emailDocument")
     @POST
     @Transactional

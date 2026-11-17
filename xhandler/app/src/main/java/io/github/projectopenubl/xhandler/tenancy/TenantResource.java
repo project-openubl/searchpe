@@ -16,6 +16,9 @@ import jakarta.ws.rs.core.Response;
 import java.util.List;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 
 /** Tenants of the caller, and self-service signup (DESIGN.md §6, §26.8). */
 @Path("/api/v1/tenants")
@@ -58,6 +61,8 @@ public class TenantResource {
     }
 
     /** Self-service signup: a person creates a free tenant and becomes its owner. */
+    @APIResponse(responseCode = "201", description = "Cuenta creada.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TenantView.class)))
     @Operation(operationId = "createTenant")
     @POST
     @Transactional

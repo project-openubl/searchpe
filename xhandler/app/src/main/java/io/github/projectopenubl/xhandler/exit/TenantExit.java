@@ -40,6 +40,10 @@ import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.jboss.logging.Logger;
 
 /**
@@ -54,6 +58,10 @@ import org.jboss.logging.Logger;
 public class TenantExit {
 
     public record ExitRequest(@NotBlank String confirmName) {}
+
+    /** An export: {@code parts} lists the ZIPs to download (the index first), once {@code done}. */
+    public record ExportView(UUID id, String status, List<Map<String, Object>> parts, Integer documents, String detail, String createdAt,
+            String doneAt) {}
 
     static final Duration DELETE_AFTER = Duration.ofDays(730);
 
@@ -71,6 +79,8 @@ public class TenantExit {
         this.auditor = auditor;
     }
 
+    @APIResponse(responseCode = "202", description = "Exportación solicitada; la genera un trabajo.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ExportView.class)))
     @Operation(operationId = "createExport")
     @POST
     @Path("/exports")
@@ -95,7 +105,7 @@ public class TenantExit {
     @GET
     @Path("/exports")
     @Transactional
-    public List<Map<String, Object>> exports(@PathParam("tenantId") UUID tenantId) {
+    public List<ExportView> exports(@PathParam("tenantId") UUID tenantId) {
         access.enter(tenantId, Role.ADMIN);
         // An export whose job died (a crashed worker) is failed, not pending forever
         em.createNativeQuery("""
@@ -108,15 +118,16 @@ public class TenantExit {
         return ids.stream().map(this::view).toList();
     }
 
+    @APIResponse(responseCode = "200", description = "La parte de la exportación (ZIP).", content = {
+            @Content(mediaType = "application/zip", schema = @Schema(type = SchemaType.STRING, format = "binary"))
+    })
     @Operation(operationId = "downloadExportPart")
     @GET
     @Path("/exports/{exportId}/parts/{index}")
     @Transactional
     public Response part(@PathParam("tenantId") UUID tenantId, @PathParam("exportId") UUID exportId, @PathParam("index") int index) {
         TenantScope scope = access.enter(tenantId, Role.ADMIN);
-        Map<String, Object> view = view(exportId);
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> parts = (List<Map<String, Object>>) view.get("parts");
+        List<Map<String, Object>> parts = view(exportId).parts();
         if (index < 0 || index >= parts.size()) {
             throw ApiException.notFound();
         }
@@ -168,7 +179,7 @@ public class TenantExit {
         return answer;
     }
 
-    Map<String, Object> view(UUID id) {
+    ExportView view(UUID id) {
         @SuppressWarnings("unchecked")
         List<Object[]> rows = em.createNativeQuery("""
                         SELECT id, status, cast(parts AS text), documents, detail, created_at, done_at FROM xhandler.tenant_export WHERE id = :id""")
@@ -177,19 +188,14 @@ public class TenantExit {
             throw ApiException.notFound();
         }
         Object[] r = rows.get(0);
-        Map<String, Object> view = new LinkedHashMap<>();
-        view.put("id", r[0]);
-        view.put("status", r[1]);
+        List<Map<String, Object>> parts;
         try {
-            view.put("parts", new ObjectMapper().readValue((String) r[2], List.class));
+            parts = new ObjectMapper().readValue((String) r[2], new com.fasterxml.jackson.core.type.TypeReference<>() {});
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
             throw new IllegalStateException(e);
         }
-        view.put("documents", r[3]);
-        view.put("detail", r[4]);
-        view.put("created_at", String.valueOf(StatusResource.toInstant(r[5])));
-        view.put("done_at", r[6] == null ? null : String.valueOf(StatusResource.toInstant(r[6])));
-        return view;
+        return new ExportView((UUID) r[0], (String) r[1], parts, r[3] == null ? null : ((Number) r[3]).intValue(), (String) r[4],
+                String.valueOf(StatusResource.toInstant(r[5])), r[6] == null ? null : String.valueOf(StatusResource.toInstant(r[6])));
     }
 
     /**

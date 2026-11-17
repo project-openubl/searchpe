@@ -18,6 +18,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 
 /**
  * People and machine clients of a tenant. A machine client (an ERP using OAuth2 client
@@ -50,6 +53,8 @@ public class MemberResource {
         return members.stream().map(MemberResource::view).toList();
     }
 
+    @APIResponse(responseCode = "201", description = "Miembro agregado.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = MemberView.class)))
     @Operation(operationId = "addMember")
     @POST
     @Transactional

@@ -26,6 +26,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 
 /** Companies (RUCs) of a tenant and their series. */
 @Path("/api/v1/tenants/{tenantId}/companies")
@@ -67,6 +70,8 @@ public class CompanyResource {
         this.maxUnverifiedCompanies = maxUnverifiedCompanies;
     }
 
+    @APIResponse(responseCode = "201", description = "Empresa creada.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CompanyView.class)))
     @Operation(operationId = "createCompany")
     @POST
     @Transactional
@@ -130,6 +135,8 @@ public class CompanyResource {
         return series.stream().map(CompanyResource::view).toList();
     }
 
+    @APIResponse(responseCode = "201", description = "Serie creada.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SeriesView.class)))
     @Operation(operationId = "createSeries")
     @POST
     @Path("/{companyId}/series")

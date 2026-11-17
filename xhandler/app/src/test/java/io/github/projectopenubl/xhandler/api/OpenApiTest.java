@@ -93,6 +93,66 @@ class OpenApiTest {
         assertEquals(Set.of("items", "limit", "offset"), names(spec.at("/components/schemas/PageDocumentView/properties")));
     }
 
+    @Test
+    void raw_responses_document_their_real_status_and_body() {
+        // 201 with a body, and no default 200 left behind
+        JsonNode createTenant = operation("createTenant").get("responses");
+        assertEquals("#/components/schemas/TenantView", createTenant.at("/201/content/application~1json/schema/$ref").asText());
+        assertFalse(createTenant.has("200"), "createTenant: " + createTenant);
+        // An untyped Map replaced by a record, with the wire's snake_case names
+        assertEquals(Set.of("id", "name", "partner_id"), names(spec.at("/components/schemas/PartnerTenant/properties")));
+        // 202 plus the job's body
+        JsonNode createReport = operation("createReport").get("responses");
+        assertEquals("#/components/schemas/ReportView", createReport.at("/202/content/application~1json/schema/$ref").asText());
+        assertFalse(createReport.has("200"), "createReport: " + createReport);
+        // 204 without content
+        JsonNode deleteWebhook = operation("deleteWebhook").get("responses");
+        assertTrue(deleteWebhook.has("204"), "deleteWebhook: " + deleteWebhook);
+        assertNull(deleteWebhook.get("204").get("content"), "deleteWebhook: " + deleteWebhook);
+        assertFalse(deleteWebhook.has("200"), "deleteWebhook: " + deleteWebhook);
+        // A binary download with its real media types
+        JsonNode file = operation("downloadDocumentFile").at("/responses/200/content");
+        for (String type : List.of("application~1xml", "application~1zip", "application~1pdf")) {
+            assertEquals("string", file.at("/" + type + "/schema/type").asText(), type);
+            assertEquals("binary", file.at("/" + type + "/schema/format").asText(), type);
+        }
+        // Emit: every status it answers, each with its body; the filter's error responses stay
+        for (String id : List.of("emitDocument", "emitSfsDocument")) {
+            JsonNode responses = operation(id).get("responses");
+            assertEquals("#/components/schemas/DocumentView", responses.at("/201/content/application~1json/schema/$ref").asText(), id);
+            for (String code : List.of("402", "409", "422", "503", "4XX", "5XX")) {
+                assertEquals("#/components/schemas/ApiError", responses.at("/" + code + "/content/application~1json/schema/$ref").asText(),
+                        id + " " + code);
+            }
+            assertFalse(responses.has("200"), id + ": " + responses);
+        }
+    }
+
+    @Test
+    void api_responses_have_a_typed_body() {
+        List<String> untyped = new ArrayList<>();
+        for (Map.Entry<String, JsonNode> op : operations()) {
+            if (!op.getKey().contains(" /api/")) {
+                continue;
+            }
+            op.getValue().path("responses").properties().forEach(response -> response.getValue().path("content").properties()
+                    .forEach(media -> {
+                        if (media.getValue().path("schema").isEmpty()) {
+                            untyped.add(op.getKey() + " " + response.getKey() + " " + media.getKey());
+                        }
+                    }));
+        }
+        assertTrue(untyped.isEmpty(), "responses with schema {} (document them with @APIResponse): " + untyped);
+    }
+
+    private JsonNode operation(String operationId) {
+        return operations().stream()
+                .map(Map.Entry::getValue)
+                .filter(op -> operationId.equals(op.path("operationId").asText()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("no operation " + operationId));
+    }
+
     private static void collect(JsonNode node, String where, List<String> camel) {
         if (node.isObject()) {
             JsonNode properties = node.get("properties");

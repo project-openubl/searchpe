@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 
 /** In-app notifications and their preferences (DESIGN.md §26.6). */
 @Path("/api/v1/tenants/{tenantId}")
@@ -63,6 +64,7 @@ public class NotificationResource {
                 StatusResource.toInstant(r[5]), StatusResource.toInstant(r[6]))).toList(), size, from);
     }
 
+    @APIResponse(responseCode = "204", description = "Notificación marcada como leída.")
     @Operation(operationId = "markNotificationRead")
     @POST
     @Path("/notifications/{id}/read")
@@ -77,6 +79,7 @@ public class NotificationResource {
         return Response.noContent().build();
     }
 
+    @APIResponse(responseCode = "204", description = "Notificaciones marcadas como leídas.")
     @Operation(operationId = "markAllNotificationsRead")
     @POST
     @Path("/notifications/read-all")

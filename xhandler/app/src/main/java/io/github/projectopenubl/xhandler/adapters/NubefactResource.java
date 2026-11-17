@@ -19,6 +19,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 
 /**
  * Nubefact-compatible API (DESIGN.md §5): {@code POST /api/v1/public/nubefact/{company}} with
@@ -47,6 +50,8 @@ public class NubefactResource {
 
     record Client(UUID tenantId, UUID companyId, String sunatEnv, UUID tokenId, String label) {}
 
+    @APIResponse(responseCode = "200", description = "Respuesta con el formato de Nubefact (objeto libre).",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = JsonNode.class)))
     @Operation(operationId = "callNubefact")
     @POST
     public Response call(@PathParam("companyId") UUID companyId, @HeaderParam("Authorization") String authorization, JsonNode request) {

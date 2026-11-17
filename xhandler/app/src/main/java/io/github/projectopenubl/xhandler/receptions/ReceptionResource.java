@@ -33,6 +33,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 
@@ -67,6 +71,8 @@ public class ReceptionResource {
         this.validity = validity;
     }
 
+    @APIResponse(responseCode = "201", description = "Comprobante recibido.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ReceptionView.class)))
     @Operation(operationId = "receiveDocument")
     @POST
     public Response receive(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId, @RestForm("xml") FileUpload xml,
@@ -155,6 +161,11 @@ public class ReceptionResource {
         return new Page<>(ids.stream().map(this::find).toList(), size, start);
     }
 
+    @APIResponse(responseCode = "200", description = "El archivo: XML, PDF o CDR (ZIP).", content = {
+            @Content(mediaType = "application/xml", schema = @Schema(type = SchemaType.STRING, format = "binary")),
+            @Content(mediaType = "application/pdf", schema = @Schema(type = SchemaType.STRING, format = "binary")),
+            @Content(mediaType = "application/zip", schema = @Schema(type = SchemaType.STRING, format = "binary"))
+    })
     @Operation(operationId = "downloadReceptionFile")
     @GET
     @Path("/{receptionId}/files/{kind}")

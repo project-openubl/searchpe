@@ -22,6 +22,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 
 /**
  * Factura negociable conformity (DESIGN.md §11.8): per document, per company, and an export for
@@ -80,6 +84,9 @@ public class ConformityResource {
     }
 
     /** For factoring: facturas negociables and their conformity, as CSV. */
+    @APIResponse(responseCode = "200", description = "Facturas negociables y su conformidad (CSV).", content = {
+            @Content(mediaType = "text/csv", schema = @Schema(type = SchemaType.STRING, format = "binary"))
+    })
     @Operation(operationId = "exportConformity")
     @GET
     @Path("/companies/{companyId}/conformity/export")

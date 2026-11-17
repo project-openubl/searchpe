@@ -4,6 +4,7 @@ import static io.github.projectopenubl.xhandler.Api.as;
 import static io.github.projectopenubl.xhandler.Api.createCompany;
 import static io.github.projectopenubl.xhandler.Api.randomRuc;
 import static io.github.projectopenubl.xhandler.Api.tenantOf;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 
@@ -27,7 +28,7 @@ class SupportTest {
         as("carol").get(companies).then().statusCode(404);
 
         String session = as("carol").body(Map.of("tenant_id", tenant, "reason", "Ticket #123: error al emitir"))
-                .post("/api/v1/support/sessions").then().statusCode(201).extract().path("id");
+                .post("/api/v1/support/sessions").then().statusCode(201).body("keySet()", containsInAnyOrder("id")).extract().path("id");
         as("carol").get(companies).then().statusCode(404); // not approved yet
 
         as("alice").post("/api/v1/tenants/" + tenant + "/support-sessions/" + session + "/approve")

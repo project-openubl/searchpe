@@ -837,6 +837,7 @@ One row generator feeds CSV, Excel, SIRE and legacy PLE. Reports run as jobs (`2
   - every operation names its `operationId` (`@Operation`, `verbNoun`: `listDocuments`); duplicates fail the build;
   - property names are snake_case, as on the wire (SmallRye's naming strategy is Jackson's `SnakeCaseStrategy`);
   - `ApiError` (`{ kind, message, detail }`) is a schema, referenced by the `4XX`/`5XX` responses of every `/api/` operation (`OpenApiDocumentFilter`); an OIDC `401` has no body;
+  - an operation that returns a raw `Response` documents its real statuses and bodies with `@APIResponse` (`201`/`202` with the body's record, `204` without content, downloads as `string`/`binary` under their media types); bodies are records, not untyped maps;
   - operations require the `bearer` scheme except the public paths (`/api/v1/status`, `/api/v1/public/**`, `/api/v1/ose/**`, and the SOAP endpoints outside `/api/`);
   - lists answer `Page` (`items`, `limit`, `offset`; `?limit=&offset=`). There is no total count (it would cost as much as the page on large tenants): a page shorter than `limit` is the last.
 - `201` for emit; `202` + job link for long operations; `409` for guard violations; `422` with SUNAT codes for invalid documents.

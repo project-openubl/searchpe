@@ -26,6 +26,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 
 /**
  * SIRE per company, register ({@code rvie} sales, {@code rce} purchases) and period (DESIGN.md
@@ -72,6 +76,8 @@ public class SireResource {
     }
 
     /** Asks SUNAT for its proposal (again, to start over after an error or a change). */
+    @APIResponse(responseCode = "202", description = "Propuesta solicitada a SUNAT; la trae un trabajo.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SirePeriodView.class)))
     @Operation(operationId = "requestSireProposal")
     @POST
     @Path("/proposal")
@@ -121,6 +127,8 @@ public class SireResource {
     }
 
     /** Submits the stored rows as the replacement of SUNAT's proposal. */
+    @APIResponse(responseCode = "202", description = "Reemplazo enviado a SUNAT; lo sigue un trabajo.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SirePeriodView.class)))
     @Operation(operationId = "replaceSireProposal")
     @POST
     @Path("/replace")
@@ -187,6 +195,9 @@ public class SireResource {
     }
 
     /** SUNAT's proposal ({@code proposal}) or the submitted replacement ({@code replacement}), as SUNAT's ZIP. */
+    @APIResponse(responseCode = "200", description = "El archivo de SUNAT (ZIP).", content = {
+            @Content(mediaType = "application/zip", schema = @Schema(type = SchemaType.STRING, format = "binary"))
+    })
     @Operation(operationId = "downloadSireFile")
     @GET
     @Path("/files/{kind}")

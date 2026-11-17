@@ -12,15 +12,19 @@ import jakarta.validation.constraints.Size;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.core.Response;
-import java.util.Map;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 
 /** Support access, operator side: a platform operator asks a tenant for a session (DESIGN.md §26.1). */
 @Path("/api/v1/support/sessions")
 public class SupportRequestResource {
 
     public record RequestSession(@NotNull UUID tenantId, @NotBlank @Size(max = 500) String reason) {}
+
+    public record SessionRequested(UUID id) {}
 
     private final EntityManager em;
     private final CurrentActor currentActor;
@@ -30,6 +34,8 @@ public class SupportRequestResource {
         this.currentActor = currentActor;
     }
 
+    @APIResponse(responseCode = "201", description = "Sesión de soporte solicitada.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SessionRequested.class)))
     @Operation(operationId = "requestSupportSession")
     @POST
     @Transactional
@@ -46,6 +52,6 @@ public class SupportRequestResource {
         if (id == null) {
             throw ApiException.notFound();
         }
-        return Response.status(201).entity(Map.of("id", id)).build();
+        return Response.status(201).entity(new SessionRequested((UUID) id)).build();
     }
 }

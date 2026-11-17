@@ -28,6 +28,9 @@ import java.util.UUID;
 import javax.naming.directory.Attribute;
 import javax.naming.directory.InitialDirContext;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 
 /**
  * A tenant's own sender domain (DESIGN.md §26.5): proven with a DNS TXT record
@@ -54,6 +57,8 @@ public class SenderDomainResource {
         this.auditor = auditor;
     }
 
+    @APIResponse(responseCode = "201", description = "Dominio agregado (o el existente).",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DomainView.class)))
     @Operation(operationId = "addSenderDomain")
     @POST
     @Transactional

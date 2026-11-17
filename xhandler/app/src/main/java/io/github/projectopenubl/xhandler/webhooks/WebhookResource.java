@@ -28,6 +28,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 
 /**
  * Webhook subscriptions, delivery logs, redelivery and test events (DESIGN.md §12, §26.2). The
@@ -62,6 +65,8 @@ public class WebhookResource {
         this.auditor = auditor;
     }
 
+    @APIResponse(responseCode = "201", description = "Webhook creado; el secreto se muestra solo esta vez.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = WebhookView.class)))
     @Operation(operationId = "createWebhook")
     @POST
     @Transactional
@@ -101,6 +106,7 @@ public class WebhookResource {
         return subscriptions.stream().map(s -> view(s, null)).toList();
     }
 
+    @APIResponse(responseCode = "204", description = "Webhook eliminado.")
     @Operation(operationId = "deleteWebhook")
     @DELETE
     @Path("/{webhookId}")
