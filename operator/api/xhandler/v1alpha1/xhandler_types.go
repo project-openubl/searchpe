@@ -76,6 +76,11 @@ type XHandlerSpec struct {
 	// +optional
 	OSE *OSESpec `json:"ose,omitempty"`
 
+	// The CAPTCHA of the public validity lookup: the UI's widget and the app's verification.
+	// Without it the lookup refuses every request (there is no test mode in production).
+	// +optional
+	Captcha *CaptchaSpec `json:"captcha,omitempty"`
+
 	// Public URL of the API, for the buyers' links. Derived from the hostname when it is set.
 	// +optional
 	PublicURL string `json:"publicUrl,omitempty"`
@@ -247,6 +252,24 @@ type StorageSpec struct {
 	// The reference to a secret holding the secret key.
 	// +optional
 	SecretKeySecret *corev1.SecretKeySelector `json:"secretKeySecret,omitempty"`
+}
+
+// CaptchaSpec configures the CAPTCHA of the public validity lookup.
+type CaptchaSpec struct {
+	// hcaptcha or turnstile (Cloudflare). Default is hcaptcha.
+	// +kubebuilder:validation:Enum=hcaptcha;turnstile
+	// +kubebuilder:default=hcaptcha
+	// +optional
+	Provider string `json:"provider,omitempty"`
+
+	// The provider's public site key, for the UI's widget.
+	// +kubebuilder:validation:MinLength=1
+	// +required
+	SiteKey string `json:"siteKey"`
+
+	// The reference to a secret holding the provider's secret key, for the app's verification.
+	// +required
+	SecretKeySecret *corev1.SecretKeySelector `json:"secretKeySecret"`
 }
 
 // OSESpec configures the OSE role.

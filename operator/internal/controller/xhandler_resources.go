@@ -249,6 +249,21 @@ func xhEgressProxyAddress(cr *xhandlerv1alpha1.XHandler) string {
 	return fmt.Sprintf("%s:%d", xhEgressProxyName(cr), egressProxyPort)
 }
 
+func captchaProvider(captcha *xhandlerv1alpha1.CaptchaSpec) string {
+	if captcha.Provider == "" {
+		return "hcaptcha"
+	}
+	return captcha.Provider
+}
+
+// captchaVerifyURL is where the app checks a CAPTCHA token with the provider's secret.
+func captchaVerifyURL(captcha *xhandlerv1alpha1.CaptchaSpec) string {
+	if captchaProvider(captcha) == "turnstile" {
+		return "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+	}
+	return "https://api.hcaptcha.com/siteverify"
+}
+
 // xhAPIURL is the URL of the api Service of cr, in the cluster.
 func xhAPIURL(cr *xhandlerv1alpha1.XHandler) string {
 	return fmt.Sprintf("http://%s:%d", xhAPIName(cr), xhAppPort)
@@ -435,6 +450,11 @@ func appConfig(cr *xhandlerv1alpha1.XHandler, component string) (*serverConfig, 
 		c.secret("QUARKUS_OIDC_CREDENTIALS_SECRET", oidc.CredentialsSecret)
 	}
 
+	if captcha := cr.Spec.Captcha; captcha != nil {
+		c.value("XHANDLER_CAPTCHA_VERIFY_URL", captchaVerifyURL(captcha))
+		c.secret("XHANDLER_CAPTCHA_SECRET", captcha.SecretKeySecret)
+	}
+
 	if vault := cr.Spec.Vault; vault != nil {
 		c.value("XHANDLER_VAULT_PKCS11_LIBRARY", vault.PKCS11Library)
 		c.secret("XHANDLER_VAULT_PKCS11_PIN", vault.PKCS11PinSecret)
@@ -594,6 +614,10 @@ func uiDeployment(cr *xhandlerv1alpha1.XHandler, image string, pullPolicy corev1
 		c.value("OIDC_SERVER_URL", oidc.ServerURL)
 	}
 	c.value("OIDC_CLIENT_ID", uiOIDCClientID(cr))
+	if captcha := cr.Spec.Captcha; captcha != nil {
+		c.value("CAPTCHA_PROVIDER", captchaProvider(captcha))
+		c.value("CAPTCHA_SITE_KEY", captcha.SiteKey)
+	}
 	if cr.Spec.UI != nil && cr.Spec.UI.LibroReclamacionesURL != "" {
 		c.value("LIBRO_RECLAMACIONES_URL", cr.Spec.UI.LibroReclamacionesURL)
 	}

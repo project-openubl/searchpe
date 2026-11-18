@@ -107,6 +107,51 @@ spec:
                     minimum: 0
                     type: integer
                 type: object
+              captcha:
+                description: |-
+                  The CAPTCHA of the public validity lookup: the UI's widget and the app's verification.
+                  Without it the lookup refuses every request (there is no test mode in production).
+                properties:
+                  provider:
+                    default: hcaptcha
+                    description: hcaptcha or turnstile (Cloudflare). Default is hcaptcha.
+                    enum:
+                    - hcaptcha
+                    - turnstile
+                    type: string
+                  secretKeySecret:
+                    description: The reference to a secret holding the provider's
+                      secret key, for the app's verification.
+                    properties:
+                      key:
+                        description: The key of the secret to select from.  Must be
+                          a valid secret key.
+                        type: string
+                      name:
+                        default: ""
+                        description: |-
+                          Name of the referent.
+                          This field is effectively required, but due to backwards compatibility is
+                          allowed to be empty. Instances of this type with an empty value here are
+                          almost certainly wrong.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        type: string
+                      optional:
+                        description: Specify whether the Secret or its key must be
+                          defined
+                        type: boolean
+                    required:
+                    - key
+                    type: object
+                    x-kubernetes-map-type: atomic
+                  siteKey:
+                    description: The provider's public site key, for the UI's widget.
+                    minLength: 1
+                    type: string
+                required:
+                - secretKeySecret
+                - siteKey
+                type: object
               db:
                 description: In this section you can find all properties related to
                   connect to a database.

@@ -876,6 +876,11 @@ func TestXHandlerUISearchpe(t *testing.T) {
 	ctx := t.Context()
 	cr := newXHandler(t, xhandlerv1alpha1.XHandlerSpec{
 		OIDC: &xhandlerv1alpha1.OIDCSpec{ServerURL: testOIDCServer, ClientID: "xhandler-service"},
+		Captcha: &xhandlerv1alpha1.CaptchaSpec{
+			Provider:        "turnstile",
+			SiteKey:         "site-key",
+			SecretKeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "captcha"}, Key: "secret"},
+		},
 		UI: &xhandlerv1alpha1.UISpec{
 			SearchpeRef:           "searchpe",
 			Instances:             ptr.To[int32](1),
@@ -913,6 +918,8 @@ func TestXHandlerUISearchpe(t *testing.T) {
 		"OIDC_CLIENT_ID":          "xhandler-ui",
 		"NODE_EXTRA_CA_CERTS":     "/etc/xhandler-ui/ca/ca.crt",
 		"LIBRO_RECLAMACIONES_URL": "https://example.com/libro",
+		"CAPTCHA_PROVIDER":        "turnstile",
+		"CAPTCHA_SITE_KEY":        "site-key",
 	})
 	if container.ReadinessProbe.HTTPGet == nil || container.ReadinessProbe.HTTPGet.Path != "/healthz" ||
 		container.LivenessProbe.HTTPGet == nil || container.LivenessProbe.HTTPGet.Path != "/healthz" {
@@ -923,6 +930,17 @@ func TestXHandlerUISearchpe(t *testing.T) {
 			v.ConfigMap.Items[0].Key == "service-ca.crt" && v.ConfigMap.Items[0].Path == "ca.crt"
 	}) {
 		t.Errorf("UI volumes %+v, want the CA bundle", ui.Spec.Template.Spec.Volumes)
+	}
+	api := &appsv1.Deployment{}
+	get(ctx, t, cr.Namespace, "xh-api", api)
+	assertEnv(t, api.Spec.Template.Spec.Containers[0], map[string]string{
+		"XHANDLER_CAPTCHA_VERIFY_URL": "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+	})
+	if !slices.ContainsFunc(api.Spec.Template.Spec.Containers[0].Env, func(e corev1.EnvVar) bool {
+		return e.Name == "XHANDLER_CAPTCHA_SECRET" && e.ValueFrom != nil && e.ValueFrom.SecretKeyRef != nil &&
+			e.ValueFrom.SecretKeyRef.Name == "captcha"
+	}) {
+		t.Errorf("api env %+v, want XHANDLER_CAPTCHA_SECRET from the secret", api.Spec.Template.Spec.Containers[0].Env)
 	}
 
 	if err := k8sClient.Delete(ctx, searchpe); err != nil {
