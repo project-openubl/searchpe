@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.util.List;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 /**
  * Platform status (DESIGN.md §15), like Pulp's: versions, online workers per role, database,
@@ -27,6 +28,23 @@ public class StatusResource {
 
     public record Queue(int priorityClass, long waiting, long unblocked, long running, Instant oldestUnblocked) {}
 
+    /** One SUNAT web service of an environment, as its circuit breaker sees it (DESIGN.md §24). */
+    public record SunatEndpoint(
+            @Schema(description = "Servicio de SUNAT: invoice (comprobantes y resúmenes), despatch (guías) o perception (percepciones y retenciones).") String service,
+            @Schema(description = "closed (responde), open (caído: no se le envía) o half_open (probando si volvió).") String breakerState,
+            @Schema(description = "Hasta cuándo queda abierto el disyuntor; luego se prueba de nuevo.") Instant breakerUntil,
+            @Schema(description = "Pausado por la plataforma: no se le envía.") boolean paused) {}
+
+    /**
+     * SUNAT availability per environment, from the breakers of its services. {@code available}: every
+     * service seen so far answers (breaker closed, not paused); an environment nothing was sent to
+     * yet has no services and counts as available.
+     */
+    public record SunatEnvironment(
+            @Schema(description = "production, beta o fake.") String environment,
+            boolean available,
+            List<SunatEndpoint> endpoints) {}
+
     public record Status(
             Versions versions,
             List<Workers> workers,
@@ -34,7 +52,10 @@ public class StatusResource {
             boolean storage,
             boolean keyVault,
             boolean engine,
-            List<Queue> queues) {}
+            List<Queue> queues,
+            List<SunatEnvironment> sunat) {}
+
+    static final List<String> ENVIRONMENTS = List.of("production", "beta", "fake");
 
     private final EntityManager em;
     private final Engine engine;
@@ -87,7 +108,24 @@ public class StatusResource {
                 vaultOk,
                 info != null,
                 queues.stream().map(q -> new Queue(((Number) q[0]).intValue(), ((Number) q[1]).longValue(), ((Number) q[2]).longValue(),
-                        ((Number) q[3]).longValue(), toInstant(q[4]))).toList());
+                        ((Number) q[3]).longValue(), toInstant(q[4]))).toList(),
+                sunat());
+    }
+
+    /** SUNAT's endpoints only: a third-party OSE ({@code ose:…}) is no platform-wide status. */
+    private List<SunatEnvironment> sunat() {
+        @SuppressWarnings("unchecked")
+        List<Object[]> rows = em.createNativeQuery("""
+                        SELECT id, breaker_state, breaker_until, paused FROM xhandler.sunat_endpoint WHERE id NOT LIKE 'ose:%' ORDER BY id""")
+                .getResultList();
+        return ENVIRONMENTS.stream().map(env -> {
+            List<SunatEndpoint> endpoints = rows.stream()
+                    .filter(r -> ((String) r[0]).startsWith(env + ":"))
+                    .map(r -> new SunatEndpoint(((String) r[0]).substring(env.length() + 1), (String) r[1], toInstant(r[2]), (Boolean) r[3]))
+                    .toList();
+            boolean available = endpoints.stream().allMatch(e -> "closed".equals(e.breakerState()) && !e.paused());
+            return new SunatEnvironment(env, available, endpoints);
+        }).toList();
     }
 
     public static Instant toInstant(Object value) {

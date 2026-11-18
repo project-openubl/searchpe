@@ -4,13 +4,19 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.projectopenubl.xhandler.api.ApiException;
+import io.github.projectopenubl.xhandler.storage.FileStore;
+import io.github.projectopenubl.xhandler.tenancy.Role;
 import io.github.projectopenubl.xhandler.tenancy.TenantAccess;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
+import jakarta.ws.rs.core.Response;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * {@code Idempotency-Key} on creates (DESIGN.md §11.1). The first request inserts the key in its
@@ -42,6 +48,49 @@ public class Idempotency {
         this.em = em;
         this.access = access;
         this.json = json;
+    }
+
+    /**
+     * A {@code 201} create under an optional {@code Idempotency-Key} (company, series, member and
+     * webhook creates; DESIGN.md §12). {@code work} runs in a transaction of its own and must open
+     * the tenant itself ({@link TenantAccess#enter}); with a key, the caller is authorized at
+     * {@code minimum} before the key is touched, and {@code stored} gives the body kept for replay
+     * (a secret shown once is left out of it, never stored).
+     */
+    public <T> Response create(UUID tenantId, Role minimum, String key, String requestHash, Supplier<T> work, Function<T, Object> stored) {
+        if (key == null) {
+            return Response.status(201).entity(QuarkusTransaction.requiringNew().call(work::get)).build();
+        }
+        if (key.isBlank() || key.length() > 255) {
+            throw ApiException.invalid("invalid_request", "La Idempotency-Key debe tener entre 1 y 255 caracteres.", null);
+        }
+        // Authorize before touching the idempotency table
+        QuarkusTransaction.requiringNew().run(() -> access.enter(tenantId, minimum));
+        Begun begun = begin(tenantId, key, requestHash);
+        if (begun.replay() != null) {
+            return Response.status(begun.replay().status()).entity(begun.replay().body()).build();
+        }
+        try {
+            T created = QuarkusTransaction.requiringNew().call(() -> {
+                T result = work.get();
+                complete(tenantId, key, begun.claim(), 201, json.valueToTree(stored.apply(result)));
+                return result;
+            });
+            return Response.status(201).entity(created).build();
+        } catch (RuntimeException e) {
+            abandon(tenantId, key, begun.claim());
+            throw e;
+        }
+    }
+
+    /** The request hash of a create: its kind, the ids of its path and its canonical body. */
+    public String hash(String kind, Object path, Object body) {
+        try {
+            JsonNode canonical = EmitService.canonical(json.valueToTree(body));
+            return FileStore.sha256((kind + ":" + path + ":" + json.writeValueAsString(canonical)).getBytes(StandardCharsets.UTF_8));
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     /** Claims the key, or returns the stored response. Throws 409/422 as described above. */

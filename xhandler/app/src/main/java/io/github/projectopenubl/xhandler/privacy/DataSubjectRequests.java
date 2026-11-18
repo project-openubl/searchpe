@@ -26,7 +26,6 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.QueryParam;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -68,6 +67,16 @@ public class DataSubjectRequests {
             @Schema(description = "open o closed.") String status,
             String resolution,
             String closedAt) {}
+
+    /** A document issued to the person (status and amounts, no files). Values as text, as stored. */
+    public record PersonalDocument(UUID id, String issuerRuc, String tipoComprobante, String serieNumero, String fechaEmision, String nombre,
+            String moneda, String total, String status) {}
+
+    /** A draft naming the person as buyer; deleted ones too, until they are purged. */
+    public record PersonalDraft(UUID id, String issuerRuc, String kind, String tipoComprobante, String serie, String nombre, String status,
+            String createdAt, String deletedAt) {}
+
+    public record PersonalData(DataSubjectRequestView request, List<PersonalDocument> documents, List<PersonalDraft> drafts) {}
 
     private final TenantAccess access;
     private final EntityManager em;
@@ -152,7 +161,7 @@ public class DataSubjectRequests {
     @GET
     @Path("/{id}/personal-data")
     @Transactional
-    public Map<String, Object> personalData(@PathParam("tenantId") UUID tenantId, @PathParam("id") UUID id) {
+    public PersonalData personalData(@PathParam("tenantId") UUID tenantId, @PathParam("id") UUID id) {
         TenantScope scope = access.enter(tenantId, Role.ADMIN);
         DataSubjectRequestView request = view(id);
         @SuppressWarnings("unchecked")
@@ -171,25 +180,12 @@ public class DataSubjectRequests {
                 .setParameter("n", request.subjectDocNumber()).setParameter("t", request.subjectDocType()).getResultList();
         auditor.record(scope, "privacy.personal_data_read", "data_subject_request", id,
                 Map.of("documents", String.valueOf(docs.size()), "drafts", String.valueOf(drafts.size())));
-        Map<String, Object> answer = new LinkedHashMap<>();
-        answer.put("request", request);
-        answer.put("documents", docs.stream().map(r -> Map.of("id", r[0], "issuer_ruc", r[1], "tipo_comprobante", r[2],
-                "serie_numero", r[3] + "-" + r[4], "fecha_emision", String.valueOf(r[5]), "nombre", String.valueOf(r[6]),
-                "moneda", String.valueOf(r[7]), "total", String.valueOf(r[8]), "status", r[9])).toList());
-        answer.put("drafts", drafts.stream().map(r -> {
-            Map<String, Object> draft = new LinkedHashMap<>();
-            draft.put("id", r[0]);
-            draft.put("issuer_ruc", r[1]);
-            draft.put("kind", r[2]);
-            draft.put("tipo_comprobante", r[3]);
-            draft.put("serie", r[4]);
-            draft.put("nombre", r[5]);
-            draft.put("status", r[6]);
-            draft.put("created_at", String.valueOf(StatusResource.toInstant(r[7])));
-            draft.put("deleted_at", r[8] == null ? null : String.valueOf(StatusResource.toInstant(r[8])));
-            return draft;
-        }).toList());
-        return answer;
+        return new PersonalData(request,
+                docs.stream().map(r -> new PersonalDocument((UUID) r[0], (String) r[1], (String) r[2], r[3] + "-" + r[4], String.valueOf(r[5]),
+                        String.valueOf(r[6]), String.valueOf(r[7]), String.valueOf(r[8]), (String) r[9])).toList(),
+                drafts.stream().map(r -> new PersonalDraft((UUID) r[0], (String) r[1], (String) r[2], (String) r[3], (String) r[4], (String) r[5],
+                        (String) r[6], String.valueOf(StatusResource.toInstant(r[7])),
+                        r[8] == null ? null : String.valueOf(StatusResource.toInstant(r[8])))).toList());
     }
 
     @Operation(operationId = "closeDataSubjectRequest")

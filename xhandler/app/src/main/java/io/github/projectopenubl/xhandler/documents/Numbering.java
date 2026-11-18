@@ -21,6 +21,9 @@ public class Numbering {
     /** How far past the series counter a client-chosen number may go. */
     static final long MAX_JUMP = 100_000;
 
+    /** The largest number of a series (8 digits, SUNAT). */
+    public static final long MAX_NUMBER = 99_999_999;
+
     private final EntityManager em;
 
     public Numbering(EntityManager em) {
@@ -52,7 +55,7 @@ public class Numbering {
      */
     @Transactional(Transactional.TxType.MANDATORY)
     public long claim(UUID tenantId, UUID companyId, String sunatEnv, String tipoComprobante, String serie, long numero) {
-        if (numero < 1 || numero > 99_999_999) {
+        if (numero < 1 || numero > MAX_NUMBER) {
             throw ApiException.invalid("invalid_document", "El número debe estar entre 1 y 99999999.", null);
         }
         if (serie == null || !serie.matches("[A-Z0-9]{4}")) {

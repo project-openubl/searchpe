@@ -10,6 +10,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.core.Response;
@@ -30,6 +31,8 @@ public class TenantResource {
     public record TenantSummary(UUID id, String name, String role) {}
 
     public record CreateTenant(@NotBlank @Size(max = 200) String name) {}
+
+    public record UpdateTenant(@NotBlank @Size(max = 200) String name) {}
 
     public record TenantView(UUID id, String name, String plan, String status, int retentionYears) {}
 
@@ -120,6 +123,26 @@ public class TenantResource {
         Tenant tenant = Tenant.findById(tenantId);
         if (tenant == null) {
             throw ApiException.notFound();
+        }
+        return view(tenant);
+    }
+
+    /** Renames the tenant (its organization name in the console, emails and partner reports). */
+    @Operation(operationId = "updateTenant")
+    @PUT
+    @Path("/{tenantId}")
+    @Transactional
+    public TenantView update(@PathParam("tenantId") UUID tenantId, @Valid UpdateTenant request) {
+        TenantScope scope = access.enter(tenantId, Role.ADMIN);
+        Tenant tenant = em.find(Tenant.class, tenantId, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+        if (tenant == null) {
+            throw ApiException.notFound();
+        }
+        String name = request.name().strip();
+        if (!name.equals(tenant.name)) {
+            String previous = tenant.name;
+            tenant.name = name;
+            auditor.record(scope, "tenant.renamed", "tenant", tenantId, java.util.Map.of("from", previous, "to", name));
         }
         return view(tenant);
     }

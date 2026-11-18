@@ -146,6 +146,9 @@ public class TenantExit {
                 .header("Content-Disposition", "attachment; filename=\"" + part.get("name") + "\"").build();
     }
 
+    /** The tenant after its exit: deleted after {@code deleteAfter}, never when it has an archive plan. */
+    public record ExitView(String status, String deleteAfter) {}
+
     /**
      * Leaves the platform: the organization's name typed, no document waiting for SUNAT, and an
      * export from the last 30 days that is newer than every document.
@@ -154,7 +157,7 @@ public class TenantExit {
     @POST
     @Path("/exit")
     @Transactional
-    public Map<String, Object> exit(@PathParam("tenantId") UUID tenantId, @Valid ExitRequest request) {
+    public ExitView exit(@PathParam("tenantId") UUID tenantId, @Valid ExitRequest request) {
         TenantScope scope = access.enter(tenantId, Role.OWNER);
         Tenant tenant = Tenant.findById(tenantId);
         if (!"active".equals(tenant.status)) {
@@ -182,10 +185,7 @@ public class TenantExit {
                         UPDATE xhandler.tenant SET exit_requested_at = now(), delete_after = :d, status = 'exited', updated_at = now()
                         WHERE id = :id""").setParameter("d", deleteAfter).setParameter("id", tenantId).executeUpdate();
         auditor.record(scope, "tenant.exit", "tenant", tenantId, Map.of("delete_after", String.valueOf(deleteAfter)));
-        Map<String, Object> answer = new LinkedHashMap<>();
-        answer.put("status", "exited");
-        answer.put("delete_after", deleteAfter == null ? null : deleteAfter.toString());
-        return answer;
+        return new ExitView("exited", deleteAfter == null ? null : deleteAfter.toString());
     }
 
     ExportView view(UUID id) {

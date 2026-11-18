@@ -129,6 +129,32 @@ class OpenApiTest {
     }
 
     @Test
+    void former_untyped_maps_are_records_with_the_same_names() {
+        Map<String, String> expected = Map.ofEntries(
+                Map.entry("getBilling", "BillingView"),
+                Map.entry("updateBillingDetails", "BillingView"),
+                Map.entry("getPartnerBranding", "PartnerBrandingView"),
+                Map.entry("setPartnerBranding", "PartnerBrandingView"),
+                Map.entry("revokePseAuthorization", "RevokedView"),
+                Map.entry("getNotificationSettings", "NotificationSettings"),
+                Map.entry("updateNotificationSettings", "NotificationSettings"),
+                Map.entry("exitTenant", "ExitView"),
+                Map.entry("getDataSubjectPersonalData", "PersonalData"),
+                Map.entry("updateMember", "MemberView"),
+                Map.entry("updateSeries", "SeriesView"));
+        expected.forEach((id, schema) -> assertEquals("#/components/schemas/" + schema,
+                operation(id).at("/responses/200/content/application~1json/schema/$ref").asText(), id));
+        assertEquals("#/components/schemas/AdapterTokenView",
+                operation("listAdapterTokens").at("/responses/200/content/application~1json/schema/items/$ref").asText());
+        assertEquals(Set.of("usage", "billing_ruc", "billing_name", "billing_email"), names(spec.at("/components/schemas/BillingView/properties")));
+        assertEquals(Set.of("status", "delete_after"), names(spec.at("/components/schemas/ExitView/properties")));
+        assertEquals(Set.of("company_id", "emission_mode"), names(spec.at("/components/schemas/RevokedView/properties")));
+        assertEquals(Set.of("request", "documents", "drafts"), names(spec.at("/components/schemas/PersonalData/properties")));
+        assertEquals(Set.of("id", "kind", "label", "created_by", "created_at", "revoked_at"),
+                names(spec.at("/components/schemas/AdapterTokenView/properties")));
+    }
+
+    @Test
     void api_responses_have_a_typed_body() {
         List<String> untyped = new ArrayList<>();
         for (Map.Entry<String, JsonNode> op : operations()) {

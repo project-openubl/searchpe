@@ -306,7 +306,7 @@ Every table has:
 Editable configuration and catalog rows also have `deleted_at` (soft delete). Issued documents, their events, files and deliveries are never deleted: no `deleted_at`, and there are no partial unique indexes on deletion.
 
 ```
-partner           id, name, branding (json), status
+partner           id, name, branding (json), logo_ref, status
 tenant            id, partner_id?, name, plan_ref (Lago), status, retention_years, audit_hold
 company           id, tenant_id, ruc, razon_social, nombre_comercial, direccion(...), email,
                   logo_ref, firmante_*, sunat_env (beta|production), emission_mode
@@ -856,7 +856,14 @@ xhandler-ui issues documents by hand (§18) through drafts: `POST …/companies/
   - operations require the `bearer` scheme except the public paths (`/api/v1/status`, `/api/v1/public/**`, `/api/v1/ose/**`, and the SOAP endpoints outside `/api/`);
   - lists answer `Page` (`items`, `limit`, `offset`; `?limit=&offset=`). There is no total count (it would cost as much as the page on large tenants): a page shorter than `limit` is the last.
 - `201` for emit; `202` + job link for long operations; `409` for guard violations; `422` with SUNAT codes for invalid documents.
-- `Idempotency-Key` on every create, stored with a request hash and the response (§11.1).
+- `Idempotency-Key` on every create (documents, drafts, companies, series, members, webhooks), stored with a request hash and the response (§11.1). The key is checked after the caller's role; a replay never carries what is shown once (a webhook's secret, a document's buyer link).
+- Console endpoints (§18):
+  - **Members** (ADMIN): `PUT …/members/{id}` changes the role (admin, operator or viewer: owners come only from signup or a partner) and `DELETE …/members/{id}` removes one. Only an owner changes or removes an owner, and a tenant that has owners keeps at least one (`409 last_owner`); member changes lock the tenant row, so two owners demoting each other can't both succeed.
+  - **Tenant**: `PUT /tenants/{t}` renames it (ADMIN); `GET|PUT …/notification-settings` reads and sets the notification email (§26.6).
+  - **Series**: `PUT …/companies/{c}/series/{id}` with `next_number` (forward only: a compare-and-set `next_number <= :new` on the row an emit holds locked, so no number is handed out twice, `409 series_number_used` otherwise) and `active` (a deactivated series refuses emits and client-numbered claims, §8).
+  - **Partner branding**: `GET …/partners/{p}/branding` (with `has_logo`), and `PUT|DELETE …/partners/{p}/logo` (PNG or JPEG up to 200 KB, re-encoded like a company logo; PDFs use it when the company has no logo).
+  - **Reads**: `GET …/companies/{c}/sire?book=` (the company's SIRE periods in its current environment, paged, latest first), `GET …/receptions/{id}`, `GET …/webhooks/{id}`.
+  - **Documents** filter by buyer: `customer_numero` (exact) and `customer_nombre` (case-insensitive prefix), both indexed.
 - Per-tenant rate limits are applied at the gateway.
 - Free-form `labels` on documents (ERP ids), with filtering.
 - One identifier format across the API, webhooks and logs: `xh:<type>:<uuid>`.
@@ -909,7 +916,7 @@ How it runs (P11):
 - Quotas are soft by design: usage is counted from committed documents, so concurrent emits around the limit can overshoot it by at most the emits in flight (permits × pods); a per-tenant lock would serialize every emit of a tenant. Quotas apply to new documents only: an idempotent replay always gets its stored answer, and the platform's own invoices never count. Unknown plan codes are refused; a Lago plan the service doesn't know never downgrades a customer.
 - Plans follow Lago's `subscription.*` webhooks as they happen; the periodic sync refreshes Lago customers as a safety net. A usage event Lago refuses is set aside (with its error) so the others keep flowing.
 - Usage events go to Lago's batch API with the outbox row id as `transaction_id` (Lago deduplicates).
-- Partners see their tenants' usage (`GET /api/v1/partners/{p}/tenants?month=`). Partner members (admin or viewer, set and removed by the platform through SECURITY DEFINER functions; the app role can't write partners) act on their partner's tenants through the normal API, with the more privileged of their tenant and partner roles, create tenants (`POST /api/v1/partners/{p}/tenants`) and brand PDFs and emails (`PUT …/branding`).
+- Partners see their tenants' usage (`GET /api/v1/partners/{p}/tenants?month=`). Partner members (admin or viewer, set and removed by the platform through SECURITY DEFINER functions; the app role can't write partners) act on their partner's tenants through the normal API, with the more privileged of their tenant and partner roles, create tenants (`POST /api/v1/partners/{p}/tenants`) and brand PDFs and emails (`GET|PUT …/branding`, `PUT|DELETE …/logo`).
 - **The platform's own subscription invoices are issued as real comprobantes through xhandler-service**, because Lago's invoices are not comprobantes. Lago's `invoice.created` webhook (HMAC-signed, `X-Lago-Signature`) becomes a factura (a boleta without a billing RUC) from the platform's issuing company (admin API `billing/issuer`) to the tenant's billing details, emailed to its billing address; idempotent per Lago invoice (also beyond the idempotency window: the job looks for the invoice's label first). The comprobante's total must match what Lago charged (Lago amounts are before the 18% IGV, which must be set up as a Lago tax), or the job fails for a person to look at.
 
 ---
@@ -928,7 +935,7 @@ How it runs (P11):
   - API latency histograms;
   - HSM latency and errors.
 - **Traces**: OpenTelemetry across Quarkus and the engine.
-- **Health and status**: `/q/health` (liveness/readiness) for Kubernetes. `/api/v1/status` reports versions (service, engine, xhandler-rust revision), online workers, database, storage and HSM health, and queue depth.
+- **Health and status**: `/q/health` (liveness/readiness) for Kubernetes. `/api/v1/status` reports versions (service, engine, xhandler-rust revision), online workers, database, storage and HSM health, queue depth, and SUNAT availability per environment (`sunat`: each SUNAT service's breaker state and pause, §24.2; `available` when every service seen answers; third-party OSE endpoints are left out).
 - **SLOs**: 99.96% availability for OSE intake, and OSE forwarding under 1 hour at the 100th percentile. Dashboards and alerts for both.
 - **Engine performance budget** (per document, typical invoice, one core): build + validate (XSD + rules) + sign-prepare under 5 ms at p99, excluding the HSM signature. It is tracked with `criterion` benchmarks. CI gates on **instruction counts** (`iai-callgrind`), which are stable on shared runners, failing on a regression above 10%. Wall-clock benchmarks run nightly on dedicated hardware.
 - **Admin CLI** (`xhandler-admin`, Picocli, module `admin-cli/`): a thin client of the admin API (`/api/admin/v1`, Keycloak realm role `platform-admin`, e.g. the `xhandler-admin` service account), so it needs no database credentials and every action is audited in the tenant's log:
@@ -1119,10 +1126,8 @@ Infrastructure I1 (dev/staging) ─── I2 (production HA: sync replication, m
 | U3 | Partner console |
 | U4 | OSE validity page, SIRE and conformity screens |
 
-U0–U4 are done in `ui/`, one UI for xhandler-service and searchpe. Known API gaps the console works
-around: no endpoint to change or remove a member, edit a tenant, update a series, read a partner's
-branding or upload its logo, or list SIRE periods; no GET for a single reception or webhook; no buyer
-filter on documents; the OSE validity page needs a CAPTCHA widget (site key) in the UI.
+U0–U4 are done in `ui/`, one UI for xhandler-service and searchpe. The OSE validity page uses an
+hCaptcha or Turnstile widget (operator `spec.captcha`).
 
 ### 21.4 Infrastructure (separate project)
 

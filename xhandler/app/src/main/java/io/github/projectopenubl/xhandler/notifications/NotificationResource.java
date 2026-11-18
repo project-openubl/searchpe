@@ -22,7 +22,6 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Response;
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
@@ -119,18 +118,29 @@ public class NotificationResource {
         return preferences(tenantId);
     }
 
+    @Operation(operationId = "getNotificationSettings", summary = "Correo al que se envían las notificaciones de la cuenta")
+    @GET
+    @Path("/notification-settings")
+    @Transactional
+    public NotificationSettings getSettings(@PathParam("tenantId") UUID tenantId) {
+        access.enter(tenantId, Role.VIEWER);
+        Tenant tenant = Tenant.findById(tenantId);
+        if (tenant == null) {
+            throw ApiException.notFound();
+        }
+        return new NotificationSettings(tenant.notificationEmail);
+    }
+
     @Operation(operationId = "updateNotificationSettings")
     @PUT
     @Path("/notification-settings")
     @Transactional
-    public Map<String, Object> settings(@PathParam("tenantId") UUID tenantId, @Valid NotificationSettings settings) {
+    public NotificationSettings settings(@PathParam("tenantId") UUID tenantId, @Valid NotificationSettings settings) {
         TenantScope scope = access.enter(tenantId, Role.ADMIN);
         Tenant tenant = Tenant.findById(tenantId, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
         tenant.notificationEmail = settings.notificationEmail() == null || settings.notificationEmail().isBlank()
                 ? null : settings.notificationEmail().strip();
         auditor.record(scope, "tenant.notification_email_changed", "tenant", tenantId);
-        java.util.Map<String, Object> view = new java.util.HashMap<>();
-        view.put("notification_email", tenant.notificationEmail);
-        return view;
+        return new NotificationSettings(tenant.notificationEmail);
     }
 }

@@ -168,8 +168,13 @@ class AdapterTest {
         Path file = Files.createTempFile("reception", ".xml");
         Files.writeString(file, xml, StandardCharsets.UTF_8);
         String token = new KeycloakTestClient().getAccessToken("alice");
-        given().auth().oauth2(token).multiPart("xml", file.toFile(), "application/xml").post(base + "/receptions").then().statusCode(201)
-                .body("supplier_ruc", equalTo("20555555555")).body("validity_state", equalTo("valid"));
+        String received = given().auth().oauth2(token).multiPart("xml", file.toFile(), "application/xml").post(base + "/receptions").then()
+                .statusCode(201).body("supplier_ruc", equalTo("20555555555")).body("validity_state", equalTo("valid")).extract().path("id");
+        // Read by id, within its company only
+        as("alice").get(base + "/receptions/" + received).then().statusCode(200)
+                .body("serie_numero", equalTo("F100-" + number)).body("validity_state", equalTo("valid"));
+        as("alice").get(base + "/receptions/" + UUID.randomUUID()).then().statusCode(404);
+        as("bob").get(base + "/receptions/" + received).then().statusCode(404);
         given().auth().oauth2(token).multiPart("xml", file.toFile(), "application/xml").post(base + "/receptions").then().statusCode(409);
         // A document addressed to someone else
         Files.writeString(file, xml.replace("6|" + ruc, "6|20666666666"), StandardCharsets.UTF_8);

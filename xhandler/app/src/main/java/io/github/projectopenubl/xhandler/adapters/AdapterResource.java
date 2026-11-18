@@ -135,24 +135,21 @@ public class AdapterResource {
     @jakarta.ws.rs.GET
     @Path("/adapter-tokens")
     @Transactional
-    public java.util.List<Map<String, Object>> listTokens(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId) {
+    public java.util.List<AdapterTokenView> listTokens(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId) {
         access.enter(tenantId, Role.ADMIN);
         CompanyResource.find(companyId);
         @SuppressWarnings("unchecked")
         java.util.List<Object[]> rows = em.createNativeQuery("""
                         SELECT id, kind, label, created_by, created_at, revoked_at FROM xhandler.adapter_token WHERE company_id = :c ORDER BY created_at DESC""")
                 .setParameter("c", companyId).getResultList();
-        return rows.stream().map(r -> {
-            Map<String, Object> view = new java.util.LinkedHashMap<>();
-            view.put("id", r[0]);
-            view.put("kind", r[1]);
-            view.put("label", r[2]);
-            view.put("created_by", r[3]);
-            view.put("created_at", String.valueOf(io.github.projectopenubl.xhandler.status.StatusResource.toInstant(r[4])));
-            view.put("revoked_at", r[5] == null ? null : String.valueOf(io.github.projectopenubl.xhandler.status.StatusResource.toInstant(r[5])));
-            return view;
-        }).toList();
+        return rows.stream().map(r -> new AdapterTokenView((UUID) r[0], (String) r[1], (String) r[2], (String) r[3],
+                io.github.projectopenubl.xhandler.status.StatusResource.toInstant(r[4]),
+                io.github.projectopenubl.xhandler.status.StatusResource.toInstant(r[5]))).toList();
     }
+
+    /** An adapter token as listed: never the token itself. */
+    public record AdapterTokenView(UUID id, String kind, String label, String createdBy, java.time.Instant createdAt,
+            java.time.Instant revokedAt) {}
 
     @APIResponse(responseCode = "204", description = "Token revocado.")
     @Operation(operationId = "revokeAdapterToken")

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.projectopenubl.xhandler.api.ApiException;
 import io.github.projectopenubl.xhandler.api.Ids;
+import io.github.projectopenubl.xhandler.api.Page;
 import io.github.projectopenubl.xhandler.audit.Auditor;
 import io.github.projectopenubl.xhandler.company.Company;
 import io.github.projectopenubl.xhandler.company.CompanyResource;
@@ -20,6 +21,7 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Response;
 import java.time.Instant;
 import java.util.List;
@@ -36,7 +38,7 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
  * §11.7): request SUNAT's proposal, see its reconciliation with the stored documents, submit the
  * replacement. SUNAT is called by jobs; these endpoints answer {@code 202}.
  */
-@Path("/api/v1/tenants/{tenantId}/companies/{companyId}/sire/{book}/{period}")
+@Path("/api/v1/tenants/{tenantId}/companies/{companyId}/sire")
 public class SireResource {
 
     public record SirePeriodView(
@@ -48,6 +50,11 @@ public class SireResource {
      * (what SUNAT has and the platform doesn't is left out). {@code confirmNotReceived}: after an
      * unknown outcome, the user checked in SOL that SUNAT didn't get the earlier replacement.
      */
+    /** A period in a list: its state, without the reconciliation (read it with {@code getSirePeriod}). */
+    public record SirePeriodSummary(
+            UUID id, String book, String period, String sunatEnv, String status, String detail, boolean proposalFile,
+            boolean replacementFile, Instant createdAt, Instant updatedAt) {}
+
     public record ReplaceRequest(Boolean acknowledgeDifferences, Boolean confirmNotReceived) {}
 
     private static final ObjectMapper JSON = new ObjectMapper();
@@ -80,7 +87,7 @@ public class SireResource {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = SirePeriodView.class)))
     @Operation(operationId = "requestSireProposal")
     @POST
-    @Path("/proposal")
+    @Path("/{book}/{period}/proposal")
     @Transactional
     public Response requestProposal(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId,
             @PathParam("book") String book, @PathParam("period") String period) {
@@ -131,7 +138,7 @@ public class SireResource {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = SirePeriodView.class)))
     @Operation(operationId = "replaceSireProposal")
     @POST
-    @Path("/replace")
+    @Path("/{book}/{period}/replace")
     @Transactional
     public Response replace(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId, @PathParam("book") String book,
             @PathParam("period") String period, ReplaceRequest request) {
@@ -185,6 +192,7 @@ public class SireResource {
 
     @Operation(operationId = "getSirePeriod")
     @GET
+    @Path("/{book}/{period}")
     @Transactional
     public SirePeriodView get(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId, @PathParam("book") String book,
             @PathParam("period") String period) {
@@ -194,13 +202,39 @@ public class SireResource {
         return view(find(companyId, company.sunatEnv, book, period));
     }
 
+    /** The company's SIRE periods in its current environment, the latest period first. */
+    @Operation(operationId = "listSirePeriods")
+    @GET
+    @Transactional
+    public Page<SirePeriodSummary> list(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId,
+            @Schema(description = "rvie (ventas) o rce (compras); sin filtro, ambos.") @QueryParam("book") String book,
+            @QueryParam("limit") Integer limit, @QueryParam("offset") Integer offset) {
+        if (book != null && !"rvie".equals(book) && !"rce".equals(book)) {
+            throw ApiException.invalid("invalid_request", "book debe ser rvie o rce.", "book");
+        }
+        access.enter(tenantId, Role.VIEWER);
+        Company company = CompanyResource.find(companyId);
+        int size = Page.limit(limit);
+        int start = Page.offset(offset);
+        @SuppressWarnings("unchecked")
+        List<Object[]> rows = em.createNativeQuery("""
+                        SELECT id, book, period, sunat_env, status, detail, proposal_ref IS NOT NULL, replacement_ref IS NOT NULL, created_at,
+                               updated_at
+                        FROM xhandler.sire_period WHERE company_id = :c AND sunat_env = :env AND (CAST(:b AS text) IS NULL OR book = :b)
+                        ORDER BY period DESC, book LIMIT :l OFFSET :o""")
+                .setParameter("c", companyId).setParameter("env", company.sunatEnv).setParameter("b", book).setParameter("l", size)
+                .setParameter("o", start).getResultList();
+        return new Page<>(rows.stream().map(r -> new SirePeriodSummary((UUID) r[0], (String) r[1], (String) r[2], (String) r[3], (String) r[4],
+                (String) r[5], (Boolean) r[6], (Boolean) r[7], StatusResource.toInstant(r[8]), StatusResource.toInstant(r[9]))).toList(), size, start);
+    }
+
     /** SUNAT's proposal ({@code proposal}) or the submitted replacement ({@code replacement}), as SUNAT's ZIP. */
     @APIResponse(responseCode = "200", description = "El archivo de SUNAT (ZIP).", content = {
             @Content(mediaType = "application/zip", schema = @Schema(type = SchemaType.STRING, format = "binary"))
     })
     @Operation(operationId = "downloadSireFile")
     @GET
-    @Path("/files/{kind}")
+    @Path("/{book}/{period}/files/{kind}")
     @Transactional
     public Response file(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId, @PathParam("book") String book,
             @PathParam("period") String period, @PathParam("kind") String kind) {

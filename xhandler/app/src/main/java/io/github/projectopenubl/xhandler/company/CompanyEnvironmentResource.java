@@ -132,6 +132,13 @@ public class CompanyEnvironmentResource {
     public CompanyResource.CompanyView logo(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId, byte[] image) {
         TenantScope scope = access.enter(tenantId, Role.ADMIN);
         Company company = CompanyResource.findForUpdate(companyId);
+        company.logoRef = files.put(company.tenantId, logoImage(image)).key();
+        auditor.record(scope, "company.logo_changed", "company", companyId);
+        return CompanyResource.view(company);
+    }
+
+    /** A logo upload (company or partner): PNG or JPEG, up to 200 KB, re-encoded as PNG. */
+    public static byte[] logoImage(byte[] image) {
         boolean png = image != null && image.length > 8 && (image[0] & 0xff) == 0x89 && image[1] == 'P' && image[2] == 'N' && image[3] == 'G';
         boolean jpeg = image != null && image.length > 3 && (image[0] & 0xff) == 0xFF && (image[1] & 0xff) == 0xD8;
         if (!png && !jpeg) {
@@ -140,9 +147,7 @@ public class CompanyEnvironmentResource {
         if (image.length > 200 * 1024) {
             throw ApiException.invalid("invalid_request", "El logo no debe pasar de 200 KB.", null);
         }
-        company.logoRef = files.put(company.tenantId, reencode(image)).key();
-        auditor.record(scope, "company.logo_changed", "company", companyId);
-        return CompanyResource.view(company);
+        return reencode(image);
     }
 
     /**

@@ -4,6 +4,7 @@ import io.github.projectopenubl.xhandler.api.ApiException;
 import io.github.projectopenubl.xhandler.api.Ids;
 import io.github.projectopenubl.xhandler.api.Page;
 import io.github.projectopenubl.xhandler.audit.Auditor;
+import io.github.projectopenubl.xhandler.documents.Idempotency;
 import io.github.projectopenubl.xhandler.secrets.SecretBox;
 import io.github.projectopenubl.xhandler.tenancy.Role;
 import io.github.projectopenubl.xhandler.tenancy.TenantAccess;
@@ -15,6 +16,7 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -54,10 +56,12 @@ public class WebhookResource {
     private final WebhookEvents events;
     private final Auditor auditor;
     private final io.github.projectopenubl.xhandler.billing.Entitlements entitlements;
+    private final Idempotency idempotency;
 
     public WebhookResource(TenantAccess access, SecretBox box, Egress egress, WebhookEvents events, Auditor auditor,
-            io.github.projectopenubl.xhandler.billing.Entitlements entitlements) {
+            io.github.projectopenubl.xhandler.billing.Entitlements entitlements, Idempotency idempotency) {
         this.entitlements = entitlements;
+        this.idempotency = idempotency;
         this.access = access;
         this.box = box;
         this.egress = egress;
@@ -65,36 +69,41 @@ public class WebhookResource {
         this.auditor = auditor;
     }
 
-    @APIResponse(responseCode = "201", description = "Webhook creado; el secreto se muestra solo esta vez.",
+    @APIResponse(responseCode = "201", description = "Webhook creado; el secreto se muestra solo esta vez (la respuesta repetida de una "
+            + "Idempotency-Key ya usada no lo trae).",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = WebhookView.class)))
+    @APIResponse(responseCode = "409", description = "Idempotency-Key en proceso, o RUC sin verificar.",
+            content = @Content(mediaType = "application/json", schema = @Schema(ref = "ApiError")))
     @Operation(operationId = "createWebhook")
     @POST
-    @Transactional
-    public Response create(@PathParam("tenantId") UUID tenantId, @Valid CreateWebhook request) {
-        TenantScope scope = access.enter(tenantId, Role.ADMIN);
-        if (!entitlements.usage(tenantId).plan().webhooks()) {
-            throw new ApiException(402, "plan_required", "Su plan no incluye webhooks.");
-        }
-        // Free tenants without a verified RUC can't point webhooks at arbitrary hosts (§26.8)
-        if ("free".equals(entitlements.usage(tenantId).plan().code())
-                && io.github.projectopenubl.xhandler.company.Company.count("rucVerifiedAt is not null and deletedAt is null") == 0) {
-            throw ApiException.conflict("ruc_not_verified", "Verifique el RUC de una empresa para usar webhooks.");
-        }
-        egress.check(request.url());
-        byte[] raw = new byte[32];
-        RANDOM.nextBytes(raw);
-        String secret = "whsec_" + Base64.getUrlEncoder().withoutPadding().encodeToString(raw);
-        WebhookSubscription subscription = new WebhookSubscription();
-        subscription.id = Ids.newId();
-        subscription.tenantId = tenantId;
-        subscription.url = request.url();
-        subscription.events = request.events().toArray(String[]::new);
-        subscription.seal(box.seal(secret.getBytes(StandardCharsets.UTF_8), subscription.context()));
-        subscription.createdAt = Instant.now();
-        subscription.updatedAt = subscription.createdAt;
-        subscription.persist();
-        auditor.record(scope, "webhook.created", "webhook", subscription.id, Map.of("url", request.url()));
-        return Response.status(201).entity(view(subscription, secret)).build();
+    public Response create(@PathParam("tenantId") UUID tenantId, @HeaderParam("Idempotency-Key") String idempotencyKey,
+            @Valid CreateWebhook request) {
+        return idempotency.create(tenantId, Role.ADMIN, idempotencyKey, idempotency.hash("webhook", tenantId, request), () -> {
+            TenantScope scope = access.enter(tenantId, Role.ADMIN);
+            if (!entitlements.usage(tenantId).plan().webhooks()) {
+                throw new ApiException(402, "plan_required", "Su plan no incluye webhooks.");
+            }
+            // Free tenants without a verified RUC can't point webhooks at arbitrary hosts (§26.8)
+            if ("free".equals(entitlements.usage(tenantId).plan().code())
+                    && io.github.projectopenubl.xhandler.company.Company.count("rucVerifiedAt is not null and deletedAt is null") == 0) {
+                throw ApiException.conflict("ruc_not_verified", "Verifique el RUC de una empresa para usar webhooks.");
+            }
+            egress.check(request.url());
+            byte[] raw = new byte[32];
+            RANDOM.nextBytes(raw);
+            String secret = "whsec_" + Base64.getUrlEncoder().withoutPadding().encodeToString(raw);
+            WebhookSubscription subscription = new WebhookSubscription();
+            subscription.id = Ids.newId();
+            subscription.tenantId = tenantId;
+            subscription.url = request.url();
+            subscription.events = request.events().toArray(String[]::new);
+            subscription.seal(box.seal(secret.getBytes(StandardCharsets.UTF_8), subscription.context()));
+            subscription.createdAt = Instant.now();
+            subscription.updatedAt = subscription.createdAt;
+            subscription.persist();
+            auditor.record(scope, "webhook.created", "webhook", subscription.id, Map.of("url", request.url()));
+            return view(subscription, secret);
+        }, view -> new WebhookView(view.id(), view.url(), view.events(), view.active(), view.createdAt(), null));
     }
 
     @Operation(operationId = "listWebhooks")
@@ -104,6 +113,15 @@ public class WebhookResource {
         access.enter(tenantId, Role.VIEWER);
         List<WebhookSubscription> subscriptions = WebhookSubscription.list("deletedAt is null order by createdAt");
         return subscriptions.stream().map(s -> view(s, null)).toList();
+    }
+
+    @Operation(operationId = "getWebhook")
+    @GET
+    @Path("/{webhookId}")
+    @Transactional
+    public WebhookView get(@PathParam("tenantId") UUID tenantId, @PathParam("webhookId") UUID webhookId) {
+        access.enter(tenantId, Role.VIEWER);
+        return view(find(webhookId), null);
     }
 
     @APIResponse(responseCode = "204", description = "Webhook eliminado.")

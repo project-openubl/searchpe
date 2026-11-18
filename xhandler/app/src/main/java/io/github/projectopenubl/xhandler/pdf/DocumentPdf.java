@@ -154,11 +154,22 @@ public class DocumentPdf {
         return brand;
     }
 
+    /** The company's logo, else its partner's (white-label), else none. */
     private String logo(Company company) {
-        if (company.logoRef == null) {
+        String ref = company.logoRef;
+        if (ref == null) {
+            Tenant tenant = Tenant.findById(company.tenantId);
+            if (tenant != null && tenant.partnerId != null) {
+                List<?> partnerLogo = em.createNativeQuery("SELECT logo_ref FROM xhandler.partner WHERE id = :id")
+                        .setParameter("id", tenant.partnerId)
+                        .getResultList();
+                ref = partnerLogo.isEmpty() ? null : (String) partnerLogo.get(0);
+            }
+        }
+        if (ref == null) {
             return null;
         }
-        byte[] bytes = files.get(company.logoRef);
+        byte[] bytes = files.get(ref);
         String type = bytes.length > 3 && (bytes[0] & 0xff) == 0x89 ? "image/png" : "image/jpeg";
         return "data:" + type + ";base64," + Base64.getEncoder().encodeToString(bytes);
     }

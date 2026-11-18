@@ -161,6 +161,21 @@ public class ReceptionResource {
         return new Page<>(ids.stream().map(this::find).toList(), size, start);
     }
 
+    @Operation(operationId = "getReception")
+    @GET
+    @Path("/{receptionId}")
+    @Transactional
+    public ReceptionView get(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId,
+            @PathParam("receptionId") UUID receptionId) {
+        access.enter(tenantId, Role.VIEWER);
+        CompanyResource.find(companyId);
+        if (em.createNativeQuery("SELECT 1 FROM xhandler.reception WHERE id = :id AND company_id = :c")
+                .setParameter("id", receptionId).setParameter("c", companyId).getResultList().isEmpty()) {
+            throw ApiException.notFound();
+        }
+        return find(receptionId);
+    }
+
     @APIResponse(responseCode = "200", description = "El archivo: XML, PDF o CDR (ZIP).", content = {
             @Content(mediaType = "application/xml", schema = @Schema(type = SchemaType.STRING, format = "binary")),
             @Content(mediaType = "application/pdf", schema = @Schema(type = SchemaType.STRING, format = "binary")),

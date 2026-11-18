@@ -14,7 +14,6 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
-import java.util.Map;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 
@@ -24,6 +23,8 @@ public class BillingResource {
 
     public record BillingDetails(@Pattern(regexp = "\\d{11}") String billingRuc, @Size(max = 300) String billingName,
             @Email String billingEmail) {}
+
+    public record BillingView(Entitlements.Usage usage, String billingRuc, String billingName, String billingEmail) {}
 
     private final TenantAccess access;
     private final Entitlements entitlements;
@@ -38,22 +39,16 @@ public class BillingResource {
     @Operation(operationId = "getBilling")
     @GET
     @Transactional
-    public Map<String, Object> get(@PathParam("tenantId") UUID tenantId) {
+    public BillingView get(@PathParam("tenantId") UUID tenantId) {
         access.enter(tenantId, Role.VIEWER);
         Tenant tenant = Tenant.findById(tenantId);
-        Entitlements.Usage usage = entitlements.usage(tenantId);
-        Map<String, Object> view = new java.util.LinkedHashMap<>();
-        view.put("usage", usage);
-        view.put("billing_ruc", tenant.billingRuc);
-        view.put("billing_name", tenant.billingName);
-        view.put("billing_email", tenant.billingEmail);
-        return view;
+        return new BillingView(entitlements.usage(tenantId), tenant.billingRuc, tenant.billingName, tenant.billingEmail);
     }
 
     @Operation(operationId = "updateBillingDetails")
     @PUT
     @Transactional
-    public Map<String, Object> details(@PathParam("tenantId") UUID tenantId, @Valid BillingDetails details) {
+    public BillingView details(@PathParam("tenantId") UUID tenantId, @Valid BillingDetails details) {
         TenantScope scope = access.enter(tenantId, Role.ADMIN);
         Tenant tenant = Tenant.findById(tenantId, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
         tenant.billingRuc = details.billingRuc();

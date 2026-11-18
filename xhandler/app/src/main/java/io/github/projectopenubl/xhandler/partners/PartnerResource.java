@@ -2,6 +2,8 @@ package io.github.projectopenubl.xhandler.partners;
 
 import io.github.projectopenubl.xhandler.api.ApiException;
 import io.github.projectopenubl.xhandler.api.Ids;
+import io.github.projectopenubl.xhandler.company.CompanyEnvironmentResource;
+import io.github.projectopenubl.xhandler.storage.FileStore;
 import io.github.projectopenubl.xhandler.tenancy.Actor;
 import io.github.projectopenubl.xhandler.tenancy.CurrentActor;
 import jakarta.persistence.EntityManager;
@@ -10,6 +12,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
@@ -21,7 +24,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
@@ -49,14 +51,19 @@ public class PartnerResource {
     public record Branding(@Pattern(regexp = "#[0-9a-fA-F]{6}") String color, @Size(max = 300) String footer,
             @Size(max = 200) String senderName) {}
 
+    public record PartnerBrandingView(UUID partnerId, Branding branding,
+            @Schema(description = "Si el socio subió un logo; los PDF de sus cuentas lo usan cuando la empresa no tiene uno.") boolean hasLogo) {}
+
     private final CurrentActor currentActor;
     private final EntityManager em;
     private final com.fasterxml.jackson.databind.ObjectMapper json;
+    private final FileStore files;
 
-    public PartnerResource(CurrentActor currentActor, EntityManager em, com.fasterxml.jackson.databind.ObjectMapper json) {
+    public PartnerResource(CurrentActor currentActor, EntityManager em, com.fasterxml.jackson.databind.ObjectMapper json, FileStore files) {
         this.currentActor = currentActor;
         this.em = em;
         this.json = json;
+        this.files = files;
     }
 
     @Operation(operationId = "listMyPartners")
@@ -112,11 +119,20 @@ public class PartnerResource {
                 ((Number) r[4]).longValue(), ((Number) r[5]).longValue())).toList();
     }
 
+    @Operation(operationId = "getPartnerBranding")
+    @GET
+    @Path("/{partnerId}/branding")
+    @Transactional
+    public PartnerBrandingView getBranding(@PathParam("partnerId") UUID partnerId) {
+        require(partnerId, "viewer");
+        return brandingView(partnerId);
+    }
+
     @Operation(operationId = "setPartnerBranding")
     @PUT
     @Path("/{partnerId}/branding")
     @Transactional
-    public Map<String, Object> branding(@PathParam("partnerId") UUID partnerId, @Valid Branding branding) {
+    public PartnerBrandingView branding(@PathParam("partnerId") UUID partnerId, @Valid Branding branding) {
         require(partnerId, "admin");
         try {
             em.createNativeQuery("SELECT xhandler.set_partner_branding(:p, CAST(:b AS jsonb))")
@@ -124,7 +140,50 @@ public class PartnerResource {
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
             throw new IllegalStateException(e);
         }
-        return Map.of("partner_id", partnerId, "branding", branding);
+        return new PartnerBrandingView(partnerId, branding, brandingView(partnerId).hasLogo());
+    }
+
+    /**
+     * The partner's logo for the PDFs of its tenants' companies that have none: PNG or JPEG, up to
+     * 200 KB, like a company logo. Stored under the partner's id (partner and tenant ids are both
+     * random UUIDs, so it never lands in a tenant's files).
+     */
+    @Operation(operationId = "uploadPartnerLogo")
+    @PUT
+    @Path("/{partnerId}/logo")
+    @jakarta.ws.rs.Consumes({"image/png", "image/jpeg"})
+    @Transactional
+    public PartnerBrandingView uploadLogo(@PathParam("partnerId") UUID partnerId, byte[] image) {
+        require(partnerId, "admin");
+        String ref = files.put(partnerId, CompanyEnvironmentResource.logoImage(image)).key();
+        em.createNativeQuery("SELECT xhandler.set_partner_logo(:p, :ref)")
+                .setParameter("p", partnerId).setParameter("ref", ref).getSingleResult();
+        return brandingView(partnerId);
+    }
+
+    @APIResponse(responseCode = "204", description = "Logo del socio eliminado.")
+    @Operation(operationId = "deletePartnerLogo")
+    @DELETE
+    @Path("/{partnerId}/logo")
+    @Transactional
+    public Response deleteLogo(@PathParam("partnerId") UUID partnerId) {
+        require(partnerId, "admin");
+        em.createNativeQuery("SELECT xhandler.set_partner_logo(:p, CAST(NULL AS text))")
+                .setParameter("p", partnerId).getSingleResult();
+        return Response.noContent().build();
+    }
+
+    private PartnerBrandingView brandingView(UUID partnerId) {
+        Object[] row = (Object[]) em.createNativeQuery("SELECT CAST(branding AS text), logo_ref IS NOT NULL FROM xhandler.partner WHERE id = :p")
+                .setParameter("p", partnerId).getSingleResult();
+        Branding branding;
+        try {
+            branding = row[0] == null ? new Branding(null, null, null) : json.readValue((String) row[0], Branding.class);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            // Branding written before the record's shape: shown empty rather than failing
+            branding = new Branding(null, null, null);
+        }
+        return new PartnerBrandingView(partnerId, branding, (Boolean) row[1]);
     }
 
     /** The caller must be a member of the partner with at least {@code role} (admin > viewer). Unknown partners are 404. */

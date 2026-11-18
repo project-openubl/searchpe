@@ -121,12 +121,15 @@ public class PseResource {
         return new AuthorizationView(id, request.authorizedAt(), true, scope.actor().auditName(), null, null);
     }
 
+    /** The company after a revocation: back in software mode. */
+    public record RevokedView(UUID companyId, String emissionMode) {}
+
     /** The tenant revoked the platform in SOL: PSE stops, the company goes back to software mode. */
     @Operation(operationId = "revokePseAuthorization")
     @DELETE
     @Path("/authorization")
     @Transactional
-    public Map<String, Object> revoke(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId) {
+    public RevokedView revoke(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId) {
         TenantScope scope = access.enter(tenantId, Role.ADMIN);
         Company company = CompanyResource.findForUpdate(companyId);
         long pending = ((Number) em.createNativeQuery("""
@@ -149,7 +152,7 @@ public class PseResource {
         notifications.publish(tenantId, Notifications.PSE_AUTHORIZATION, "Autorización de PSE revocada: " + company.ruc,
                 "La empresa " + company.razonSocial + " dejó de autorizar a la plataforma como PSE. Sus documentos se firmarán con su propio "
                         + "certificado y se enviarán con su usuario SOL.", null);
-        return Map.of("company_id", companyId, "emission_mode", company.emissionMode);
+        return new RevokedView(companyId, company.emissionMode);
     }
 
     @Operation(operationId = "setEmissionMode")

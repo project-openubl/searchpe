@@ -93,6 +93,9 @@ public class DocumentResource {
             @QueryParam("to") LocalDate to,
             @QueryParam("hold_reason") String holdReason,
             @QueryParam("label") List<String> labels,
+            @Schema(description = "Número de documento del comprador (RUC, DNI, …), exacto.") @QueryParam("customer_numero") String customerNumero,
+            @Schema(description = "Inicio del nombre o razón social del comprador, sin distinguir mayúsculas.") @QueryParam("customer_nombre")
+                    String customerNombre,
             @QueryParam("limit") Integer limit,
             @QueryParam("offset") Integer offset) {
         access.enter(tenantId, Role.VIEWER);
@@ -103,6 +106,15 @@ public class DocumentResource {
         add(query, params, "tipoComprobante", tipo);
         add(query, params, "serie", serie);
         add(query, params, "holdReason", holdReason);
+        if (customerNumero != null && !customerNumero.isBlank()) {
+            query.append(" and customerNumero = :customerNumero");
+            params.put("customerNumero", customerNumero.strip());
+        }
+        if (customerNombre != null && !customerNombre.isBlank()) {
+            // A prefix match, served by the document_customer_nombre index
+            query.append(" and lower(customerNombre) like :customerNombre escape '\\'");
+            params.put("customerNombre", likePrefix(customerNombre.strip().toLowerCase(java.util.Locale.ROOT)));
+        }
         if (from != null) {
             query.append(" and fechaEmision >= :from");
             params.put("from", from);
@@ -316,4 +328,9 @@ public class DocumentResource {
         }
     }
 
+
+    /** A LIKE pattern matching values that start with {@code text}, its wildcards escaped. */
+    static String likePrefix(String text) {
+        return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+    }
 }
