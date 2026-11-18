@@ -290,6 +290,7 @@ fn unzip(zip_base64: &str) -> Result<Vec<u8>, Fault> {
     let mut archive = zip::ZipArchive::new(Cursor::new(bytes)).map_err(corrupt)?;
     let name = archive
         .file_names()
+        .filter_map(Result::ok)
         .find(|name| name.to_lowercase().ends_with(".xml"))
         .map(String::from)
         .ok_or((

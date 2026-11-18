@@ -252,7 +252,10 @@ fn unzip_first(bytes: &[u8]) -> Option<String> {
     let mut archive = zip::ZipArchive::new(Cursor::new(bytes)).ok()?;
     for i in 0..archive.len() {
         let mut file = archive.by_index(i).ok()?;
-        if file.name().to_lowercase().ends_with(".xml") {
+        if file
+            .name()
+            .is_ok_and(|name| name.to_lowercase().ends_with(".xml"))
+        {
             let mut text = String::new();
             file.by_ref()
                 .take(16 * 1024 * 1024)
@@ -327,8 +330,11 @@ mod tests {
         )
         .unwrap();
         let archive = zip::ZipArchive::new(Cursor::new(zip)).unwrap();
-        let names: Vec<_> = archive.file_names().collect();
-        assert!(names.contains(&"20123456789-01-F001-1.xml"));
-        assert!(names.contains(&"R-20123456789-01-F001-1.xml"));
+        let names: Vec<String> = archive
+            .file_names()
+            .map(|name| name.unwrap().into_owned())
+            .collect();
+        assert!(names.contains(&"20123456789-01-F001-1.xml".to_string()));
+        assert!(names.contains(&"R-20123456789-01-F001-1.xml".to_string()));
     }
 }

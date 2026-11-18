@@ -11,7 +11,7 @@ default-run = "xhandler-engine"
 # Pinned by revision (DESIGN.md §26.3). Points at the fork commit with the
 # two-step signing (R1) until project-openubl/xhandler-rust#610 is merged.
 # build.rs reads this rev for GET /v1/info.
-xhandler = { git = "https://github.com/carlosthe19916/xhandler-rust", rev = "56ea4775f23eef46350edc43c7a04ebd1e4500fc" }
+xhandler = { git = "https://github.com/carlosthe19916/xhandler-rust", rev = "9d7d75ec51176750620e38efde0ba077ee504983" }
 
 anyhow = "1"
 axum = "0.8"
@@ -43,7 +43,7 @@ tracing-opentelemetry = "0.34"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 url = "2"
 # Same version and features as xhandler-rust (zips for SUNAT and the fake's CDRs)
-zip = { version = "7", default-features = false, features = ["deflate"] }
+zip = { version = "9.0.5", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
 http-body-util = "0.1"

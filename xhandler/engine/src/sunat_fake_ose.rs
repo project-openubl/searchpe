@@ -49,7 +49,13 @@ pub async fn bill_service(State(fake): State<Fake>, body: String) -> Response {
     let Ok(mut archive) = zip::ZipArchive::new(Cursor::new(bytes)) else {
         return soap_fault(("0156", "El archivo ZIP esta corrupto".into()));
     };
-    let files: Vec<String> = archive.file_names().map(String::from).collect();
+    let Ok(files) = archive
+        .file_names()
+        .map(|name| name.map(String::from))
+        .collect::<zip::result::ZipResult<Vec<String>>>()
+    else {
+        return soap_fault(("0156", "El archivo ZIP esta corrupto".into()));
+    };
     let document = format!("{name}.xml");
     let cdr = format!("R-{name}.xml");
     if !files.contains(&document) || !files.contains(&cdr) {
