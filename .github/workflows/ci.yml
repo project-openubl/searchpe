@@ -328,7 +328,7 @@ jobs:
           kubectl -n openubl create configmap xhandler-db-init --from-file=init.sql=xhandler/hack/postgres/init.sql
           kubectl -n openubl create configmap xhandler-realm --from-file=xhandler-realm-dev.json=xhandler/deploy/keycloak/xhandler-realm-dev.json
           kubectl -n openubl apply -f scripts/xhandler-deps.yaml
-          kubectl -n openubl rollout status deployment/xhandler-db deployment/keycloak deployment/minio --timeout=6m
+          kubectl -n openubl rollout status deployment/xhandler-db deployment/keycloak deployment/s3 --timeout=6m
           kubectl -n openubl apply -f scripts/xhandler.yaml
           for i in $(seq 1 30); do kubectl -n openubl get deployment xhandler-ui && break; sleep 10; done
           kubectl -n openubl rollout status deployment/xhandler-ui --timeout=8m
@@ -388,4 +388,4 @@ jobs:
           kubectl logs -n openubl --all-containers --prefix -l app.kubernetes.io/name=searchpe --tail=100 || true
           kubectl logs -n openubl --all-containers --prefix -l app.kubernetes.io/name=xhandler-ui --tail=100 || true
           kubectl logs -n openubl --all-containers --prefix -l app.kubernetes.io/part-of=xhandler-service --tail=150 || true
-          kubectl logs -n openubl --all-containers --prefix -l 'app in (xhandler-db,keycloak,minio)' --tail=50 || true
+          kubectl logs -n openubl --all-containers --prefix -l 'app in (xhandler-db,keycloak,s3)' --tail=50 || true

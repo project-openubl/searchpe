@@ -24,7 +24,7 @@ spec:
     clientId: xhandler-service
     credentialsSecret: { name: xhandler-oidc, key: secret }
   storage:
-    s3Endpoint: http://minio:9000
+    s3Endpoint: http://s3:9000
     bucket: xhandler
     region: us-east-1
     accessKeySecret: { name: xhandler-s3, key: access-key }

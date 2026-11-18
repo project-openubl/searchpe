@@ -1,6 +1,6 @@
 # What a full XHandler needs in the CI e2e, in the cluster: PostgreSQL with the production roles
 # (xhandler/hack/postgres/init.sql, from the ConfigMap xhandler-db-init), Keycloak with the dev
-# realm (ConfigMap xhandler-realm) and MinIO for the files. Test credentials only.
+# realm (ConfigMap xhandler-realm) and an S3 API (S3Mock) for the files. Test credentials only.
 apiVersion: v1
 kind: Secret
 metadata:
@@ -23,8 +23,8 @@ kind: Secret
 metadata:
   name: xhandler-s3
 stringData:
-  access-key: minioadmin
-  secret-key: minioadmin
+  access-key: test
+  secret-key: test
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -106,36 +106,29 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: minio
+  name: s3
 spec:
   selector:
-    matchLabels: { app: minio }
+    matchLabels: { app: s3 }
   template:
     metadata:
-      labels: { app: minio }
+      labels: { app: s3 }
     spec:
       containers:
-        - name: minio
-          image: quay.io/minio/minio:latest
-          # A directory of the data path is a bucket
-          command: [sh, -c, "mkdir -p /data/xhandler && exec minio server /data"]
+        # S3Mock: an S3 API with the bucket created at start (MinIO no longer publishes images)
+        - name: s3
+          image: docker.io/adobe/s3mock:latest
           env:
-            - { name: MINIO_ROOT_USER, value: minioadmin }
-            - { name: MINIO_ROOT_PASSWORD, value: minioadmin }
-          ports: [{ containerPort: 9000 }]
+            - { name: COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS, value: xhandler }
+          ports: [{ containerPort: 9090 }]
           readinessProbe:
-            httpGet: { path: /minio/health/ready, port: 9000 }
+            tcpSocket: { port: 9090 }
             periodSeconds: 5
-          volumeMounts:
-            - { name: data, mountPath: /data }
-      volumes:
-        - name: data
-          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: minio
+  name: s3
 spec:
-  selector: { app: minio }
-  ports: [{ port: 9000 }]
+  selector: { app: s3 }
+  ports: [{ port: 9000, targetPort: 9090 }]
