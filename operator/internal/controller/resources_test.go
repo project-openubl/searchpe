@@ -22,7 +22,7 @@ import (
 
 	networkingv1ac "k8s.io/client-go/applyconfigurations/networking/v1"
 
-	"github.com/project-openubl/searchpe/operator/api/v1alpha1"
+	"github.com/project-openubl/xhandler-service/operator/api/v1alpha1"
 )
 
 func TestExposedURL(t *testing.T) {

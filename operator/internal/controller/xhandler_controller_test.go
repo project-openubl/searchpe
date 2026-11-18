@@ -41,14 +41,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/config"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
-	"github.com/project-openubl/searchpe/operator/api/v1alpha1"
-	xhandlerv1alpha1 "github.com/project-openubl/searchpe/operator/api/xhandler/v1alpha1"
+	"github.com/project-openubl/xhandler-service/operator/api/v1alpha1"
+	xhandlerv1alpha1 "github.com/project-openubl/xhandler-service/operator/api/xhandler/v1alpha1"
 )
 
 const (
-	testXHandlerImage    = "ghcr.io/project-openubl/searchpe/xhandler-service:nightly"
-	testEngineImage      = "ghcr.io/project-openubl/searchpe/xhandler-engine:nightly"
-	testUIImage          = "ghcr.io/project-openubl/searchpe/xhandler-ui:nightly"
+	testXHandlerImage    = "ghcr.io/project-openubl/xhandler-service/xhandler-service:nightly"
+	testEngineImage      = "ghcr.io/project-openubl/xhandler-service/xhandler-engine:nightly"
+	testUIImage          = "ghcr.io/project-openubl/xhandler-service/xhandler-ui:nightly"
 	testEgressProxyImage = "docker.io/ubuntu/squid:6.6-24.04_edge"
 	testOIDCServer       = "https://keycloak.example.com/realms/xhandler"
 )

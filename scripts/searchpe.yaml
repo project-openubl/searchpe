@@ -4,7 +4,7 @@ metadata:
   name: searchpe
 spec:
   sunat:
-    padronReducidoUrl: https://raw.githubusercontent.com/project-openubl/searchpe/main/searchpe/src/test/resources/padron_reducido_ruc.zip
+    padronReducidoUrl: https://raw.githubusercontent.com/project-openubl/xhandler-service/main/searchpe/src/test/resources/padron_reducido_ruc.zip
   db:
     usernameSecret:
       name: postgresql-pguser-foo

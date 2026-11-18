@@ -108,7 +108,7 @@ The name of an `XHandler` is a DNS-1035 label (it starts with a letter) of at mo
 The images default to the operator's `RELATED_IMAGE_XHANDLER`, `RELATED_IMAGE_XHANDLER_ENGINE`,
 `RELATED_IMAGE_XHANDLER_UI` and `RELATED_IMAGE_EGRESS_PROXY` (`XHANDLER_IMAGE`, `XHANDLER_ENGINE_IMAGE`,
 `XHANDLER_UI_IMAGE` and `EGRESS_PROXY_IMAGE` of `make deploy`, `make bundle` and `make run`; the `:nightly` images of
-`ghcr.io/project-openubl/searchpe` by default). Unlike `RELATED_IMAGE_SEARCHPE`, they are optional: an `XHandler` that
+`ghcr.io/project-openubl/xhandler-service` by default). Unlike `RELATED_IMAGE_SEARCHPE`, they are optional: an `XHandler` that
 needs a missing (empty) one is not deployed, and its `Ready` condition (`ImageMissing`) says which.
 `SEARCHPE_IMAGE_PULL_POLICY` applies to the Searchpe image and, now, to the xhandler-service, engine and UI images too;
 the egress proxy image is pulled `IfNotPresent`.

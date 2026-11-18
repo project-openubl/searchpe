@@ -50,7 +50,7 @@ spec:
               value: /mnt/workspace
             - name: QUARKUS_PROFILE
               value: prod,basic
-          image: ghcr.io/project-openubl/searchpe/searchpe:nightly
+          image: ghcr.io/project-openubl/xhandler-service/searchpe:nightly
           imagePullPolicy: Always
           livenessProbe:
             failureThreshold: 150

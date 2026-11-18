@@ -3,15 +3,15 @@ SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
 # The images of docker-build, deploy and bundle
-IMG ?= ghcr.io/project-openubl/searchpe/searchpe-operator:nightly
-SEARCHPE_IMAGE ?= ghcr.io/project-openubl/searchpe/searchpe:nightly
-XHANDLER_IMAGE ?= ghcr.io/project-openubl/searchpe/xhandler-service:nightly
-XHANDLER_ENGINE_IMAGE ?= ghcr.io/project-openubl/searchpe/xhandler-engine:nightly
-XHANDLER_UI_IMAGE ?= ghcr.io/project-openubl/searchpe/xhandler-ui:nightly
+IMG ?= ghcr.io/project-openubl/xhandler-service/searchpe-operator:nightly
+SEARCHPE_IMAGE ?= ghcr.io/project-openubl/xhandler-service/searchpe:nightly
+XHANDLER_IMAGE ?= ghcr.io/project-openubl/xhandler-service/xhandler-service:nightly
+XHANDLER_ENGINE_IMAGE ?= ghcr.io/project-openubl/xhandler-service/xhandler-engine:nightly
+XHANDLER_UI_IMAGE ?= ghcr.io/project-openubl/xhandler-service/xhandler-ui:nightly
 EGRESS_PROXY_IMAGE ?= docker.io/ubuntu/squid:6.6-24.04_edge
 # The version of the bundle, X.Y.Z (the validators of the catalogs reject 0.0.0)
 VERSION ?= 0.0.1
-BUNDLE_IMG ?= ghcr.io/project-openubl/searchpe/searchpe-operator-bundle:v$(VERSION)
+BUNDLE_IMG ?= ghcr.io/project-openubl/xhandler-service/searchpe-operator-bundle:v$(VERSION)
 CONTAINER_TOOL ?= docker
 
 # controller-gen, kustomize and yq are tools of go.mod (go tool): Dependabot updates them.

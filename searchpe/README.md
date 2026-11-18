@@ -41,7 +41,7 @@ minikube service searchpe -n openubl
 ## Links
 
 - [Documentación](https://project-openubl.github.io)
-- [Discusiones](https://github.com/project-openubl/searchpe/discussions)
+- [Discusiones](https://github.com/project-openubl/xhandler-service/discussions)
 
 ## License
 

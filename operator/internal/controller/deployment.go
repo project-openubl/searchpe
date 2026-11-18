@@ -27,7 +27,7 @@ import (
 	metav1ac "k8s.io/client-go/applyconfigurations/meta/v1"
 	"k8s.io/utils/ptr"
 
-	"github.com/project-openubl/searchpe/operator/api/v1alpha1"
+	"github.com/project-openubl/xhandler-service/operator/api/v1alpha1"
 )
 
 const (

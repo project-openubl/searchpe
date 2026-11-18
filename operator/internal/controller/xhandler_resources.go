@@ -39,7 +39,7 @@ import (
 	policyv1ac "k8s.io/client-go/applyconfigurations/policy/v1"
 	"k8s.io/utils/ptr"
 
-	xhandlerv1alpha1 "github.com/project-openubl/searchpe/operator/api/xhandler/v1alpha1"
+	xhandlerv1alpha1 "github.com/project-openubl/xhandler-service/operator/api/xhandler/v1alpha1"
 )
 
 // The resources of an XHandler port xhandler/deploy/base: see its manifests for the reasons of

@@ -42,9 +42,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
-	"github.com/project-openubl/searchpe/operator/api/v1alpha1"
-	xhandlerv1alpha1 "github.com/project-openubl/searchpe/operator/api/xhandler/v1alpha1"
-	"github.com/project-openubl/searchpe/operator/internal/controller"
+	"github.com/project-openubl/xhandler-service/operator/api/v1alpha1"
+	xhandlerv1alpha1 "github.com/project-openubl/xhandler-service/operator/api/xhandler/v1alpha1"
+	"github.com/project-openubl/xhandler-service/operator/internal/controller"
 )
 
 // Leader election:

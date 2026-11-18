@@ -40,8 +40,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 
-	"github.com/project-openubl/searchpe/operator/api/v1alpha1"
-	xhandlerv1alpha1 "github.com/project-openubl/searchpe/operator/api/xhandler/v1alpha1"
+	"github.com/project-openubl/xhandler-service/operator/api/v1alpha1"
+	xhandlerv1alpha1 "github.com/project-openubl/xhandler-service/operator/api/xhandler/v1alpha1"
 )
 
 // xhFieldOwner owns the fields the operator applies to the resources of an XHandler.

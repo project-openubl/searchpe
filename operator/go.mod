@@ -1,4 +1,4 @@
-module github.com/project-openubl/searchpe/operator
+module github.com/project-openubl/xhandler-service/operator
 
 go 1.26.0
 

@@ -33,7 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/project-openubl/searchpe/operator/api/v1alpha1"
+	"github.com/project-openubl/xhandler-service/operator/api/v1alpha1"
 )
 
 // fieldOwner owns the fields the operator applies. It is the field manager the Java operator

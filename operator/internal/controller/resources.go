@@ -29,7 +29,7 @@ import (
 	metav1ac "k8s.io/client-go/applyconfigurations/meta/v1"
 	networkingv1ac "k8s.io/client-go/applyconfigurations/networking/v1"
 
-	"github.com/project-openubl/searchpe/operator/api/v1alpha1"
+	"github.com/project-openubl/xhandler-service/operator/api/v1alpha1"
 )
 
 // The names, labels and selectors are the Java operator's: it created the resources that exist.

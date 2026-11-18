@@ -73,9 +73,9 @@
     </developers>
 
     <scm>
-        <url>https://github.com/project-openubl/searchpe</url>
-        <connection>scm:git:git://github.com/project-openubl/searchpe.git</connection>
-        <developerConnection>scm:git:git@github.com:project-openubl/searchpe.git</developerConnection>
+        <url>https://github.com/project-openubl/xhandler-service</url>
+        <connection>scm:git:git://github.com/project-openubl/xhandler-service.git</connection>
+        <developerConnection>scm:git:git@github.com:project-openubl/xhandler-service.git</developerConnection>
     </scm>
 
     <distributionManagement>

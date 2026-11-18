@@ -48,7 +48,7 @@ jobs:
           -P native \
           -pl searchpe
       - name: Save container image
-        run: docker save -o searchpe-container-image.tar ghcr.io/project-openubl/searchpe/searchpe:nightly
+        run: docker save -o searchpe-container-image.tar ghcr.io/project-openubl/xhandler-service/searchpe:nightly
       - name: Upload container image
         uses: actions/upload-artifact@v7
         with:
@@ -61,9 +61,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Build container image
-        run: docker build -t ghcr.io/project-openubl/searchpe/searchpe-operator:nightly operator
+        run: docker build -t ghcr.io/project-openubl/xhandler-service/searchpe-operator:nightly operator
       - name: Save container image
-        run: docker save -o searchpe-operator-container-image.tar ghcr.io/project-openubl/searchpe/searchpe-operator:nightly
+        run: docker save -o searchpe-operator-container-image.tar ghcr.io/project-openubl/xhandler-service/searchpe-operator:nightly
       - name: Upload container image
         uses: actions/upload-artifact@v7
         with:
@@ -83,13 +83,13 @@ jobs:
       - name: Build container images
         run: |
           (cd xhandler && ./mvnw -B -q package -DskipTests -pl app -am)
-          docker build -f xhandler/app/src/main/docker/Dockerfile.jvm -t ghcr.io/project-openubl/searchpe/xhandler-service:nightly xhandler/app
-          docker build -t ghcr.io/project-openubl/searchpe/xhandler-engine:nightly xhandler/engine
-          docker build -t ghcr.io/project-openubl/searchpe/xhandler-ui:nightly ui
+          docker build -f xhandler/app/src/main/docker/Dockerfile.jvm -t ghcr.io/project-openubl/xhandler-service/xhandler-service:nightly xhandler/app
+          docker build -t ghcr.io/project-openubl/xhandler-service/xhandler-engine:nightly xhandler/engine
+          docker build -t ghcr.io/project-openubl/xhandler-service/xhandler-ui:nightly ui
       - name: Save container images
         run: |
-          docker save -o xhandler-container-images.tar ghcr.io/project-openubl/searchpe/xhandler-service:nightly \
-            ghcr.io/project-openubl/searchpe/xhandler-engine:nightly ghcr.io/project-openubl/searchpe/xhandler-ui:nightly
+          docker save -o xhandler-container-images.tar ghcr.io/project-openubl/xhandler-service/xhandler-service:nightly \
+            ghcr.io/project-openubl/xhandler-service/xhandler-engine:nightly ghcr.io/project-openubl/xhandler-service/xhandler-ui:nightly
       - name: Upload container images
         uses: actions/upload-artifact@v7
         with:
@@ -121,8 +121,8 @@ jobs:
           docker load -i artifacts/xhandler-container-images.tar
       - name: Push images to registry
         run: |
-          docker push ghcr.io/project-openubl/searchpe/searchpe:nightly
-          docker push ghcr.io/project-openubl/searchpe/searchpe-operator:nightly
-          docker push ghcr.io/project-openubl/searchpe/xhandler-service:nightly
-          docker push ghcr.io/project-openubl/searchpe/xhandler-engine:nightly
-          docker push ghcr.io/project-openubl/searchpe/xhandler-ui:nightly
+          docker push ghcr.io/project-openubl/xhandler-service/searchpe:nightly
+          docker push ghcr.io/project-openubl/xhandler-service/searchpe-operator:nightly
+          docker push ghcr.io/project-openubl/xhandler-service/xhandler-service:nightly
+          docker push ghcr.io/project-openubl/xhandler-service/xhandler-engine:nightly
+          docker push ghcr.io/project-openubl/xhandler-service/xhandler-ui:nightly

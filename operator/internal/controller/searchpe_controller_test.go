@@ -36,7 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/config"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
-	"github.com/project-openubl/searchpe/operator/api/v1alpha1"
+	"github.com/project-openubl/xhandler-service/operator/api/v1alpha1"
 )
 
 func newSearchpe(t *testing.T, spec v1alpha1.SearchpeSpec) *v1alpha1.Searchpe {
@@ -74,7 +74,7 @@ func TestReconcileCreatesTheResources(t *testing.T) {
 	if replicas := ptr.Deref(deployment.Spec.Replicas, 0); replicas != 1 {
 		t.Errorf("replicas %d, want the default, 1", replicas)
 	}
-	if image := deployment.Spec.Template.Spec.Containers[0].Image; image != "ghcr.io/project-openubl/searchpe/searchpe:nightly" {
+	if image := deployment.Spec.Template.Spec.Containers[0].Image; image != "ghcr.io/project-openubl/xhandler-service/searchpe:nightly" {
 		t.Errorf("image %s, want the image of the operator's configuration", image)
 	}
 	if len(secret.Data[basicAuthEncryptionKey]) < 16 {

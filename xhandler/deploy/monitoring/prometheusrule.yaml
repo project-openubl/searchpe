@@ -15,7 +15,7 @@ spec:
           labels: { severity: page }
           annotations:
             summary: "A CDR-OSE has waited {{ $value | humanizeDuration }} to be forwarded to SUNAT (limit: 1 hour)"
-            runbook_url: https://github.com/project-openubl/xhandler-service/blob/main/docs/runbooks/ose-forwarding.md
+            runbook_url: https://github.com/project-openubl/xhandler-service/blob/main/xhandler/docs/runbooks/ose-forwarding.md
         - alert: OseForwardingLate
           # Forwards acknowledged after the 1-hour bucket (le="3600.0" is a service-level boundary of the timer)
           expr: (sum(increase(xhandler_ose_forward_delay_seconds_count[15m])) - sum(increase(xhandler_ose_forward_delay_seconds_bucket{le="3600.0"}[15m]))) > 0
@@ -23,7 +23,7 @@ spec:
           labels: { severity: page }
           annotations:
             summary: "OSE forwards are taking longer than 1 hour"
-            runbook_url: https://github.com/project-openubl/xhandler-service/blob/main/docs/runbooks/ose-forwarding.md
+            runbook_url: https://github.com/project-openubl/xhandler-service/blob/main/xhandler/docs/runbooks/ose-forwarding.md
         - alert: OseIntakeErrors
           # 99.96% availability for OSE intake
           # Only our own failures (fault 0109): wrong passwords, bad ZIPs and invalid documents are SOAP
@@ -36,7 +36,7 @@ spec:
           labels: { severity: page }
           annotations:
             summary: "OSE intake error rate above the 99.96% availability budget"
-            runbook_url: https://github.com/project-openubl/xhandler-service/blob/main/docs/runbooks/ose-forwarding.md
+            runbook_url: https://github.com/project-openubl/xhandler-service/blob/main/xhandler/docs/runbooks/ose-forwarding.md
     - name: xhandler-documents
       rules:
         - alert: DocumentsPastDeadline
@@ -45,21 +45,21 @@ spec:
           labels: { severity: page }
           annotations:
             summary: "{{ $value }} documents are past their SUNAT deadline without a final answer"
-            runbook_url: https://github.com/project-openubl/xhandler-service/blob/main/docs/runbooks/documents-stuck.md
+            runbook_url: https://github.com/project-openubl/xhandler-service/blob/main/xhandler/docs/runbooks/documents-stuck.md
         - alert: DocumentsNeedAttention
           expr: max(xhandler_documents_exception) + max(xhandler_documents_unknown_stale) > 50
           for: 30m
           labels: { severity: ticket }
           annotations:
             summary: "{{ $value }} production documents in exception (last day) or unknown for over an hour"
-            runbook_url: https://github.com/project-openubl/xhandler-service/blob/main/docs/runbooks/documents-stuck.md
+            runbook_url: https://github.com/project-openubl/xhandler-service/blob/main/xhandler/docs/runbooks/documents-stuck.md
         - alert: SunatBacklogGrowing
           expr: deriv(max(xhandler_documents_pending)[30m:1m]) > 5
           for: 30m
           labels: { severity: ticket }
           annotations:
             summary: "Documents waiting for SUNAT keep growing (outage or throttling?)"
-            runbook_url: https://github.com/project-openubl/xhandler-service/blob/main/docs/runbooks/sunat-outage.md
+            runbook_url: https://github.com/project-openubl/xhandler-service/blob/main/xhandler/docs/runbooks/sunat-outage.md
     - name: xhandler-platform
       rules:
         - alert: JobBacklogOld
@@ -68,7 +68,7 @@ spec:
           labels: { severity: page }
           annotations:
             summary: "The oldest waiting job is {{ $value | humanizeDuration }} old: workers can't keep up or are down"
-            runbook_url: https://github.com/project-openubl/xhandler-service/blob/main/docs/runbooks/workers.md
+            runbook_url: https://github.com/project-openubl/xhandler-service/blob/main/xhandler/docs/runbooks/workers.md
         - alert: ApiErrorRate
           # SOAP faults (OSE intake) answer 500 by protocol and are excluded
           expr: |
@@ -78,7 +78,7 @@ spec:
           labels: { severity: page }
           annotations:
             summary: "More than 1% of API requests fail with 5xx"
-            runbook_url: https://github.com/project-openubl/xhandler-service/blob/main/docs/runbooks/workers.md
+            runbook_url: https://github.com/project-openubl/xhandler-service/blob/main/xhandler/docs/runbooks/workers.md
         - alert: DatabaseGaugesMissing
           # The gauges read a snapshot the ops.snapshot job writes every 30 s: NaN means the database
           # doesn't answer or the job stopped
@@ -87,7 +87,7 @@ spec:
           labels: { severity: page }
           annotations:
             summary: "The service can't read its database (or isn't scraped)"
-            runbook_url: https://github.com/project-openubl/xhandler-service/blob/main/docs/runbooks/database-failover.md
+            runbook_url: https://github.com/project-openubl/xhandler-service/blob/main/xhandler/docs/runbooks/database-failover.md
         - alert: PseRejectedRateHigh
           # RS 199-2015 art. 7: 10% the first year, 5% after; warn at 4%
           expr: max(xhandler_pse_rejected_rate) > 0.04
@@ -95,4 +95,4 @@ spec:
           labels: { severity: ticket }
           annotations:
             summary: "PSE rejected-CDR rate at {{ $value | humanizePercentage }} this half-year"
-            runbook_url: https://github.com/project-openubl/xhandler-service/blob/main/docs/runbooks/pse-rejected-rate.md
+            runbook_url: https://github.com/project-openubl/xhandler-service/blob/main/xhandler/docs/runbooks/pse-rejected-rate.md

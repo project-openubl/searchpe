@@ -161,7 +161,7 @@ metadata:
   annotations:
     app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"searchpe-db"}]'
     app.openshift.io/vcs-ref: main
-    app.openshift.io/vcs-uri: 'https://github.com/project-openubl/searchpe.git'
+    app.openshift.io/vcs-uri: 'https://github.com/project-openubl/xhandler-service.git'
 spec:
   template:
     spec:

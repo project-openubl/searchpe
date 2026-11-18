@@ -23,7 +23,7 @@ LABEL name="openubl/openubl-ui" \
       help="For more information visit https://project-openubl.github.io/" \
       license="Apache License 2.0" \
       summary="Openubl - User Interface" \
-      url="https://github.com/project-openubl/searchpe" \
+      url="https://github.com/project-openubl/xhandler-service" \
       usage="podman run -p 8080 -e XHANDLER_API_URL=http://xhandler:8080 -e SEARCHPE_API_URL=http://searchpe:8080 -e OIDC_SERVER_URL=https://sso/realms/xhandler openubl-ui" \
       io.k8s.display-name="openubl-ui" \
       io.k8s.description="Openubl - User Interface" \

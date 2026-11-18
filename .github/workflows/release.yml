@@ -1,12 +1,12 @@
 name: Release
 
-# Runs when a release is published. release-tools' release-searchpe workflow creates the release
+# Runs when a release is published. release-tools' release-xhandler-service workflow creates the release
 # (tag and notes) once CI passed on the commit, waits for this workflow and then opens the
 # OperatorHub pull requests from the bundle attached here.
 #
 # The tag is the version: the poms on main keep a development version and every job sets the
 # tag's. Publishes:
-# - ghcr.io/project-openubl/searchpe/searchpe (native), searchpe-operator, xhandler-service (JVM),
+# - ghcr.io/project-openubl/xhandler-service/searchpe (native), searchpe-operator, xhandler-service (JVM),
 #   xhandler-engine and xhandler-ui, for amd64 and arm64:
 #   vX.Y.Z always; latest and vX only for the highest stable release (of its major for vX).
 # - release assets: the JVM distribution, the OpenAPI schema, the operator bundle and SHA256SUMS.
@@ -36,7 +36,7 @@ permissions:
 
 env:
   TAG: ${{ github.event.release.tag_name || inputs.tag }}
-  REGISTRY: ghcr.io/project-openubl/searchpe
+  REGISTRY: ghcr.io/project-openubl/xhandler-service
 
 jobs:
   prepare:
@@ -72,7 +72,7 @@ jobs:
       packages: write
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
-      IMAGE: ghcr.io/project-openubl/searchpe/${{ matrix.image }}:${{ github.event.release.tag_name || inputs.tag }}-${{ matrix.arch }}
+      IMAGE: ghcr.io/project-openubl/xhandler-service/${{ matrix.image }}:${{ github.event.release.tag_name || inputs.tag }}-${{ matrix.arch }}
     steps:
       - uses: docker/login-action@v4
         with:

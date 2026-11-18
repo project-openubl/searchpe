@@ -33,8 +33,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
-	"github.com/project-openubl/searchpe/operator/api/v1alpha1"
-	xhandlerv1alpha1 "github.com/project-openubl/searchpe/operator/api/xhandler/v1alpha1"
+	"github.com/project-openubl/xhandler-service/operator/api/v1alpha1"
+	xhandlerv1alpha1 "github.com/project-openubl/xhandler-service/operator/api/xhandler/v1alpha1"
 )
 
 // The API server of the tests, started by TestMain. It has no controllers: the tests reconcile
@@ -81,7 +81,7 @@ func runTests(m *testing.M) int {
 func newReconciler() *SearchpeReconciler {
 	return &SearchpeReconciler{
 		Client: k8sClient,
-		Config: Config{Image: "ghcr.io/project-openubl/searchpe/searchpe:nightly", ImagePullPolicy: corev1.PullAlways},
+		Config: Config{Image: "ghcr.io/project-openubl/xhandler-service/searchpe:nightly", ImagePullPolicy: corev1.PullAlways},
 	}
 }
 
