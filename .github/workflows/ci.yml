@@ -362,13 +362,15 @@ jobs:
         run: |
           kubectl -n openubl wait xhandler/xhandler --for=condition=Migrated --timeout=8m
           kubectl -n openubl wait xhandler/xhandler --for=condition=Ready --timeout=8m
-          kubectl -n openubl port-forward svc/keycloak 8180:8080 >/dev/null 2>&1 &
-          for i in $(seq 1 30); do curl -fs http://localhost:8180/realms/xhandler >/dev/null && break; sleep 2; done
-          TOKEN=$(curl -fsS http://localhost:8180/realms/xhandler/protocol/openid-connect/token \
+          # The token from inside the cluster: the issuer is the one the api discovered
+          ANSWER=$(kubectl -n openubl run token --rm -i --quiet --restart=Never --image=docker.io/curlimages/curl:latest -- \
+            curl -sS http://keycloak:8080/realms/xhandler/protocol/openid-connect/token \
             -d grant_type=password -d client_id=xhandler-service -d client_secret=secret \
-            -d username=alice -d password=alice | jq -r .access_token)
+            -d username=alice -d password=alice)
+          TOKEN=$(jq -r '.access_token // empty' <<<"$ANSWER")
+          [ -n "$TOKEN" ] || { echo "::error::no token from Keycloak: $ANSWER"; exit 1; }
           # The claims the api checks (issuer, audience), for the log
-          cut -d. -f2 <<<"$TOKEN" | tr '_-' '/+' | base64 -d 2>/dev/null | jq '{iss, aud, azp}' || true
+          python3 -c 'import base64,json,sys; p=sys.argv[1].split(".")[1]; c=json.loads(base64.urlsafe_b64decode(p+"="*(-len(p)%4))); print({k: c.get(k) for k in ("iss","aud","azp")})' "$TOKEN"
           UI="http://$(minikube ip)"
           HOST="Host: xhandler.local"
           curl -fsS -H "$HOST" "$UI/q/openapi.json" | jq -e '.paths | has("/api/v1/tenants")'
