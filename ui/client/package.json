@@ -24,7 +24,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@hcaptcha/react-hcaptcha": "^2.2.0",
     "@hookform/resolvers": "^5.6.0",
+    "@marsidev/react-turnstile": "^1.6.3",
     "@patternfly/patternfly": "^6.7.0",
     "@patternfly/react-component-groups": "^6.7.0",
     "@patternfly/react-core": "^6.7.0",

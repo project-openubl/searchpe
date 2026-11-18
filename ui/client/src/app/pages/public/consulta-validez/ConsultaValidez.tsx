@@ -11,13 +11,19 @@ import {
   StackItem,
 } from "@patternfly/react-core";
 
+import { captchaConfigOf } from "@openubl-ui/common";
+
 import { DocumentTitle } from "@app/components/DocumentTitle";
+import { ENV } from "@app/env";
 import { useSubmitError } from "@app/hooks/useSubmitError";
 import { useOseLookupMutation } from "@app/queries/xhandler/public-lookup";
 import { getMutationErrorMessage } from "@app/utils/apiError";
 
 import { OseLookupForm } from "./components/OseLookupForm";
 import { OseLookupResultAlert } from "./components/OseLookupResultAlert";
+
+/** The CAPTCHA widget configured for this deployment, if any (`CAPTCHA_SITE_KEY`). */
+const CAPTCHA = captchaConfigOf(ENV);
 
 /**
  * The OSE validity page (RS 242-2018, DESIGN.md §12): anyone checks whether a comprobante got a
@@ -57,6 +63,7 @@ export const ConsultaValidez: React.FC = () => {
                   formId={formId}
                   submitError={submitError}
                   isSubmitting={lookup.isPending}
+                  captcha={CAPTCHA}
                   onSubmit={(request) => {
                     clearSubmitError();
                     lookup.reset();

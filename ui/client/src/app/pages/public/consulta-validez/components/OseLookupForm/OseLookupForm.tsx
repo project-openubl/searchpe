@@ -1,4 +1,5 @@
 import type React from "react";
+import { useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -17,9 +18,13 @@ import {
   TextInput,
 } from "@patternfly/react-core";
 
+import type { ICaptchaConfig } from "@openubl-ui/common";
+
 import type { OseLookupRequest } from "@app/client/xhandler";
 import { FormSubmitError } from "@app/components/FormSubmitError";
 import type { IMutationErrorMessage } from "@app/utils/apiError";
+
+import { CaptchaWidget, type ICaptchaWidgetHandle } from "./CaptchaWidget";
 
 /** The comprobantes an OSE validates (RS 117-2017): facturas, boletas and their notas. */
 const TIPOS_COMPROBANTE: { value: string; label: string }[] = [
@@ -62,6 +67,8 @@ interface IOseLookupFormProps {
   submitError: IMutationErrorMessage | null;
   isSubmitting: boolean;
   onSubmit: (request: OseLookupRequest) => void;
+  /** The provider's widget; without it the token is typed (xhandler's CAPTCHA test mode). */
+  captcha?: ICaptchaConfig;
 }
 
 /** The OSE validity query's form: the printed data of a comprobante plus the CAPTCHA. */
@@ -70,11 +77,15 @@ export const OseLookupForm: React.FC<IOseLookupFormProps> = ({
   submitError,
   isSubmitting,
   onSubmit,
+  captcha,
 }) => {
+  const captchaRef = useRef<ICaptchaWidgetHandle>(null);
+  const [captchaFailed, setCaptchaFailed] = useState(false);
   const {
     control,
     handleSubmit,
-    formState: { errors },
+    setValue,
+    formState: { errors, isSubmitted },
   } = useForm<IOseLookupFormValues>({
     resolver: yupResolver(schema),
     defaultValues: {
@@ -94,11 +105,38 @@ export const OseLookupForm: React.FC<IOseLookupFormProps> = ({
       </FormHelperText>
     ) : null;
 
+  const setCaptchaToken = (token: string) =>
+    setValue("captcha", token, { shouldValidate: isSubmitted });
+
+  const captchaHelper = errors.captcha ? (
+    helper(errors.captcha.message, `${formId}-captcha`)
+  ) : captchaFailed ? (
+    helper(
+      "No se pudo completar la verificación. Inténtalo de nuevo.",
+      `${formId}-captcha`,
+    )
+  ) : (
+    <FormHelperText>
+      <HelperText id={`${formId}-captcha-helper`}>
+        <HelperTextItem>
+          La verificación (CAPTCHA) evita consultas automáticas.
+        </HelperTextItem>
+      </HelperText>
+    </FormHelperText>
+  );
+
   return (
     <Form
       id={formId}
       onSubmit={(event) =>
-        void handleSubmit((values) => onSubmit(values))(event)
+        void handleSubmit((values) => {
+          onSubmit(values);
+          // A token verifies once: whatever the answer, the next query needs a new one.
+          if (captcha) {
+            setValue("captcha", "");
+            captchaRef.current?.reset();
+          }
+        })(event)
       }
     >
       <FormSubmitError error={submitError} />
@@ -180,37 +218,54 @@ export const OseLookupForm: React.FC<IOseLookupFormProps> = ({
         />
         {helper(errors.numero?.message, `${formId}-numero`)}
       </FormGroup>
-      {/* The UI has no CAPTCHA widget yet: the solved token is pasted here. */}
-      <FormGroup
-        label="Código de verificación"
-        isRequired
-        fieldId={`${formId}-captcha`}
-      >
-        <Controller
-          name="captcha"
-          control={control}
-          render={({ field }) => (
-            <TextInput
-              id={`${formId}-captcha`}
-              value={field.value}
-              onChange={(_event, value) => field.onChange(value)}
-              onBlur={field.onBlur}
-              validated={errors.captcha ? "error" : "default"}
-            />
-          )}
-        />
-        {errors.captcha ? (
-          helper(errors.captcha.message, `${formId}-captcha`)
-        ) : (
-          <FormHelperText>
-            <HelperText>
-              <HelperTextItem>
-                La verificación (CAPTCHA) evita consultas automáticas.
-              </HelperTextItem>
-            </HelperText>
-          </FormHelperText>
-        )}
-      </FormGroup>
+      {captcha ? (
+        <FormGroup
+          label="Verificación"
+          isRequired
+          role="group"
+          fieldId={`${formId}-captcha`}
+          aria-describedby={`${formId}-captcha-helper`}
+        >
+          <CaptchaWidget
+            ref={captchaRef}
+            id={`${formId}-captcha`}
+            config={captcha}
+            onVerify={(token) => {
+              setCaptchaFailed(false);
+              setCaptchaToken(token);
+            }}
+            onExpire={() => setCaptchaToken("")}
+            onError={() => {
+              setCaptchaFailed(true);
+              setCaptchaToken("");
+            }}
+          />
+          {captchaHelper}
+        </FormGroup>
+      ) : (
+        // No site key (development, e2e): the token is typed; xhandler's test mode takes one.
+        <FormGroup
+          label="Código de verificación"
+          isRequired
+          fieldId={`${formId}-captcha`}
+        >
+          <Controller
+            name="captcha"
+            control={control}
+            render={({ field }) => (
+              <TextInput
+                id={`${formId}-captcha`}
+                value={field.value}
+                onChange={(_event, value) => field.onChange(value)}
+                onBlur={field.onBlur}
+                validated={errors.captcha ? "error" : "default"}
+                aria-describedby={`${formId}-captcha-helper`}
+              />
+            )}
+          />
+          {captchaHelper}
+        </FormGroup>
+      )}
       <ActionGroup>
         <Button
           type="submit"

@@ -44,6 +44,18 @@ export type OpenublEnvType = {
    * (Ley 32495); unset hides the link.
    */
   LIBRO_RECLAMACIONES_URL?: string;
+
+  /**
+   * The CAPTCHA provider whose widget the public OSE validity page shows: `hcaptcha` (default)
+   * or `turnstile`. It must match xhandler-service's `xhandler.captcha.verify-url`.
+   */
+  CAPTCHA_PROVIDER?: string;
+
+  /**
+   * The provider's public site key; unset shows a plain text field instead of the widget
+   * (development and e2e, against xhandler-service's CAPTCHA test mode).
+   */
+  CAPTCHA_SITE_KEY?: string;
 };
 
 /**
@@ -58,6 +70,8 @@ export const CLIENT_ENV_KEYS = [
   "OIDC_SCOPE",
   "SEARCHPE_ENABLED",
   "LIBRO_RECLAMACIONES_URL",
+  "CAPTCHA_PROVIDER",
+  "CAPTCHA_SITE_KEY",
 ] as const satisfies readonly (keyof OpenublEnvType)[];
 
 /** Path prefix the browser uses for xhandler-service; the proxies send it to `/api`. */
@@ -96,6 +110,9 @@ export const buildOpenublEnv = ({
   BRANDING,
 
   LIBRO_RECLAMACIONES_URL,
+
+  CAPTCHA_PROVIDER,
+  CAPTCHA_SITE_KEY,
 }: Partial<OpenublEnvType> = {}): OpenublEnvType => ({
   NODE_ENV,
   PORT,
@@ -112,7 +129,40 @@ export const buildOpenublEnv = ({
   BRANDING,
 
   LIBRO_RECLAMACIONES_URL,
+
+  CAPTCHA_PROVIDER,
+  CAPTCHA_SITE_KEY,
 });
+
+/** The CAPTCHA providers xhandler-service can verify (a `siteverify` POST of secret + response). */
+export const CAPTCHA_PROVIDERS = ["hcaptcha", "turnstile"] as const;
+
+export type CaptchaProvider = (typeof CAPTCHA_PROVIDERS)[number];
+
+export const isCaptchaProvider = (value: string): value is CaptchaProvider =>
+  (CAPTCHA_PROVIDERS as readonly string[]).includes(value);
+
+export interface ICaptchaConfig {
+  provider: CaptchaProvider;
+  siteKey: string;
+}
+
+/**
+ * The CAPTCHA widget to show, or `undefined` for the text-field fallback: no site key, or a
+ * provider the UI doesn't know. The browser and the server's CSP read it the same way.
+ */
+export const captchaConfigOf = ({
+  CAPTCHA_PROVIDER,
+  CAPTCHA_SITE_KEY,
+}: Pick<OpenublEnvType, "CAPTCHA_PROVIDER" | "CAPTCHA_SITE_KEY">):
+  ICaptchaConfig | undefined => {
+  const siteKey = CAPTCHA_SITE_KEY?.trim() ?? "";
+  const provider = CAPTCHA_PROVIDER?.trim().toLowerCase() || "hcaptcha";
+  if (!siteKey) {
+    return undefined;
+  }
+  return isCaptchaProvider(provider) ? { provider, siteKey } : undefined;
+};
 
 export const OPENUBL_ENV_DEFAULTS = buildOpenublEnv();
 

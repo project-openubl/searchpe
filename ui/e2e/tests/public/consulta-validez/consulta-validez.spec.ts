@@ -20,7 +20,8 @@ test("anyone checks a comprobante's validity", async ({ page }) => {
     .fill("20000000001");
   await page.getByRole("textbox", { name: "Serie" }).fill("F999");
   await page.getByRole("textbox", { name: "Número" }).fill("1");
-  // xhandler-service's CAPTCHA test mode (dev profile) takes this token.
+  // No CAPTCHA_SITE_KEY on the e2e stack: the fallback field, which
+  // xhandler-service's CAPTCHA test mode (dev profile) accepts with this token.
   await page
     .getByRole("textbox", { name: "Código de verificación" })
     .fill("test-pass");
