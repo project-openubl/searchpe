@@ -367,13 +367,18 @@ jobs:
           TOKEN=$(curl -fsS http://localhost:8180/realms/xhandler/protocol/openid-connect/token \
             -d grant_type=password -d client_id=xhandler-service -d client_secret=secret \
             -d username=alice -d password=alice | jq -r .access_token)
+          # The claims the api checks (issuer, audience), for the log
+          cut -d. -f2 <<<"$TOKEN" | tr '_-' '/+' | base64 -d 2>/dev/null | jq '{iss, aud, azp}' || true
           UI="http://$(minikube ip)"
           HOST="Host: xhandler.local"
           curl -fsS -H "$HOST" "$UI/q/openapi.json" | jq -e '.paths | has("/api/v1/tenants")'
           curl -fsS -H "$HOST" "$UI/api/v1/status" | jq -e 'type == "object"'
           code=$(curl -s -o /dev/null -w '%{http_code}' -H "$HOST" "$UI/api/xhandler/v1/tenants")
           [ "$code" = 401 ] || { echo "::error::without a token: $code, want 401"; exit 1; }
-          curl -fsS -H "$HOST" -H "Authorization: Bearer $TOKEN" "$UI/api/xhandler/v1/tenants" | jq -e 'type == "array" or type == "object"'
+          if ! curl -fsS -H "$HOST" -H "Authorization: Bearer $TOKEN" "$UI/api/xhandler/v1/tenants" | jq -e 'type == "array" or type == "object"'; then
+            curl -sS -i -H "$HOST" -H "Authorization: Bearer $TOKEN" "$UI/api/xhandler/v1/tenants" | head -20
+            exit 1
+          fi
       - name: Dump cluster state
         if: failure()
         run: |

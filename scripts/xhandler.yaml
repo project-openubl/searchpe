@@ -34,5 +34,7 @@ spec:
     - { name: XHANDLER_VAULT_SOFTWARE_ALLOW_IN_PRODUCTION, value: "true" }
     - { name: XHANDLER_VAULT_SOFTWARE_CURRENT_MASTER_KEY, value: ci }
     - { name: XHANDLER_VAULT_SOFTWARE_MASTER_KEYS_CI, value: "Y2ktbWFzdGVyLWtleS0wMDAwMDAwMDAwMDAwMDAwMDA=" }
+    # Why a token is refused, in the logs the job dumps on failure
+    - { name: QUARKUS_LOG_CATEGORY__IO_QUARKUS_OIDC__LEVEL, value: DEBUG }
   ui:
     searchpeRef: searchpe
