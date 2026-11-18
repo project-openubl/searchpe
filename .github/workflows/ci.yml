@@ -321,6 +321,12 @@ jobs:
           kubectl -n openubl apply -f scripts/xhandler.yaml
           for i in $(seq 1 30); do kubectl -n openubl get deployment xhandler-ui && break; sleep 10; done
           kubectl -n openubl rollout status deployment/xhandler-ui --timeout=8m
+          kubectl -n openubl wait pods -l app.kubernetes.io/name=xhandler-ui --for condition=Ready --timeout=5m
+          # nginx serves the host only once the Ingress has an address
+          for i in $(seq 1 30); do
+            [ -n "$(kubectl -n openubl get ingress xhandler-xhandler -o jsonpath='{.status.loadBalancer.ingress[0].ip}')" ] && break
+            sleep 10
+          done
           kubectl -n openubl get ingress xhandler-xhandler
           kubectl -n openubl get job -l app.kubernetes.io/name=xhandler-migrate
       # The single UI, through the XHandler's Ingress: its shell, and searchpe through its proxy
@@ -328,11 +334,16 @@ jobs:
         timeout-minutes: 10
         run: |
           UI="http://$(minikube ip)"
-          HOST="Host: xhandler.local"
-          for i in $(seq 1 30); do curl -fs -H "$HOST" "$UI/healthz" && break; sleep 10; done
-          curl -fs -H "$HOST" "$UI/healthz"
-          curl -fs -H "$HOST" "$UI/" | grep -q 'id="root"'
-          curl -fs -H "$HOST" "$UI/api/searchpe/versions" -H 'Accept: application/json' | jq -e 'type == "array"'
+          check() { # check <path> <test on the body>
+            for i in $(seq 1 30); do
+              body=$(curl -fsS -H "Host: xhandler.local" -H 'Accept: application/json, text/html' "$UI$1") && eval "$2" <<<"$body" && return 0
+              sleep 5
+            done
+            echo "::error::$1 failed"; curl -sS -i -H "Host: xhandler.local" "$UI$1" | head -40; return 1
+          }
+          check /healthz 'true'
+          check / 'grep -q "id=\"root\""'
+          check /api/searchpe/versions 'jq -e "type == \"array\""'
       - name: Dump cluster state
         if: failure()
         run: |
