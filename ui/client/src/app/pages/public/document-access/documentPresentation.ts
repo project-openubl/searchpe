@@ -1,3 +1,8 @@
+import {
+  PUBLIC_DOCUMENT_FILE_KINDS,
+  type PublicDocumentFileKind,
+} from "@app/queries/xhandler/public-documents";
+
 /** SUNAT catalog 01 codes the service emits, as the buyer reads them (ADR 0005). */
 export const TIPO_COMPROBANTE_LABELS: Record<string, string> = {
   "01": "Factura",
@@ -51,3 +56,19 @@ export const formatTotal = (
   }).format(total);
   return moneda ? `${moneda} ${amount}` : amount;
 };
+
+/** How the buyer reads each downloadable file. */
+export const PUBLIC_DOCUMENT_FILE_LABELS: Record<
+  PublicDocumentFileKind,
+  string
+> = {
+  pdf: "PDF",
+  xml: "XML",
+  cdr: "CDR",
+};
+
+/** PDF first (what a buyer usually wants), then XML and CDR. */
+export const publicFileOrder = (
+  kinds: readonly PublicDocumentFileKind[],
+): PublicDocumentFileKind[] =>
+  PUBLIC_DOCUMENT_FILE_KINDS.filter((kind) => kinds.includes(kind));

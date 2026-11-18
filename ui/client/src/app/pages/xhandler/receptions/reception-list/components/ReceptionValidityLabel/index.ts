@@ -1,0 +1,1 @@
+export { ReceptionValidityLabel } from "./ReceptionValidityLabel";

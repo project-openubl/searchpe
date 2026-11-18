@@ -26,6 +26,7 @@ issuing); its task ADRs become [0007](0007-job-reporting.md).
 | [0006](0006-api-error-display.md)                 | How API errors are shown: `{ kind, message, detail }`               |
 | [0007](0007-job-reporting.md)                     | How xhandler jobs are reported, after Pulp's tasks                  |
 | [0008](0008-view-state-persistence.md)            | Where a screen's view state (lists) is kept                         |
+| [0009](0009-manual-issuing-drafts.md)             | Manual issuing goes through drafts without a number                 |
 
 ## Template
 

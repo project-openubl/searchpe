@@ -1,0 +1,1 @@
+export { PartnerTenantsTab } from "./PartnerTenantsTab";

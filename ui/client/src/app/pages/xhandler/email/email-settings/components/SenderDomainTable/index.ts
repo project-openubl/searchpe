@@ -1,0 +1,1 @@
+export { SenderDomainTable } from "./SenderDomainTable";

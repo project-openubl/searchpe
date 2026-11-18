@@ -19,5 +19,13 @@ failed | canceling | canceled`, filter by `state` and `name`; cancel is
 - **Status** `GET /api/v1/status` is public: versions (service, engine, xhandler-rust),
   workers, queues and component health.
 - **Public endpoints** (`/api/v1/public/*`) need no token; the UI calls them without one.
+- **Buyer portal.** `GET /public/documents/{token}` lists the downloadable `files` (`pdf`, `xml`,
+  `cdr`) and the issuer's `libro_reclamaciones_url` when set; `…/{token}/{kind}` downloads one
+  (binary: `responseType: "blob"`), and the first download marks the document delivered.
+- **Drafts** (manual issuing, DESIGN.md §11.10) are tenant-level (`/drafts/{id}`) but created
+  under a company (`/companies/{c}/drafts`). `spec` is xbuilder JSON without `serie_numero`;
+  `PUT` replaces it and takes the `version` edited (409 `draft_changed` when stale);
+  `POST …/issue?version=` answers emit's `201 DocumentView`, `422` with SUNAT codes leaves the
+  draft editable, `409 draft_issued` once issued.
 - **Audience.** Access tokens must include `xhandler-service` in `aud`: the UI's Keycloak client
   needs an audience mapper.

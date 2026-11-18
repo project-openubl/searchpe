@@ -218,6 +218,9 @@
           },
           "submission_route" : {
             "type" : "string"
+          },
+          "libro_reclamaciones_url" : {
+            "type" : "string"
           }
         }
       },
@@ -551,6 +554,95 @@
             "type" : "string"
           },
           "verified_at" : {
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "DraftInput" : {
+        "type" : "object",
+        "required" : [ "kind", "spec" ],
+        "properties" : {
+          "kind" : {
+            "type" : "string",
+            "pattern" : "\\S"
+          },
+          "spec" : {
+            "description" : "El documento de xbuilder sin número (`serie_numero` no se acepta: se numera al emitir).",
+            "type" : "object",
+            "$ref" : "#/components/schemas/ObjectNode"
+          },
+          "serie" : {
+            "type" : "string",
+            "pattern" : "[A-Z0-9]{4}"
+          },
+          "labels" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string",
+              "maxLength" : 200
+            }
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Al editar: la versión que se editó; si el borrador cambió desde entonces, 409 (draft_changed)."
+          }
+        }
+      },
+      "DraftView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "prn" : {
+            "type" : "string"
+          },
+          "company_id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "status" : {
+            "type" : "string",
+            "description" : "draft (en edición) o issued (emitido: ver document_id)."
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "tipo_comprobante" : {
+            "type" : "string"
+          },
+          "serie" : {
+            "type" : "string"
+          },
+          "spec" : {
+            "$ref" : "#/components/schemas/JsonNode"
+          },
+          "labels" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          },
+          "customer" : {
+            "$ref" : "#/components/schemas/Customer"
+          },
+          "moneda" : {
+            "type" : "string"
+          },
+          "document_id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "created_by" : {
+            "type" : "string"
+          },
+          "created_at" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "updated_at" : {
             "$ref" : "#/components/schemas/Instant"
           }
         }
@@ -1152,6 +1244,30 @@
           }
         }
       },
+      "PageDraftView" : {
+        "description" : "Una página de resultados (`?limit=&offset=`). No incluye el total: una página con menos de `limit` elementos es la última.",
+        "type" : "object",
+        "required" : [ "items", "limit", "offset" ],
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DraftView"
+            },
+            "description" : "Los elementos de la página, como mucho `limit`."
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Tamaño de página aplicado (por defecto 50, máximo 200)."
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Elementos saltados antes de esta página."
+          }
+        }
+      },
       "PageEntry" : {
         "description" : "Una página de resultados (`?limit=&offset=`). No incluye el total: una página con menos de `limit` elementos es la última.",
         "type" : "object",
@@ -1324,6 +1440,10 @@
             "items" : {
               "type" : "string"
             }
+          },
+          "libro_reclamaciones_url" : {
+            "type" : "string",
+            "description" : "El Libro de Reclamaciones virtual del emisor, si lo configuró."
           }
         }
       },
@@ -1636,6 +1756,11 @@
           "email_body" : {
             "type" : "string",
             "maxLength" : 5000
+          },
+          "libro_reclamaciones_url" : {
+            "type" : "string",
+            "description" : "Enlace https al Libro de Reclamaciones virtual de la empresa, que el portal del comprador muestra; vacío lo quita.",
+            "maxLength" : 500
           }
         }
       },
@@ -4992,6 +5117,105 @@
         } ]
       }
     },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/drafts" : {
+      "post" : {
+        "summary" : "Crea un borrador de documento, sin número (emisión manual)",
+        "operationId" : "createDraft",
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DraftInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Borrador creado (también la respuesta repetida de una Idempotency-Key ya usada).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DraftView"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "Idempotency-Key en proceso.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422" : {
+            "description" : "Borrador inválido, o Idempotency-Key reutilizada con otra solicitud.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "Draft Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
+      }
+    },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/environment" : {
       "post" : {
         "operationId" : "changeCompanyEnvironment",
@@ -7947,6 +8171,418 @@
         },
         "summary" : "Cancel Void",
         "tags" : [ "Document Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/drafts" : {
+      "get" : {
+        "summary" : "Borradores de documentos, los más recientes primero",
+        "operationId" : "listDrafts",
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "company_id",
+          "in" : "query",
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "status",
+          "in" : "query",
+          "schema" : {
+            "description" : "draft o issued; sin filtro, ambos.",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageDraftView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "Draft Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/drafts/{draftId}" : {
+      "put" : {
+        "summary" : "Reemplaza el contenido de un borrador",
+        "operationId" : "updateDraft",
+        "parameters" : [ {
+          "name" : "draftId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DraftInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Borrador guardado.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DraftView"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "El borrador ya se emitió (draft_issued) o cambió desde la versión editada (draft_changed).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422" : {
+            "description" : "Borrador inválido.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "Draft Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
+      },
+      "get" : {
+        "operationId" : "getDraft",
+        "parameters" : [ {
+          "name" : "draftId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DraftView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Get",
+        "tags" : [ "Draft Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
+      },
+      "delete" : {
+        "operationId" : "deleteDraft",
+        "parameters" : [ {
+          "name" : "draftId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Borrador eliminado."
+          },
+          "409" : {
+            "description" : "El borrador ya se emitió (draft_issued).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Delete",
+        "tags" : [ "Draft Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/drafts/{draftId}/issue" : {
+      "post" : {
+        "summary" : "Emite un borrador: lo numera, valida y firma",
+        "operationId" : "issueDraft",
+        "parameters" : [ {
+          "name" : "draftId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "version",
+          "in" : "query",
+          "schema" : {
+            "description" : "La versión que el usuario revisó; si el borrador cambió desde entonces, 409 (draft_changed).",
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Correlation-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "201" : {
+            "description" : "Documento emitido (también la respuesta repetida de una Idempotency-Key ya usada, sin access_url).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DocumentView"
+                }
+              }
+            }
+          },
+          "402" : {
+            "description" : "Sin cuota de documentos en el plan (quota_exceeded).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "El borrador ya se emitió o cambió mientras se emitía, Idempotency-Key en proceso, empresa desactivada o no autorizada.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422" : {
+            "description" : "El documento no cumple las validaciones (el borrador sigue editable).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503" : {
+            "description" : "Servicio o serie ocupados (busy): reintente en unos segundos.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "Draft Resource" ],
         "security" : [ {
           "bearer" : [ ]
         } ]

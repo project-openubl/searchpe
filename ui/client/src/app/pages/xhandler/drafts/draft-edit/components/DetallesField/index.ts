@@ -1,0 +1,1 @@
+export { DetallesField } from "./DetallesField";

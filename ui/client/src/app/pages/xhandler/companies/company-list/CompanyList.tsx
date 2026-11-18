@@ -1,10 +1,12 @@
 import type React from "react";
 
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 
 import {
   Content,
   ContentVariants,
+  Flex,
+  FlexItem,
   Label,
   PageSection,
   PaginationVariant,
@@ -17,12 +19,14 @@ import {
 
 import { dataViewBodyStates } from "@app/components/dataViewStates";
 import { DocumentTitle } from "@app/components/DocumentTitle";
+import { GatedButton } from "@app/components/GatedButton";
 import { ListPagination } from "@app/components/ListPagination";
 import { SunatEnvLabel } from "@app/components/SunatEnvLabel";
 import { TableEmptyState } from "@app/components/TableEmptyState";
 import { TenantContextSelector } from "@app/components/TenantContextSelector";
 import { usePersistentState } from "@app/hooks/usePersistentState";
 import { useSelectedTenantId } from "@app/hooks/useSelectedTenantId";
+import { useTenantRole } from "@app/hooks/useTenantRole";
 import { useCompaniesListQuery } from "@app/queries/xhandler/companies";
 import type { DataViewTh } from "@app/utils/dataViewTypes";
 import {
@@ -34,6 +38,8 @@ import {
 /** A tenant's companies (RUCs), the level below the organization (ADR 0002). */
 export const CompanyList: React.FC = () => {
   const tenantId = useSelectedTenantId();
+  const navigate = useNavigate();
+  const { disabledProps } = useTenantRole();
   const [pagination, setPagination] = usePersistentState({
     ...PAGINATION_LIST_STATE.pagination,
     storage: "url",
@@ -113,10 +119,31 @@ export const CompanyList: React.FC = () => {
       <DocumentTitle title="Empresas" />
       <TenantContextSelector />
       <PageSection>
-        <Content component={ContentVariants.h1}>Empresas</Content>
-        <Content component={ContentVariants.p}>
-          Las empresas (RUC) que emiten comprobantes en esta organización.
-        </Content>
+        <Flex
+          justifyContent={{ default: "justifyContentSpaceBetween" }}
+          alignItems={{ default: "alignItemsCenter" }}
+        >
+          <FlexItem>
+            <Content component={ContentVariants.h1}>Empresas</Content>
+            <Content component={ContentVariants.p}>
+              Las empresas (RUC) que emiten comprobantes en esta organización.
+            </Content>
+          </FlexItem>
+          <FlexItem>
+            <GatedButton
+              variant="primary"
+              onClick={() =>
+                navigate({
+                  to: "/organizaciones/$tenantId/empresas/nueva",
+                  params: { tenantId },
+                })
+              }
+              {...disabledProps("admin")}
+            >
+              Nueva empresa
+            </GatedButton>
+          </FlexItem>
+        </Flex>
       </PageSection>
       <PageSection>
         <DataView activeState={activeState}>

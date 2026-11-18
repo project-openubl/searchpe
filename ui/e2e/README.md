@@ -54,14 +54,15 @@ npm run test:e2e                # starts `npm run start:dev` on :3000 unless one
 npm run test:ui -w e2e          # Playwright UI mode
 ```
 
-| Variable              | Default                 | Meaning                                                      |
-| --------------------- | ----------------------- | ------------------------------------------------------------ |
-| `E2E_BASE_URL`        | `http://localhost:3000` | A UI already running (then no dev server is started)         |
-| `E2E_USERNAME`        | `olga`                  | Dev-realm user; olga holds every searchpe permission         |
-| `E2E_PASSWORD`        | `olga`                  |                                                              |
-| `E2E_SEARCHPE`        | `true`                  | `false` when the stack runs without searchpe                 |
-| `E2E_SEARCHPE_IMPORT` | `false`                 | `true` to create a padrón version (downloads SUNAT's padrón) |
-| `E2E_BROWSER_CHANNEL` | (Playwright's Chromium) | `chrome` to use the installed Google Chrome                  |
+| Variable                    | Default                 | Meaning                                                       |
+| --------------------------- | ----------------------- | ------------------------------------------------------------- |
+| `E2E_BASE_URL`              | `http://localhost:3000` | A UI already running (then no dev server is started)          |
+| `E2E_USERNAME`              | `olga`                  | Dev-realm user; olga holds every searchpe permission          |
+| `E2E_PASSWORD`              | `olga`                  |                                                               |
+| `E2E_SEARCHPE`              | `true`                  | `false` when the stack runs without searchpe                  |
+| `E2E_SEARCHPE_IMPORT`       | `false`                 | `true` to create a padrón version (downloads SUNAT's padrón)  |
+| `E2E_BROWSER_CHANNEL`       | (Playwright's Chromium) | `chrome` to use the installed Google Chrome                   |
+| `E2E_PUBLIC_DOCUMENT_TOKEN` | (none)                  | A buyer link's token (`access_url`) for the buyer-portal spec |
 
 `auth.setup.ts` signs the e2e user up for an organization (`POST /api/v1/tenants`) when they
 belong to none, so the organization specs run on a fresh stack.

@@ -1,0 +1,1 @@
+export { ReceptionDetailModal } from "./ReceptionDetailModal";

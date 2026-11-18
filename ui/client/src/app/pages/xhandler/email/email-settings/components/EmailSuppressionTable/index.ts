@@ -1,0 +1,1 @@
+export { EmailSuppressionTable } from "./EmailSuppressionTable";

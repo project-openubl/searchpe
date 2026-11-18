@@ -1,0 +1,1 @@
+export { SireStatusLabel } from "./SireStatusLabel";

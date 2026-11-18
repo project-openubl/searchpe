@@ -1,0 +1,1 @@
+export { CreatePartnerTenantModal } from "./CreatePartnerTenantModal";

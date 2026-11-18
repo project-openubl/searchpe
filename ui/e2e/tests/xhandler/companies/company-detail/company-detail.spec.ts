@@ -20,3 +20,39 @@ test("a foreign organization is a 404 too", async ({ page }) => {
     page.getByRole("heading", { name: "404: La página no existe" }),
   ).toBeVisible();
 });
+
+test("shows a company's administration tabs", async ({
+  page,
+  tenantsPage,
+  companiesPage,
+}) => {
+  const tenantId = await tenantsPage.firstTenantId();
+  test.skip(!tenantId, "the e2e user belongs to no organization");
+  await companiesPage.goto(tenantId!);
+  await companiesPage.expectLoaded();
+  const firstCompany = companiesPage.table.getByRole("link").first();
+  test.skip(
+    (await firstCompany.count()) === 0,
+    "the organization has no company",
+  );
+  await firstCompany.click();
+
+  await page.getByRole("tab", { name: "Series" }).click();
+  await expect(page).toHaveURL(/pestana=series/);
+  await expect(
+    page.getByRole("grid", { name: "Tabla de series" }),
+  ).toBeVisible();
+
+  // Secrets are write-only: the table lists every kind, never a value.
+  await page.getByRole("tab", { name: "Credenciales" }).click();
+  const credentials = page.getByRole("grid", { name: "Tabla de credenciales" });
+  await expect(credentials.getByText("Clave SOL")).toBeVisible();
+
+  await page.getByRole("tab", { name: "Envío a SUNAT" }).click();
+  await expect(page.getByText("Obligada a emitir mediante OSE")).toBeVisible();
+
+  await page.getByRole("tab", { name: "Certificado" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Certificado digital" }),
+  ).toBeVisible();
+});
