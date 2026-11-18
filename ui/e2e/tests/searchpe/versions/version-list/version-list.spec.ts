@@ -14,10 +14,7 @@ test("lists the padrón versions and offers a new one", async ({
   await versionsPage.expectLoaded();
 
   await expect(
-    versionsPage
-      .rows()
-      .first()
-      .or(page.getByRole("heading", { name: "No hay versiones del padrón" })),
+    versionsPage.firstRowOrEmpty("No hay versiones del padrón"),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Nueva versión" }),

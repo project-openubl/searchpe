@@ -22,16 +22,23 @@ cd ui && npm ci   # also generates both API clients
 ## Step 3 — The stack
 
 ```bash
-podman compose -f hack/compose.yaml up -d postgres keycloak   # lgtm would take port 3000
+podman compose -f hack/compose.yaml up -d postgres keycloak   # Grafana (lgtm) is on 3001
 ```
 
-Then add the `xhandler-ui` client to the realm if it isn't there yet: the command is in
-`ui/e2e/README.md` (section "The stack").
+The dev realm already has the UI's public client, `xhandler-ui`.
 
 ## Step 4 — The backends
 
-Start xhandler-service on 8080 and, if wanted, searchpe on 8081, with the commands in
-`ui/e2e/README.md` (section "The backends"). searchpe needs OIDC and authorization switched on.
+Either run every backend from built artifacts (xhandler-service, the engine, the SUNAT fake and
+searchpe; `ui/e2e/README.md`, section "The stack"):
+
+```bash
+hack/ui-e2e-stack.sh build && hack/ui-e2e-stack.sh up
+```
+
+or start xhandler-service on 8080 and, if wanted, searchpe on 8081 in dev mode with the commands
+in `ui/e2e/README.md` (section "The backends by hand"). searchpe needs OIDC and authorization
+switched on.
 
 ## Step 5 — The UI
 

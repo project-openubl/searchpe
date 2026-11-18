@@ -106,7 +106,7 @@ export const DocumentAccess: React.FC<IDocumentAccessProps> = ({ token }) => {
     );
     return (
       <Card>
-        <CardTitle>
+        <CardTitle component="h2">
           {data.tipo_comprobante
             ? tipoComprobanteLabel(data.tipo_comprobante)
             : "Comprobante"}{" "}

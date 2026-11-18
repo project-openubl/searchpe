@@ -1,6 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 
 import { DataViewList } from "./DataViewList";
+import { CompaniesPage, TenantsPage } from "./pages";
 
 /** Page objects of the documents and data screens (U1b). */
 
@@ -8,22 +9,16 @@ import { DataViewList } from "./DataViewList";
 export const firstCompany = async (
   page: Page,
 ): Promise<{ tenantId: string; companyId: string } | undefined> => {
-  await page.goto("/organizaciones");
-  const tenants = page.getByRole("grid", { name: "Tabla de organizaciones" });
-  await expect(tenants).toBeVisible();
-  const tenantLink = tenants.getByRole("link").first();
-  if ((await tenantLink.count()) === 0) return undefined;
-  await tenantLink.click();
-  const companies = page.getByRole("grid", { name: "Tabla de empresas" });
-  await expect(companies).toBeVisible();
-  const companyLink = companies.getByRole("link").first();
+  const tenantId = await new TenantsPage(page).firstTenantId();
+  if (!tenantId) return undefined;
+  const companies = new CompaniesPage(page);
+  await companies.goto(tenantId);
+  await companies.expectLoaded();
+  // Count only once the table settled: while loading it has no link either.
   await expect(
-    companyLink.or(
-      page.getByRole("heading", {
-        name: "Esta organización aún no tiene empresas",
-      }),
-    ),
+    companies.firstRowOrEmpty("Esta organización aún no tiene empresas"),
   ).toBeVisible();
+  const companyLink = companies.table.getByRole("link").first();
   if ((await companyLink.count()) === 0) return undefined;
   const match = (await companyLink.getAttribute("href"))?.match(
     /\/organizaciones\/([^/]+)\/empresas\/([^/?]+)/,

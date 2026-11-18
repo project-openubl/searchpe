@@ -1,6 +1,7 @@
-import { expect, type Locator, type Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 import { DataViewList } from "./DataViewList";
+import { firstCompany } from "./documentDataPages";
 
 /**
  * The address of the first company of the user's first organization
@@ -9,26 +10,10 @@ import { DataViewList } from "./DataViewList";
 export const firstCompanyPath = async (
   page: Page,
 ): Promise<string | undefined> => {
-  await page.goto("/organizaciones");
-  const tenants = page.getByRole("grid", { name: "Tabla de organizaciones" });
-  await expect(tenants).toBeVisible();
-  const tenantLink = tenants.getByRole("link").first();
-  if ((await tenantLink.count()) === 0) return undefined;
-  await tenantLink.click();
-  const companies = page.getByRole("grid", { name: "Tabla de empresas" });
-  await expect(companies).toBeVisible();
-  const companyLink = companies.getByRole("link").first();
-  // The table settles on rows or its empty state.
-  await expect(
-    companyLink.or(
-      page.getByRole("heading", {
-        name: "Esta organización aún no tiene empresas",
-      }),
-    ),
-  ).toBeVisible();
-  if ((await companyLink.count()) === 0) return undefined;
-  const href = await companyLink.getAttribute("href");
-  return href?.match(/\/organizaciones\/[^/]+\/empresas\/[^/?]+/)?.[0];
+  const company = await firstCompany(page);
+  return company
+    ? `/organizaciones/${company.tenantId}/empresas/${company.companyId}`
+    : undefined;
 };
 
 export class PseAuthorizationPage {

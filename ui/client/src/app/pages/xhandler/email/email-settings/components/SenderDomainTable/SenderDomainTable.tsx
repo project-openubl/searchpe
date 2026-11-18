@@ -35,14 +35,15 @@ import { PAGINATION_STATE, toPageParams } from "@app/utils/listState";
 
 import { AddSenderDomainModal } from "../AddSenderDomainModal";
 
-const copyable = (text: string | undefined, ariaLabel: string) =>
+/** Inline copy; `inline-compact` ignores `textAriaLabel`, so the button carries the name. */
+const copyable = (text: string | undefined, copyAriaLabel: string) =>
   text ? (
     <ClipboardCopy
       isReadOnly
       variant="inline-compact"
       hoverTip="Copiar"
       clickTip="Copiado"
-      textAriaLabel={ariaLabel}
+      copyAriaLabel={copyAriaLabel}
     >
       {text}
     </ClipboardCopy>
@@ -104,8 +105,8 @@ export const SenderDomainTable: React.FC = () => {
     id: domain.id ?? domain.domain ?? "",
     row: [
       { cell: domain.domain ?? "-" },
-      { cell: copyable(domain.txt_name, "Nombre del registro TXT") },
-      { cell: copyable(domain.txt_value, "Valor del registro TXT") },
+      { cell: copyable(domain.txt_name, "Copiar el nombre del registro TXT") },
+      { cell: copyable(domain.txt_value, "Copiar el valor del registro TXT") },
       {
         cell: domain.verified_at ? (
           <Label color="green" isCompact>

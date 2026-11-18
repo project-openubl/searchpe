@@ -10,8 +10,14 @@ export const E2E_PASSWORD = process.env.E2E_PASSWORD ?? "olga";
  */
 export const authenticate = async (page: Page) => {
   await page.goto("/");
-  await page.getByLabel(/username|usuario/i).fill(E2E_USERNAME);
-  await page.getByLabel(/^password$|^contraseña$/i).fill(E2E_PASSWORD);
+  // By role and name: Keycloak 26's password field (with its "Show password" toggle) isn't
+  // reachable through its <label>.
+  await page
+    .getByRole("textbox", { name: /username|usuario/i })
+    .fill(E2E_USERNAME);
+  await page
+    .getByRole("textbox", { name: /^password$|^contraseña$/i })
+    .fill(E2E_PASSWORD);
   await page.getByRole("button", { name: /sign in|iniciar sesión/i }).click();
   await expect(
     page.getByRole("heading", { level: 1, name: /^Hola,/ }),

@@ -12,6 +12,7 @@ test("lists the organization's documents, filters them and opens one", async ({
   await documents.goto(tenantId!);
   await documents.expectLoaded();
 
+  await documents.chooseFilter("Serie", "Estado");
   await page.getByRole("button", { name: "Filtrar por estado" }).click();
   await page.getByRole("option", { name: "Aceptado", exact: true }).click();
   await expect(page).toHaveURL(/estado=accepted/);
@@ -19,13 +20,8 @@ test("lists the organization's documents, filters them and opens one", async ({
   await page.getByRole("button", { name: "Limpiar filtros" }).first().click();
   await expect(page).not.toHaveURL(/estado=/);
 
+  // The setup issued one.
   const firstDocument = documents.table.getByRole("link").first();
-  const empty = page.getByRole("heading", { name: "No hay comprobantes" });
-  await expect(firstDocument.or(empty)).toBeVisible();
-  test.skip(
-    (await firstDocument.count()) === 0,
-    "the organization has issued no documents",
-  );
 
   await firstDocument.click();
   await expect(

@@ -246,7 +246,7 @@ export const PseAuthorization: React.FC<IPseAuthorizationProps> = ({
         <Stack hasGutter>
           <StackItem>
             <Card>
-              <CardTitle>Modo de emisión</CardTitle>
+              <CardTitle component="h2">Modo de emisión</CardTitle>
               <CardBody>
                 <Flex
                   justifyContent={{ default: "justifyContentSpaceBetween" }}
@@ -272,7 +272,7 @@ export const PseAuthorization: React.FC<IPseAuthorizationProps> = ({
           </StackItem>
           <StackItem>
             <Card>
-              <CardTitle>Autorización vigente</CardTitle>
+              <CardTitle component="h2">Autorización vigente</CardTitle>
               <CardBody>
                 <Stack hasGutter>
                   <StackItem>

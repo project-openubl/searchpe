@@ -1,0 +1,98 @@
+# The UI's Playwright suite (ui/e2e/) against the real stack: PostgreSQL and Keycloak (compose),
+# the SUNAT fake, the engine, xhandler-service and searchpe, built from this commit
+# (hack/ui-e2e-stack.sh; ui/e2e/README.md)
+name: ui-e2e
+
+# No path filter: this job is a required check, so it must report on every push and PR
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ui-e2e-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CI: true
+  COMPOSE: docker compose
+
+jobs:
+  playwright:
+    name: UI Playwright
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      # Pull and start PostgreSQL and Keycloak first: they come up while everything builds
+      - run: docker compose -f hack/compose.yaml up -d postgres keycloak
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+      # libxml2 for the engine's XSD validation (the libxml crate generates its bindings with libclang)
+      - run: sudo apt-get update && sudo apt-get install -y libxml2-dev libclang-dev pkg-config
+      # Installs the toolchain of xhandler/engine/rust-toolchain.toml
+      - run: rustup show active-toolchain || rustup toolchain install
+        working-directory: xhandler/engine
+      - uses: Swatinem/rust-cache@v2.9.3
+        with:
+          workspaces: xhandler/engine
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Build the backends
+        run: hack/ui-e2e-stack.sh build
+
+      - name: Start the stack
+        run: hack/ui-e2e-stack.sh up
+
+      # npm ci runs `prepare`, which generates the API clients from client/openapi/
+      - run: npm ci
+        working-directory: ui
+      - name: Cache Playwright's Chromium
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('ui/package-lock.json') }}
+      - run: npx playwright install --with-deps chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        working-directory: ui
+      - run: npx playwright install-deps chromium
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        working-directory: ui
+
+      # Playwright starts the Vite dev server (`npm run start:dev`), configured by ui/.env
+      - name: Run the Playwright suite
+        working-directory: ui
+        run: |
+          cp .env.example .env
+          npm run test:e2e
+
+      - name: Upload the Playwright report and traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            ui/e2e/playwright-report/
+            ui/e2e/test-results/
+          retention-days: 14
+      - name: Upload the stack's logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: stack-logs
+          path: /tmp/xhandler-ui-e2e/*.log
+          retention-days: 14
+
+      - name: Stop the stack
+        if: always()
+        run: hack/ui-e2e-stack.sh down --compose

@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 
 import { DataViewList } from "./DataViewList";
 
@@ -35,6 +35,10 @@ export class TenantsPage extends DataViewList {
   async firstTenantId(): Promise<string | undefined> {
     await this.goto();
     await this.expectLoaded();
+    // Count only once the table settled: while loading it has no link either.
+    await expect(
+      this.firstRowOrEmpty("Aún no perteneces a ninguna organización"),
+    ).toBeVisible();
     const link = this.table.getByRole("link").first();
     if ((await link.count()) === 0) return undefined;
     const href = await link.getAttribute("href");

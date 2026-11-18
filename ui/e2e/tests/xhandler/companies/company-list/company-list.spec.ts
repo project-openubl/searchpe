@@ -11,15 +11,9 @@ test("lists an organization's companies and opens one", async ({
   await companiesPage.goto(tenantId!);
   await companiesPage.expectLoaded();
 
+  // The setup registered one when the organization had none.
   const firstCompany = companiesPage.table.getByRole("link").first();
-  if ((await firstCompany.count()) === 0) {
-    await expect(
-      page.getByRole("heading", {
-        name: "Esta organización aún no tiene empresas",
-      }),
-    ).toBeVisible();
-    return;
-  }
+  await expect(firstCompany).toBeVisible();
   const ruc = await firstCompany.textContent();
   await firstCompany.click();
   await expect(page.getByLabel("Datos de la empresa")).toContainText(ruc ?? "");

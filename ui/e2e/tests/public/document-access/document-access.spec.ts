@@ -1,4 +1,5 @@
 import { expect, test } from "@support/fixtures";
+import { readFixtures } from "@support/helpers/tenants";
 
 test("an invalid capability link explains itself without asking to log in", async ({
   page,
@@ -18,16 +19,17 @@ test("an invalid capability link explains itself without asking to log in", asyn
   ).toHaveCount(0);
 });
 
-// A real capability link comes from an emit (`access_url`); the public project has no session to
-// emit one, so the stack provides it.
-const DOCUMENT_TOKEN = process.env.E2E_PUBLIC_DOCUMENT_TOKEN;
+// A real capability link comes from an emit (`access_url`): the setup issues one (the browser of
+// this project still has no session), or the stack provides it.
+const DOCUMENT_TOKEN =
+  process.env.E2E_PUBLIC_DOCUMENT_TOKEN ?? readFixtures()?.publicDocumentToken;
 
 test("a capability link shows the document and downloads its PDF without a session", async ({
   page,
 }) => {
   test.skip(
     !DOCUMENT_TOKEN,
-    "no E2E_PUBLIC_DOCUMENT_TOKEN: the stack has no issued document link",
+    "no issued document link: the setup didn't run and E2E_PUBLIC_DOCUMENT_TOKEN is unset",
   );
   await page.goto(`/p/documentos/${DOCUMENT_TOKEN}`);
 

@@ -5,8 +5,9 @@ paths:
 # E2E conventions (Playwright, `e2e/`)
 
 **Tests act like a user and stay stable.** Run with `npm run test:e2e` against the stack in
-`e2e/README.md`. The `e2e` workspace has **no lint script**: keep it strict by hand
-(`npx tsc --noEmit -p e2e` type-checks it).
+`e2e/README.md` (`hack/ui-e2e-stack.sh`; CI: `.github/workflows/ui-e2e.yml`). The `e2e`
+workspace has **no lint script**: keep it strict by hand (`npx tsc --noEmit -p e2e` type-checks
+it).
 
 ## Layering
 
@@ -37,15 +38,22 @@ Put each scenario in the **cheapest layer that can prove it**:
   `getByRole("grid", { name: "Tabla de …" })`. No CSS, `#id`, `.pf-*` or XPath in specs.
 - Use web-first assertions that retry (`await expect(locator).toBeVisible()`); no
   `page.waitForTimeout`. Wait on a real event (`page.waitForResponse`, a web-first assertion).
-- Keycloak's login form is located by label (`/username|usuario/i`), so a Spanish login theme
-  works too.
+- Keycloak's login form is located by role and name (`getByRole("textbox", { name:
+  /username|usuario/i })`), so a Spanish login theme works too.
+- A list's rows are counted only once the table settled (`firstRowOrEmpty`): while loading it
+  has no link either. An empty state renders inside a row, so `rows().or(emptyHeading)` matches
+  twice.
+- A spec that logs out uses a session of its own (`test.use({ storageState: … })` and
+  `authenticate`): logging out ends the Keycloak session every other spec shares.
 
 ## Data and capabilities
 
 - The stack is real and shared: tests create what they need through the UI or the API and never
-  depend on fixed ids. `auth.setup.ts` signs the e2e user up for an organization when they have
-  none, so organization specs run on a fresh stack. Other data the stack may lack (a padrón
-  version) makes the test `test.skip(condition, "reason")`, never fail.
+  depend on fixed ids. `auth.setup.ts` (`ensureFixtures`) prepares an organization, a company on
+  the SUNAT fake with an issued document and a reception, a webhook and a partner, so the specs
+  run on a fresh stack; specs read what it guarantees instead of skipping without it. Other data
+  the stack may lack (a padrón version) makes the test `test.skip(condition, "reason")`, never
+  fail.
 - Nothing triggers an expensive external job by default: creating a padrón version (a real SUNAT
   download) runs only with `E2E_SEARCHPE_IMPORT=true`.
 - searchpe is optional: its specs start with

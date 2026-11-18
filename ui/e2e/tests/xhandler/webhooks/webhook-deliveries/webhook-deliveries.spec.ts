@@ -11,8 +11,13 @@ test("opens a webhook's deliveries from the list", async ({
   const webhooks = new WebhooksPage(page);
   await webhooks.goto(tenantId!);
   await webhooks.expectLoaded();
+  // The setup created one, unless the organization's plan has no webhooks.
+  await expect(webhooks.firstRowOrEmpty("No hay webhooks")).toBeVisible();
   const first = webhooks.table.getByRole("link").first();
-  test.skip((await first.count()) === 0, "the organization has no webhook");
+  test.skip(
+    (await first.count()) === 0,
+    "the organization has no webhook (its plan has none)",
+  );
 
   await first.click();
   await expect(

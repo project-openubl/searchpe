@@ -30,11 +30,8 @@ test("shows a company's administration tabs", async ({
   test.skip(!tenantId, "the e2e user belongs to no organization");
   await companiesPage.goto(tenantId!);
   await companiesPage.expectLoaded();
+  // The setup registered one when the organization had none.
   const firstCompany = companiesPage.table.getByRole("link").first();
-  test.skip(
-    (await firstCompany.count()) === 0,
-    "the organization has no company",
-  );
   await firstCompany.click();
 
   await page.getByRole("tab", { name: "Series" }).click();
@@ -53,6 +50,6 @@ test("shows a company's administration tabs", async ({
 
   await page.getByRole("tab", { name: "Certificado" }).click();
   await expect(
-    page.getByRole("heading", { name: "Certificado digital" }),
+    page.getByRole("heading", { name: "Certificado digital", exact: true }),
   ).toBeVisible();
 });

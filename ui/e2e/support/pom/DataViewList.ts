@@ -23,4 +23,23 @@ export class DataViewList {
   rows(): Locator {
     return this.table.locator("tbody").getByRole("row");
   }
+
+  /** The toolbar shows one filter at a time: switches from the `current` one to `next`. */
+  async chooseFilter(current: string, next: string) {
+    await this.page.getByRole("button", { name: current, exact: true }).click();
+    await this.page.getByRole("menuitem", { name: next, exact: true }).click();
+  }
+
+  /**
+   * The first data row, or the empty state titled `emptyTitle`: visible once the table settles.
+   * The empty state renders inside a row of its own, and loading skeleton rows carry no text.
+   */
+  firstRowOrEmpty(emptyTitle: string | RegExp): Locator {
+    const empty = this.page.getByRole("heading", { name: emptyTitle });
+    return this.rows()
+      .filter({ hasNot: empty })
+      .filter({ hasText: /\S/ })
+      .first()
+      .or(empty);
+  }
 }

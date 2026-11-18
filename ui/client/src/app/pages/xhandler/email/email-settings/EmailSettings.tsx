@@ -34,7 +34,7 @@ export const EmailSettings: React.FC = () => (
       <Stack hasGutter>
         <StackItem>
           <Card>
-            <CardTitle>Dominios remitentes</CardTitle>
+            <CardTitle component="h2">Dominios remitentes</CardTitle>
             <CardBody>
               {/* Two lists on one screen: each keeps its page under its own prefix. */}
               <PersistentStateScopeProvider prefix="dominios">
@@ -45,7 +45,7 @@ export const EmailSettings: React.FC = () => (
         </StackItem>
         <StackItem>
           <Card>
-            <CardTitle>Direcciones suprimidas</CardTitle>
+            <CardTitle component="h2">Direcciones suprimidas</CardTitle>
             <CardBody>
               <PersistentStateScopeProvider prefix="supresiones">
                 <EmailSuppressionTable />

@@ -270,7 +270,7 @@ export const SirePeriod: React.FC<ISirePeriodProps> = ({ companyId }) => {
       <Stack hasGutter>
         <StackItem>
           <Card>
-            <CardTitle>Estado del periodo</CardTitle>
+            <CardTitle component="h2">Estado del periodo</CardTitle>
             <CardBody>
               <DescriptionList
                 aria-label="Estado del periodo"
@@ -308,7 +308,7 @@ export const SirePeriod: React.FC<ISirePeriodProps> = ({ companyId }) => {
         </StackItem>
         <StackItem>
           <Card>
-            <CardTitle>Conciliación</CardTitle>
+            <CardTitle component="h2">Conciliación</CardTitle>
             <CardBody>
               {reconciliation ? (
                 <SireReconciliation reconciliation={reconciliation} />

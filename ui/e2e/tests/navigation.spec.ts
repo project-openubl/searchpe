@@ -1,4 +1,5 @@
 import { expect, test } from "@support/fixtures";
+import { authenticate, E2E_USERNAME } from "@support/helpers/auth";
 import { SEARCHPE_ENABLED } from "@support/helpers/services";
 
 test.describe("app shell", () => {
@@ -31,11 +32,25 @@ test.describe("app shell", () => {
     ).toBeVisible();
   });
 
-  test("logs out from the user menu", async ({ page }) => {
-    await page.goto("/");
-    await page.getByRole("button", { name: /olga|alice|bob|carol/ }).click();
-    await page.getByRole("menuitem", { name: "Cerrar sesión" }).click();
-    // Keycloak's login form is back.
-    await expect(page.getByLabel(/username|usuario/i)).toBeVisible();
+  test.describe("with a session of its own", () => {
+    // Logging out ends the Keycloak session; the saved one is shared by every other spec.
+    test.use({ storageState: { cookies: [], origins: [] } });
+
+    test("logs out from the user menu", async ({ page }) => {
+      await authenticate(page);
+      await page
+        .getByRole("button", { name: new RegExp(E2E_USERNAME, "i") })
+        .click();
+      await page.getByRole("menuitem", { name: "Cerrar sesión" }).click();
+      // A public page: no new login starts by itself (ADR 0003)...
+      await expect(
+        page.getByRole("heading", { name: "Sesión cerrada" }),
+      ).toBeVisible();
+      // ...and signing in again asks for the password: the Keycloak session ended.
+      await page.getByRole("button", { name: "Iniciar sesión" }).click();
+      await expect(
+        page.getByRole("textbox", { name: /username|usuario/i }),
+      ).toBeVisible();
+    });
   });
 });

@@ -51,7 +51,7 @@ export const Profile: React.FC = () => {
       <PageSection>
         <Gallery hasGutter minWidths={{ default: "100%", lg: "420px" }}>
           <Card>
-            <CardTitle>Cuenta</CardTitle>
+            <CardTitle component="h2">Cuenta</CardTitle>
             <CardBody>
               <DescriptionList>
                 <DescriptionListGroup>
@@ -83,7 +83,7 @@ export const Profile: React.FC = () => {
 
           {searchpe.isEnabled ? (
             <Card>
-              <CardTitle>Padrón RUC (searchpe)</CardTitle>
+              <CardTitle component="h2">Padrón RUC (searchpe)</CardTitle>
               <CardBody>
                 <DescriptionList>
                   <DescriptionListGroup>
@@ -114,7 +114,9 @@ export const Profile: React.FC = () => {
           ) : null}
 
           <Card>
-            <CardTitle>Comprobantes electrónicos (xhandler)</CardTitle>
+            <CardTitle component="h2">
+              Comprobantes electrónicos (xhandler)
+            </CardTitle>
             <CardBody>
               <DescriptionList>
                 <DescriptionListGroup>

@@ -11,6 +11,7 @@ test("lists an organization's jobs and filters them by state", async ({
   await jobsPage.goto(tenantId!);
   await jobsPage.expectLoaded();
 
+  await jobsPage.chooseFilter("Nombre", "Estado");
   await page.getByRole("button", { name: "Filtrar por estado" }).click();
   await page.getByRole("option", { name: "Fallido" }).click();
   await expect(page).toHaveURL(/estado=failed/);

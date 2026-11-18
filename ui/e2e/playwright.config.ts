@@ -41,9 +41,11 @@ export default defineConfig({
       testIgnore: /\/public\//,
     },
     {
-      // Public routes (ADR 0003) run with no session at all.
+      // Public routes (ADR 0003) run with no session at all; the setup only issues the
+      // document whose buyer link they open.
       name: "public",
       use: { ...devices["Desktop Chrome"] },
+      dependencies: ["setup"],
       testMatch: /\/public\/.*\.spec\.ts/,
     },
   ],

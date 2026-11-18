@@ -59,7 +59,7 @@ export const Home: React.FC = () => {
       <PageSection>
         <Gallery hasGutter minWidths={{ default: "100%", md: "360px" }}>
           <Card>
-            <CardTitle>
+            <CardTitle component="h2">
               Comprobantes electrónicos{" "}
               <ServiceLabel
                 isLoading={xhandler.isLoading}
@@ -86,7 +86,7 @@ export const Home: React.FC = () => {
           </Card>
           {searchpe.isEnabled ? (
             <Card>
-              <CardTitle>
+              <CardTitle component="h2">
                 Padrón RUC{" "}
                 <ServiceLabel
                   isLoading={searchpe.isLoading}

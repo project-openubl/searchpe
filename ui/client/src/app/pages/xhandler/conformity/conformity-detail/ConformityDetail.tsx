@@ -135,7 +135,9 @@ export const ConformityDetail: React.FC<IConformityDetailProps> = ({
           {conformity.suggested_credit_note ? (
             <StackItem>
               <Card>
-                <CardTitle>Nota de crédito tipo 13 sugerida</CardTitle>
+                <CardTitle component="h2">
+                  Nota de crédito tipo 13 sugerida
+                </CardTitle>
                 <CardBody>
                   <Stack hasGutter>
                     <StackItem>

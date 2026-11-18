@@ -12,10 +12,7 @@ test("lists a company's facturas negociables", async ({ page }) => {
   await conformityPage.goto(companyPath!);
   await conformityPage.expectLoaded();
   await expect(
-    conformityPage
-      .rows()
-      .first()
-      .or(page.getByRole("heading", { name: "No hay facturas negociables" })),
+    conformityPage.firstRowOrEmpty("No hay facturas negociables"),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Exportar CSV" }),

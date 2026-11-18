@@ -7,9 +7,6 @@ test("lists the user's partners with their role", async ({ page }) => {
   await partnersPage.expectLoaded();
 
   await expect(
-    partnersPage
-      .rows()
-      .first()
-      .or(page.getByRole("heading", { name: "No perteneces a ningún socio" })),
+    partnersPage.firstRowOrEmpty("No perteneces a ningún socio"),
   ).toBeVisible();
 });

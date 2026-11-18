@@ -22,6 +22,6 @@ test("adds a sender domain and shows the TXT record to publish", async ({
   const row = email.table.getByRole("row").filter({ hasText: domain });
   await expect(row.getByText("Sin verificar")).toBeVisible();
   await expect(
-    row.getByRole("textbox", { name: "Valor del registro TXT" }),
+    row.getByRole("button", { name: "Copiar el valor del registro TXT" }),
   ).toBeVisible();
 });

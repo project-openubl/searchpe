@@ -10,7 +10,10 @@ test("the profile shows the user, their permissions and a link to Keycloak", asy
   await expect(
     page.getByRole("heading", { level: 1, name: "Mi perfil" }),
   ).toBeVisible();
-  await expect(page.getByText(E2E_USERNAME, { exact: true })).toBeVisible();
+  // The masthead's user menu shows the name too: read the profile's own.
+  await expect(
+    page.getByRole("main").getByText(E2E_USERNAME, { exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Gestionar mi cuenta" }),
   ).toHaveAttribute("href", /\/realms\/[^/]+\/account$/);

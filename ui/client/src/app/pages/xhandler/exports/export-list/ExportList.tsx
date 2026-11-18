@@ -252,7 +252,7 @@ export const ExportList: React.FC = () => {
       </PageSection>
       <PageSection>
         <Card>
-          <CardTitle>Dejar la plataforma</CardTitle>
+          <CardTitle component="h2">Dejar la plataforma</CardTitle>
           <CardBody>
             La organización deja de emitir y sus datos se eliminan al vencer el
             plazo legal de conservación. Antes necesitas una exportación de los

@@ -410,7 +410,7 @@ export const DocumentDetail: React.FC<IDocumentDetailProps> = ({
         <Grid hasGutter>
           <GridItem md={6}>
             <Card isFullHeight>
-              <CardTitle>Estado en SUNAT</CardTitle>
+              <CardTitle component="h2">Estado en SUNAT</CardTitle>
               <CardBody>
                 {descriptionList("Estado en SUNAT", sunatFields)}
               </CardBody>
@@ -418,7 +418,7 @@ export const DocumentDetail: React.FC<IDocumentDetailProps> = ({
           </GridItem>
           <GridItem md={6}>
             <Card isFullHeight>
-              <CardTitle>Datos del comprobante</CardTitle>
+              <CardTitle component="h2">Datos del comprobante</CardTitle>
               <CardBody>
                 {descriptionList("Datos del comprobante", documentFields)}
               </CardBody>
@@ -426,7 +426,7 @@ export const DocumentDetail: React.FC<IDocumentDetailProps> = ({
           </GridItem>
           <GridItem md={6}>
             <Card isFullHeight>
-              <CardTitle>Archivos</CardTitle>
+              <CardTitle component="h2">Archivos</CardTitle>
               <CardBody>
                 <ActionList>
                   {(Object.keys(FILE_LABELS) as DocumentFileKind[]).map(
@@ -462,7 +462,7 @@ export const DocumentDetail: React.FC<IDocumentDetailProps> = ({
           </GridItem>
           <GridItem md={6}>
             <Card isFullHeight>
-              <CardTitle>Línea de tiempo</CardTitle>
+              <CardTitle component="h2">Línea de tiempo</CardTitle>
               <CardBody>
                 {events.error ? (
                   <Content component={ContentVariants.p}>
