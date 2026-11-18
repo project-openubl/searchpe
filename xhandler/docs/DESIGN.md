@@ -1119,6 +1119,11 @@ Infrastructure I1 (dev/staging) ─── I2 (production HA: sync replication, m
 | U3 | Partner console |
 | U4 | OSE validity page, SIRE and conformity screens |
 
+U0–U4 are done in `ui/`, one UI for xhandler-service and searchpe. Known API gaps the console works
+around: no endpoint to change or remove a member, edit a tenant, update a series, read a partner's
+branding or upload its logo, or list SIRE periods; no GET for a single reception or webhook; no buyer
+filter on documents; the OSE validity page needs a CAPTCHA widget (site key) in the UI.
+
 ### 21.4 Infrastructure (separate project)
 
 Kubernetes and the cloud are designed in their own project, but on the same timeline:
