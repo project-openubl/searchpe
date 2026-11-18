@@ -3,13 +3,19 @@ import type React from "react";
 import {
   Masthead,
   MastheadBrand,
+  MastheadContent,
   MastheadLogo,
   MastheadMain,
   Page,
   SkipToContent,
+  Toolbar,
+  ToolbarContent,
+  ToolbarGroup,
+  ToolbarItem,
 } from "@patternfly/react-core";
 
 import { BrandLogo } from "./BrandLogo";
+import { LibroReclamacionesLink } from "./LibroReclamacionesLink";
 
 interface IPublicLayoutProps {
   children?: React.ReactNode;
@@ -17,7 +23,10 @@ interface IPublicLayoutProps {
 
 const MAIN_CONTAINER_ID = "public-main-content";
 
-/** Shell of the public routes: the brand only, nothing that needs a session (ADR 0003). */
+/**
+ * Shell of the public routes: the brand and the Libro de Reclamaciones only, nothing that needs
+ * a session (ADR 0003).
+ */
 export const PublicLayout: React.FC<IPublicLayoutProps> = ({ children }) => (
   <Page
     skipToContent={
@@ -34,6 +43,17 @@ export const PublicLayout: React.FC<IPublicLayoutProps> = ({ children }) => (
             </MastheadLogo>
           </MastheadBrand>
         </MastheadMain>
+        <MastheadContent>
+          <Toolbar isFullHeight isStatic>
+            <ToolbarContent>
+              <ToolbarGroup align={{ default: "alignEnd" }}>
+                <ToolbarItem>
+                  <LibroReclamacionesLink />
+                </ToolbarItem>
+              </ToolbarGroup>
+            </ToolbarContent>
+          </Toolbar>
+        </MastheadContent>
       </Masthead>
     }
     mainContainerId={MAIN_CONTAINER_ID}

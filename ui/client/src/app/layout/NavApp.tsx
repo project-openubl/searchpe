@@ -54,7 +54,8 @@ export const NavApp: React.FC<INavAppProps> = ({ onSelect }) => {
     tenants?.find((tenant) => tenant.id === lastTenantId)?.id ||
     (tenants?.length === 1 ? (tenants[0].id ?? "") : "");
 
-  // Partner console (U3): only for members of a partner.
+  // Partner console (U3): only for members of a partner. GET /partners is unpaged (one row per
+  // partner membership): read whole.
   const { data: partners } = useMyPartnersQuery({
     options: { enabled: xhandler.isAvailable && auth.isAuthenticated() },
   });

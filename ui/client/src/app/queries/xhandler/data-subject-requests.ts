@@ -1,5 +1,6 @@
 import type { UseQueryOptions } from "@tanstack/react-query";
 import {
+  keepPreviousData,
   queryOptions,
   useMutation,
   useQuery,
@@ -8,21 +9,26 @@ import {
 
 import {
   closeDataSubjectRequest,
-  type CloseDataSubjectRequestResponses,
   createDataSubjectRequest,
-  type CreateDataSubjectRequestResponses,
+  type DataSubjectRequestView,
   getDataSubjectPersonalData,
   type GetDataSubjectPersonalDataResponses,
   listDataSubjectRequests,
-  type ListDataSubjectRequestsResponses,
+  type ListDataSubjectRequestsData,
   type NewRequest,
+  type PageDataSubjectRequestView,
 } from "@app/client/xhandler";
 import { useSelectedTenantId } from "@app/hooks/useSelectedTenantId";
 
+import type { ListParams } from "../utils/listParams";
 import type { IMutationCallbacks } from "../utils/mutationCallbacks";
 import type { XhandlerAxiosError } from "../utils/openapiErrorTypes";
 
 export const DataSubjectRequestsQueryKey = "data-subject-requests";
+
+/** One page of the list: the `status` filter, `limit` and `offset`. */
+export type IDataSubjectRequestListParams =
+  ListParams<ListDataSubjectRequestsData>;
 
 /** `NewRequest.kind`: the ARCO rights of Ley 29733. */
 export const DATA_SUBJECT_REQUEST_KINDS = [
@@ -51,11 +57,7 @@ export const isDataSubjectRequestStatus = (
 ): value is DataSubjectRequestStatus =>
   (DATA_SUBJECT_REQUEST_STATUSES as readonly string[]).includes(value);
 
-/** The spec types requests as free maps (the resource returns `Map<String, Object>`). */
-export type DataSubjectRequestRecord =
-  ListDataSubjectRequestsResponses[200][number];
-
-/** The fields `DataSubjectRequests.view` writes, read defensively off the free map. */
+/** A request with every field present (missing text as ""), as the list and dialogs show it. */
 export interface IDataSubjectRequestRow {
   id: string;
   subjectDocType: string;
@@ -75,7 +77,7 @@ const text = (value: unknown): string =>
   typeof value === "string" ? value : "";
 
 export const toDataSubjectRequestRow = (
-  record: DataSubjectRequestRecord,
+  record: DataSubjectRequestView,
 ): IDataSubjectRequestRow => ({
   id: text(record.id),
   subjectDocType: text(record.subject_doc_type),
@@ -126,10 +128,43 @@ export const personalDataDocuments = (
       status: text(item.status),
     }));
 
+/** A draft that names the person as buyer, as `getDataSubjectPersonalData` lists it (deleted ones too). */
+export interface IPersonalDataDraft {
+  id: string;
+  issuerRuc: string;
+  tipoComprobante: string;
+  serie: string;
+  nombre: string;
+  status: string;
+  createdAt: string;
+  deletedAt: string;
+}
+
+export const personalDataDrafts = (
+  data: PersonalDataRecord,
+): IPersonalDataDraft[] =>
+  (Array.isArray(data.drafts) ? (data.drafts as unknown[]) : [])
+    .filter(
+      (item): item is Record<string, unknown> =>
+        typeof item === "object" && item !== null,
+    )
+    .map((item) => ({
+      id: text(item.id),
+      issuerRuc: text(item.issuer_ruc),
+      tipoComprobante: text(item.tipo_comprobante),
+      serie: text(item.serie),
+      nombre: text(item.nombre),
+      status: text(item.status),
+      createdAt: text(item.created_at),
+      deletedAt: text(item.deleted_at),
+    }));
+
 export const dataSubjectRequestKeys = {
   all: () => [DataSubjectRequestsQueryKey] as const,
   list: (tenantId: string) =>
     [...dataSubjectRequestKeys.all(), tenantId, "list"] as const,
+  listQuery: (tenantId: string, params: IDataSubjectRequestListParams) =>
+    [...dataSubjectRequestKeys.list(tenantId), params] as const,
   personalData: (tenantId: string, requestId: string) =>
     [
       ...dataSubjectRequestKeys.all(),
@@ -140,37 +175,45 @@ export const dataSubjectRequestKeys = {
 };
 
 type DataSubjectRequestListOptions = Omit<
-  UseQueryOptions<DataSubjectRequestRecord[], XhandlerAxiosError>,
+  UseQueryOptions<PageDataSubjectRequestView, XhandlerAxiosError>,
   "queryKey" | "queryFn"
 >;
 
-/** `GET /data-subject-requests`: the latest 200, unpaged by the API. */
+/** `GET /data-subject-requests`: one page of the requests, newest first. */
 export const dataSubjectRequestsListQueryOptions = ({
   tenantId,
+  params,
   options,
 }: {
   tenantId: string;
+  params: IDataSubjectRequestListParams;
   options?: DataSubjectRequestListOptions;
 }) =>
-  queryOptions<DataSubjectRequestRecord[], XhandlerAxiosError>({
+  queryOptions<PageDataSubjectRequestView, XhandlerAxiosError>({
+    placeholderData: keepPreviousData,
     ...options,
-    queryKey: dataSubjectRequestKeys.list(tenantId),
+    queryKey: dataSubjectRequestKeys.listQuery(tenantId, params),
     queryFn: async () =>
       (
         await listDataSubjectRequests({
           path: { tenantId },
+          query: params,
           throwOnError: true,
         })
       ).data,
   });
 
 export const useDataSubjectRequestsListQuery = ({
+  params,
   options,
 }: {
+  params: IDataSubjectRequestListParams;
   options?: DataSubjectRequestListOptions;
 }) => {
   const tenantId = useSelectedTenantId();
-  return useQuery(dataSubjectRequestsListQueryOptions({ tenantId, options }));
+  return useQuery(
+    dataSubjectRequestsListQueryOptions({ tenantId, params, options }),
+  );
 };
 
 export const personalDataQueryOptions = ({
@@ -210,7 +253,7 @@ export interface IDataSubjectRequestCreateVariables {
 /** `POST /data-subject-requests` (admin): records it and starts its legal term. */
 export const useDataSubjectRequestCreateMutation = (
   options?: IMutationCallbacks<
-    CreateDataSubjectRequestResponses[200],
+    DataSubjectRequestView,
     IDataSubjectRequestCreateVariables,
     XhandlerAxiosError
   >,
@@ -218,7 +261,7 @@ export const useDataSubjectRequestCreateMutation = (
   const tenantId = useSelectedTenantId();
   const queryClient = useQueryClient();
   return useMutation<
-    CreateDataSubjectRequestResponses[200],
+    DataSubjectRequestView,
     XhandlerAxiosError,
     IDataSubjectRequestCreateVariables
   >({
@@ -249,7 +292,7 @@ export interface IDataSubjectRequestCloseVariables {
 /** `POST /data-subject-requests/{id}/close` (admin): an open request, with its resolution. */
 export const useDataSubjectRequestCloseMutation = (
   options?: IMutationCallbacks<
-    CloseDataSubjectRequestResponses[200],
+    DataSubjectRequestView,
     IDataSubjectRequestCloseVariables,
     XhandlerAxiosError
   >,
@@ -257,7 +300,7 @@ export const useDataSubjectRequestCloseMutation = (
   const tenantId = useSelectedTenantId();
   const queryClient = useQueryClient();
   return useMutation<
-    CloseDataSubjectRequestResponses[200],
+    DataSubjectRequestView,
     XhandlerAxiosError,
     IDataSubjectRequestCloseVariables
   >({

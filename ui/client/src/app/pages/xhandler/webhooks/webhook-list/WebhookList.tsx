@@ -48,6 +48,7 @@ export const WebhookList: React.FC = () => {
   const { can, disabledProps } = useTenantRole();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<WebhookView | null>(null);
+  // GET …/webhooks is unpaged (a tenant has a few subscriptions): read whole.
   const { data, isLoading, error } = useWebhooksListQuery();
 
   const deleteWebhook = useWebhookDeleteMutation({

@@ -2,6 +2,7 @@ import { boolean, type InferType, mixed, object, string } from "yup";
 
 import type { CompanyView, Settings } from "@app/client/xhandler";
 import { PDF_FORMATS } from "@app/queries/xhandler/companies";
+import { isHttpsUrl } from "@app/utils/url";
 
 export type PdfFormat = (typeof PDF_FORMATS)[number];
 
@@ -38,6 +39,15 @@ export const companySettingsSchema = object({
     .max(200, "Como máximo 200 caracteres")
     .matches(/^[^\r\n]*$/, "Debe ser una sola línea"),
   email_body: string().defined().max(5000, "Como máximo 5000 caracteres"),
+  libro_reclamaciones_url: string()
+    .defined()
+    .trim()
+    .max(500, "Como máximo 500 caracteres")
+    .test(
+      "https",
+      "Ingresa una dirección https válida",
+      (value) => !value || isHttpsUrl(value),
+    ),
 });
 
 export type ICompanySettingsValues = InferType<typeof companySettingsSchema>;
@@ -57,6 +67,7 @@ export const settingsDefaults = (
   email_on_accept: company.email_on_accept ?? false,
   email_subject: "",
   email_body: "",
+  libro_reclamaciones_url: company.libro_reclamaciones_url ?? "",
 });
 
 /**
@@ -82,5 +93,9 @@ export const settingsChanges = ({
   if (dirty.email_on_accept) changes.email_on_accept = values.email_on_accept;
   if (dirty.email_subject) changes.email_subject = values.email_subject;
   if (dirty.email_body) changes.email_body = values.email_body;
+  // Blank is sent as is: the service removes the address.
+  if (dirty.libro_reclamaciones_url) {
+    changes.libro_reclamaciones_url = values.libro_reclamaciones_url;
+  }
   return changes;
 };

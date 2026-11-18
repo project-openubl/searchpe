@@ -66,7 +66,8 @@ const CreateWebhookForm: React.FC<ICreateWebhookFormProps> = ({ onClose }) => {
   const formId = useId();
   const { addNotification } = useNotifications();
   const { submitError, setSubmitError, clearSubmitError } = useSubmitError();
-  // The one-time secret lives only in this modal's state, never in the cache.
+  // The one-time secret is shown from this state; the mutation (gcTime 0) drops its copy
+  // once the modal closes.
   const [secret, setSecret] = useState<string | null>(null);
   const { control, handleSubmit } = useForm({
     resolver: yupResolver(webhookSchema),

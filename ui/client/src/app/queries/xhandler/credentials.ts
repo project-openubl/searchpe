@@ -144,6 +144,8 @@ export const useCredentialSetMutation = (
   const tenantId = useSelectedTenantId();
   const queryClient = useQueryClient();
   return useMutation<CredentialView, XhandlerAxiosError, CredentialWrite>({
+    // The variables carry the secret: drop the mutation from the cache once unobserved.
+    gcTime: 0,
     mutationFn: (write) => writeCredential({ tenantId, companyId, write }),
     onSuccess: async (data, variables) => {
       await queryClient.invalidateQueries({

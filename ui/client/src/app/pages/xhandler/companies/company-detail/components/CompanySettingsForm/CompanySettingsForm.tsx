@@ -175,6 +175,16 @@ export const CompanySettingsForm: React.FC<ICompanySettingsFormProps> = ({
               isDisabled={isReadOnly}
             />
           </FormSection>
+          <FormSection title="Libro de Reclamaciones" titleElement="h2">
+            <ControlledTextField
+              control={control}
+              name="libro_reclamaciones_url"
+              label="Libro de Reclamaciones virtual"
+              inputMode="url"
+              helperText="Dirección https de tu Libro de Reclamaciones; el portal del comprador la muestra. Vacío la quita."
+              isDisabled={isReadOnly}
+            />
+          </FormSection>
           <ActionGroup>
             <GatedButton
               type="submit"

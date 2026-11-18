@@ -5,6 +5,8 @@ import { formatTotal, tipoComprobanteLabel } from "./documentPresentation";
 describe("tipoComprobanteLabel", () => {
   it("names the SUNAT types in Spanish", () => {
     expect(tipoComprobanteLabel("01")).toBe("Factura");
+    expect(tipoComprobanteLabel("03")).toBe("Boleta de venta");
+    expect(tipoComprobanteLabel("07")).toBe("Nota de crédito");
     expect(tipoComprobanteLabel("RA")).toBe("Comunicación de baja");
   });
 

@@ -108,6 +108,7 @@ export const DocumentDetail: React.FC<IDocumentDetailProps> = ({
     options: refetchWhileSettling,
   });
   const isSettling = isDocumentSettling(document.status);
+  // GET …/events is unpaged (one row per status change): read whole.
   const events = useDocumentEventsQuery({
     documentId,
     options: {

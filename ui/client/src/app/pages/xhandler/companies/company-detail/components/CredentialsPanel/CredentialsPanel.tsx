@@ -33,6 +33,7 @@ export const CredentialsPanel: React.FC<ICredentialsPanelProps> = ({
 }) => {
   const { can, disabledProps } = useTenantRole();
   const [editing, setEditing] = useState<CredentialKind | null>(null);
+  // GET …/credentials is unpaged (one row per kind): read whole.
   const { data, isLoading, error } = useCredentialsListQuery({ companyId });
   const stored = new Map((data ?? []).map((item) => [item.kind, item]));
 

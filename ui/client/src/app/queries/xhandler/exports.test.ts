@@ -7,8 +7,8 @@ describe("exportParts", () => {
     expect(
       exportParts({
         parts: [
-          { name: "indice.zip", ref: "k1", size: 100, documents: 3 },
-          { name: "documentos-0001.zip", ref: "k2", size: 2048 },
+          { name: "indice.zip", size: 100, documents: 3 },
+          { name: "documentos-0001.zip", size: 2048 },
         ],
       }),
     ).toEqual([
@@ -22,8 +22,7 @@ describe("exportParts", () => {
     ]);
   });
 
-  it("names a part without a name by its position", () => {
-    expect(exportParts({ parts: [{}] })[0].name).toBe("parte-1.zip");
+  it("has no parts before the export is done", () => {
     expect(exportParts({})).toEqual([]);
   });
 });

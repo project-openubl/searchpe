@@ -36,7 +36,11 @@ import {
   useDataSubjectRequestsListQuery,
 } from "@app/queries/xhandler/data-subject-requests";
 import type { DataViewTh } from "@app/utils/dataViewTypes";
-import { PAGINATION_LIST_STATE, toPageParams } from "@app/utils/listState";
+import {
+  estimateItemCount,
+  PAGINATION_LIST_STATE,
+  toPageParams,
+} from "@app/utils/listState";
 
 import { CloseDataSubjectRequestModal } from "./components/CloseDataSubjectRequestModal";
 import { CreateDataSubjectRequestModal } from "./components/CreateDataSubjectRequestModal";
@@ -69,13 +73,11 @@ export const DataSubjectRequestList: React.FC = () => {
   });
 
   const isAdmin = can("admin");
-  // GET /data-subject-requests is unpaged (the latest 200): read whole, paged on screen.
   const { data, isLoading, error } = useDataSubjectRequestsListQuery({
+    params: toPageParams(pagination),
     options: { enabled: isAdmin },
   });
-  const requests = (data ?? []).map(toDataSubjectRequestRow);
-  const { limit, offset } = toPageParams(pagination);
-  const pageRequests = requests.slice(offset, offset + limit);
+  const requests = (data?.items ?? []).map(toDataSubjectRequestRow);
 
   const actionsFor = (request: IDataSubjectRequestRow): IAction[] => [
     {
@@ -103,7 +105,7 @@ export const DataSubjectRequestList: React.FC = () => {
     { cell: "" },
   ];
 
-  const rows = pageRequests.map((request) => ({
+  const rows = requests.map((request) => ({
     id: request.id,
     row: [
       { cell: formatTime(request.receivedAt) },
@@ -172,7 +174,8 @@ export const DataSubjectRequestList: React.FC = () => {
   const pager = (variant: PaginationVariant) => (
     <ListPagination
       variant={variant}
-      itemCount={requests.length}
+      itemCount={estimateItemCount({ pagination, pageSize: requests.length })}
+      isCountEstimated
       pagination={pagination}
       onPaginationChange={setPagination}
     />

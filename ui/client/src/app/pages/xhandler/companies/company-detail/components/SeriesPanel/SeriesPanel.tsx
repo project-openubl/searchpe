@@ -37,6 +37,7 @@ export const SeriesPanel: React.FC<ISeriesPanelProps> = ({
 }) => {
   const { disabledProps } = useTenantRole();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  // GET …/series is unpaged (a company has a handful): read whole.
   const { data, isLoading, error } = useSeriesListQuery({ companyId });
 
   const columns: DataViewTh[] = [

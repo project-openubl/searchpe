@@ -33,14 +33,16 @@ import {
   usePublicDocumentQuery,
 } from "@app/queries/xhandler/public-documents";
 import { getMutationErrorMessage } from "@app/utils/apiError";
+import {
+  formatTotal,
+  tipoComprobanteLabel,
+} from "@app/utils/documentPresentation";
 import { isNotFoundError } from "@app/utils/isHttpError";
 
 import {
-  formatTotal,
   PUBLIC_DOCUMENT_FILE_LABELS,
   publicDocumentStatusLabel,
   publicFileOrder,
-  tipoComprobanteLabel,
 } from "./documentPresentation";
 
 interface IDocumentAccessProps {
@@ -105,7 +107,10 @@ export const DocumentAccess: React.FC<IDocumentAccessProps> = ({ token }) => {
     return (
       <Card>
         <CardTitle>
-          {tipoComprobanteLabel(data.tipo_comprobante)} {data.serie_numero}
+          {data.tipo_comprobante
+            ? tipoComprobanteLabel(data.tipo_comprobante)
+            : "Comprobante"}{" "}
+          {data.serie_numero}
         </CardTitle>
         <CardBody>
           <DescriptionList aria-label="Datos del comprobante">
@@ -124,7 +129,7 @@ export const DocumentAccess: React.FC<IDocumentAccessProps> = ({ token }) => {
             <DescriptionListGroup>
               <DescriptionListTerm>Total</DescriptionListTerm>
               <DescriptionListDescription>
-                {formatTotal(data.total, data.moneda)}
+                {formatTotal({ total: data.total, moneda: data.moneda })}
               </DescriptionListDescription>
             </DescriptionListGroup>
             <DescriptionListGroup>

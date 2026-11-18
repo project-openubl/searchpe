@@ -15,6 +15,7 @@ import { DocumentTitle } from "@app/components/DocumentTitle";
 import { GatedButton } from "@app/components/GatedButton";
 import { TableEmptyState } from "@app/components/TableEmptyState";
 import { TenantContextSelector } from "@app/components/TenantContextSelector";
+import { UnauthorizedState } from "@app/components/UnauthorizedState";
 import {
   TENANT_ROLE_LABELS,
   type TenantRole,
@@ -35,9 +36,14 @@ const KIND_LABELS: Record<string, string> = {
  * member at once, so the table doesn't page.
  */
 export const MemberList: React.FC = () => {
-  const { disabledProps } = useTenantRole();
+  const { can, disabledProps } = useTenantRole();
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const { data, isLoading, error } = useMembersListQuery();
+  // GET …/members needs admin (a lesser role gets the unauthorized state, not a failed call)
+  // and is unpaged (one row per member): read whole.
+  const isAdmin = can("admin");
+  const { data, isLoading, error } = useMembersListQuery({
+    options: { enabled: isAdmin },
+  });
 
   const columns: DataViewTh[] = [
     { cell: "Miembro", props: { width: 50 } },
@@ -96,14 +102,18 @@ export const MemberList: React.FC = () => {
         </Flex>
       </PageSection>
       <PageSection>
-        <DataView activeState={activeState}>
-          <DataViewTable
-            aria-label="Tabla de miembros"
-            columns={columns}
-            rows={rows}
-            bodyStates={bodyStates}
-          />
-        </DataView>
+        {isAdmin ? (
+          <DataView activeState={activeState}>
+            <DataViewTable
+              aria-label="Tabla de miembros"
+              columns={columns}
+              rows={rows}
+              bodyStates={bodyStates}
+            />
+          </DataView>
+        ) : (
+          <UnauthorizedState description="Necesitas el rol Administrador o superior para ver los miembros de la organización." />
+        )}
       </PageSection>
       <AddMemberModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
     </>

@@ -25,7 +25,9 @@ import { RENDER_DATE_FORMAT } from "@app/constants";
 import { usePersistentState } from "@app/hooks/usePersistentState";
 import {
   type IDataSubjectRequestRow,
+  type IPersonalDataDraft,
   personalDataDocuments,
+  personalDataDrafts,
   usePersonalDataQuery,
 } from "@app/queries/xhandler/data-subject-requests";
 import { getMutationErrorMessage } from "@app/utils/apiError";
@@ -34,6 +36,14 @@ import {
   tipoComprobanteLabel,
 } from "@app/utils/documentPresentation";
 import { PAGINATION_STATE, toPageParams } from "@app/utils/listState";
+
+/** A draft's state in Spanish: deleted drafts are kept until their purge. */
+const draftStatusLabel = (draft: IPersonalDataDraft): string => {
+  if (draft.deletedAt) {
+    return `Eliminado el ${dayjs(draft.deletedAt).format(RENDER_DATE_FORMAT)}`;
+  }
+  return draft.status === "issued" ? "Emitido" : "En edición";
+};
 
 interface IPersonalDataModalProps {
   request: IDataSubjectRequestRow;
@@ -55,6 +65,7 @@ export const PersonalDataModal: React.FC<IPersonalDataModalProps> = ({
     storage: "state",
   });
   const documents = data ? personalDataDocuments(data) : [];
+  const drafts = data ? personalDataDrafts(data) : [];
   const { limit, offset } = toPageParams(pagination);
   const pageDocuments = documents.slice(offset, offset + limit);
 
@@ -77,11 +88,49 @@ export const PersonalDataModal: React.FC<IPersonalDataModalProps> = ({
         </Alert>
       );
     }
+    const draftsTable =
+      drafts.length > 0 ? (
+        <Table
+          aria-label="Borradores que nombran a la persona"
+          variant="compact"
+        >
+          <Thead>
+            <Tr>
+              <Th>Emisor</Th>
+              <Th>Borrador</Th>
+              <Th>Nombre</Th>
+              <Th>Creado</Th>
+              <Th>Estado</Th>
+            </Tr>
+          </Thead>
+          <Tbody>
+            {drafts.map((draft) => (
+              <Tr key={draft.id}>
+                <Td dataLabel="Emisor">{draft.issuerRuc}</Td>
+                <Td dataLabel="Borrador">
+                  {tipoComprobanteLabel(draft.tipoComprobante)}{" "}
+                  {draft.serie || ""}
+                </Td>
+                <Td dataLabel="Nombre">{draft.nombre || "-"}</Td>
+                <Td dataLabel="Creado">
+                  {draft.createdAt
+                    ? dayjs(draft.createdAt).format(RENDER_DATE_FORMAT)
+                    : "-"}
+                </Td>
+                <Td dataLabel="Estado">{draftStatusLabel(draft)}</Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+      ) : null;
     if (documents.length === 0) {
       return (
-        <Content component={ContentVariants.p}>
-          No hay comprobantes emitidos a esta persona.
-        </Content>
+        <>
+          <Content component={ContentVariants.p}>
+            No hay comprobantes emitidos a esta persona.
+          </Content>
+          {draftsTable}
+        </>
       );
     }
     return (
@@ -133,6 +182,7 @@ export const PersonalDataModal: React.FC<IPersonalDataModalProps> = ({
           pagination={pagination}
           onPaginationChange={setPagination}
         />
+        {draftsTable}
       </>
     );
   };
@@ -142,7 +192,7 @@ export const PersonalDataModal: React.FC<IPersonalDataModalProps> = ({
       <ModalHeader
         title={`Datos personales de ${request.subjectName || request.subjectDocNumber}`}
         labelId={titleId}
-        description="Comprobantes emitidos a la persona: estado e importes, sin archivos. Esta consulta queda registrada."
+        description="Comprobantes emitidos a la persona (estado e importes, sin archivos) y borradores que la nombran. Esta consulta queda registrada."
       />
       <ModalBody>{body()}</ModalBody>
       <ModalFooter>

@@ -1,4 +1,4 @@
-import type { UseQueryOptions } from "@tanstack/react-query";
+import type { QueryClient, UseQueryOptions } from "@tanstack/react-query";
 import {
   keepPreviousData,
   queryOptions,
@@ -22,6 +22,8 @@ import {
   updateDraft,
 } from "@app/client/xhandler";
 import { useSelectedTenantId } from "@app/hooks/useSelectedTenantId";
+import { getApiErrorKind } from "@app/utils/apiError";
+import { isHttpError } from "@app/utils/isHttpError";
 
 import type { ListParams } from "../utils/listParams";
 import type { IMutationCallbacks } from "../utils/mutationCallbacks";
@@ -39,6 +41,24 @@ export type DraftStatus = (typeof DRAFT_STATUSES)[number];
 
 export const isDraftStatus = (value: string): value is DraftStatus =>
   (DRAFT_STATUSES as readonly string[]).includes(value);
+
+/** The `409` kinds of a draft write: issued, or changed since the version the user edited. */
+export const DRAFT_CONFLICT_KINDS = ["draft_issued", "draft_changed"] as const;
+
+export type DraftConflictKind = (typeof DRAFT_CONFLICT_KINDS)[number];
+
+/** The conflict a failed draft write reports, if it is one. */
+export const getDraftConflictKind = (
+  error: unknown,
+): DraftConflictKind | undefined => {
+  if (!isHttpError({ error, status: 409 })) return undefined;
+  const kind = getApiErrorKind(error);
+  return (DRAFT_CONFLICT_KINDS as readonly (string | undefined)[]).includes(
+    kind,
+  )
+    ? (kind as DraftConflictKind)
+    : undefined;
+};
 
 export const draftKeys = {
   all: () => [DraftsQueryKey] as const,
@@ -156,6 +176,30 @@ export const useDraftCreateMutation = (
   });
 };
 
+/**
+ * After a `409` the cached draft is stale (issued, or a newer version): refetch it and the lists,
+ * before the caller's `onError` (and a `mutateAsync` rejection), so the page shows what is stored.
+ */
+const invalidateOnConflict = async ({
+  queryClient,
+  tenantId,
+  draftId,
+  error,
+}: {
+  queryClient: QueryClient;
+  tenantId: string;
+  draftId: string;
+  error: unknown;
+}) => {
+  if (!getDraftConflictKind(error)) return;
+  await Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: draftKeys.detail(tenantId, draftId),
+    }),
+    queryClient.invalidateQueries({ queryKey: draftKeys.list(tenantId) }),
+  ]);
+};
+
 /** `PUT …/drafts/{id}` (operator): replaces the content; `version` makes it a compare-and-set (409). */
 export const useDraftUpdateMutation = (
   draftId: string,
@@ -179,7 +223,10 @@ export const useDraftUpdateMutation = (
       });
       await options?.onSuccess?.(data, variables);
     },
-    onError: options?.onError,
+    onError: async (error, variables) => {
+      await invalidateOnConflict({ queryClient, tenantId, draftId, error });
+      options?.onError?.(error, variables);
+    },
   });
 };
 
@@ -255,6 +302,14 @@ export const useDraftIssueMutation = (
       });
       await options?.onSuccess?.(data, variables);
     },
-    onError: options?.onError,
+    onError: async (error, variables) => {
+      await invalidateOnConflict({
+        queryClient,
+        tenantId,
+        draftId: variables.draftId,
+        error,
+      });
+      options?.onError?.(error, variables);
+    },
   });
 };

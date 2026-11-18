@@ -32,6 +32,7 @@ import { getBranding } from "@app/utils/branding";
 
 import { AboutApp } from "./AboutApp";
 import { BrandLogo } from "./BrandLogo";
+import { LibroReclamacionesLink } from "./LibroReclamacionesLink";
 
 interface IHeaderAppProps {
   isSidebarOpen: boolean;
@@ -87,6 +88,9 @@ export const HeaderApp: React.FC<IHeaderAppProps> = ({
                 align={{ default: "alignEnd" }}
                 gap={{ default: "gapNone", md: "gapMd" }}
               >
+                <ToolbarItem>
+                  <LibroReclamacionesLink />
+                </ToolbarItem>
                 <ToolbarItem>
                   <Dropdown
                     isOpen={isHelpDropdownOpen}

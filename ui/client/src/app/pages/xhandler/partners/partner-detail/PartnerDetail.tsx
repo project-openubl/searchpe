@@ -45,6 +45,7 @@ const ADMIN_TOOLTIP = {
 export const PartnerDetail: React.FC<IPartnerDetailProps> = ({ partnerId }) => {
   const { addNotification } = useNotifications();
   const [activeTab, setActiveTab] = useState<string | number>("organizaciones");
+  // GET /partners is unpaged (one row per partner membership): read whole.
   const { data: partners, isSuccess } = useMyPartnersQuery();
   const partner = partners?.find((candidate) => candidate.id === partnerId);
   // Like the tenant gates (ADR 0004): allowed until the memberships load, the server decides.

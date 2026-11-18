@@ -125,6 +125,17 @@ describe("encodeEnv", () => {
     ]);
     expect(sent.SEARCHPE_ENABLED).toBe("true");
   });
+
+  it("sends the platform's Libro de Reclamaciones when set", () => {
+    const env = buildOpenublEnv({
+      LIBRO_RECLAMACIONES_URL: "https://openubl.example/reclamaciones",
+    });
+    const sent = decodeEnv(encodeEnv(env)) as Record<string, unknown>;
+
+    expect(sent.LIBRO_RECLAMACIONES_URL).toBe(
+      "https://openubl.example/reclamaciones",
+    );
+  });
 });
 
 describe("buildOpenublEnv", () => {

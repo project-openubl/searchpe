@@ -43,7 +43,19 @@ collection. A list the user scrolls gets a pager, a picker searches server-side.
 comment at the call):
 
 - searchpe `GET /versions` (the clean-up job keeps few versions);
-- xhandler `GET /tenants` (one row per membership of the user).
+- xhandler `GET /tenants` (one row per membership of the user);
+- xhandler `listMyPartners` (one row per partner membership of the user);
+- xhandler `listPartnerTenants` (one row per tenant of the partner, filtered by month);
+- xhandler `listAdapterTokens` (a company has a few adapter tokens);
+- xhandler `listCredentials` (one row per credential kind);
+- xhandler `listPseAuthorizations` (a handful per company, newest first);
+- xhandler `listSeries` (a company has a handful of series);
+- xhandler `listDocumentEvents` (one row per status change of the document);
+- xhandler `listEmailSuppressions` (one row per address that bounced or complained);
+- xhandler `listExports` (the service answers the latest 20);
+- xhandler `listMembers` (one row per member of the tenant);
+- xhandler `listSenderDomains` (a handful per tenant);
+- xhandler `listWebhooks` (a tenant has a few subscriptions).
 
 ## Checklist
 

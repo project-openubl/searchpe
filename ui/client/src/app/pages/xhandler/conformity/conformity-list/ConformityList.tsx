@@ -42,6 +42,7 @@ import {
 } from "@app/queries/xhandler/conformity";
 import { getMutationErrorMessage } from "@app/utils/apiError";
 import type { DataViewTh } from "@app/utils/dataViewTypes";
+import { estimateItemCount, toPageParams } from "@app/utils/listState";
 
 import { CONFORMITY_LIST_STATE } from "./conformityListState";
 
@@ -82,15 +83,12 @@ export const ConformityList: React.FC<IConformityListProps> = ({
     toFirstPage();
   };
 
-  const params = { state: filters.estado[0] };
+  const exportParams = { state: filters.estado[0] };
   const { data, isLoading, error } = useConformityListQuery({
     companyId,
-    params,
+    params: { ...toPageParams(pagination), ...exportParams },
   });
-  // Unpaged by the API: read whole, paged on screen.
-  const items = data ?? [];
-  const start = (pagination.page - 1) * pagination.perPage;
-  const pageItems = items.slice(start, start + pagination.perPage);
+  const items = data?.items ?? [];
 
   const exportCsv = useExportConformityMutation({
     onError: (err) =>
@@ -112,7 +110,7 @@ export const ConformityList: React.FC<IConformityListProps> = ({
     { cell: "Resuelta", props: { width: 15 } },
   ];
 
-  const rows = pageItems.map((item) => ({
+  const rows = items.map((item) => ({
     id: item.document_id ?? item.serie_numero ?? "",
     row: [
       {
@@ -154,7 +152,8 @@ export const ConformityList: React.FC<IConformityListProps> = ({
   const pager = (variant: PaginationVariant) => (
     <ListPagination
       variant={variant}
-      itemCount={items.length}
+      itemCount={estimateItemCount({ pagination, pageSize: items.length })}
+      isCountEstimated
       pagination={pagination}
       onPaginationChange={setPagination}
     />
@@ -221,7 +220,9 @@ export const ConformityList: React.FC<IConformityListProps> = ({
                 variant="secondary"
                 isLoading={exportCsv.isPending}
                 isDisabled={exportCsv.isPending}
-                onClick={() => exportCsv.mutate({ companyId, params })}
+                onClick={() =>
+                  exportCsv.mutate({ companyId, params: exportParams })
+                }
               >
                 Exportar CSV
               </Button>

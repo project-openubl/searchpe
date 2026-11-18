@@ -89,6 +89,7 @@ export const PseAuthorization: React.FC<IPseAuthorizationProps> = ({
   const { addNotification } = useNotifications();
   const { can, disabledProps } = useTenantRole();
   const { data: company } = useSuspenseCompanyDetailQuery({ companyId });
+  // GET …/pse is unpaged (a handful of authorizations per company): read whole.
   const { data, isLoading, error } = usePseAuthorizationsQuery({ companyId });
   const authorizations = data ?? [];
   const active = activeAuthorization(data);

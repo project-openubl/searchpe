@@ -115,6 +115,8 @@ export const useNubefactTokenCreateMutation = (
     XhandlerAxiosError,
     IAdapterTokenCreateVariables
   >({
+    // The answer carries the token: drop the mutation from the cache once unobserved.
+    gcTime: 0,
     mutationFn: async ({ companyId, body, idempotencyKey }) =>
       (
         await createNubefactToken({

@@ -38,6 +38,12 @@ export type OpenublEnvType = {
 
   /** Location of branding files (relative paths computed from the project source root) */
   BRANDING?: string;
+
+  /**
+   * The platform's own virtual Libro de Reclamaciones (https), linked from every shell
+   * (Ley 32495); unset hides the link.
+   */
+  LIBRO_RECLAMACIONES_URL?: string;
 };
 
 /**
@@ -51,6 +57,7 @@ export const CLIENT_ENV_KEYS = [
   "OIDC_SERVER_URL",
   "OIDC_SCOPE",
   "SEARCHPE_ENABLED",
+  "LIBRO_RECLAMACIONES_URL",
 ] as const satisfies readonly (keyof OpenublEnvType)[];
 
 /** Path prefix the browser uses for xhandler-service; the proxies send it to `/api`. */
@@ -87,6 +94,8 @@ export const buildOpenublEnv = ({
   SEARCHPE_ENABLED = SEARCHPE_API_URL ? "true" : "false",
 
   BRANDING,
+
+  LIBRO_RECLAMACIONES_URL,
 }: Partial<OpenublEnvType> = {}): OpenublEnvType => ({
   NODE_ENV,
   PORT,
@@ -101,6 +110,8 @@ export const buildOpenublEnv = ({
   SEARCHPE_ENABLED,
 
   BRANDING,
+
+  LIBRO_RECLAMACIONES_URL,
 });
 
 export const OPENUBL_ENV_DEFAULTS = buildOpenublEnv();

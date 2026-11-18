@@ -68,11 +68,12 @@ export const PartnerTenantsTab: React.FC<IPartnerTenantsTabProps> = ({
     toFirstPage();
   };
 
+  // GET …/partners/{id}/tenants is unpaged (one row per tenant of the partner): read whole,
+  // paged on screen.
   const { data, isLoading, error } = usePartnerTenantsQuery({
     partnerId,
     params: { month: filters.mes[0] },
   });
-  // Unpaged by the API: read whole, paged on screen.
   const tenants = data ?? [];
   const start = (pagination.page - 1) * pagination.perPage;
   const pageTenants = tenants.slice(start, start + pagination.perPage);

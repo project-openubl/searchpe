@@ -20,6 +20,7 @@ import type { DataViewTh } from "@app/utils/dataViewTypes";
  * (ADR 0002). The API answers every membership at once, so the table doesn't page.
  */
 export const PartnerList: React.FC = () => {
+  // GET /partners is unpaged (one row per partner membership): read whole.
   const { data, isLoading, error } = useMyPartnersQuery();
 
   const columns: DataViewTh[] = [

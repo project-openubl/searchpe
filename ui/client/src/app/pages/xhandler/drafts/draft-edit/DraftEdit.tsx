@@ -8,6 +8,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import {
   ActionGroup,
   Alert,
+  AlertActionCloseButton,
   Breadcrumb,
   BreadcrumbItem,
   Card,
@@ -47,6 +48,8 @@ import { useTenantRole } from "@app/hooks/useTenantRole";
 import { useSuspenseCompanyDetailQuery } from "@app/queries/xhandler/companies";
 import { useDocumentDetailQuery } from "@app/queries/xhandler/documents";
 import {
+  type DraftConflictKind,
+  getDraftConflictKind,
   useDraftDeleteMutation,
   useDraftIssueMutation,
   useDraftUpdateMutation,
@@ -79,6 +82,13 @@ interface IDraftEditProps {
   draftId: string;
 }
 
+const CONFLICT_MESSAGES: Record<DraftConflictKind, string> = {
+  draft_issued:
+    "Este borrador ya se emitió en otra sesión, así que tus cambios no se guardaron.",
+  draft_changed:
+    "Este borrador cambió en otra sesión. Se cargó la versión actual y tus cambios no se guardaron: revísala y vuelve a intentarlo.",
+};
+
 /**
  * Manual issuing (DESIGN.md §11.10): edit a draft (no number yet) and issue it, which numbers,
  * signs and sends it like any document. An issued draft is shown read-only.
@@ -90,6 +100,13 @@ export const DraftEdit: React.FC<IDraftEditProps> = ({ draftId }) => {
     companyId: draft.company_id ?? "",
   });
   const title = `${draftTypeLabel(draft)}: borrador`;
+  // A 409 already refetched the draft (drafts.ts): remount the form on the stored version.
+  const [conflict, setConflict] = useState<DraftConflictKind | null>(null);
+  const [formGeneration, setFormGeneration] = useState(0);
+  const onConflict = (kind: DraftConflictKind) => {
+    setConflict(kind);
+    setFormGeneration((generation) => generation + 1);
+  };
 
   return (
     <>
@@ -113,10 +130,28 @@ export const DraftEdit: React.FC<IDraftEditProps> = ({ draftId }) => {
         </Content>
       </PageSection>
       <PageSection>
+        {conflict ? (
+          <Alert
+            isInline
+            variant="warning"
+            title={CONFLICT_MESSAGES[conflict]}
+            actionClose={
+              <AlertActionCloseButton
+                aria-label="Cerrar el aviso"
+                onClose={() => setConflict(null)}
+              />
+            }
+          />
+        ) : null}
         {draft.status === "issued" ? (
           <IssuedDraft draft={draft} />
         ) : (
-          <DraftForm key={draft.id} draft={draft} company={company} />
+          <DraftForm
+            key={`${draft.id}-${formGeneration}`}
+            draft={draft}
+            company={company}
+            onConflict={onConflict}
+          />
         )}
       </PageSection>
     </>
@@ -171,9 +206,15 @@ const IssuedDraft: React.FC<IIssuedDraftProps> = ({ draft }) => {
 interface IDraftFormProps {
   draft: DraftView;
   company: CompanyView;
+  /** A save or issue answered 409: the draft was issued or changed elsewhere. */
+  onConflict: (kind: DraftConflictKind) => void;
 }
 
-const DraftForm: React.FC<IDraftFormProps> = ({ draft, company }) => {
+const DraftForm: React.FC<IDraftFormProps> = ({
+  draft,
+  company,
+  onConflict,
+}) => {
   const formId = useId();
   const tenantId = useSelectedTenantId();
   const navigate = useNavigate();
@@ -200,6 +241,7 @@ const DraftForm: React.FC<IDraftFormProps> = ({ draft, company }) => {
   const pricesIncludeIgv = useWatch({ control, name: "precios_con_igv" });
   const isNote = useWatch({ control, name: "es_nota" });
 
+  // GET …/series is unpaged (a company has a handful): read whole for the picker.
   const { data: series } = useSeriesListQuery({
     companyId: draft.company_id ?? "",
   });
@@ -218,15 +260,7 @@ const DraftForm: React.FC<IDraftFormProps> = ({ draft, company }) => {
     serieOptions.push({ value: draft.serie, label: draft.serie });
   }
 
-  const updateDraft = useDraftUpdateMutation(draftId, {
-    onError: (error) =>
-      setSubmitError(
-        getMutationErrorMessage({
-          error,
-          fallback: "No se pudo guardar el borrador",
-        }),
-      ),
-  });
+  const updateDraft = useDraftUpdateMutation(draftId);
   const issueDraft = useDraftIssueMutation({
     onSuccess: (document: DocumentView) =>
       addNotification({
@@ -258,6 +292,21 @@ const DraftForm: React.FC<IDraftFormProps> = ({ draft, company }) => {
     reset(values);
   };
 
+  const showFailure = ({
+    error,
+    fallback,
+  }: {
+    error: unknown;
+    fallback: string;
+  }) => {
+    const conflict = getDraftConflictKind(error);
+    if (conflict) {
+      onConflict(conflict);
+    } else {
+      setSubmitError(getMutationErrorMessage({ error, fallback }));
+    }
+  };
+
   const onSave = handleSubmit((values) => {
     clearSubmitError();
     updateDraft.mutate(toInput(values), {
@@ -265,6 +314,8 @@ const DraftForm: React.FC<IDraftFormProps> = ({ draft, company }) => {
         saved(values, result);
         addNotification({ variant: "success", title: "Se guardó el borrador" });
       },
+      onError: (error) =>
+        showFailure({ error, fallback: "No se pudo guardar el borrador" }),
     });
   });
 
@@ -285,12 +336,7 @@ const DraftForm: React.FC<IDraftFormProps> = ({ draft, company }) => {
         idempotencyKey: crypto.randomUUID(),
       });
     } catch (error) {
-      setSubmitError(
-        getMutationErrorMessage({
-          error,
-          fallback: "No se pudo emitir el comprobante",
-        }),
-      );
+      showFailure({ error, fallback: "No se pudo emitir el comprobante" });
     }
   };
 

@@ -375,6 +375,53 @@
           }
         }
       },
+      "DataSubjectRequestView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "subject_doc_type" : {
+            "type" : "string"
+          },
+          "subject_doc_number" : {
+            "type" : "string"
+          },
+          "subject_name" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string",
+            "description" : "access, rectification, cancellation u opposition."
+          },
+          "channel" : {
+            "type" : "string",
+            "description" : "tenant (registrada por la organización) o platform (llegó a la plataforma)."
+          },
+          "details" : {
+            "type" : "string"
+          },
+          "received_at" : {
+            "type" : "string"
+          },
+          "forwarded_at" : {
+            "type" : "string"
+          },
+          "response_due_at" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string",
+            "description" : "open o closed."
+          },
+          "resolution" : {
+            "type" : "string"
+          },
+          "closed_at" : {
+            "type" : "string"
+          }
+        }
+      },
       "DeliveryView" : {
         "type" : "object",
         "properties" : {
@@ -768,6 +815,26 @@
           }
         }
       },
+      "ExportPart" : {
+        "type" : "object",
+        "required" : [ "name", "size" ],
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "description" : "Nombre del ZIP."
+          },
+          "size" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Tamaño en bytes."
+          },
+          "documents" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Comprobantes (o recepciones) en la parte; en el índice, todos los comprobantes."
+          }
+        }
+      },
       "ExportView" : {
         "type" : "object",
         "properties" : {
@@ -780,8 +847,7 @@
           "parts" : {
             "type" : "array",
             "items" : {
-              "type" : "object",
-              "additionalProperties" : { }
+              "$ref" : "#/components/schemas/ExportPart"
             }
           },
           "documents" : {
@@ -1196,6 +1262,54 @@
           }
         }
       },
+      "PageConformityView" : {
+        "description" : "Una página de resultados (`?limit=&offset=`). No incluye el total: una página con menos de `limit` elementos es la última.",
+        "type" : "object",
+        "required" : [ "items", "limit", "offset" ],
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ConformityView"
+            },
+            "description" : "Los elementos de la página, como mucho `limit`."
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Tamaño de página aplicado (por defecto 50, máximo 200)."
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Elementos saltados antes de esta página."
+          }
+        }
+      },
+      "PageDataSubjectRequestView" : {
+        "description" : "Una página de resultados (`?limit=&offset=`). No incluye el total: una página con menos de `limit` elementos es la última.",
+        "type" : "object",
+        "required" : [ "items", "limit", "offset" ],
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DataSubjectRequestView"
+            },
+            "description" : "Los elementos de la página, como mucho `limit`."
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Tamaño de página aplicado (por defecto 50, máximo 200)."
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Elementos saltados antes de esta página."
+          }
+        }
+      },
       "PageDeliveryView" : {
         "description" : "Una página de resultados (`?limit=&offset=`). No incluye el total: una página con menos de `limit` elementos es la última.",
         "type" : "object",
@@ -1349,6 +1463,30 @@
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/ReceptionView"
+            },
+            "description" : "Los elementos de la página, como mucho `limit`."
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Tamaño de página aplicado (por defecto 50, máximo 200)."
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Elementos saltados antes de esta página."
+          }
+        }
+      },
+      "PageReportView" : {
+        "description" : "Una página de resultados (`?limit=&offset=`). No incluye el total: una página con menos de `limit` elementos es la última.",
+        "type" : "object",
+        "required" : [ "items", "limit", "offset" ],
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ReportView"
             },
             "description" : "Los elementos de la página, como mucho `limit`."
           },
@@ -4228,6 +4366,7 @@
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/conformity" : {
       "get" : {
+        "summary" : "Facturas negociables de la empresa y su conformidad, las más recientes primero",
         "operationId" : "listConformity",
         "parameters" : [ {
           "name" : "companyId",
@@ -4244,9 +4383,24 @@
             "$ref" : "#/components/schemas/UUID"
           }
         }, {
+          "name" : "limit",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
           "name" : "state",
           "in" : "query",
           "schema" : {
+            "description" : "pending, agreed, objected o silent_agreement; sin filtro, todas.",
             "type" : "string"
           }
         } ],
@@ -4256,10 +4410,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/ConformityView"
-                  }
+                  "$ref" : "#/components/schemas/PageConformityView"
                 }
               }
             }
@@ -4288,7 +4439,6 @@
             }
           }
         },
-        "summary" : "List",
         "tags" : [ "Conformity Resource" ],
         "security" : [ {
           "bearer" : [ ]
@@ -5968,6 +6118,7 @@
     },
     "/api/v1/tenants/{tenantId}/companies/{companyId}/reports" : {
       "get" : {
+        "summary" : "Reportes de la empresa, los más recientes primero",
         "operationId" : "listReports",
         "parameters" : [ {
           "name" : "companyId",
@@ -5983,6 +6134,20 @@
           "schema" : {
             "$ref" : "#/components/schemas/UUID"
           }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -5990,10 +6155,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/ReportView"
-                  }
+                  "$ref" : "#/components/schemas/PageReportView"
                 }
               }
             }
@@ -6022,7 +6184,6 @@
             }
           }
         },
-        "summary" : "List",
         "tags" : [ "Report Resource" ],
         "security" : [ {
           "bearer" : [ ]
@@ -6970,6 +7131,7 @@
     },
     "/api/v1/tenants/{tenantId}/data-subject-requests" : {
       "get" : {
+        "summary" : "Solicitudes de derechos de datos personales, las más recientes primero",
         "operationId" : "listDataSubjectRequests",
         "parameters" : [ {
           "name" : "tenantId",
@@ -6978,6 +7140,27 @@
           "schema" : {
             "$ref" : "#/components/schemas/UUID"
           }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "status",
+          "in" : "query",
+          "schema" : {
+            "description" : "open o closed; sin filtro, ambas.",
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -6985,11 +7168,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "type" : "object",
-                    "additionalProperties" : { }
-                  }
+                  "$ref" : "#/components/schemas/PageDataSubjectRequestView"
                 }
               }
             }
@@ -7018,7 +7197,6 @@
             }
           }
         },
-        "summary" : "List",
         "tags" : [ "Data Subject Requests" ],
         "security" : [ {
           "bearer" : [ ]
@@ -7050,8 +7228,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "type" : "object",
-                  "additionalProperties" : { }
+                  "$ref" : "#/components/schemas/DataSubjectRequestView"
                 }
               }
             }
@@ -7124,8 +7301,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "type" : "object",
-                  "additionalProperties" : { }
+                  "$ref" : "#/components/schemas/DataSubjectRequestView"
                 }
               }
             }

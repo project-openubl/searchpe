@@ -10,20 +10,28 @@ import {
 import {
   type ConformityView,
   exportConformity,
+  type ExportConformityData,
   getDocumentConformity,
   listConformity,
   type ListConformityData,
+  type PageConformityView,
 } from "@app/client/xhandler";
 import { useSelectedTenantId } from "@app/hooks/useSelectedTenantId";
 
 import { downloadFile } from "../utils/fileDownload";
+import type { ListParams } from "../utils/listParams";
 import type { IMutationCallbacks } from "../utils/mutationCallbacks";
 import type { XhandlerAxiosError } from "../utils/openapiErrorTypes";
 
 export const ConformityQueryKey = "conformity";
 
-/** `state` filter of the list and the export. */
-export type IConformityListParams = NonNullable<ListConformityData["query"]>;
+/** One page of the list: the `state` filter, `limit` and `offset`. */
+export type IConformityListParams = ListParams<ListConformityData>;
+
+/** `state` filter of the CSV export (it takes no page: the latest 1000 rows). */
+export type IConformityExportParams = NonNullable<
+  ExportConformityData["query"]
+>;
 
 /** A factura negociable's conformity states (DESIGN.md §11.8); the spec types it as a string. */
 export const CONFORMITY_STATES = [
@@ -53,14 +61,11 @@ export const conformityKeys = {
 };
 
 type ConformityListOptions = Omit<
-  UseQueryOptions<ConformityView[], XhandlerAxiosError>,
+  UseQueryOptions<PageConformityView, XhandlerAxiosError>,
   "queryKey" | "queryFn"
 >;
 
-/**
- * `GET …/companies/{id}/conformity`: the company's facturas negociables, newest acceptance first.
- * Unpaged by the API (it caps the answer at 1000 rows), so it is read whole and paged on screen.
- */
+/** `GET …/companies/{id}/conformity`: one page of the company's facturas negociables, newest acceptance first. */
 export const conformityListQueryOptions = ({
   tenantId,
   companyId,
@@ -72,7 +77,7 @@ export const conformityListQueryOptions = ({
   params: IConformityListParams;
   options?: ConformityListOptions;
 }) =>
-  queryOptions<ConformityView[], XhandlerAxiosError>({
+  queryOptions<PageConformityView, XhandlerAxiosError>({
     placeholderData: keepPreviousData,
     ...options,
     queryKey: conformityKeys.companyQuery(tenantId, companyId, params),
@@ -133,7 +138,7 @@ export const useSuspenseDocumentConformityQuery = ({
 
 export interface IConformityExportVariables {
   companyId: string;
-  params: IConformityListParams;
+  params: IConformityExportParams;
 }
 
 /** `GET …/conformity/export`: saves the CSV for factoring when the user asks for it (audited). */

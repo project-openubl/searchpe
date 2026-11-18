@@ -33,7 +33,7 @@ export type ExportStatus = (typeof EXPORT_STATUSES)[number];
 export const isExportStatus = (value: string): value is ExportStatus =>
   (EXPORT_STATUSES as readonly string[]).includes(value);
 
-/** One ZIP of an export; the spec types parts as free maps (`List<Map<String, Object>>`). */
+/** One ZIP of an export, with its position (the download addresses parts by index). */
 export interface IExportPart {
   index: number;
   name: string;
@@ -41,16 +41,13 @@ export interface IExportPart {
   documents: number | undefined;
 }
 
-const numberOrUndefined = (value: unknown): number | undefined =>
-  typeof value === "number" ? value : undefined;
-
 /** The parts to download, the index (`indice.zip`) first, as `TenantExit.Export` writes them. */
 export const exportParts = (exportView: ExportView): IExportPart[] =>
   (exportView.parts ?? []).map((part, index) => ({
     index,
-    name: typeof part.name === "string" ? part.name : `parte-${index + 1}.zip`,
-    size: numberOrUndefined(part.size),
-    documents: numberOrUndefined(part.documents),
+    name: part.name,
+    size: part.size,
+    documents: part.documents ?? undefined,
   }));
 
 export const exportKeys = {

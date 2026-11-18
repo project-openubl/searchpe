@@ -139,6 +139,8 @@ export const useWebhookCreateMutation = (
   const tenantId = useSelectedTenantId();
   const queryClient = useQueryClient();
   return useMutation<WebhookView, XhandlerAxiosError, CreateWebhook>({
+    // The answer carries the secret: drop the mutation from the cache once unobserved.
+    gcTime: 0,
     mutationFn: async (body) =>
       (
         await createWebhook({

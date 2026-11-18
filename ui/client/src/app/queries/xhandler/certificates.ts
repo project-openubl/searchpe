@@ -94,6 +94,8 @@ export const useCertificateUploadMutation = (
   const tenantId = useSelectedTenantId();
   const queryClient = useQueryClient();
   return useMutation<CertificateView, XhandlerAxiosError, ICertificateUpload>({
+    // The variables carry the key and its password: drop them once unobserved.
+    gcTime: 0,
     mutationFn: async ({ file, password }) =>
       (
         await uploadCertificate({

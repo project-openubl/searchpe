@@ -3,11 +3,12 @@ import { describe, expect, it } from "vitest";
 import {
   isDataSubjectRequestKind,
   personalDataDocuments,
+  personalDataDrafts,
   toDataSubjectRequestRow,
 } from "./data-subject-requests";
 
 describe("data subject requests", () => {
-  it("reads a request off the free map", () => {
+  it("fills a request's missing fields with empty text", () => {
     expect(
       toDataSubjectRequestRow({
         id: "r1",
@@ -16,7 +17,6 @@ describe("data subject requests", () => {
         kind: "access",
         status: "open",
         response_due_at: "2026-02-01T00:00:00Z",
-        closed_at: null,
       }),
     ).toMatchObject({
       id: "r1",
@@ -54,6 +54,39 @@ describe("data subject requests", () => {
       }),
     ]);
     expect(personalDataDocuments({})).toEqual([]);
+  });
+
+  it("lists the drafts naming the person, deleted ones too", () => {
+    expect(
+      personalDataDrafts({
+        drafts: [
+          {
+            id: "dr1",
+            issuer_ruc: "20123456789",
+            kind: "Invoice",
+            tipo_comprobante: "03",
+            serie: "B001",
+            nombre: "PERSONA NATURAL",
+            status: "draft",
+            created_at: "2026-03-01T10:00:00Z",
+            deleted_at: "2026-03-02T10:00:00Z",
+          },
+          null,
+        ],
+      }),
+    ).toEqual([
+      {
+        id: "dr1",
+        issuerRuc: "20123456789",
+        tipoComprobante: "03",
+        serie: "B001",
+        nombre: "PERSONA NATURAL",
+        status: "draft",
+        createdAt: "2026-03-01T10:00:00Z",
+        deletedAt: "2026-03-02T10:00:00Z",
+      },
+    ]);
+    expect(personalDataDrafts({ documents: [] })).toEqual([]);
   });
 
   it("knows the ARCO rights", () => {

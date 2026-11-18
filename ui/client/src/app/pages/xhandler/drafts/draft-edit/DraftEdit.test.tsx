@@ -9,6 +9,7 @@ import { useTenantRole } from "@app/hooks/useTenantRole";
 import { useSuspenseCompanyDetailQuery } from "@app/queries/xhandler/companies";
 import { useDocumentDetailQuery } from "@app/queries/xhandler/documents";
 import {
+  getDraftConflictKind,
   useDraftDeleteMutation,
   useDraftIssueMutation,
   useDraftUpdateMutation,
@@ -43,6 +44,7 @@ vi.mock(import("@app/queries/xhandler/series"), () => ({
   useSeriesListQuery: vi.fn(),
 }));
 vi.mock(import("@app/queries/xhandler/drafts"), () => ({
+  getDraftConflictKind: vi.fn(),
   useSuspenseDraftDetailQuery: vi.fn(),
   useDraftUpdateMutation: vi.fn(),
   useDraftIssueMutation: vi.fn(),
@@ -80,6 +82,7 @@ const setUp = ({
   vi.mocked(useNotifications).mockReturnValue({
     addNotification: vi.fn(),
   } as unknown as ReturnType<typeof useNotifications>);
+  vi.mocked(getDraftConflictKind).mockReturnValue(undefined);
   vi.mocked(useSelectedTenantId).mockReturnValue("t1");
   vi.mocked(useTenantRole).mockReturnValue({
     role: canWrite ? "operator" : "viewer",
@@ -290,5 +293,86 @@ describe("DraftEdit", () => {
     expect(
       screen.getByRole("button", { name: "Guardar borrador" }).elements(),
     ).toHaveLength(0);
+  });
+
+  it("reloads the stored version when the draft changed elsewhere", async () => {
+    const { update } = setUp();
+    const conflict = {
+      isAxiosError: true,
+      response: {
+        status: 409,
+        data: { kind: "draft_changed", message: "El borrador cambió." },
+      },
+    };
+    update.mockImplementationOnce(
+      (_input, { onError }: { onError: (error: unknown) => void }) => {
+        // The mutation hook already refetched the draft: the page now reads version 6.
+        vi.mocked(getDraftConflictKind).mockReturnValue("draft_changed");
+        vi.mocked(useSuspenseDraftDetailQuery).mockReturnValue({
+          data: {
+            ...DRAFT,
+            version: 6,
+            spec: {
+              ...DRAFT.spec,
+              cliente: {
+                ...(DRAFT.spec?.cliente as object),
+                nombre: "Cliente Nuevo SAC",
+              },
+            },
+          },
+        } as unknown as ReturnType<typeof useSuspenseDraftDetailQuery>);
+        onError(conflict);
+      },
+    );
+    const screen = await render(<DraftEdit draftId="d1" />);
+
+    await screen
+      .getByRole("textbox", { name: "Nombre o razón social", exact: true })
+      .fill("Mi Cambio SAC");
+    await userEvent.tab();
+    await screen.getByRole("button", { name: "Guardar borrador" }).click();
+
+    await expect
+      .element(screen.getByText(/Este borrador cambió en otra sesión/))
+      .toBeVisible();
+    await expect
+      .element(
+        screen.getByRole("textbox", {
+          name: "Nombre o razón social",
+          exact: true,
+        }),
+      )
+      .toHaveValue("Cliente Nuevo SAC");
+    expect(
+      screen.getByText("No se pudo guardar el borrador").elements(),
+    ).toHaveLength(0);
+
+    vi.mocked(getDraftConflictKind).mockReturnValue(undefined);
+    await screen.getByRole("button", { name: "Guardar borrador" }).click();
+    await expect.poll(() => update.mock.calls.length).toBe(2);
+    expect(update.mock.calls[1][0]).toMatchObject({ version: 6 });
+  });
+
+  it("shows the draft as issued when it was issued elsewhere", async () => {
+    const { issueAsync } = setUp();
+    issueAsync.mockImplementationOnce(() => {
+      vi.mocked(getDraftConflictKind).mockReturnValue("draft_issued");
+      vi.mocked(useSuspenseDraftDetailQuery).mockReturnValue({
+        data: { ...DRAFT, status: "issued", document_id: "doc1" },
+      } as unknown as ReturnType<typeof useSuspenseDraftDetailQuery>);
+      return Promise.reject(new Error("409"));
+    });
+    const screen = await render(<DraftEdit draftId="d1" />);
+
+    await screen.getByRole("button", { name: "Emitir", exact: true }).click();
+    await screen
+      .getByRole("dialog")
+      .getByRole("button", { name: "Emitir", exact: true })
+      .click();
+
+    await expect
+      .element(screen.getByText(/ya se emitió en otra sesión/))
+      .toBeVisible();
+    await expect.element(screen.getByText("F001-7")).toBeVisible();
   });
 });

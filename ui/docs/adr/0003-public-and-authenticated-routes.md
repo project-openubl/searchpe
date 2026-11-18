@@ -19,7 +19,8 @@ to a login page. The same app serves both.
 - [ ] Every page requires a session except the public ones; opening a private page without one
       starts the Keycloak login and comes back to that page afterwards.
 - [ ] Public pages never start a login, never redirect to Keycloak and work with Keycloak down.
-- [ ] Public pages use a bare shell: the brand only, no sidebar, no user menu, no status polling.
+- [ ] Public pages use a bare shell: the brand and the platform's Libro de Reclamaciones link
+      (Ley 32495) only, no sidebar, no user menu, no status polling.
 - [ ] Requests from public pages carry no token, even when the browser has a session, and call
       only the API's public endpoints.
 - [ ] An invalid, revoked or expired capability link explains itself in plain words and how to

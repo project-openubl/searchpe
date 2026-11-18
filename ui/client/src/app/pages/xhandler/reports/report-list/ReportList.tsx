@@ -45,7 +45,11 @@ import {
 } from "@app/queries/xhandler/reports";
 import { getMutationErrorMessage } from "@app/utils/apiError";
 import type { DataViewTh } from "@app/utils/dataViewTypes";
-import { PAGINATION_LIST_STATE, toPageParams } from "@app/utils/listState";
+import {
+  estimateItemCount,
+  PAGINATION_LIST_STATE,
+  toPageParams,
+} from "@app/utils/listState";
 
 import { CreateReportModal } from "./components/CreateReportModal";
 import {
@@ -86,20 +90,18 @@ export const ReportList: React.FC<IReportListProps> = ({ companyId }) => {
     storage: "url",
   });
 
-  // GET …/reports is unpaged (the latest 100): read whole, paged on screen.
   const { data, isLoading, error } = useReportsListQuery({
     companyId,
+    params: toPageParams(pagination),
     options: {
-      // Server-derived status: poll while a report is still being generated.
+      // Server-derived status: poll while a report on the page is still being generated.
       refetchInterval: (query) =>
-        query.state.data?.some((report) => report.status === "pending")
+        query.state.data?.items?.some((report) => report.status === "pending")
           ? DEFAULT_REFETCH_INTERVAL
           : false,
     },
   });
-  const reports = data ?? [];
-  const { limit, offset } = toPageParams(pagination);
-  const pageReports = reports.slice(offset, offset + limit);
+  const reports = data?.items ?? [];
 
   const download = useReportFileDownloadMutation({
     onError: (err) =>
@@ -135,7 +137,7 @@ export const ReportList: React.FC<IReportListProps> = ({ companyId }) => {
     { cell: "" },
   ];
 
-  const rows = pageReports.map((report) => ({
+  const rows = reports.map((report) => ({
     id: report.id ?? "",
     row: [
       {
@@ -192,7 +194,8 @@ export const ReportList: React.FC<IReportListProps> = ({ companyId }) => {
   const pager = (variant: PaginationVariant) => (
     <ListPagination
       variant={variant}
-      itemCount={reports.length}
+      itemCount={estimateItemCount({ pagination, pageSize: reports.length })}
+      isCountEstimated
       pagination={pagination}
       onPaginationChange={setPagination}
     />
