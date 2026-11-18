@@ -251,30 +251,51 @@ public class DraftResource {
         Snapshot snapshot = QuarkusTransaction.requiringNew().call(() -> {
             access.enter(tenantId, Role.OPERATOR);
             DocumentDraft draft = find(draftId, false);
-            checkEditable(draft, version);
+            if (idempotencyKey == null || !"issued".equals(draft.status)) {
+                checkEditable(draft, version);
+            }
+            // An issued draft with an Idempotency-Key goes on: a retry of the issue that issued it
+            // gets the stored 201 (its content and so its request hash are unchanged); any other
+            // request stops at the guard with 409 draft_issued
+            ObjectNode spec = json.valueToTree(draft.spec);
+            if ("Invoice".equals(draft.kind) && !spec.hasNonNull("tipo_comprobante")) {
+                // The type inferred from the series when drafted (B → boleta)
+                spec.put("tipo_comprobante", draft.tipoComprobante);
+            }
             ObjectNode document = json.createObjectNode();
             document.put("kind", draft.kind);
-            document.set("spec", json.valueToTree(draft.spec));
+            document.set("spec", spec);
             return new Snapshot(draft.companyId, draft.version,
                     new EmitService.EmitRequest(document, draft.serie, null, draft.labels.isEmpty() ? null : draft.labels));
         });
         String correlation = DocumentResource.correlation(correlationId);
         EmitService.Emitted emitted = emit.emitDraft(tenantId, snapshot.companyId(), idempotencyKey, snapshot.request(), correlation,
-                doc -> markIssued(draftId, snapshot.version(), doc));
+                new EmitService.DraftIssue("draft:" + draftId, () -> lockUnchanged(draftId, snapshot.version()),
+                        doc -> markIssued(draftId, snapshot.version(), doc)));
         return Response.status(emitted.status()).entity(emitted.body()).build();
     }
 
     /**
-     * Inside the emit transaction, after the document insert (lock order: company → series →
-     * documents → draft, §10.8 rule 4). A draft edited, deleted or issued since it was read rolls
-     * the emit back: its number is not consumed.
+     * Inside the emit transaction, after the company lock and before a number is reserved (lock
+     * order: company → draft → series → documents, §10.8 rule 4): locks the draft row until the emit
+     * ends, so a concurrent issue, edit or delete waits for it. A draft edited, deleted or issued
+     * since it was read stops the emit before it reserves a number or signs.
      */
-    private void markIssued(UUID draftId, int version, Document doc) {
+    private DocumentDraft lockUnchanged(UUID draftId, int version) {
         DocumentDraft draft = DocumentDraft.findById(draftId, LockModeType.PESSIMISTIC_WRITE);
         if (draft == null || draft.deletedAt != null) {
             throw ApiException.conflict("draft_changed", "El borrador se eliminó mientras se emitía.");
         }
         checkEditable(draft, version);
+        return draft;
+    }
+
+    /**
+     * Inside the emit transaction, after the document insert: the draft row is already locked by
+     * {@link #lockUnchanged}, and is checked again before it is marked issued.
+     */
+    private void markIssued(UUID draftId, int version, Document doc) {
+        DocumentDraft draft = lockUnchanged(draftId, version);
         draft.status = "issued";
         draft.documentId = doc.id;
         draft.version++;
@@ -295,7 +316,7 @@ public class DraftResource {
             throw ApiException.invalid("invalid_request", "Envíe el borrador como {\"kind\": ..., \"spec\": {...}}.", null);
         }
         // Validates the kind: only documents clients may emit (no summaries)
-        DocumentTypes.tipoComprobante(input.kind(), input.spec());
+        tipoComprobante(input);
         if (input.spec().hasNonNull("serie_numero")) {
             throw ApiException.invalid("invalid_request", "Un borrador no tiene número: indique solo la serie.", "serie_numero");
         }
@@ -306,10 +327,21 @@ public class DraftResource {
 
     private void apply(DocumentDraft draft, DraftInput input) {
         draft.kind = input.kind();
-        draft.tipoComprobante = DocumentTypes.tipoComprobante(input.kind(), input.spec());
+        draft.tipoComprobante = tipoComprobante(input);
         draft.serie = input.serie();
         draft.spec = json.convertValue(input.spec(), new TypeReference<Map<String, Object>>() {});
         draft.labels = input.labels() == null ? Map.of() : Map.copyOf(input.labels());
+    }
+
+    /**
+     * A draft has no {@code serie_numero} to tell a boleta from a factura: without
+     * {@code tipo_comprobante}, an Invoice's type follows its series (B → 03, otherwise 01).
+     */
+    static String tipoComprobante(DraftInput input) {
+        if ("Invoice".equals(input.kind()) && !input.spec().hasNonNull("tipo_comprobante") && input.serie() != null) {
+            return input.serie().startsWith("B") ? "03" : "01";
+        }
+        return DocumentTypes.tipoComprobante(input.kind(), input.spec());
     }
 
     private static DocumentDraft find(UUID draftId, boolean lock) {

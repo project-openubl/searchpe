@@ -115,6 +115,14 @@ class TaxComplianceTest {
         // Purchases come from receptions (none yet) and another tenant sees nothing
         assertEquals(0, report("purchases", "csv").get("rows"));
         as("bob").get(base + "/reports").then().statusCode(404);
+
+        // Listed a page at a time, the most recent first
+        List<String> first = as("alice").get(base + "/reports?limit=2").then().statusCode(200)
+                .body("items.size()", equalTo(2)).body("limit", equalTo(2)).body("offset", equalTo(0))
+                .body("items[0].register", equalTo("purchases")).extract().path("items.id");
+        List<String> second = as("alice").get(base + "/reports?limit=2&offset=2").then().statusCode(200)
+                .body("items.size()", equalTo(2)).body("offset", equalTo(2)).extract().path("items.id");
+        assertTrue(java.util.Collections.disjoint(first, second), first + " " + second);
     }
 
     @Test
@@ -209,5 +217,10 @@ class TaxComplianceTest {
         String export = as("alice").get(base + "/conformity/export?state=objected").then().statusCode(200).extract().asString();
         assertTrue(export.contains(serieNumero(credit)) && export.contains("objected"), export);
         as("alice").get(base + "/conformity?state=bad").then().statusCode(422);
+        as("alice").get(base + "/conformity?state=objected").then().statusCode(200)
+                .body("items.serie_numero", hasItem(serieNumero(credit))).body("limit", equalTo(50));
+        as("alice").get(base + "/conformity?limit=1").then().statusCode(200).body("items.size()", equalTo(1)).body("limit", equalTo(1));
+        as("alice").get(base + "/conformity?state=pending&limit=1&offset=1000").then().statusCode(200).body("items.size()", equalTo(0))
+                .body("offset", equalTo(1000));
     }
 }

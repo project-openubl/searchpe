@@ -49,6 +49,15 @@ public class EmitService {
 
     public record Emitted(int status, JsonNode body) {}
 
+    /**
+     * How a draft is issued inside the emit transaction (§11.10). {@code key} scopes the
+     * Idempotency-Key's request hash to the draft. {@code guard} runs after the company lock and
+     * before a number is reserved: it locks the draft row and checks it, so a losing concurrent
+     * issue reserves no number and signs nothing. {@code issued} runs after the document insert and
+     * marks the draft issued. Throwing from either rolls the emit back.
+     */
+    public record DraftIssue(String key, Runnable guard, java.util.function.Consumer<Document> issued) {}
+
     private final TenantAccess access;
     private final Numbering numbering;
     private final Engine engine;
@@ -108,13 +117,10 @@ public class EmitService {
         return emit(tenantId, companyId, idempotencyKey, request, correlationId, false, null, "api", null);
     }
 
-    /**
-     * Issues a draft (manual issuing, §11.10): {@code inTransaction} runs inside the emit transaction
-     * once the document is inserted, and throwing from it rolls the emit back (no number consumed).
-     */
+    /** Issues a draft (manual issuing, §11.10): see {@link DraftIssue}. */
     public Emitted emitDraft(UUID tenantId, UUID companyId, String idempotencyKey, EmitRequest request, String correlationId,
-            java.util.function.Consumer<Document> inTransaction) {
-        return emit(tenantId, companyId, idempotencyKey, request, correlationId, false, null, "api", inTransaction);
+            DraftIssue draft) {
+        return emit(tenantId, companyId, idempotencyKey, request, correlationId, false, null, "api", draft);
     }
 
     /** Emits as the platform (its own invoices, §14), not as a tenant member. */
@@ -132,7 +138,7 @@ public class EmitService {
     }
 
     private Emitted emit(UUID tenantId, UUID companyId, String idempotencyKey, EmitRequest request, String correlationId,
-            boolean platform, Long numeroDado, String origin, java.util.function.Consumer<Document> inTransaction) {
+            boolean platform, Long numeroDado, String origin, DraftIssue draft) {
         if (request == null || request.document() == null || !request.document().hasNonNull("kind")
                 || !request.document().path("spec").isObject()) {
             throw ApiException.invalid("invalid_request", "Envíe el documento como {\"document\": {\"kind\": ..., \"spec\": {...}}}.", null);
@@ -147,7 +153,8 @@ public class EmitService {
         });
         UUID claim = null;
         if (idempotencyKey != null) {
-            Idempotency.Begun begun = idempotency.begin(tenantId, idempotencyKey, hash(companyId, request));
+            Idempotency.Begun begun = idempotency.begin(tenantId, idempotencyKey,
+                    hash((draft == null ? "" : draft.key() + ":") + companyId, request));
             if (begun.replay() != null) {
                 return new Emitted(begun.replay().status(), begun.replay().body());
             }
@@ -158,7 +165,7 @@ public class EmitService {
             UUID documentId = Ids.newId();
             JsonNode body = admitted(tenantId, companyId, platform, !platform || "adapter".equals(origin), () -> QuarkusTransaction.requiringNew()
                     .call(() -> emitInTransaction(tenantId, companyId, documentId, idempotencyKey, owned, request, correlationId, platform,
-                            numeroDado, origin, inTransaction)));
+                            numeroDado, origin, draft)));
             return new Emitted(201, body);
         } catch (RuntimeException e) {
             abandon(tenantId, idempotencyKey, owned);
@@ -250,15 +257,19 @@ public class EmitService {
 
     private JsonNode emitInTransaction(UUID tenantId, UUID companyId, UUID documentId, String idempotencyKey, UUID claim,
             EmitRequest request, String correlationId, boolean platform, Long numeroDado, String origin,
-            java.util.function.Consumer<Document> inTransaction) {
+            DraftIssue draft) {
         TenantScope scope = platform ? access.enterAsPlatform(tenantId) : access.enter(tenantId, Role.OPERATOR);
         // Waits on the series row (another emit holds it across engine, HSM and storage) are bounded
         boundLockWaits();
-        // Lock order: company → series → documents (§10.8 rule 4). FOR SHARE: an environment
+        // Lock order: company → draft → series → documents (§10.8 rule 4). FOR SHARE: an environment
         // switch (FOR UPDATE) waits for running emits and blocks new ones.
         Company company = Company.findById(companyId, LockModeType.PESSIMISTIC_READ);
         if (company == null || company.deletedAt != null) {
             throw ApiException.notFound();
+        }
+        if (draft != null) {
+            // Before any number or signature: a losing concurrent issue stops here (§11.10)
+            draft.guard().run();
         }
         ObjectNode document = request.document().deepCopy();
         String kind = document.get("kind").asText();
@@ -347,8 +358,8 @@ public class EmitService {
         DocumentFile.record(doc, "enriched", enriched);
         DocumentEvent.record(doc, null, "emitted", scope.actor().auditName(), correlationId);
         auditor.record(scope, "document.emitted", "document", doc.id, Map.of("serie_numero", doc.serieNumero()));
-        if (inTransaction != null) {
-            inTransaction.accept(doc);
+        if (draft != null) {
+            draft.issued().accept(doc);
         }
         String token = links.create(doc);
         em.createNativeQuery("SELECT pg_notify('xhandler_reconcile', '')").getSingleResult();
@@ -504,10 +515,10 @@ public class EmitService {
     }
 
     /** Hash of the request in canonical JSON (keys sorted), so reordered fields are the same request. */
-    private String hash(UUID companyId, EmitRequest request) {
+    private String hash(Object scope, EmitRequest request) {
         try {
             JsonNode canonical = canonical(json.valueToTree(request));
-            return FileStore.sha256((companyId + ":" + json.writeValueAsString(canonical)).getBytes(StandardCharsets.UTF_8));
+            return FileStore.sha256((scope + ":" + json.writeValueAsString(canonical)).getBytes(StandardCharsets.UTF_8));
         } catch (JsonProcessingException e) {
             throw new IllegalStateException(e);
         }

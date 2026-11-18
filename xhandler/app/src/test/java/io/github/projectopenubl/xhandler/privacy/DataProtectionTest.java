@@ -110,7 +110,9 @@ class DataProtectionTest {
         as("alice").body(Map.of("subject_doc_type", "1", "subject_doc_number", dni, "kind", "access"))
                 .post("/api/admin/v1/data-protection/tenants/" + tenant + "/data-subject-requests").then().statusCode(403);
         String base = "/api/v1/tenants/" + tenant + "/data-subject-requests";
-        as("alice").get(base).then().statusCode(200).body("id", hasItem(id)).body("channel", hasItem("platform"));
+        as("alice").get(base).then().statusCode(200).body("items.id", hasItem(id)).body("items.channel", hasItem("platform"))
+                .body("limit", equalTo(50)).body("offset", equalTo(0));
+        as("alice").get(base + "?status=open&limit=1").then().statusCode(200).body("items.size()", equalTo(1)).body("limit", equalTo(1));
         as("alice").get("/api/v1/tenants/" + tenant + "/notifications").then().body("items.kind", hasItem("privacy.request"));
         as("alice").get(base + "/" + id + "/personal-data").then().statusCode(200).body("documents.size()", equalTo(1))
                 .body("documents[0].nombre", equalTo("PERSONA NATURAL"));
@@ -118,6 +120,8 @@ class DataProtectionTest {
         as("alice").body(Map.of("resolution", "Se entregó la información.")).post(base + "/" + id + "/close").then().statusCode(200)
                 .body("status", equalTo("closed"));
         as("alice").body(Map.of("resolution", "otra vez")).post(base + "/" + id + "/close").then().statusCode(404);
+        as("alice").get(base + "?status=open").then().body("items.id", org.hamcrest.Matchers.not(hasItem(id)));
+        as("alice").get(base + "?status=closed").then().body("items.id", hasItem(id));
     }
 
     @Test
@@ -153,6 +157,12 @@ class DataProtectionTest {
         as("alice").post(base + "/exports").then().statusCode(409).body("kind", equalTo("export_recent"));
         await().atMost(Duration.ofSeconds(30)).until(() -> "done".equals(
                 as("alice").get(base + "/exports").then().extract().path("find { it.id == '" + export + "' }.status")));
+        // Parts carry their name, size and count, never the internal storage key
+        String listed = as("alice").get(base + "/exports").then().statusCode(200)
+                .body("find { it.id == '" + export + "' }.parts[0].keySet()", containsInAnyOrder("name", "size", "documents"))
+                .body("find { it.id == '" + export + "' }.parts[0].name", equalTo("indice.zip"))
+                .extract().asString();
+        assertTrue(!listed.contains("\"ref\"") && !listed.contains("tenant/" + tenant), listed);
         List<String> names = entries(as("alice").get(base + "/exports/" + export + "/parts/1").then().statusCode(200).extract().asByteArray());
         assertTrue(names.stream().anyMatch(n -> n.endsWith(".xml")) && names.stream().anyMatch(n -> n.endsWith(".json"))
                 && names.stream().anyMatch(n -> n.endsWith(".pdf")), names.toString());

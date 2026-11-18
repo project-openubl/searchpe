@@ -60,8 +60,17 @@ public class TenantExit {
     public record ExitRequest(@NotBlank String confirmName) {}
 
     /** An export: {@code parts} lists the ZIPs to download (the index first), once {@code done}. */
-    public record ExportView(UUID id, String status, List<Map<String, Object>> parts, Integer documents, String detail, String createdAt,
+    public record ExportView(UUID id, String status, List<ExportPart> parts, Integer documents, String detail, String createdAt,
             String doneAt) {}
+
+    /**
+     * A part to download by its position in {@code parts}. Its storage key stays internal: it is
+     * read only to serve the download.
+     */
+    public record ExportPart(
+            @Schema(required = true, description = "Nombre del ZIP.") String name,
+            @Schema(required = true, description = "Tamaño en bytes.") long size,
+            @Schema(description = "Comprobantes (o recepciones) en la parte; en el índice, todos los comprobantes.") Integer documents) {}
 
     static final Duration DELETE_AFTER = Duration.ofDays(730);
 
@@ -127,7 +136,7 @@ public class TenantExit {
     @Transactional
     public Response part(@PathParam("tenantId") UUID tenantId, @PathParam("exportId") UUID exportId, @PathParam("index") int index) {
         TenantScope scope = access.enter(tenantId, Role.ADMIN);
-        List<Map<String, Object>> parts = view(exportId).parts();
+        List<Map<String, Object>> parts = storedParts(exportId);
         if (index < 0 || index >= parts.size()) {
             throw ApiException.notFound();
         }
@@ -188,14 +197,33 @@ public class TenantExit {
             throw ApiException.notFound();
         }
         Object[] r = rows.get(0);
-        List<Map<String, Object>> parts;
+        List<ExportPart> parts = parse((String) r[2]).stream()
+                .map(p -> new ExportPart(String.valueOf(p.get("name")), ((Number) p.get("size")).longValue(),
+                        p.get("documents") == null ? null : ((Number) p.get("documents")).intValue()))
+                .toList();
+        return new ExportView((UUID) r[0], (String) r[1], parts, r[3] == null ? null : ((Number) r[3]).intValue(), (String) r[4],
+                String.valueOf(StatusResource.toInstant(r[5])), r[6] == null ? null : String.valueOf(StatusResource.toInstant(r[6])));
+    }
+
+    /** The parts as stored, with their storage keys ({@code ref}): only for downloads, never returned. */
+    private List<Map<String, Object>> storedParts(UUID id) {
+        List<?> rows = em.createNativeQuery("SELECT cast(parts AS text) FROM xhandler.tenant_export WHERE id = :id").setParameter("id", id)
+                .getResultList();
+        if (rows.isEmpty()) {
+            throw ApiException.notFound();
+        }
+        return parse((String) rows.get(0));
+    }
+
+    private static List<Map<String, Object>> parse(String parts) {
+        if (parts == null) {
+            return List.of();
+        }
         try {
-            parts = new ObjectMapper().readValue((String) r[2], new com.fasterxml.jackson.core.type.TypeReference<>() {});
+            return new ObjectMapper().readValue(parts, new com.fasterxml.jackson.core.type.TypeReference<>() {});
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
             throw new IllegalStateException(e);
         }
-        return new ExportView((UUID) r[0], (String) r[1], parts, r[3] == null ? null : ((Number) r[3]).intValue(), (String) r[4],
-                String.valueOf(StatusResource.toInstant(r[5])), r[6] == null ? null : String.valueOf(StatusResource.toInstant(r[6])));
     }
 
     /**

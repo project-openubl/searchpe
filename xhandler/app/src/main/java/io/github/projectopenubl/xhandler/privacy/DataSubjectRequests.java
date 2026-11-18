@@ -2,6 +2,7 @@ package io.github.projectopenubl.xhandler.privacy;
 
 import io.github.projectopenubl.xhandler.api.ApiException;
 import io.github.projectopenubl.xhandler.api.Ids;
+import io.github.projectopenubl.xhandler.api.Page;
 import io.github.projectopenubl.xhandler.audit.Auditor;
 import io.github.projectopenubl.xhandler.jobs.JobContext;
 import io.github.projectopenubl.xhandler.jobs.JobHandler;
@@ -22,6 +23,7 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.QueryParam;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -29,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 /**
  * Data-subject requests (Ley 29733 and DS 016-2024-JUS; DESIGN.md §16). The tenant is the
@@ -50,6 +53,21 @@ public class DataSubjectRequests {
             @Size(max = 2000) String details) {}
 
     public record Close(@NotBlank @Size(max = 2000) String resolution) {}
+
+    public record DataSubjectRequestView(
+            UUID id,
+            String subjectDocType,
+            String subjectDocNumber,
+            String subjectName,
+            @Schema(description = "access, rectification, cancellation u opposition.") String kind,
+            @Schema(description = "tenant (registrada por la organización) o platform (llegó a la plataforma).") String channel,
+            String details,
+            String receivedAt,
+            String forwardedAt,
+            String responseDueAt,
+            @Schema(description = "open o closed.") String status,
+            String resolution,
+            String closedAt) {}
 
     private final TenantAccess access;
     private final EntityManager em;
@@ -104,41 +122,73 @@ public class DataSubjectRequests {
     @Operation(operationId = "createDataSubjectRequest")
     @POST
     @Transactional
-    public Map<String, Object> create(@PathParam("tenantId") UUID tenantId, @Valid NewRequest request) {
+    public DataSubjectRequestView create(@PathParam("tenantId") UUID tenantId, @Valid NewRequest request) {
         TenantScope scope = access.enter(tenantId, Role.ADMIN);
         return view(register(scope, request, "tenant"));
     }
 
-    @Operation(operationId = "listDataSubjectRequests")
+    @Operation(operationId = "listDataSubjectRequests", summary = "Solicitudes de derechos de datos personales, las más recientes primero")
     @GET
     @Transactional
-    public List<Map<String, Object>> list(@PathParam("tenantId") UUID tenantId) {
+    public Page<DataSubjectRequestView> list(@PathParam("tenantId") UUID tenantId,
+            @Schema(description = "open o closed; sin filtro, ambas.") @QueryParam("status") String status,
+            @QueryParam("limit") Integer limit, @QueryParam("offset") Integer offset) {
         access.enter(tenantId, Role.ADMIN);
+        int size = Page.limit(limit);
+        int start = Page.offset(offset);
         @SuppressWarnings("unchecked")
-        List<UUID> ids = em.createNativeQuery("SELECT id FROM xhandler.data_subject_request ORDER BY received_at DESC LIMIT 200").getResultList();
-        return ids.stream().map(this::view).toList();
+        List<UUID> ids = em.createNativeQuery("""
+                        SELECT id FROM xhandler.data_subject_request WHERE (cast(:s AS text) IS NULL OR status = :s)
+                        ORDER BY received_at DESC, id DESC LIMIT :limit OFFSET :offset""")
+                .setParameter("s", status).setParameter("limit", size).setParameter("offset", start).getResultList();
+        return new Page<>(ids.stream().map(this::view).toList(), size, start);
     }
 
-    /** What the platform holds about the person: the documents issued to them (status and amounts, no files). */
+    /**
+     * What the platform holds about the person: the documents issued to them (status and amounts,
+     * no files), and the drafts that name them as buyer, deleted ones too until they are purged.
+     */
     @Operation(operationId = "getDataSubjectPersonalData")
     @GET
     @Path("/{id}/personal-data")
     @Transactional
     public Map<String, Object> personalData(@PathParam("tenantId") UUID tenantId, @PathParam("id") UUID id) {
         TenantScope scope = access.enter(tenantId, Role.ADMIN);
-        Map<String, Object> request = view(id);
+        DataSubjectRequestView request = view(id);
         @SuppressWarnings("unchecked")
         List<Object[]> docs = em.createNativeQuery("""
                         SELECT d.id, c.ruc, d.tipo_comprobante, d.serie, d.numero, d.fecha_emision, d.customer_nombre, d.moneda, d.total, d.status
                         FROM xhandler.document d JOIN xhandler.company c ON c.id = d.company_id
                         WHERE d.customer_numero = :n AND d.customer_tipo = :t ORDER BY d.fecha_emision DESC LIMIT 5000""")
-                .setParameter("n", request.get("subject_doc_number")).setParameter("t", request.get("subject_doc_type")).getResultList();
-        auditor.record(scope, "privacy.personal_data_read", "data_subject_request", id, Map.of("documents", String.valueOf(docs.size())));
+                .setParameter("n", request.subjectDocNumber()).setParameter("t", request.subjectDocType()).getResultList();
+        @SuppressWarnings("unchecked")
+        List<Object[]> drafts = em.createNativeQuery("""
+                        SELECT dd.id, c.ruc, dd.kind, dd.tipo_comprobante, dd.serie, dd.spec->'cliente'->>'nombre', dd.status, dd.created_at,
+                               dd.deleted_at
+                        FROM xhandler.document_draft dd JOIN xhandler.company c ON c.id = dd.company_id
+                        WHERE dd.spec->'cliente'->>'numero_documento_identidad' = :n AND dd.spec->'cliente'->>'tipo_documento_identidad' = :t
+                        ORDER BY dd.created_at DESC LIMIT 5000""")
+                .setParameter("n", request.subjectDocNumber()).setParameter("t", request.subjectDocType()).getResultList();
+        auditor.record(scope, "privacy.personal_data_read", "data_subject_request", id,
+                Map.of("documents", String.valueOf(docs.size()), "drafts", String.valueOf(drafts.size())));
         Map<String, Object> answer = new LinkedHashMap<>();
         answer.put("request", request);
         answer.put("documents", docs.stream().map(r -> Map.of("id", r[0], "issuer_ruc", r[1], "tipo_comprobante", r[2],
                 "serie_numero", r[3] + "-" + r[4], "fecha_emision", String.valueOf(r[5]), "nombre", String.valueOf(r[6]),
                 "moneda", String.valueOf(r[7]), "total", String.valueOf(r[8]), "status", r[9])).toList());
+        answer.put("drafts", drafts.stream().map(r -> {
+            Map<String, Object> draft = new LinkedHashMap<>();
+            draft.put("id", r[0]);
+            draft.put("issuer_ruc", r[1]);
+            draft.put("kind", r[2]);
+            draft.put("tipo_comprobante", r[3]);
+            draft.put("serie", r[4]);
+            draft.put("nombre", r[5]);
+            draft.put("status", r[6]);
+            draft.put("created_at", String.valueOf(StatusResource.toInstant(r[7])));
+            draft.put("deleted_at", r[8] == null ? null : String.valueOf(StatusResource.toInstant(r[8])));
+            return draft;
+        }).toList());
         return answer;
     }
 
@@ -146,7 +196,7 @@ public class DataSubjectRequests {
     @POST
     @Path("/{id}/close")
     @Transactional
-    public Map<String, Object> close(@PathParam("tenantId") UUID tenantId, @PathParam("id") UUID id, @Valid Close request) {
+    public DataSubjectRequestView close(@PathParam("tenantId") UUID tenantId, @PathParam("id") UUID id, @Valid Close request) {
         TenantScope scope = access.enter(tenantId, Role.ADMIN);
         int closed = em.createNativeQuery("""
                         UPDATE xhandler.data_subject_request SET status = 'closed', resolution = :r, closed_at = now(), closed_by = :by
@@ -159,7 +209,7 @@ public class DataSubjectRequests {
         return view(id);
     }
 
-    Map<String, Object> view(UUID id) {
+    DataSubjectRequestView view(UUID id) {
         @SuppressWarnings("unchecked")
         List<Object[]> rows = em.createNativeQuery("""
                         SELECT id, subject_doc_type, subject_doc_number, subject_name, kind, channel, details, received_at, forwarded_at,
@@ -169,21 +219,10 @@ public class DataSubjectRequests {
             throw ApiException.notFound();
         }
         Object[] r = rows.get(0);
-        Map<String, Object> view = new LinkedHashMap<>();
-        view.put("id", r[0]);
-        view.put("subject_doc_type", r[1]);
-        view.put("subject_doc_number", r[2]);
-        view.put("subject_name", r[3]);
-        view.put("kind", r[4]);
-        view.put("channel", r[5]);
-        view.put("details", r[6]);
-        view.put("received_at", String.valueOf(StatusResource.toInstant(r[7])));
-        view.put("forwarded_at", r[8] == null ? null : String.valueOf(StatusResource.toInstant(r[8])));
-        view.put("response_due_at", String.valueOf(StatusResource.toInstant(r[9])));
-        view.put("status", r[10]);
-        view.put("resolution", r[11]);
-        view.put("closed_at", r[12] == null ? null : String.valueOf(StatusResource.toInstant(r[12])));
-        return view;
+        return new DataSubjectRequestView((UUID) r[0], (String) r[1], (String) r[2], (String) r[3], (String) r[4], (String) r[5],
+                (String) r[6], String.valueOf(StatusResource.toInstant(r[7])), r[8] == null ? null : String.valueOf(StatusResource.toInstant(r[8])),
+                String.valueOf(StatusResource.toInstant(r[9])), (String) r[10], (String) r[11],
+                r[12] == null ? null : String.valueOf(StatusResource.toInstant(r[12])));
     }
 
     /** Reminds tenants 2 days before the term; overdue requests are logged for the platform (daily). */

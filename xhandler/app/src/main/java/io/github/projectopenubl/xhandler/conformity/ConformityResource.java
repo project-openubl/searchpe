@@ -1,6 +1,7 @@
 package io.github.projectopenubl.xhandler.conformity;
 
 import io.github.projectopenubl.xhandler.api.ApiException;
+import io.github.projectopenubl.xhandler.api.Page;
 import io.github.projectopenubl.xhandler.audit.Auditor;
 import io.github.projectopenubl.xhandler.company.CompanyResource;
 import io.github.projectopenubl.xhandler.documents.Document;
@@ -72,15 +73,18 @@ public class ConformityResource {
         return view(r, creditNote);
     }
 
-    @Operation(operationId = "listConformity")
+    @Operation(operationId = "listConformity", summary = "Facturas negociables de la empresa y su conformidad, las más recientes primero")
     @GET
     @Path("/companies/{companyId}/conformity")
     @Transactional
-    public List<ConformityView> list(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId,
-            @QueryParam("state") String state) {
+    public Page<ConformityView> list(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId,
+            @Schema(description = "pending, agreed, objected o silent_agreement; sin filtro, todas.") @QueryParam("state") String state,
+            @QueryParam("limit") Integer limit, @QueryParam("offset") Integer offset) {
         access.enter(tenantId, Role.VIEWER);
         CompanyResource.find(companyId);
-        return rows(companyId, state).stream().map(r -> view(r, null)).toList();
+        int size = Page.limit(limit);
+        int start = Page.offset(offset);
+        return new Page<>(rows(companyId, state, size, start).stream().map(r -> view(r, null)).toList(), size, start);
     }
 
     /** For factoring: facturas negociables and their conformity, as CSV. */
@@ -96,7 +100,7 @@ public class ConformityResource {
         CompanyResource.find(companyId);
         StringBuilder csv = new StringBuilder("﻿serie_numero,fecha_emision,adquirente_ruc,adquirente,moneda,total,conformidad,"
                 + "aceptada_sunat,vence_plazo,resuelta\r\n");
-        for (Object[] r : rows(companyId, state)) {
+        for (Object[] r : rows(companyId, state, EXPORT_LIMIT, 0)) {
             csv.append(String.join(",", List.of(r[1] + "-" + r[2], String.valueOf(r[12]), nz(r[3]), quote(nz(r[13])), nz(r[11]), nz(r[10]),
                     (String) r[4], String.valueOf(StatusResource.toInstant(r[5])), String.valueOf(StatusResource.toInstant(r[6])),
                     r[9] == null ? "" : String.valueOf(StatusResource.toInstant(r[9]))))).append("\r\n");
@@ -106,13 +110,19 @@ public class ConformityResource {
                 .header("Content-Disposition", "attachment; filename=\"facturas-negociables-" + companyId + ".csv\"").build();
     }
 
+    /** Rows in one CSV export: the most recent ones. */
+    private static final int EXPORT_LIMIT = 1000;
+
     @SuppressWarnings("unchecked")
-    private List<Object[]> rows(UUID companyId, String state) {
+    private List<Object[]> rows(UUID companyId, String state, int limit, int offset) {
         if (state != null && !List.of("pending", "agreed", "objected", "silent_agreement").contains(state)) {
             throw ApiException.invalid("invalid_request", "state debe ser pending, agreed, objected o silent_agreement.", null);
         }
-        return em.createNativeQuery(SELECT + " WHERE c.company_id = :c AND (cast(:s AS text) IS NULL OR c.state = :s) ORDER BY c.accepted_at DESC LIMIT 1000")
-                .setParameter("c", companyId).setParameter("s", state).getResultList();
+        return em.createNativeQuery(SELECT + """
+                         WHERE c.company_id = :c AND (cast(:s AS text) IS NULL OR c.state = :s)
+                        ORDER BY c.accepted_at DESC, c.document_id DESC LIMIT :limit OFFSET :offset""")
+                .setParameter("c", companyId).setParameter("s", state).setParameter("limit", limit).setParameter("offset", offset)
+                .getResultList();
     }
 
     /**

@@ -2,6 +2,7 @@ package io.github.projectopenubl.xhandler.reports;
 
 import io.github.projectopenubl.xhandler.api.ApiException;
 import io.github.projectopenubl.xhandler.api.Ids;
+import io.github.projectopenubl.xhandler.api.Page;
 import io.github.projectopenubl.xhandler.audit.Auditor;
 import io.github.projectopenubl.xhandler.company.Company;
 import io.github.projectopenubl.xhandler.company.CompanyResource;
@@ -21,6 +22,7 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Response;
 import java.time.Instant;
 import java.util.List;
@@ -85,16 +87,20 @@ public class ReportResource {
         return Response.status(202).entity(view(id)).build();
     }
 
-    @Operation(operationId = "listReports")
+    @Operation(operationId = "listReports", summary = "Reportes de la empresa, los más recientes primero")
     @GET
     @Transactional
-    public List<ReportView> list(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId) {
+    public Page<ReportView> list(@PathParam("tenantId") UUID tenantId, @PathParam("companyId") UUID companyId,
+            @QueryParam("limit") Integer limit, @QueryParam("offset") Integer offset) {
         access.enter(tenantId, Role.VIEWER);
         CompanyResource.find(companyId);
+        int size = Page.limit(limit);
+        int start = Page.offset(offset);
         @SuppressWarnings("unchecked")
-        List<UUID> ids = em.createNativeQuery("SELECT id FROM xhandler.report WHERE company_id = :c ORDER BY created_at DESC LIMIT 100")
-                .setParameter("c", companyId).getResultList();
-        return ids.stream().map(this::view).toList();
+        List<UUID> ids = em.createNativeQuery("""
+                        SELECT id FROM xhandler.report WHERE company_id = :c ORDER BY created_at DESC, id DESC LIMIT :limit OFFSET :offset""")
+                .setParameter("c", companyId).setParameter("limit", size).setParameter("offset", start).getResultList();
+        return new Page<>(ids.stream().map(this::view).toList(), size, start);
     }
 
     @Operation(operationId = "getReport")
