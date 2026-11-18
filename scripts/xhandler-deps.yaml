@@ -1,0 +1,141 @@
+# What a full XHandler needs in the CI e2e, in the cluster: PostgreSQL with the production roles
+# (xhandler/hack/postgres/init.sql, from the ConfigMap xhandler-db-init), Keycloak with the dev
+# realm (ConfigMap xhandler-realm) and MinIO for the files. Test credentials only.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: xhandler-db
+stringData:
+  owner-username: xhandler_owner
+  owner-password: xhandler_owner
+  app-username: xhandler_login
+  app-password: xhandler_login
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: xhandler-oidc
+stringData:
+  secret: secret
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: xhandler-s3
+stringData:
+  access-key: minioadmin
+  secret-key: minioadmin
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: xhandler-db
+spec:
+  selector:
+    matchLabels: { app: xhandler-db }
+  template:
+    metadata:
+      labels: { app: xhandler-db }
+    spec:
+      containers:
+        - name: postgres
+          image: docker.io/library/postgres:18
+          env:
+            - { name: POSTGRES_PASSWORD, value: postgres }
+            - { name: POSTGRES_DB, value: xhandler }
+          ports: [{ containerPort: 5432 }]
+          readinessProbe:
+            exec: { command: [pg_isready, -U, postgres, -d, xhandler] }
+            periodSeconds: 5
+          volumeMounts:
+            - { name: init, mountPath: /docker-entrypoint-initdb.d }
+            - { name: data, mountPath: /var/lib/postgresql }
+      volumes:
+        - name: init
+          configMap: { name: xhandler-db-init }
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: xhandler-db
+spec:
+  selector: { app: xhandler-db }
+  ports: [{ port: 5432 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+spec:
+  selector:
+    matchLabels: { app: keycloak }
+  template:
+    metadata:
+      labels: { app: keycloak }
+    spec:
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak:26.7.4
+          args: [start-dev, --import-realm]
+          env:
+            - { name: KC_BOOTSTRAP_ADMIN_USERNAME, value: admin }
+            - { name: KC_BOOTSTRAP_ADMIN_PASSWORD, value: admin }
+            # One issuer whoever asks: the app (in the cluster) and the test (port-forward)
+            - { name: KC_HOSTNAME, value: "http://keycloak.openubl.svc:8080" }
+            - { name: KC_HEALTH_ENABLED, value: "true" }
+          ports: [{ containerPort: 8080 }]
+          readinessProbe:
+            httpGet: { path: /health/ready, port: 9000 }
+            periodSeconds: 5
+          volumeMounts:
+            - { name: realm, mountPath: /opt/keycloak/data/import }
+      volumes:
+        - name: realm
+          configMap: { name: xhandler-realm }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+spec:
+  selector: { app: keycloak }
+  ports: [{ port: 8080 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio
+spec:
+  selector:
+    matchLabels: { app: minio }
+  template:
+    metadata:
+      labels: { app: minio }
+    spec:
+      containers:
+        - name: minio
+          image: quay.io/minio/minio:latest
+          # A directory of the data path is a bucket
+          command: [sh, -c, "mkdir -p /data/xhandler && exec minio server /data"]
+          env:
+            - { name: MINIO_ROOT_USER, value: minioadmin }
+            - { name: MINIO_ROOT_PASSWORD, value: minioadmin }
+          ports: [{ containerPort: 9000 }]
+          readinessProbe:
+            httpGet: { path: /minio/health/ready, port: 9000 }
+            periodSeconds: 5
+          volumeMounts:
+            - { name: data, mountPath: /data }
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+spec:
+  selector: { app: minio }
+  ports: [{ port: 9000 }]

@@ -1,28 +1,38 @@
-# The XHandler of the CI e2e: the UI (served through the Ingress, proxying to the Searchpe) is
-# what's checked. The api and worker wait on a migration that needs an HSM, S3 and Keycloak.
+# The XHandler of the CI e2e, on the dependencies of xhandler-deps.yaml. The vault is the software
+# one (allowed in production for this test only): CI has no HSM.
 kind: XHandler
 apiVersion: xhandler.openubl.io/v1alpha1
 metadata:
   name: xhandler
 spec:
+  image: localhost:5000/xhandler-service:0.0.0
+  engineImage: localhost:5000/xhandler-engine:0.0.0
   uiImage: localhost:5000/xhandler-ui:0.0.0
   hostname: xhandler.local
+  api:
+    instances: 1
+  worker:
+    instances: 1
   db:
-    url: jdbc:postgresql://postgresql-primary.openubl.svc:5432/searchpedb
-    usernameSecret:
-      name: postgresql-pguser-foo
-      key: user
-    passwordSecret:
-      name: postgresql-pguser-foo
-      key: password
-    ownerUsernameSecret:
-      name: postgresql-pguser-foo
-      key: user
-    ownerPasswordSecret:
-      name: postgresql-pguser-foo
-      key: password
+    url: jdbc:postgresql://xhandler-db:5432/xhandler
+    usernameSecret: { name: xhandler-db, key: app-username }
+    passwordSecret: { name: xhandler-db, key: app-password }
+    ownerUsernameSecret: { name: xhandler-db, key: owner-username }
+    ownerPasswordSecret: { name: xhandler-db, key: owner-password }
   oidc:
-    serverUrl: http://keycloak.invalid/realms/openubl
+    serverUrl: http://keycloak.openubl.svc:8080/realms/xhandler
     clientId: xhandler-service
+    credentialsSecret: { name: xhandler-oidc, key: secret }
+  storage:
+    s3Endpoint: http://minio:9000
+    bucket: xhandler
+    region: us-east-1
+    accessKeySecret: { name: xhandler-s3, key: access-key }
+    secretKeySecret: { name: xhandler-s3, key: secret-key }
+  additionalOptions:
+    - { name: XHANDLER_VAULT_KIND, value: software }
+    - { name: XHANDLER_VAULT_SOFTWARE_ALLOW_IN_PRODUCTION, value: "true" }
+    - { name: XHANDLER_VAULT_SOFTWARE_CURRENT_MASTER_KEY, value: ci }
+    - { name: XHANDLER_VAULT_SOFTWARE_MASTER_KEYS_CI, value: "Y2ktbWFzdGVyLWtleS0wMDAwMDAwMDAwMDAwMDAwMDA=" }
   ui:
     searchpeRef: searchpe

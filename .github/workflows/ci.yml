@@ -120,20 +120,31 @@ jobs:
           name: artifacts-application
           path: searchpe-application-container-image.tar
 
-  xhandler-ui-container:
-    name: xhandler-ui container
+  xhandler-containers:
+    name: xhandler containers
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Build container image
-        run: docker build -t localhost:5000/xhandler-ui:0.0.0 ui
-      - name: Save container image
-        run: docker save -o xhandler-ui-container-image.tar localhost:5000/xhandler-ui:0.0.0
-      - name: Upload container image
+      - uses: actions/setup-java@v6
+        with:
+          java-version: 25
+          distribution: temurin
+          cache: maven
+      - name: Build container images
+        run: |
+          (cd xhandler && ./mvnw -B -q package -DskipTests -pl app -am)
+          docker build -f xhandler/app/src/main/docker/Dockerfile.jvm -t localhost:5000/xhandler-service:0.0.0 xhandler/app
+          docker build -t localhost:5000/xhandler-engine:0.0.0 xhandler/engine
+          docker build -t localhost:5000/xhandler-ui:0.0.0 ui
+      - name: Save container images
+        run: |
+          docker save -o xhandler-container-images.tar localhost:5000/xhandler-service:0.0.0 \
+            localhost:5000/xhandler-engine:0.0.0 localhost:5000/xhandler-ui:0.0.0
+      - name: Upload container images
         uses: actions/upload-artifact@v7
         with:
-          name: artifacts-xhandler-ui
-          path: xhandler-ui-container-image.tar
+          name: artifacts-xhandler
+          path: xhandler-container-images.tar
 
   operator-container:
     name: Operator container
@@ -201,7 +212,7 @@ jobs:
             searchpe-catalog-container-image.tar
 
   ui-e2e-tests:
-    needs: [ application-container, operator-container, catalog-container, xhandler-ui-container ]
+    needs: [ application-container, operator-container, catalog-container, xhandler-containers ]
     name: UI E2E Tests
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -220,7 +231,7 @@ jobs:
         with:
           minikube version: v1.39.0
           kubernetes version: v1.37.2
-          start args: --insecure-registry "10.0.0.0/24" --addons=registry,ingress
+          start args: --insecure-registry "10.0.0.0/24" --addons=registry,ingress --cpus=4 --memory=10g
           github token: ${{ secrets.GITHUB_TOKEN }}
       - name: Load and config images
         run: |
@@ -228,7 +239,7 @@ jobs:
           docker load -i artifacts/searchpe-operator-container-image.tar
           docker load -i artifacts/searchpe-bundle-container-image.tar
           docker load -i artifacts/searchpe-catalog-container-image.tar
-          docker load -i artifacts/xhandler-ui-container-image.tar
+          docker load -i artifacts/xhandler-container-images.tar
       - name: Configure Minikube
         run: |
           # Install OLM
@@ -239,14 +250,14 @@ jobs:
           minikube image load localhost:5000/searchpe-operator:0.0.0
           minikube image load localhost:5000/searchpe-operator-bundle:0.0.0
           minikube image load localhost:5000/searchpe-operator-catalog:0.0.0
-          minikube image load localhost:5000/xhandler-ui:0.0.0
+          for image in xhandler-service xhandler-engine xhandler-ui; do minikube image load localhost:5000/$image:0.0.0; done
           
           # Push images to internal registry
           docker push localhost:5000/searchpe:0.0.0
           docker push localhost:5000/searchpe-operator:0.0.0
           docker push localhost:5000/searchpe-operator-bundle:0.0.0
           docker push localhost:5000/searchpe-operator-catalog:0.0.0
-          docker push localhost:5000/xhandler-ui:0.0.0
+          for image in xhandler-service xhandler-engine xhandler-ui; do docker push localhost:5000/$image:0.0.0; done
       - name: Install Searchpe operator
         timeout-minutes: 10
         run: |
@@ -314,6 +325,10 @@ jobs:
       - name: Install XHandler
         timeout-minutes: 10
         run: |
+          kubectl -n openubl create configmap xhandler-db-init --from-file=init.sql=xhandler/hack/postgres/init.sql
+          kubectl -n openubl create configmap xhandler-realm --from-file=xhandler-realm-dev.json=xhandler/deploy/keycloak/xhandler-realm-dev.json
+          kubectl -n openubl apply -f scripts/xhandler-deps.yaml
+          kubectl -n openubl rollout status deployment/xhandler-db deployment/keycloak deployment/minio --timeout=6m
           kubectl -n openubl apply -f scripts/xhandler.yaml
           for i in $(seq 1 30); do kubectl -n openubl get deployment xhandler-ui && break; sleep 10; done
           kubectl -n openubl rollout status deployment/xhandler-ui --timeout=8m
@@ -340,6 +355,25 @@ jobs:
           check /healthz 'true'
           check / 'grep -q "id=\"root\""'
           check /api/searchpe/versions 'jq -e "type == \"array\""'
+      # The whole XHandler: migrated, api and worker ready, and the API answering a real Keycloak token
+      # through the UI's proxy and the Ingress
+      - name: XHandler API smoke test
+        timeout-minutes: 15
+        run: |
+          kubectl -n openubl wait xhandler/xhandler --for=condition=Migrated --timeout=8m
+          kubectl -n openubl wait xhandler/xhandler --for=condition=Ready --timeout=8m
+          kubectl -n openubl port-forward svc/keycloak 8180:8080 >/dev/null 2>&1 &
+          for i in $(seq 1 30); do curl -fs http://localhost:8180/realms/xhandler >/dev/null && break; sleep 2; done
+          TOKEN=$(curl -fsS http://localhost:8180/realms/xhandler/protocol/openid-connect/token \
+            -d grant_type=password -d client_id=xhandler-service -d client_secret=secret \
+            -d username=alice -d password=alice | jq -r .access_token)
+          UI="http://$(minikube ip)"
+          HOST="Host: xhandler.local"
+          curl -fsS -H "$HOST" "$UI/q/openapi.json" | jq -e '.paths | has("/api/v1/tenants")'
+          curl -fsS -H "$HOST" "$UI/api/v1/status" | jq -e 'type == "object"'
+          code=$(curl -s -o /dev/null -w '%{http_code}' -H "$HOST" "$UI/api/xhandler/v1/tenants")
+          [ "$code" = 401 ] || { echo "::error::without a token: $code, want 401"; exit 1; }
+          curl -fsS -H "$HOST" -H "Authorization: Bearer $TOKEN" "$UI/api/xhandler/v1/tenants" | jq -e 'type == "array" or type == "object"'
       - name: Dump cluster state
         if: failure()
         run: |
@@ -353,3 +387,5 @@ jobs:
           kubectl logs -n openubl -l app.kubernetes.io/name=searchpe-operator --tail=100 || true
           kubectl logs -n openubl --all-containers --prefix -l app.kubernetes.io/name=searchpe --tail=100 || true
           kubectl logs -n openubl --all-containers --prefix -l app.kubernetes.io/name=xhandler-ui --tail=100 || true
+          kubectl logs -n openubl --all-containers --prefix -l app.kubernetes.io/part-of=xhandler-service --tail=150 || true
+          kubectl logs -n openubl --all-containers --prefix -l 'app in (xhandler-db,keycloak,minio)' --tail=50 || true
