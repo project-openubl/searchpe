@@ -1,18 +1,18 @@
 # xhandler-service (xhandler/): the app, the engine, their images and the Kustomize base
 name: xhandler
 
+# No path filter: these jobs are required checks, so they must report on every push and PR
 on:
   push:
     branches: [main]
-    paths: ["xhandler/**", "hack/**", ".github/workflows/xhandler*.yml"]
   pull_request:
-    paths: ["xhandler/**", "hack/**", ".github/workflows/xhandler*.yml"]
 
 env:
   CI: true
 
 jobs:
   app:
+    name: xhandler App
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
@@ -26,6 +26,7 @@ jobs:
         working-directory: xhandler
 
   engine:
+    name: xhandler Engine
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -44,6 +45,7 @@ jobs:
       - run: cargo test
 
   images:
+    name: xhandler Images
     runs-on: ubuntu-latest
     needs: [app, engine]
     defaults:
@@ -69,6 +71,7 @@ jobs:
       # Publishing and signing images belongs to the infrastructure track (DESIGN.md §21.4)
 
   manifests:
+    name: xhandler Manifests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1

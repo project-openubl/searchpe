@@ -5,12 +5,8 @@ on:
   push:
     branches:
       - main
-    paths-ignore:
-      - "README.md"
-  # No path filter on xhandler/: these jobs are required checks, so they must report on every PR
+  # No path filter: these jobs are required checks, so they must report on every PR
   pull_request:
-    paths-ignore:
-      - "README.md"
 
 # A new push to a pull request cancels the run of the previous one
 concurrency:

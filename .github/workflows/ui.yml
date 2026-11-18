@@ -1,16 +1,16 @@
 # The unified UI (ui/): its image
 name: ui
 
+# No path filter: this job is a required check, so it must report on every push and PR
 on:
   push:
     branches: [main]
-    paths: ["ui/**", ".github/workflows/ui.yml"]
   pull_request:
-    paths: ["ui/**", ".github/workflows/ui.yml"]
 
 jobs:
   # Lint, build and unit tests are ci.yml's "UI Tests" (a required check)
   image:
+    name: UI Image
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
