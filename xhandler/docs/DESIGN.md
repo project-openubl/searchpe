@@ -313,7 +313,8 @@ company           id, tenant_id, ruc, razon_social, nombre_comercial, direccion(
                   (software|pse), submission_route (sunat|ose:<id>), ose_obligated,
                   cuenta_detracciones, es_agente_percepcion, es_agente_retencion,
                   pdf_template_*, pdf_options (json), email_* settings, lookup_provider,
-                  delivered_on_emit_default, ruc_verified_at, switching (bool), sending_paused, active
+                  delivered_on_emit_default, ruc_verified_at, switching (bool), sending_paused, active,
+                  libro_reclamaciones_url   -- the issuer's own, shown in the buyer portal (§12)
                   UNIQUE(ruc, sunat_env) WHERE active          -- global, across tenants (§6)
 ose_endpoint      id, company_id, name, urls (bill, summary, consult), credential_id
 credential        id, owner_type (company|platform), owner_id?, kind (sol|gre|sire|validity|
@@ -337,6 +338,9 @@ document          id, company_id, sunat_env, origin (api|adapter|ose_inbound|rec
                   labels (json), device_id?,  -- partitioned by issue year (§25)
                   UNIQUE(company_id, sunat_env, tipo_comprobante, serie, numero)
                     WHERE origin <> 'ose_inbound'                 -- §7.1
+document_draft    id, company_id, kind, tipo_comprobante, serie?, spec (json, no number), labels,
+                  status (draft|issued), version, document_id?, created_by, deleted_at
+                                                                  -- manual issuing (§11.10)
 document_file     document_id, kind (xml_signed|cdr_zip|pdf|input), storage_key, sha256, size
 document_event    document_id, at, status, code, message, actor, correlation_id   -- timeline/audit
 delivery          document_id, channel, recipient, at, result
@@ -410,7 +414,7 @@ Sync itself is not in v1.
 
 | Status | Meaning |
 |---|---|
-| `draft` | Being edited, no number (manual issuing in xhandler-ui) |
+| `draft` | Being edited, no number (manual issuing in xhandler-ui). Drafts live in `document_draft`, not `document` (§11.10): a `document` row always has its number. |
 | `pending_send` | Signed and stored; no definitive answer yet |
 | `in_progress` | Ticket issued or answer 98; verification scheduled |
 | `accepted` | CDR with code 0 and no notes |
@@ -636,7 +640,7 @@ These rules apply pulpcore's tasking discipline to a multi-threaded JVM. Every P
    1. transaction 1 records `send_started_at` and commits;
    2. call SUNAT, with no transaction open;
    3. transaction 2 writes the result with a compare-and-set.
-4. **Lock ordering**, to prevent deadlocks: company → series/daily_counter → documents (sorted by id) → job rows. Advisory locks use the two-integer form `(namespace, key)`, with one namespace per purpose. They are never taken inside a row-lock section in any other order.
+4. **Lock ordering**, to prevent deadlocks: company → series/daily_counter → documents (sorted by id) → document drafts → job rows. Advisory locks use the two-integer form `(namespace, key)`, with one namespace per purpose. They are never taken inside a row-lock section in any other order.
 5. **Singleton activities** run under `pg_try_advisory_xact_lock(namespace, constant)`. If the lock isn't acquired, the activity is skipped, because another worker is doing it. This is the pulpcore model (`TASK_UNBLOCKING_LOCK`, `TASK_SCHEDULING_LOCK`, `TASK_METRICS_LOCK`, `WORKER_CLEANUP_LOCK`). Ours:
    - `UNBLOCK`;
    - `RECONCILE`;
@@ -829,6 +833,14 @@ One row generator feeds CSV, Excel, SIRE and legacy PLE. Reports run as jobs (`2
 - Sales come from the company's documents (01, 03, 07, 08; accepted, voiding or voided) by issue date; purchases from its receptions SUNAT didn't report as voided, rejected or nonexistent. Amounts by tax come from the signed XML (the engine's inspect reads the document-level TaxSubtotals) and are stored with each document and reception; the `documents.amounts-backfill` job completes older rows, and reports and SIRE refuse to run while any row lacks them (never zeros in their place). Credit notes are negative; voided documents keep their row with zero amounts (estado 2 in PLE). PLE amounts are in soles (the document's tipo de cambio, else SUNAT's selling rate of the day); SIRE keeps the document's currency with its rate. The SIRE and PLE layouts are checked against the fake and unit tests only until the C-track production round trip.
 - `POST …/companies/{id}/reports` `{register: sales|purchases, format: csv|xlsx|ple|sire, period: YYYYMM}` → `202`; `GET …/reports/{id}` and `…/file`. CSV is UTF-8 with a BOM and neutralizes formula injection; Excel is a minimal OOXML workbook written by the service; PLE is 14.1 (sales) or 8.1 (purchases) with SUNAT's file name.
 
+### 11.10 Manual issuing (drafts)
+
+xhandler-ui issues documents by hand (§18) through drafts: `POST …/companies/{c}/drafts` (`Idempotency-Key` as on every create), `GET …/drafts?company_id=&status=draft|issued`, `GET|PUT|DELETE …/drafts/{id}` and `POST …/drafts/{id}/issue`. Operators write; viewers read.
+
+- A draft is an xbuilder document (`kind`, `spec`) **without a number**: a `spec.serie_numero` is refused, and the optional `serie` chooses the series as on emit. It is stored as given (it may be incomplete) in `document_draft`, outside the partitioned `document` table, so the reconciler, registers, retention and uniqueness never see it.
+- Every change increments `version`. `PUT` replaces the content; with the `version` the user edited it is a compare-and-set, and a stale one is `409 draft_changed`. Delete is soft (`deleted_at`). An issued draft can't be edited, deleted or issued again (`409 draft_issued`).
+- **Issue** (`?version=` optionally names the version the user reviewed; another one is `409 draft_changed`) reads the draft (content and version) in its own transaction, then runs the normal emit (§11.1) with that content. Inside the emit transaction, after the document insert, it locks the draft row (lock order §10.8: … documents → drafts) and marks it `issued` with the document's id, only if it is still `draft` at the version read. Otherwise the emit rolls back and no number is consumed. So a draft gives at most one document, concurrent issues of one draft give one `201` and `409`s, and an invalid document (`422`) leaves the draft editable. The reply is emit's (`201`, `DocumentView` with the buyer link).
+
 ---
 
 ## 12. API
@@ -857,6 +869,7 @@ One row generator feeds CSV, Excel, SIRE and legacy PLE. Reports run as jobs (`2
   - A breaking change creates `/api/v2`, and v1 is kept for at least 12 months after v2 ships, with `Deprecation`/`Sunset` headers.
   - Webhook payloads follow the same rule through `dataschema` versions.
 - **Public endpoints** (no login, rate limited, behind the gateway's bot protection):
+  - The buyer's page also links the issuer's own virtual Libro de Reclamaciones (Ley 32495) when the company set one (`libro_reclamaciones_url` in `PUT …/companies/{id}/settings`, https only; `GET /public/documents/{token}` returns it).
   - **Buyer access by capability link** (revocable: `POST …/documents/{id}/access-links/revoke`). Each document gets a random 128-bit token, stored hashed in `access_token`. It is printed in the PDF QR, sent in emails and returned by the emit API (`access_url`, the buyer's page in the UI, `{public-url}/p/documentos/{token}`; a new one can be created later, the token itself is never stored). The page reads `GET /api/v1/public/documents/{token}`, which shows the document's status and files, and `/{xml|cdr|pdf}` downloads them for the legal access period (366 days). The first download marks the document delivered (`delivered_source = service`) and is logged in `delivery`. This is the primary path.
   - **Lookup by data.** RUC + serie-número + date + total is low-entropy and guessable. It requires a CAPTCHA, has per-IP and per-RUC limits, and returns **only status and validity**, never the files.
   - **OSE validity** (RS 242-2018): status only.
@@ -967,7 +980,7 @@ How it runs (P11):
 - Data-subject request workflow: forwarded to the tenant within 3 days, with tracked deadlines. In the service (P11): `data_subject_request`; platform admins register requests that reach the platform (`POST /api/admin/v1/data-protection/tenants/{t}/data-subject-requests`, forwarded to the tenant at once by notification); tenants register their own, see what the platform holds about the person (`…/{id}/personal-data`: the documents issued to that identity document) and close them with their answer. Terms: 20 days for access, 10 for rectification, cancellation and opposition (calendar days, a conservative reading); the tenant is reminded 2 days before and overdue requests are logged for the platform. These notices can't be muted by notification preferences, and their dates are shown in Lima time.
 - Breach runbook: notify tenants immediately, and support the controller's 48-hour notice to the ANPD and CNSD.
 - Sub-processor list published; the data processing agreement and signing-authorization clause in the tenant contract.
-- Libro de Reclamaciones link in xhandler-ui.
+- Libro de Reclamaciones link in xhandler-ui: the platform's own, and on the buyer portal the issuer's (`company.libro_reclamaciones_url`, §12).
 - Tenant isolation tests and dependency scanning in CI.
 
 ---

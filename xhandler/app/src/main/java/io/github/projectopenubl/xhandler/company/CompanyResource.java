@@ -43,7 +43,8 @@ public class CompanyResource {
     public record CompanyView(
             UUID id, String ruc, String razonSocial, String nombreComercial, String sunatEnv,
             String emissionMode, Instant rucVerifiedAt, String email, boolean deliveredOnEmitDefault, boolean sendingPaused,
-            String direccion, String pdfFormat, boolean emailOnAccept, boolean hasLogo, String submissionRoute) {}
+            String direccion, String pdfFormat, boolean emailOnAccept, boolean hasLogo, String submissionRoute,
+            String libroReclamacionesUrl) {}
 
     public record SeriesView(UUID id, String sunatEnv, String tipoComprobante, String serie, long nextNumber, boolean isDefault, boolean active) {}
 
@@ -186,7 +187,8 @@ public class CompanyResource {
 
     static CompanyView view(Company c) {
         return new CompanyView(c.id, c.ruc, c.razonSocial, c.nombreComercial, c.sunatEnv, c.emissionMode, c.rucVerifiedAt, c.email,
-                c.deliveredOnEmitDefault, c.sendingPaused, c.direccion, c.pdfFormat, c.emailOnAccept, c.logoRef != null, c.submissionRoute);
+                c.deliveredOnEmitDefault, c.sendingPaused, c.direccion, c.pdfFormat, c.emailOnAccept, c.logoRef != null, c.submissionRoute,
+                c.libroReclamacionesUrl);
     }
 
     static SeriesView view(Series s) {

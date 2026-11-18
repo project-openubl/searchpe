@@ -54,7 +54,9 @@ public class CompanyEnvironmentResource {
             Map<String, Object> pdfOptions,
             Boolean emailOnAccept,
             @Size(max = 200) @Pattern(regexp = "[^\\r\\n]*", message = "debe ser una sola línea") String emailSubject,
-            @Size(max = 5000) String emailBody) {}
+            @Size(max = 5000) String emailBody,
+            @org.eclipse.microprofile.openapi.annotations.media.Schema(description = "Enlace https al Libro de Reclamaciones virtual de la empresa, que el portal del comprador muestra; vacío lo quita.")
+            @Size(max = 500) String libroReclamacionesUrl) {}
 
     public record EnvironmentChange(@NotBlank @Pattern(regexp = "fake|beta|production") String sunatEnv) {}
 
@@ -113,6 +115,9 @@ public class CompanyEnvironmentResource {
         }
         if (settings.emailBody() != null) {
             company.emailBody = settings.emailBody().isBlank() ? null : settings.emailBody();
+        }
+        if (settings.libroReclamacionesUrl() != null) {
+            company.libroReclamacionesUrl = libroReclamacionesUrl(settings.libroReclamacionesUrl());
         }
         auditor.record(scope, "company.updated", "company", companyId);
         return CompanyResource.view(company);
@@ -285,5 +290,22 @@ public class CompanyEnvironmentResource {
             }
             return CompanyResource.view(company);
         });
+    }
+
+    /** An https address shown to buyers (never fetched by the service); blank removes it. */
+    static String libroReclamacionesUrl(String given) {
+        String url = given.strip();
+        if (url.isEmpty()) {
+            return null;
+        }
+        try {
+            java.net.URI uri = new java.net.URI(url);
+            if ("https".equalsIgnoreCase(uri.getScheme()) && uri.getHost() != null && uri.getUserInfo() == null) {
+                return uri.toString();
+            }
+        } catch (java.net.URISyntaxException e) {
+            // answered below
+        }
+        throw ApiException.invalid("invalid_request", "El Libro de Reclamaciones debe ser una dirección https válida.", "libro_reclamaciones_url");
     }
 }

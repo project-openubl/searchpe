@@ -40,7 +40,9 @@ public class PublicDocumentResource {
             String moneda,
             BigDecimal total,
             String status,
-            List<String> files) {}
+            List<String> files,
+            @org.eclipse.microprofile.openapi.annotations.media.Schema(description = "El Libro de Reclamaciones virtual del emisor, si lo configuró.")
+            String libroReclamacionesUrl) {}
 
     private final AccessLinks links;
     private final TenantAccess access;
@@ -76,7 +78,7 @@ public class PublicDocumentResource {
         // A test-environment document must never read as a real one
         String status = "production".equals(doc.sunatEnv) ? publicStatus(doc.status) : "documento_de_prueba";
         return new PublicDocument(company.ruc, company.razonSocial, doc.tipoComprobante, doc.serieNumero(), doc.fechaEmision,
-                doc.moneda, doc.total, status, available);
+                doc.moneda, doc.total, status, available, company.libroReclamacionesUrl);
     }
 
     @APIResponse(responseCode = "200", description = "El archivo: XML firmado, CDR (ZIP) o PDF.", content = {

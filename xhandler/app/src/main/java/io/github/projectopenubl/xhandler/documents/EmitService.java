@@ -105,12 +105,21 @@ public class EmitService {
     }
 
     public Emitted emit(UUID tenantId, UUID companyId, String idempotencyKey, EmitRequest request, String correlationId) {
-        return emit(tenantId, companyId, idempotencyKey, request, correlationId, false, null, "api");
+        return emit(tenantId, companyId, idempotencyKey, request, correlationId, false, null, "api", null);
+    }
+
+    /**
+     * Issues a draft (manual issuing, §11.10): {@code inTransaction} runs inside the emit transaction
+     * once the document is inserted, and throwing from it rolls the emit back (no number consumed).
+     */
+    public Emitted emitDraft(UUID tenantId, UUID companyId, String idempotencyKey, EmitRequest request, String correlationId,
+            java.util.function.Consumer<Document> inTransaction) {
+        return emit(tenantId, companyId, idempotencyKey, request, correlationId, false, null, "api", inTransaction);
     }
 
     /** Emits as the platform (its own invoices, §14), not as a tenant member. */
     public Emitted emitAsPlatform(UUID tenantId, UUID companyId, String idempotencyKey, EmitRequest request, String correlationId) {
-        return emit(tenantId, companyId, idempotencyKey, request, correlationId, true, null, "api");
+        return emit(tenantId, companyId, idempotencyKey, request, correlationId, true, null, "api", null);
     }
 
     /**
@@ -119,11 +128,11 @@ public class EmitService {
      */
     public Emitted emitNumbered(UUID tenantId, UUID companyId, String idempotencyKey, EmitRequest request, long numero, String correlationId,
             boolean platform) {
-        return emit(tenantId, companyId, idempotencyKey, request, correlationId, platform, numero, "adapter");
+        return emit(tenantId, companyId, idempotencyKey, request, correlationId, platform, numero, "adapter", null);
     }
 
     private Emitted emit(UUID tenantId, UUID companyId, String idempotencyKey, EmitRequest request, String correlationId,
-            boolean platform, Long numeroDado, String origin) {
+            boolean platform, Long numeroDado, String origin, java.util.function.Consumer<Document> inTransaction) {
         if (request == null || request.document() == null || !request.document().hasNonNull("kind")
                 || !request.document().path("spec").isObject()) {
             throw ApiException.invalid("invalid_request", "Envíe el documento como {\"document\": {\"kind\": ..., \"spec\": {...}}}.", null);
@@ -149,7 +158,7 @@ public class EmitService {
             UUID documentId = Ids.newId();
             JsonNode body = admitted(tenantId, companyId, platform, !platform || "adapter".equals(origin), () -> QuarkusTransaction.requiringNew()
                     .call(() -> emitInTransaction(tenantId, companyId, documentId, idempotencyKey, owned, request, correlationId, platform,
-                            numeroDado, origin)));
+                            numeroDado, origin, inTransaction)));
             return new Emitted(201, body);
         } catch (RuntimeException e) {
             abandon(tenantId, idempotencyKey, owned);
@@ -240,7 +249,8 @@ public class EmitService {
     }
 
     private JsonNode emitInTransaction(UUID tenantId, UUID companyId, UUID documentId, String idempotencyKey, UUID claim,
-            EmitRequest request, String correlationId, boolean platform, Long numeroDado, String origin) {
+            EmitRequest request, String correlationId, boolean platform, Long numeroDado, String origin,
+            java.util.function.Consumer<Document> inTransaction) {
         TenantScope scope = platform ? access.enterAsPlatform(tenantId) : access.enter(tenantId, Role.OPERATOR);
         // Waits on the series row (another emit holds it across engine, HSM and storage) are bounded
         boundLockWaits();
@@ -337,6 +347,9 @@ public class EmitService {
         DocumentFile.record(doc, "enriched", enriched);
         DocumentEvent.record(doc, null, "emitted", scope.actor().auditName(), correlationId);
         auditor.record(scope, "document.emitted", "document", doc.id, Map.of("serie_numero", doc.serieNumero()));
+        if (inTransaction != null) {
+            inTransaction.accept(doc);
+        }
         String token = links.create(doc);
         em.createNativeQuery("SELECT pg_notify('xhandler_reconcile', '')").getSingleResult();
 

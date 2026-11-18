@@ -51,6 +51,8 @@ public class Company extends PanacheEntityBase {
     public boolean active = true;
     /** Holds SUNAT attempts for all its documents (DESIGN.md §24.1) */
     public boolean sendingPaused;
+    /** The issuer's virtual Libro de Reclamaciones (Ley 32495), linked from the buyer portal (DESIGN.md §12) */
+    public String libroReclamacionesUrl;
 
     @CreationTimestamp
     public Instant createdAt;
