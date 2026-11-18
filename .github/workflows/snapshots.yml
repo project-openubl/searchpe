@@ -43,7 +43,7 @@ jobs:
           -Dquarkus.container-image.build=true \
           -Dquarkus.container-image.registry=ghcr.io \
           -Dquarkus.container-image.group=project-openubl \
-          -Dquarkus.container-image.name=searchpe/searchpe \
+          -Dquarkus.container-image.name=xhandler-service/searchpe \
           -Dquarkus.container-image.tag=nightly \
           -P native \
           -pl searchpe

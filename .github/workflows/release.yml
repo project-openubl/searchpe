@@ -109,7 +109,7 @@ jobs:
             -Dquarkus.container-image.push=false \
             -Dquarkus.container-image.registry=ghcr.io \
             -Dquarkus.container-image.group=project-openubl \
-            -Dquarkus.container-image.name=searchpe/searchpe \
+            -Dquarkus.container-image.name=xhandler-service/searchpe \
             -Dquarkus.container-image.tag="$TAG-$ARCH" \
             -Dquarkus.jib.platforms="linux/$ARCH" \
             -P native \
