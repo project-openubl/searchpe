@@ -9,8 +9,6 @@ an OSE. Built with Quarkus on top of
 - Regulatory research: [docs/research/](docs/research/README.md)
 - Contributor and agent guide: [AGENTS.md](AGENTS.md)
 
-Status: in implementation, see DESIGN.md §21 for what each phase delivered.
-
 ## Run it locally
 
 Requirements: Java 25, Rust (installs 1.100.0 from `engine/rust-toolchain.toml`), and
@@ -28,7 +26,7 @@ Podman or Docker.
 ```
 
 Then sign up with a Keycloak token (dev realm users: alice/alice, bob/bob; platform admin
-olga/olga), create a company and emit (see `hack/e2e.sh` for the whole flow, including the
+olga/olga) or use the UI (`../ui`), create a company and emit (see `hack/e2e.sh` for the whole flow, including the
 switch to SUNAT beta). In dev mode Keycloak runs from Dev Services on a random port (see the
 Dev UI); with `podman compose -f ../hack/compose.yaml up -d` it is on 8180, as below:
 

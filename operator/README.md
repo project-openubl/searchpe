@@ -90,7 +90,11 @@ The name of an `XHandler` is a DNS-1035 label (it starts with a letter) of at mo
   `SEARCHPE_API_URL`, the Service of that Searchpe; while the Searchpe doesn't exist (or after it is deleted) the UI
   runs without it and `Ready` is false with reason `SearchpeNotFound`. A Searchpe with TLS has a certificate the UI
   (Node.js) must trust: put its CA in a ConfigMap and set `ui.caBundleConfigMap` (`name`, `key`), which the UI gets as
-  `NODE_EXTRA_CA_CERTS`. Its probes are `GET /healthz`.
+  `NODE_EXTRA_CA_CERTS`. `ui.libroReclamacionesUrl` shows the platform's Libro de Reclamaciones link. Its probes are
+  `GET /healthz`.
+- **CAPTCHA.** `captcha` (`provider` hcaptcha or turnstile, `siteKey`, `secretKeySecret`) gives the UI its widget
+  (`CAPTCHA_PROVIDER`, `CAPTCHA_SITE_KEY`) and the app the provider's verify URL and secret; without it the public
+  validity lookup refuses every request.
 - **Configuration.** The spec maps to the app's properties (`QUARKUS_DATASOURCE_*`, `QUARKUS_OIDC_*`,
   `XHANDLER_VAULT_PKCS11_*`, `XHANDLER_STORAGE_S3_*`, `XHANDLER_OSE_*`, `XHANDLER_PUBLIC_URL`) and to the engine's
   (`XHANDLER_SUNAT_FAKE_URL`). `vault.moduleVolume` mounts the HSM vendor's PKCS#11 module at `vault.moduleMountPath`
@@ -170,5 +174,5 @@ bin/operator-sdk-v* run bundle <registry>/searchpe-operator-bundle:dev --install
 
 ## Release
 
-The release workflow (`.github/workflows/release.yml`) publishes the image and attaches the bundle to the GitHub
-release; release-tools opens the OperatorHub pull requests from it.
+`release.yml` publishes the images and attaches the bundle to the GitHub release; release-tools'
+`release-xhandler-service` opens the OperatorHub pull requests from it.

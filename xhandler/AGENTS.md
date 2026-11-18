@@ -79,9 +79,7 @@ java -jar admin-cli/target/xhandler-admin.jar --help   # xhandler-admin (after .
   - never log or return them; reads of secrets are audited (`Auditor`).
 - **Tests** use real Keycloak tokens (`Api.as("alice")`) and Dev Services PostgreSQL; they must pass against a database that outlives the run (random RUCs, no fixed ids).
 - **Concurrency rules** (DESIGN.md §10.8) apply to any change touching jobs, documents or numbering.
-- **SUNAT environments**:
-  - tests and e2e use **SUNAT beta** only;
-  - never send to production from tests or scripts.
+- **SUNAT environments**: tests and e2e use SUNAT beta or the fake; never production.
 - **Commits**:
   - Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `ci:`, `chore:`).
   - Changes land on `main` directly or through pull requests (root AGENTS.md). Each phase (DESIGN.md §21) is followed by a senior-engineer review.

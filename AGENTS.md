@@ -1,62 +1,51 @@
 # AGENTS.md
 
-Guidance for AI coding agents (and humans) working in this repository: every service of the
-xhandler platform, built and deployed together.
+Guidance for AI coding agents (and humans) in this monorepo: every xhandler service, built,
+tested and deployed together. Read the guide of the directory you change.
 
 ## Layout
 
 ```
-searchpe/     searchpe: RUC lookup over SUNAT's padrón reducido (Quarkus, Java 25)
-xhandler/     xhandler-service: SUNAT electronic documents — app (Quarkus), engine (Rust), admin-cli,
-              sdk, deploy, docs/DESIGN.md. Its own guide: xhandler/AGENTS.md
-operator/     Kubernetes operator (Go, controller-runtime, OLM bundle): Searchpe and XHandler kinds
-ui/           the one UI of every service (React, PatternFly, pulp-ui-2 blueprint). Its own guide: ui/AGENTS.md
-hack/         the local stack: PostgreSQL (one database per service), Keycloak, Grafana LGTM, SUNAT fake;
-              ui-e2e-stack.sh runs every service on it for the UI's Playwright suite
-scripts/      manifests used by the CI end-to-end test (OLM catalog, PostgreSQL, sample resources)
-pom.xml       Maven aggregator: searchpe (inherits it) and xhandler (its own parent)
+xhandler/   xhandler-service: app (Quarkus), engine (Rust), admin-cli, sdk, deploy, docs/DESIGN.md
+            → xhandler/AGENTS.md. DESIGN.md is the source of truth for behavior.
+searchpe/   RUC lookup over SUNAT's padrón reducido (Quarkus)
+ui/         the one UI of both services (React 19, PatternFly 6, pulp-ui-2 blueprint) → ui/AGENTS.md
+operator/   Kubernetes operator (Go, OLM): XHandler and Searchpe kinds → operator/README.md
+hack/       local stack (compose.yaml: PostgreSQL, Keycloak :8180, Grafana :3001, SUNAT fake)
+            and ui-e2e-stack.sh (every service, for the UI's Playwright suite)
+scripts/    manifests of the CI minikube e2e
 ```
-
-Read the guide of the directory you change: `xhandler/AGENTS.md` (the design is
-`xhandler/docs/DESIGN.md`), `ui/AGENTS.md` (its rules load when an agent starts in `ui/`; ADRs in
-`ui/docs/adr/`), `operator/README.md`.
 
 ## Commands
 
 ```bash
-./mvnw verify                                   # every Java service (tests need Docker or Podman)
-./mvnw verify -pl searchpe                      # only searchpe
-(cd xhandler && ./mvnw verify)                  # only xhandler-service
+./mvnw verify -pl searchpe                       # searchpe (tests need Docker or Podman)
+(cd xhandler && ./mvnw verify)                   # xhandler-service (its own Maven wrapper)
 (cd xhandler/engine && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test)
-(cd operator && make lint verify-generated test)
-(cd ui && npm ci && npm run build && npm run lint && npm run format && npm test)   # build first: lint type-checks it
-(cd ui && npm run start:dev)                    # the UI on :3000, proxying both backends
-podman compose -f hack/compose.yaml up -d       # the local stack (Keycloak on 8180)
-hack/ui-e2e-stack.sh build && hack/ui-e2e-stack.sh up   # every service, for the UI's e2e
-(cd ui && npm run test:e2e)                     # the UI's Playwright suite (ui/e2e/README.md)
+(cd operator && make lint verify-generated test bundle bundle-validate)
+(cd ui && npm ci && npm run build && npm run lint && npm run format && npm test)   # build before lint
+hack/ui-e2e-stack.sh build && hack/ui-e2e-stack.sh up && (cd ui && npm run test:e2e)
 ```
 
-Both Quarkus apps default to port 8080: run one of them with `-Dquarkus.http.port=8081` when
-running both. Against the local stack, searchpe uses its database and the shared realm:
-
-```bash
-QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://localhost:5432/searchpe \
-QUARKUS_DATASOURCE_USERNAME=searchpe QUARKUS_DATASOURCE_PASSWORD=searchpe \
-QUARKUS_OIDC_AUTH_SERVER_URL=http://localhost:8180/realms/xhandler \
-QUARKUS_OIDC_CLIENT_ID=searchpe QUARKUS_OIDC_CREDENTIALS_SECRET=secret ./mvnw quarkus:dev -pl searchpe
-```
-
-Run Maven for xhandler from `xhandler/` (`(cd xhandler && ./mvnw ...)`): it has its own wrapper.
+Both Quarkus apps default to port 8080; `ui-e2e-stack.sh` runs searchpe on 8081.
 
 ## Conventions
 
-- Conventional Commits with a scope when it helps (`feat(operator):`, `fix(searchpe):`, `ci:`).
-- Changes land on `main` directly or through pull requests; either way the required checks of
-  `.github/workflows/` must pass.
-- Java in `searchpe/` carries the license header of `tools/copyright.txt` (`mvn license:format`);
-  `xhandler/` follows its own guide.
-- Each service keeps its own database, migrations and conventions; nothing crosses service
-  directories except through their APIs.
-- CI: `.github/workflows/ci.yml` (searchpe and the operator), `xhandler*.yml` (xhandler-service) and
-  `ui.yml` (the UI), the last two filtered by path; `ui-e2e.yml` ("UI Playwright": the UI's
-  Playwright suite against the whole stack, unfiltered). Every workflow must stay green on main.
+- Conventional Commits, scoped when useful (`feat(ui):`, `fix(operator):`, `ci:`).
+- User-facing text (UI, API errors, emails, PDFs) is Spanish; code, logs and comments English.
+  Acronyms are words (`Ruc`, `Sunat`, `Cdr`).
+- Services share nothing but their APIs: each keeps its database, migrations and conventions.
+- Never edit an applied migration; add a new one.
+- Tests and scripts use SUNAT beta or the fake, never production.
+- A behavior change updates `xhandler/docs/DESIGN.md` (or a UI ADR) in the same commit.
+- Java in `searchpe/` carries the `tools/copyright.txt` header (`mvn license:format`).
+
+## CI and releases
+
+Every workflow runs on each push and PR; all must stay green on `main`. Required checks: JVM
+Tests, Native Tests, Operator Tests, UI Tests, UI E2E Tests (minikube: operator, Searchpe and a
+full XHandler), UI Image, UI Playwright, and the xhandler App, Engine, Images and Manifests jobs.
+
+`snapshots.yml` publishes `:nightly` images to `ghcr.io/project-openubl/xhandler-service/`.
+Releases run only through release-tools' `release-xhandler-service` workflow, which triggers
+`release.yml`.
