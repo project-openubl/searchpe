@@ -52,10 +52,7 @@ export const companySettingsSchema = object({
 
 export type ICompanySettingsValues = InferType<typeof companySettingsSchema>;
 
-/**
- * The form's starting values. The API doesn't return the email subject and body, so they start
- * empty and are sent only when typed.
- */
+/** The form's starting values, from the company as the API returns it. */
 export const settingsDefaults = (
   company: CompanyView,
 ): ICompanySettingsValues => ({
@@ -65,14 +62,14 @@ export const settingsDefaults = (
   pdf_format: toPdfFormat(company.pdf_format),
   delivered_on_emit_default: company.delivered_on_emit_default ?? false,
   email_on_accept: company.email_on_accept ?? false,
-  email_subject: "",
-  email_body: "",
+  email_subject: company.email_subject ?? "",
+  email_body: company.email_body ?? "",
   libro_reclamaciones_url: company.libro_reclamaciones_url ?? "",
 });
 
 /**
  * `PUT …/settings` leaves out what is null, so only the changed fields are sent: a field the user
- * didn't touch keeps its stored value (including the subject and body the API doesn't return).
+ * didn't touch keeps its stored value.
  */
 export const settingsChanges = ({
   values,

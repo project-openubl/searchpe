@@ -29,10 +29,9 @@ describe("data subject requests", () => {
     });
   });
 
-  it("lists the person's documents and skips malformed entries", () => {
+  it("lists the person's documents", () => {
     expect(
       personalDataDocuments({
-        request: {},
         documents: [
           {
             id: "d1",
@@ -42,7 +41,6 @@ describe("data subject requests", () => {
             total: "10.00",
             status: "accepted",
           },
-          "nope",
         ],
       }),
     ).toEqual([
@@ -71,7 +69,6 @@ describe("data subject requests", () => {
             created_at: "2026-03-01T10:00:00Z",
             deleted_at: "2026-03-02T10:00:00Z",
           },
-          null,
         ],
       }),
     ).toEqual([

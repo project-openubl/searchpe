@@ -24,6 +24,28 @@ describe("PartnerBrandingForm", () => {
     expect(onSave).not.toHaveBeenCalled();
   });
 
+  it("starts with the current branding", async () => {
+    const screen = await render(
+      <PartnerBrandingForm
+        branding={{ color: "#AA0000", footer: "Por Contasoft" }}
+        submitError={null}
+        isSaving={false}
+        gateProps={{}}
+        onSave={vi.fn()}
+      />,
+    );
+
+    await expect
+      .element(screen.getByRole("textbox", { name: "Color principal" }))
+      .toHaveValue("#AA0000");
+    await expect
+      .element(screen.getByRole("textbox", { name: "Pie de página" }))
+      .toHaveValue("Por Contasoft");
+    await expect
+      .element(screen.getByRole("textbox", { name: "Nombre del remitente" }))
+      .toHaveValue("");
+  });
+
   it("sends only the filled fields", async () => {
     const onSave = vi.fn();
     const screen = await render(

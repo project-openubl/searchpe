@@ -12,6 +12,19 @@ export class MembersPage extends DataViewList {
   async goto(tenantId: string) {
     await this.page.goto(`/organizaciones/${tenantId}/miembros`);
   }
+
+  /** The row of a member, by its subject. */
+  row(subject: string) {
+    return this.rows().filter({ hasText: subject });
+  }
+
+  /** Opens a member row's actions menu and picks `action`. */
+  async rowAction(subject: string, action: string) {
+    await this.row(subject)
+      .getByRole("button", { name: "Kebab toggle" })
+      .click();
+    await this.page.getByRole("menuitem", { name: action }).click();
+  }
 }
 
 export class WebhooksPage extends DataViewList {

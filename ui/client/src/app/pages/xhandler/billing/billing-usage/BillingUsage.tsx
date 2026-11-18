@@ -29,6 +29,7 @@ import {
   StackItem,
 } from "@patternfly/react-core";
 
+import type { BillingView } from "@app/client/xhandler";
 import { ControlledTextField } from "@app/components/ControlledTextField";
 import { DocumentTitle } from "@app/components/DocumentTitle";
 import { FormSubmitError } from "@app/components/FormSubmitError";
@@ -39,7 +40,6 @@ import { useNotifications } from "@app/hooks/useNotifications";
 import { useSubmitError } from "@app/hooks/useSubmitError";
 import { useTenantRole } from "@app/hooks/useTenantRole";
 import {
-  type IBillingView,
   quotaPercent,
   useBillingDetailsMutation,
   useBillingQuery,
@@ -219,7 +219,7 @@ const FeatureLabel: React.FC<IFeatureLabelProps> = ({ isIncluded }) =>
   );
 
 interface IBillingDetailsCardProps {
-  billing: IBillingView;
+  billing: BillingView;
 }
 
 /** Who the platform's invoices (real comprobantes) are issued to. */
@@ -230,7 +230,7 @@ const BillingDetailsCard: React.FC<IBillingDetailsCardProps> = ({
   const { addNotification } = useNotifications();
   const { can, disabledProps } = useTenantRole();
   const { submitError, setSubmitError, clearSubmitError } = useSubmitError();
-  const toValues = (view: IBillingView) => ({
+  const toValues = (view: BillingView) => ({
     billing_ruc: view.billing_ruc ?? "",
     billing_name: view.billing_name ?? "",
     billing_email: view.billing_email ?? "",

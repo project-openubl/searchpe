@@ -5,6 +5,7 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
+  useSuspenseQuery,
 } from "@tanstack/react-query";
 
 import {
@@ -12,6 +13,7 @@ import {
   createWebhook,
   deleteWebhook,
   type DeliveryView,
+  getWebhook,
   listWebhookDeliveries,
   type ListWebhookDeliveriesData,
   listWebhooks,
@@ -56,6 +58,8 @@ export type IWebhookDeliveryListParams = ListParams<ListWebhookDeliveriesData>;
 export const webhookKeys = {
   all: () => [WebhooksQueryKey] as const,
   list: (tenantId: string) => [...webhookKeys.all(), tenantId, "list"] as const,
+  detail: (tenantId: string, webhookId: string) =>
+    [...webhookKeys.all(), tenantId, "detail", webhookId] as const,
   deliveries: (tenantId: string, webhookId: string) =>
     [...webhookKeys.all(), tenantId, "deliveries", webhookId] as const,
 
@@ -85,6 +89,34 @@ export const useWebhooksListQuery = () => {
     ...webhooksListQueryOptions({ tenantId }),
     enabled: !!tenantId,
   });
+};
+
+/** `GET …/webhooks/{id}`: one subscription (never its secret). */
+export const webhookDetailQueryOptions = ({
+  tenantId,
+  webhookId,
+}: {
+  tenantId: string;
+  webhookId: string;
+}) =>
+  queryOptions<WebhookView, XhandlerAxiosError>({
+    queryKey: webhookKeys.detail(tenantId, webhookId),
+    queryFn: async () =>
+      (
+        await getWebhook({
+          path: { tenantId, webhookId },
+          throwOnError: true,
+        })
+      ).data,
+  });
+
+export const useSuspenseWebhookQuery = ({
+  webhookId,
+}: {
+  webhookId: string;
+}) => {
+  const tenantId = useSelectedTenantId();
+  return useSuspenseQuery(webhookDetailQueryOptions({ tenantId, webhookId }));
 };
 
 type DeliveryListOptions = Omit<
@@ -132,20 +164,34 @@ export const useWebhookDeliveriesQuery = ({
   );
 };
 
-/** `POST …/webhooks` (admin): `201` with the secret, shown only in this answer. */
+export interface IWebhookCreateVariables {
+  body: CreateWebhook;
+  /** One per user intent, reused when the same submission is retried. */
+  idempotencyKey: string;
+}
+
+/**
+ * `POST …/webhooks` (admin): `201` with the secret, shown only in this answer. The replay of an
+ * `Idempotency-Key` already used answers the same webhook without it (`secret` null).
+ */
 export const useWebhookCreateMutation = (
-  options?: IMutationCallbacks<WebhookView, CreateWebhook, XhandlerAxiosError>,
+  options?: IMutationCallbacks<
+    WebhookView,
+    IWebhookCreateVariables,
+    XhandlerAxiosError
+  >,
 ) => {
   const tenantId = useSelectedTenantId();
   const queryClient = useQueryClient();
-  return useMutation<WebhookView, XhandlerAxiosError, CreateWebhook>({
+  return useMutation<WebhookView, XhandlerAxiosError, IWebhookCreateVariables>({
     // The answer carries the secret: drop the mutation from the cache once unobserved.
     gcTime: 0,
-    mutationFn: async (body) =>
+    mutationFn: async ({ body, idempotencyKey }) =>
       (
         await createWebhook({
           path: { tenantId },
           body,
+          headers: { "Idempotency-Key": idempotencyKey },
           throwOnError: true,
         })
       ).data,
@@ -173,6 +219,9 @@ export const useWebhookDeleteMutation = (
       });
     },
     onSuccess: async (data, webhook) => {
+      queryClient.removeQueries({
+        queryKey: webhookKeys.detail(tenantId, webhook.id ?? ""),
+      });
       await queryClient.invalidateQueries({
         queryKey: webhookKeys.list(tenantId),
       });

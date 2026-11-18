@@ -1,5 +1,5 @@
 import type React from "react";
-import { useId } from "react";
+import { useId, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -76,6 +76,8 @@ interface IAddMemberFormProps {
 
 const AddMemberForm: React.FC<IAddMemberFormProps> = ({ onClose }) => {
   const formId = useId();
+  // One key per opening of the modal: a retry of the same submission replays
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
   const { addNotification } = useNotifications();
   const { submitError, setSubmitError, clearSubmitError } = useSubmitError();
   const { control, handleSubmit, watch } = useForm({
@@ -102,7 +104,7 @@ const AddMemberForm: React.FC<IAddMemberFormProps> = ({ onClose }) => {
 
   const onSubmit = handleSubmit((values) => {
     clearSubmitError();
-    add.mutate(values, { onSuccess: onClose });
+    add.mutate({ body: values, idempotencyKey }, { onSuccess: onClose });
   });
 
   return (

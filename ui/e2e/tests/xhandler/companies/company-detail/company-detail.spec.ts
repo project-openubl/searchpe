@@ -53,3 +53,54 @@ test("shows a company's administration tabs", async ({
     page.getByRole("heading", { name: "Certificado digital", exact: true }),
   ).toBeVisible();
 });
+
+test("creates a series, moves its next number forward and deactivates it", async ({
+  page,
+  tenantsPage,
+  companiesPage,
+}) => {
+  const tenantId = await tenantsPage.firstTenantId();
+  test.skip(!tenantId, "the e2e user belongs to no organization");
+  await companiesPage.goto(tenantId!);
+  await companiesPage.expectLoaded();
+  await companiesPage.table.getByRole("link").first().click();
+  await page.getByRole("tab", { name: "Series" }).click();
+  const series = page.getByRole("grid", { name: "Tabla de series" });
+  await expect(series).toBeVisible();
+
+  // A series of its own (the shared stack keeps the default ones untouched).
+  const serie = `Z${Math.floor(Math.random() * 36 ** 3)
+    .toString(36)
+    .toUpperCase()
+    .padStart(3, "0")}`;
+  await page.getByRole("button", { name: "Nueva serie" }).click();
+  await page.getByRole("textbox", { name: "Serie", exact: true }).fill(serie);
+  await page.getByRole("button", { name: "Crear serie" }).click();
+  const row = series.getByRole("row").filter({ hasText: serie });
+  await expect(row).toBeVisible();
+
+  // Numbers only move forward.
+  await row.getByRole("button", { name: /acciones|kebab/i }).click();
+  await page.getByRole("menuitem", { name: "Editar" }).click();
+  const nextNumber = page.getByRole("textbox", {
+    name: "Siguiente número",
+    exact: true,
+  });
+  await nextNumber.fill("0");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(
+    page.getByText("El siguiente número no puede ser menor que 1"),
+  ).toBeVisible();
+  await nextNumber.fill("250");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(row).toContainText("250");
+
+  await row.getByRole("button", { name: /acciones|kebab/i }).click();
+  await page.getByRole("menuitem", { name: "Desactivar" }).click();
+  await page.getByRole("button", { name: "Desactivar serie" }).click();
+  await expect(row).toContainText("Inactiva");
+
+  await row.getByRole("button", { name: /acciones|kebab/i }).click();
+  await page.getByRole("menuitem", { name: "Activar" }).click();
+  await expect(row).not.toContainText("Inactiva");
+});

@@ -35,3 +35,23 @@ export const seriesSchema = object({
     .integer("Ingresa un número entero")
     .min(1, "El número empieza en 1"),
 });
+
+/**
+ * The next number of an existing series: it only moves forward (numbers already used are never
+ * reused, so the API answers `409 series_number_used` below them) and has at most 8 digits.
+ */
+export const seriesNextNumberSchema = (current: number) =>
+  object({
+    next_number: number()
+      .transform((value: number, original: unknown) =>
+        original === "" || original === undefined ? undefined : value,
+      )
+      .typeError("Ingresa un número")
+      .required("Ingresa el siguiente número")
+      .integer("Ingresa un número entero")
+      .min(
+        current,
+        `El siguiente número no puede ser menor que ${current.toLocaleString("es-PE")}`,
+      )
+      .max(99_999_999, "El número tiene como máximo 8 dígitos"),
+  });

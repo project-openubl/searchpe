@@ -36,6 +36,7 @@ import {
   hasReceptionFile,
   RECEPTION_FILE_KINDS,
   useReceptionFileDownloadMutation,
+  useReceptionQuery,
   useReceptionsListQuery,
 } from "@app/queries/xhandler/receptions";
 import { getMutationErrorMessage } from "@app/utils/apiError";
@@ -61,6 +62,11 @@ export const ReceptionList: React.FC<IReceptionListProps> = ({ companyId }) => {
   const { addNotification } = useNotifications();
   const { data: company } = useSuspenseCompanyDetailQuery({ companyId });
   const [selected, setSelected] = useState<ReceptionView | null>(null);
+  // The row opens at once; the read by id brings the latest validity check.
+  const { data: detail } = useReceptionQuery({
+    companyId,
+    reception: selected,
+  });
 
   const [pagination, setPagination] = usePersistentState({
     ...RECEPTION_LIST_STATE.pagination,
@@ -245,7 +251,7 @@ export const ReceptionList: React.FC<IReceptionListProps> = ({ companyId }) => {
 
       {selected ? (
         <ReceptionDetailModal
-          reception={selected}
+          reception={detail ?? selected}
           downloadingKind={downloadingKind}
           onDownload={(kind) =>
             download.mutate({ companyId, reception: selected, kind })

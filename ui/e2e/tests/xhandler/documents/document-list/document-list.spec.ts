@@ -35,6 +35,31 @@ test("lists the organization's documents, filters them and opens one", async ({
   ).toBeVisible();
 });
 
+test("filters the documents by buyer", async ({ page, tenantsPage }) => {
+  const tenantId = await tenantsPage.firstTenantId();
+  test.skip(!tenantId, "the e2e user belongs to no organization");
+
+  const documents = new DocumentsPage(page);
+  await documents.goto(tenantId!);
+  await documents.expectLoaded();
+
+  // The setup issued one to "Cliente E2E SAC": the start of the name finds it, any case.
+  await documents.chooseFilter("Serie", "Nombre del comprador");
+  const byName = page.getByPlaceholder(
+    "Filtrar por nombre del comprador (empieza con)",
+  );
+  await byName.fill("cliente e2e");
+  await expect(page).toHaveURL(/nombreComprador=cliente/);
+  await expect(
+    documents.table.getByText("Cliente E2E SAC").first(),
+  ).toBeVisible();
+
+  await byName.fill("Nadie se llama así");
+  await expect(
+    page.getByRole("heading", { name: "No se encontraron resultados" }),
+  ).toBeVisible();
+});
+
 test("an unknown document is a 404 page", async ({ page, tenantsPage }) => {
   const tenantId = await tenantsPage.firstTenantId();
   test.skip(!tenantId, "the e2e user belongs to no organization");

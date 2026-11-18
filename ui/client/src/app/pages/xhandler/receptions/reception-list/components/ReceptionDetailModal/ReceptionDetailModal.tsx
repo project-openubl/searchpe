@@ -45,7 +45,7 @@ interface IReceptionDetailModalProps {
 const formatTime = (value: string | undefined): string =>
   value ? dayjs(value).format(RENDER_DATETIME_FORMAT) : "-";
 
-/** A received supplier document from its list row (the API has no read by id). */
+/** A received supplier document, read by id (the page shows its list row until it answers). */
 export const ReceptionDetailModal: React.FC<IReceptionDetailModalProps> = ({
   reception,
   downloadingKind,

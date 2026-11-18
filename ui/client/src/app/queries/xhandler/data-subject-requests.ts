@@ -111,22 +111,17 @@ export type PersonalDataRecord = GetDataSubjectPersonalDataResponses[200];
 export const personalDataDocuments = (
   data: PersonalDataRecord,
 ): IPersonalDataDocument[] =>
-  (Array.isArray(data.documents) ? (data.documents as unknown[]) : [])
-    .filter(
-      (item): item is Record<string, unknown> =>
-        typeof item === "object" && item !== null,
-    )
-    .map((item) => ({
-      id: text(item.id),
-      issuerRuc: text(item.issuer_ruc),
-      tipoComprobante: text(item.tipo_comprobante),
-      serieNumero: text(item.serie_numero),
-      fechaEmision: text(item.fecha_emision),
-      nombre: text(item.nombre),
-      moneda: text(item.moneda),
-      total: text(item.total),
-      status: text(item.status),
-    }));
+  (data.documents ?? []).map((item) => ({
+    id: text(item.id),
+    issuerRuc: text(item.issuer_ruc),
+    tipoComprobante: text(item.tipo_comprobante),
+    serieNumero: text(item.serie_numero),
+    fechaEmision: text(item.fecha_emision),
+    nombre: text(item.nombre),
+    moneda: text(item.moneda),
+    total: text(item.total),
+    status: text(item.status),
+  }));
 
 /** A draft that names the person as buyer, as `getDataSubjectPersonalData` lists it (deleted ones too). */
 export interface IPersonalDataDraft {
@@ -143,21 +138,16 @@ export interface IPersonalDataDraft {
 export const personalDataDrafts = (
   data: PersonalDataRecord,
 ): IPersonalDataDraft[] =>
-  (Array.isArray(data.drafts) ? (data.drafts as unknown[]) : [])
-    .filter(
-      (item): item is Record<string, unknown> =>
-        typeof item === "object" && item !== null,
-    )
-    .map((item) => ({
-      id: text(item.id),
-      issuerRuc: text(item.issuer_ruc),
-      tipoComprobante: text(item.tipo_comprobante),
-      serie: text(item.serie),
-      nombre: text(item.nombre),
-      status: text(item.status),
-      createdAt: text(item.created_at),
-      deletedAt: text(item.deleted_at),
-    }));
+  (data.drafts ?? []).map((item) => ({
+    id: text(item.id),
+    issuerRuc: text(item.issuer_ruc),
+    tipoComprobante: text(item.tipo_comprobante),
+    serie: text(item.serie),
+    nombre: text(item.nombre),
+    status: text(item.status),
+    createdAt: text(item.created_at),
+    deletedAt: text(item.deleted_at),
+  }));
 
 export const dataSubjectRequestKeys = {
   all: () => [DataSubjectRequestsQueryKey] as const,

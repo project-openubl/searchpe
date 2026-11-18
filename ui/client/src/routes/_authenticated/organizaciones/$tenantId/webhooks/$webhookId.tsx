@@ -1,10 +1,10 @@
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 
 import { DetailRouteError } from "@app/components/DetailRouteError";
 import { DetailRoutePending } from "@app/components/DetailRoutePending";
 import { WebhookDeliveriesRoute } from "@app/pages/xhandler/webhooks/webhook-deliveries/WebhookDeliveriesRoute";
 import { WEBHOOK_DELIVERIES_STATE } from "@app/pages/xhandler/webhooks/webhook-deliveries/webhookDeliveriesState";
-import { webhooksListQueryOptions } from "@app/queries/xhandler/webhooks";
+import { webhookDetailQueryOptions } from "@app/queries/xhandler/webhooks";
 import { listSearch } from "@app/utils/listState";
 
 const { validateSearch, search } = listSearch(WEBHOOK_DELIVERIES_STATE);
@@ -14,18 +14,16 @@ export const Route = createFileRoute(
 )({
   validateSearch,
   search,
-  // The API has no read of one webhook: the (unpaged) list primes the page.
+  // An unknown or deleted webhook is a 404, shown by DetailRouteError.
   loader: async ({
     context: { queryClient },
     params: { tenantId, webhookId },
   }) => {
-    const webhooks = await queryClient.query({
-      ...webhooksListQueryOptions({ tenantId }),
+    await queryClient.query({
+      ...webhookDetailQueryOptions({ tenantId, webhookId }),
       staleTime: "static",
     });
-    const webhook = webhooks.find((item) => item.id === webhookId);
-    if (!webhook) throw notFound();
-    return { webhook };
+    return { webhookId };
   },
   pendingComponent: () => <DetailRoutePending label="Cargando webhook" />,
   errorComponent: DetailRouteError,

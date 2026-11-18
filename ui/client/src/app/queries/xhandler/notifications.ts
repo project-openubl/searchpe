@@ -9,6 +9,7 @@ import {
 
 import {
   getNotificationPreferences,
+  getNotificationSettings,
   listNotifications,
   type ListNotificationsData,
   markAllNotificationsRead,
@@ -66,6 +67,8 @@ export const notificationKeys = {
     [...notificationKeys.all(), tenantId, "list"] as const,
   preferences: (tenantId: string) =>
     [...notificationKeys.all(), tenantId, "preferences"] as const,
+  settings: (tenantId: string) =>
+    [...notificationKeys.all(), tenantId, "settings"] as const,
 
   listQuery: (tenantId: string, params: INotificationListParams) =>
     [...notificationKeys.list(tenantId), params] as const,
@@ -205,20 +208,43 @@ export const useNotificationPreferencesMutation = (
   });
 };
 
-/**
- * `PUT …/notification-settings` (admin): the tenant's notification address; blank clears it.
- * The API has no read for it, so nothing is cached.
- */
+export const notificationSettingsQueryOptions = ({
+  tenantId,
+}: {
+  tenantId: string;
+}) =>
+  queryOptions<NotificationSettings, XhandlerAxiosError>({
+    queryKey: notificationKeys.settings(tenantId),
+    queryFn: async () =>
+      (
+        await getNotificationSettings({
+          path: { tenantId },
+          throwOnError: true,
+        })
+      ).data,
+  });
+
+/** `GET …/notification-settings` (viewer): the tenant's notification address, if any. */
+export const useNotificationSettingsQuery = () => {
+  const tenantId = useSelectedTenantId();
+  return useQuery({
+    ...notificationSettingsQueryOptions({ tenantId }),
+    enabled: !!tenantId,
+  });
+};
+
+/** `PUT …/notification-settings` (admin): the tenant's notification address; blank clears it. */
 export const useNotificationSettingsMutation = (
   options?: IMutationCallbacks<
-    Record<string, unknown>,
+    NotificationSettings,
     NotificationSettings,
     XhandlerAxiosError
   >,
 ) => {
   const tenantId = useSelectedTenantId();
+  const queryClient = useQueryClient();
   return useMutation<
-    Record<string, unknown>,
+    NotificationSettings,
     XhandlerAxiosError,
     NotificationSettings
   >({
@@ -230,7 +256,10 @@ export const useNotificationSettingsMutation = (
           throwOnError: true,
         })
       ).data,
-    onSuccess: options?.onSuccess,
+    onSuccess: async (data, variables) => {
+      queryClient.setQueryData(notificationKeys.settings(tenantId), data);
+      await options?.onSuccess?.(data, variables);
+    },
     onError: options?.onError,
   });
 };

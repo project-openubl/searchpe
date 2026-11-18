@@ -31,7 +31,11 @@ import { useXhandlerStatusQuery } from "@app/queries/xhandler/status";
 import { getMutationErrorMessage } from "@app/utils/apiError";
 import type { DataViewTh } from "@app/utils/dataViewTypes";
 
-import { componentHealth, PRIORITY_CLASS_LABELS } from "./serviceHealth";
+import {
+  componentHealth,
+  PRIORITY_CLASS_LABELS,
+  sunatHealth,
+} from "./serviceHealth";
 
 interface IHealthLabelProps {
   isHealthy: boolean | undefined;
@@ -116,6 +120,68 @@ const StatusBody: React.FC<IStatusBodyProps> = ({ status }) => {
             </Card>
           ))}
         </Gallery>
+      </StackItem>
+      <StackItem>
+        <Card>
+          <CardTitle component="h2">SUNAT</CardTitle>
+          <CardBody>
+            <Stack hasGutter>
+              <StackItem>
+                <Content component={ContentVariants.small}>
+                  Disponibilidad de los servicios web de SUNAT según los envíos
+                  recientes. Mientras un servicio está caído, los comprobantes
+                  esperan y se envían cuando vuelve.
+                </Content>
+              </StackItem>
+              <StackItem>
+                <Gallery hasGutter minWidths={{ default: "100%", md: "260px" }}>
+                  {sunatHealth(status).map((env) => (
+                    <Card key={env.environment} isCompact isPlain>
+                      <CardTitle component="h3">{env.label}</CardTitle>
+                      <CardBody>
+                        {env.isAvailable ? (
+                          <Label color="green" isCompact>
+                            Disponible
+                          </Label>
+                        ) : (
+                          <Label color="red" isCompact>
+                            No disponible
+                          </Label>
+                        )}
+                        {env.services.length > 0 ? (
+                          <DescriptionList
+                            isCompact
+                            isHorizontal
+                            aria-label={`Servicios de SUNAT en ${env.label}`}
+                          >
+                            {env.services.map((service) => (
+                              <DescriptionListGroup key={service.label}>
+                                <DescriptionListTerm>
+                                  {service.label}
+                                </DescriptionListTerm>
+                                <DescriptionListDescription>
+                                  <Label
+                                    color={service.isUp ? "green" : "orange"}
+                                    isCompact
+                                  >
+                                    {service.state}
+                                  </Label>
+                                  {!service.isUp && service.until
+                                    ? ` hasta ${dayjs(service.until).format(RENDER_DATETIME_FORMAT)}`
+                                    : null}
+                                </DescriptionListDescription>
+                              </DescriptionListGroup>
+                            ))}
+                          </DescriptionList>
+                        ) : null}
+                      </CardBody>
+                    </Card>
+                  ))}
+                </Gallery>
+              </StackItem>
+            </Stack>
+          </CardBody>
+        </Card>
       </StackItem>
       <StackItem>
         <Card>
@@ -208,8 +274,8 @@ export const ServiceStatus: React.FC = () => {
         <Content component={ContentVariants.h1}>Estado del servicio</Content>
         <Content component={ContentVariants.p}>
           {dataUpdatedAt
-            ? `Componentes, procesos y colas de comprobantes electrónicos; consultado el ${dayjs(dataUpdatedAt).format(RENDER_DATETIME_FORMAT)}.`
-            : "Componentes, procesos y colas de comprobantes electrónicos."}
+            ? `Componentes, SUNAT, procesos y colas de comprobantes electrónicos; consultado el ${dayjs(dataUpdatedAt).format(RENDER_DATETIME_FORMAT)}.`
+            : "Componentes, SUNAT, procesos y colas de comprobantes electrónicos."}
         </Content>
       </PageSection>
       <PageSection>{body}</PageSection>

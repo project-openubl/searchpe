@@ -7,16 +7,22 @@ import {
 } from "./companySettings";
 
 describe("company settings", () => {
-  it("starts from the company, with the email texts empty", () => {
+  it("starts from the company, its email texts included", () => {
     const values = settingsDefaults({
       nombre_comercial: "Bodega",
       pdf_format: "ticket80",
       email_on_accept: true,
+      email_subject: "Su comprobante",
+      email_body: "Gracias por su compra.",
     });
     expect(values).toMatchObject({
       nombre_comercial: "Bodega",
       pdf_format: "ticket80",
       email_on_accept: true,
+      email_subject: "Su comprobante",
+      email_body: "Gracias por su compra.",
+    });
+    expect(settingsDefaults({})).toMatchObject({
       email_subject: "",
       email_body: "",
     });

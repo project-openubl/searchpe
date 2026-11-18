@@ -40,6 +40,7 @@ import { ApiErrorText } from "@app/components/ApiErrorText";
 import { ConfirmActionModal } from "@app/components/ConfirmActionModal";
 import { DocumentTitle } from "@app/components/DocumentTitle";
 import { GatedButton } from "@app/components/GatedButton";
+import { SireStatusLabel } from "@app/components/SireStatusLabel";
 import { SunatEnvLabel } from "@app/components/SunatEnvLabel";
 import { TenantContextSelector } from "@app/components/TenantContextSelector";
 import {
@@ -55,8 +56,8 @@ import {
   type ISirePeriodPath,
   isSireReplaceable,
   isSireStatusInProgress,
+  SIRE_BOOK_LABELS,
   SIRE_BOOKS,
-  type SireBook,
   type SireFileKind,
   sireReconciliation,
   useDownloadSireFileMutation,
@@ -68,17 +69,11 @@ import { isNotFoundError } from "@app/utils/isHttpError";
 
 import { SireReconciliation } from "./components/SireReconciliation";
 import { SireReplaceModal } from "./components/SireReplaceModal";
-import { SireStatusLabel } from "./components/SireStatusLabel";
 import { SIRE_PERIOD_STATE, sirePeriods } from "./sirePeriodState";
 
 interface ISirePeriodProps {
   companyId: string;
 }
-
-const BOOK_LABELS: Record<SireBook, string> = {
-  rvie: "Ventas (RVIE)",
-  rce: "Compras (RCE)",
-};
 
 const PERIOD_OPTIONS = sirePeriods().map((period) => ({
   value: period,
@@ -350,7 +345,13 @@ export const SirePeriod: React.FC<ISirePeriodProps> = ({ companyId }) => {
         </Breadcrumb>
         <Content component={ContentVariants.h1}>SIRE</Content>
         <Content component={ContentVariants.p}>
-          Los registros de ventas y compras de {title} ante SUNAT, por periodo.
+          Los registros de ventas y compras de {title} ante SUNAT, por periodo.{" "}
+          <Link
+            to="/organizaciones/$tenantId/empresas/$companyId/sire/periodos"
+            params={{ tenantId, companyId }}
+          >
+            Ver los periodos solicitados
+          </Link>
         </Content>
       </PageSection>
       <PageSection>
@@ -376,7 +377,7 @@ export const SirePeriod: React.FC<ISirePeriodProps> = ({ companyId }) => {
                       {SIRE_BOOKS.map((book) => (
                         <ToggleGroupItem
                           key={book}
-                          text={BOOK_LABELS[book]}
+                          text={SIRE_BOOK_LABELS[book]}
                           buttonId={`sire-book-${book}`}
                           isSelected={selection.libro === book}
                           onChange={() =>

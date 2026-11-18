@@ -17,7 +17,19 @@ Behaviour of the xhandler API that shaped the code. The contract is xhandler `do
 failed | canceling | canceled`, filter by `state` and `name`; cancel is
   `POST /jobs/{id}/cancel` (operator), answering the job.
 - **Status** `GET /api/v1/status` is public: versions (service, engine, xhandler-rust),
-  workers, queues and component health.
+  workers, queues, component health and `sunat` (per environment, `available` plus each SUNAT
+  service's breaker state and pause).
+- **Creates take an `Idempotency-Key`** (documents, drafts, companies, series, members,
+  webhooks…): a retry with the same key and body gets the stored `201`; a different body is
+  `422 idempotency_key_reused`, one still running `409`. A replayed webhook create has
+  `secret: null` (the secret is shown once).
+- **Members** (admin): `PUT …/members/{id}` changes the role (never to owner), `DELETE` removes
+  one; only an owner touches an owner (`403 owner_required`) and the last owner stays
+  (`409 last_owner`).
+- **Series**: `PUT …/series/{id}` moves `next_number` forward only (`409 series_number_used`)
+  and sets `active`; a deactivated series refuses emits.
+- **Documents** filter by buyer: `customer_numero` (exact) and `customer_nombre` (prefix,
+  case-insensitive).
 - **Public endpoints** (`/api/v1/public/*`) need no token; the UI calls them without one.
 - **Buyer portal.** `GET /public/documents/{token}` lists the downloadable `files` (`pdf`, `xml`,
   `cdr`) and the issuer's `libro_reclamaciones_url` when set; `…/{token}/{kind}` downloads one

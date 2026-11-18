@@ -7,6 +7,7 @@ import {
 
 import {
   type BillingDetails,
+  type BillingView,
   getBilling,
   updateBillingDetails,
 } from "@app/client/xhandler";
@@ -16,30 +17,6 @@ import type { IMutationCallbacks } from "../utils/mutationCallbacks";
 import type { XhandlerAxiosError } from "../utils/openapiErrorTypes";
 
 export const BillingQueryKey = "billing";
-
-/**
- * The body of `GET …/billing`. The spec documents it as a free-form map (the resource returns
- * `Map<String, Object>`), so its shape is written here from `Entitlements.Usage` and `Plan`.
- */
-export interface IBillingView extends BillingDetails {
-  usage?: {
-    plan?: {
-      code?: string;
-      name?: string;
-      production_per_month?: number | null;
-      beta_per_day?: number | null;
-      sandbox_per_day?: number | null;
-      custom_smtp?: boolean;
-      webhooks?: boolean;
-    };
-    source?: string;
-    synced_at?: string | null;
-    stale?: boolean;
-    production_this_month?: number;
-    beta_today?: number;
-    sandbox_today?: number;
-  };
-}
 
 /** Share of a quota used, 0–100, or undefined for an unlimited quota. */
 export const quotaPercent = ({
@@ -59,7 +36,7 @@ export const billingKeys = {
 };
 
 export const billingQueryOptions = ({ tenantId }: { tenantId: string }) =>
-  queryOptions<IBillingView, XhandlerAxiosError>({
+  queryOptions<BillingView, XhandlerAxiosError>({
     queryKey: billingKeys.detail(tenantId),
     queryFn: async () =>
       (
@@ -67,7 +44,7 @@ export const billingQueryOptions = ({ tenantId }: { tenantId: string }) =>
           path: { tenantId },
           throwOnError: true,
         })
-      ).data as IBillingView,
+      ).data,
   });
 
 /** `GET …/billing`: plan, usage and billing details (DESIGN.md §14). */
@@ -81,15 +58,11 @@ export const useBillingQuery = () => {
 
 /** `PUT …/billing` (admin): replaces the billing details, answers the whole view. */
 export const useBillingDetailsMutation = (
-  options?: IMutationCallbacks<
-    IBillingView,
-    BillingDetails,
-    XhandlerAxiosError
-  >,
+  options?: IMutationCallbacks<BillingView, BillingDetails, XhandlerAxiosError>,
 ) => {
   const tenantId = useSelectedTenantId();
   const queryClient = useQueryClient();
-  return useMutation<IBillingView, XhandlerAxiosError, BillingDetails>({
+  return useMutation<BillingView, XhandlerAxiosError, BillingDetails>({
     mutationFn: async (body) =>
       (
         await updateBillingDetails({
@@ -97,7 +70,7 @@ export const useBillingDetailsMutation = (
           body,
           throwOnError: true,
         })
-      ).data as IBillingView,
+      ).data,
     onSuccess: async (data, variables) => {
       queryClient.setQueryData(billingKeys.detail(tenantId), data);
       await options?.onSuccess?.(data, variables);

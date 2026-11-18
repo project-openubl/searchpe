@@ -24,14 +24,24 @@ vi.mock(import("@app/queries/xhandler/webhooks"), () => ({
   useWebhookCreateMutation: vi.fn(),
 }));
 
-/** A mutation that answers like the API: 201 with the one-time secret. */
-const setUp = () => {
+/**
+ * A mutation that answers like the API: 201 with the one-time secret, or without it when the
+ * Idempotency-Key was already used (a replay).
+ */
+const setUp = (secret: string | null = "whsec_abc123") => {
   const mutate = vi.fn(
     (
-      body: { url: string; events: string[] },
+      variables: {
+        body: { url: string; events: string[] };
+        idempotencyKey: string;
+      },
       options?: { onSuccess?: (webhook: WebhookView) => void },
     ) =>
-      options?.onSuccess?.({ id: "w1", url: body.url, secret: "whsec_abc123" }),
+      options?.onSuccess?.({
+        id: "w1",
+        url: variables.body.url,
+        secret: secret ?? undefined,
+      }),
   );
   vi.mocked(useNotifications).mockReturnValue({
     addNotification: vi.fn(),
@@ -71,8 +81,8 @@ describe("CreateWebhookModal", () => {
 
     await expect.poll(() => mutate.mock.calls.length).toBe(1);
     expect(mutate.mock.calls[0][0]).toEqual({
-      url: "https://erp.pe/hook",
-      events: ["*"],
+      body: { url: "https://erp.pe/hook", events: ["*"] },
+      idempotencyKey: expect.stringMatching(/^[0-9a-f-]{36}$/),
     });
     await expect
       .element(
@@ -82,5 +92,42 @@ describe("CreateWebhookModal", () => {
     await expect
       .element(screen.getByRole("textbox", { name: "Secreto del webhook" }))
       .toHaveValue("whsec_abc123");
+  });
+
+  it("retries the same submission with the same Idempotency-Key", async () => {
+    const mutate = vi.fn();
+    setUp();
+    vi.mocked(useWebhookCreateMutation).mockReturnValue({
+      mutate,
+      isPending: false,
+    } as unknown as ReturnType<typeof useWebhookCreateMutation>);
+    const screen = await render(
+      <CreateWebhookModal isOpen onClose={vi.fn()} />,
+    );
+    await screen
+      .getByRole("textbox", { name: "URL", exact: true })
+      .fill("https://erp.pe/hook");
+    await screen.getByRole("button", { name: "Crear webhook" }).click();
+    await screen.getByRole("button", { name: "Crear webhook" }).click();
+
+    await expect.poll(() => mutate.mock.calls.length).toBe(2);
+    expect(mutate.mock.calls[1][0].idempotencyKey).toBe(
+      mutate.mock.calls[0][0].idempotencyKey,
+    );
+  });
+
+  it("says the secret was already shown when the answer is a replay", async () => {
+    setUp(null);
+    const screen = await render(
+      <CreateWebhookModal isOpen onClose={vi.fn()} />,
+    );
+    await screen
+      .getByRole("textbox", { name: "URL", exact: true })
+      .fill("https://erp.pe/hook");
+    await screen.getByRole("button", { name: "Crear webhook" }).click();
+
+    await expect
+      .element(screen.getByText("El secreto ya se mostró al crear el webhook"))
+      .toBeVisible();
   });
 });

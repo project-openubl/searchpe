@@ -1,4 +1,4 @@
-/** What the API accepts for a logo (`CompanyEnvironmentResource#logo`): PNG or JPEG, ≤ 200 KB. */
+/** What the API accepts for a logo (company or partner): PNG or JPEG, ≤ 200 KB. */
 export const LOGO_MAX_BYTES = 200 * 1024;
 
 export const LOGO_TYPES = ["image/png", "image/jpeg"] as const;

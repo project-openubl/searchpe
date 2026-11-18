@@ -11,14 +11,17 @@ import {
   type Branding,
   type CreatePartnerTenant,
   createPartnerTenant,
+  deletePartnerLogo,
+  getPartnerBranding,
   listMyPartners,
   listPartnerTenants,
   type ListPartnerTenantsData,
+  type PartnerBrandingView,
   type PartnerTenant,
   type PartnerView,
   setPartnerBranding,
-  type SetPartnerBrandingResponse,
   type TenantUsage,
+  uploadPartnerLogo,
 } from "@app/client/xhandler";
 
 import type { IMutationCallbacks } from "../utils/mutationCallbacks";
@@ -50,6 +53,8 @@ export const partnerKeys = {
   mine: () => [...partnerKeys.all(), "mine"] as const,
   tenants: (partnerId: string) =>
     [...partnerKeys.all(), partnerId, "tenants"] as const,
+  branding: (partnerId: string) =>
+    [...partnerKeys.all(), partnerId, "branding"] as const,
 
   tenantsQuery: (partnerId: string, params: IPartnerTenantsParams) =>
     [...partnerKeys.tenants(partnerId), params] as const,
@@ -151,16 +156,37 @@ export const useCreatePartnerTenantMutation = (
   });
 };
 
+/** `GET /api/v1/partners/{id}/branding`: the white-label branding and whether there is a logo. */
+export const partnerBrandingQueryOptions = ({
+  partnerId,
+}: {
+  partnerId: string;
+}) =>
+  queryOptions<PartnerBrandingView, XhandlerAxiosError>({
+    queryKey: partnerKeys.branding(partnerId),
+    queryFn: async () =>
+      (
+        await getPartnerBranding({
+          path: { partnerId },
+          throwOnError: true,
+        })
+      ).data,
+  });
+
+export const usePartnerBrandingQuery = ({ partnerId }: { partnerId: string }) =>
+  useQuery(partnerBrandingQueryOptions({ partnerId }));
+
 /** `PUT /api/v1/partners/{id}/branding` (partner admins): replaces the white-label branding. */
 export const useSetPartnerBrandingMutation = (
   partnerId: string,
   options?: IMutationCallbacks<
-    SetPartnerBrandingResponse,
+    PartnerBrandingView,
     Branding,
     XhandlerAxiosError
   >,
-) =>
-  useMutation<SetPartnerBrandingResponse, XhandlerAxiosError, Branding>({
+) => {
+  const queryClient = useQueryClient();
+  return useMutation<PartnerBrandingView, XhandlerAxiosError, Branding>({
     mutationFn: async (body) =>
       (
         await setPartnerBranding({
@@ -169,9 +195,57 @@ export const useSetPartnerBrandingMutation = (
           throwOnError: true,
         })
       ).data,
-    // Nothing cached reads the branding (the API has no GET for it).
     onSuccess: async (data, body) => {
+      queryClient.setQueryData(partnerKeys.branding(partnerId), data);
       await options?.onSuccess?.(data, body);
     },
     onError: options?.onError,
   });
+};
+
+/**
+ * `PUT /api/v1/partners/{id}/logo` (partner admins): PNG or JPEG up to 200 KB; the PDFs of the
+ * partner's companies without a logo of their own use it.
+ */
+export const usePartnerLogoMutation = (
+  partnerId: string,
+  options?: IMutationCallbacks<PartnerBrandingView, File, XhandlerAxiosError>,
+) => {
+  const queryClient = useQueryClient();
+  return useMutation<PartnerBrandingView, XhandlerAxiosError, File>({
+    mutationFn: async (file) =>
+      (
+        await uploadPartnerLogo({
+          path: { partnerId },
+          body: file,
+          headers: { "Content-Type": file.type || "image/png" },
+          throwOnError: true,
+        })
+      ).data,
+    onSuccess: async (data, file) => {
+      queryClient.setQueryData(partnerKeys.branding(partnerId), data);
+      await options?.onSuccess?.(data, file);
+    },
+    onError: options?.onError,
+  });
+};
+
+/** `DELETE /api/v1/partners/{id}/logo` (partner admins): `204`. */
+export const usePartnerLogoDeleteMutation = (
+  partnerId: string,
+  options?: IMutationCallbacks<void, void, XhandlerAxiosError>,
+) => {
+  const queryClient = useQueryClient();
+  return useMutation<void, XhandlerAxiosError, void>({
+    mutationFn: async () => {
+      await deletePartnerLogo({ path: { partnerId }, throwOnError: true });
+    },
+    onSuccess: async (data, variables) => {
+      await queryClient.invalidateQueries({
+        queryKey: partnerKeys.branding(partnerId),
+      });
+      await options?.onSuccess?.(data, variables);
+    },
+    onError: options?.onError,
+  });
+};

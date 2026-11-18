@@ -1,7 +1,9 @@
 import type { UseQueryOptions } from "@tanstack/react-query";
 import {
   queryOptions,
+  useMutation,
   useQuery,
+  useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
 
@@ -10,8 +12,12 @@ import {
   listTenants,
   type TenantSummary,
   type TenantView,
+  type UpdateTenant,
+  updateTenant,
 } from "@app/client/xhandler";
+import { useSelectedTenantId } from "@app/hooks/useSelectedTenantId";
 
+import type { IMutationCallbacks } from "../utils/mutationCallbacks";
 import type { XhandlerAxiosError } from "../utils/openapiErrorTypes";
 
 export const TenantsQueryKey = "tenants";
@@ -67,3 +73,28 @@ export const useSuspenseTenantDetailQuery = ({
 }: {
   tenantId: string;
 }) => useSuspenseQuery(tenantDetailQueryOptions({ tenantId }));
+
+/** `PUT /tenants/{tenantId}` (admin): renames the organization, answers the tenant. */
+export const useTenantUpdateMutation = (
+  options?: IMutationCallbacks<TenantView, UpdateTenant, XhandlerAxiosError>,
+) => {
+  const tenantId = useSelectedTenantId();
+  const queryClient = useQueryClient();
+  return useMutation<TenantView, XhandlerAxiosError, UpdateTenant>({
+    mutationFn: async (body) =>
+      (
+        await updateTenant({
+          path: { tenantId },
+          body,
+          throwOnError: true,
+        })
+      ).data,
+    onSuccess: async (data, variables) => {
+      queryClient.setQueryData(tenantKeys.detail(tenantId), data);
+      // The tenant switcher lists names
+      await queryClient.invalidateQueries({ queryKey: tenantKeys.mine() });
+      await options?.onSuccess?.(data, variables);
+    },
+    onError: options?.onError,
+  });
+};

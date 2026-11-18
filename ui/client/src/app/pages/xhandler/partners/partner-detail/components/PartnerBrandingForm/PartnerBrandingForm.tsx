@@ -45,13 +45,15 @@ const schema = object({
     .default(""),
 });
 
-const DEFAULT_VALUES: IPartnerBrandingValues = {
-  sender_name: "",
-  color: "",
-  footer: "",
-};
+const toValues = (branding: Branding | undefined): IPartnerBrandingValues => ({
+  sender_name: branding?.sender_name ?? "",
+  color: branding?.color ?? "",
+  footer: branding?.footer ?? "",
+});
 
 interface IPartnerBrandingFormProps {
+  /** The current branding (`GET …/branding`), shown when the form mounts. */
+  branding?: Branding;
   submitError: IMutationErrorMessage | null;
   isSaving: boolean;
   /** Disabled when the user isn't an admin of the partner. */
@@ -70,10 +72,11 @@ const toBranding = (values: IPartnerBrandingValues): Branding => {
 };
 
 /**
- * The partner's white-label branding for PDFs and emails. The API has no read of the current
- * branding, so the form starts empty and saving replaces it.
+ * The partner's white-label branding for PDFs and emails, prefilled with the current one; saving
+ * replaces it (empty fields are removed).
  */
 export const PartnerBrandingForm: React.FC<IPartnerBrandingFormProps> = ({
+  branding,
   submitError,
   isSaving,
   gateProps,
@@ -86,7 +89,7 @@ export const PartnerBrandingForm: React.FC<IPartnerBrandingFormProps> = ({
     formState: { errors },
   } = useForm<IPartnerBrandingValues>({
     resolver: yupResolver(schema),
-    defaultValues: DEFAULT_VALUES,
+    defaultValues: toValues(branding),
   });
 
   const helper = (error: string | undefined, text: string) => (

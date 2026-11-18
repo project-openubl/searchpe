@@ -1,5 +1,6 @@
 import type { UseQueryOptions } from "@tanstack/react-query";
 import {
+  keepPreviousData,
   queryOptions,
   useMutation,
   useQuery,
@@ -9,6 +10,9 @@ import {
 import {
   downloadSireFile,
   getSirePeriod,
+  listSirePeriods,
+  type ListSirePeriodsData,
+  type PageSirePeriodSummary,
   type ReplaceRequest,
   replaceSireProposal,
   requestSireProposal,
@@ -17,6 +21,7 @@ import {
 import { useSelectedTenantId } from "@app/hooks/useSelectedTenantId";
 
 import { downloadFile } from "../utils/fileDownload";
+import type { ListParams } from "../utils/listParams";
 import type { IMutationCallbacks } from "../utils/mutationCallbacks";
 import type { XhandlerAxiosError } from "../utils/openapiErrorTypes";
 import { jobKeys } from "./jobs";
@@ -27,6 +32,11 @@ export const SireQueryKey = "sire";
 export const SIRE_BOOKS = ["rvie", "rce"] as const;
 
 export type SireBook = (typeof SIRE_BOOKS)[number];
+
+export const SIRE_BOOK_LABELS: Record<SireBook, string> = {
+  rvie: "Ventas (RVIE)",
+  rce: "Compras (RCE)",
+};
 
 export const isSireBook = (value: string): value is SireBook =>
   (SIRE_BOOKS as readonly string[]).includes(value);
@@ -89,12 +99,72 @@ export interface ISirePeriodPath {
   period: string;
 }
 
+/** `book` (`rvie`, `rce`) or neither for both. */
+export type ISirePeriodListParams = ListParams<ListSirePeriodsData>;
+
 export const sireKeys = {
   all: () => [SireQueryKey] as const,
   company: (tenantId: string, companyId: string) =>
     [...sireKeys.all(), tenantId, companyId] as const,
   period: (tenantId: string, { companyId, book, period }: ISirePeriodPath) =>
     [...sireKeys.company(tenantId, companyId), book, period] as const,
+  list: (tenantId: string, companyId: string) =>
+    [...sireKeys.company(tenantId, companyId), "list"] as const,
+
+  listQuery: (
+    tenantId: string,
+    companyId: string,
+    params: ISirePeriodListParams,
+  ) => [...sireKeys.list(tenantId, companyId), params] as const,
+};
+
+type SirePeriodListOptions = Omit<
+  UseQueryOptions<PageSirePeriodSummary, XhandlerAxiosError>,
+  "queryKey" | "queryFn"
+>;
+
+/**
+ * `GET …/sire`: the company's requested periods in its current environment, latest first,
+ * without their reconciliation (read a period for it).
+ */
+export const sirePeriodsListQueryOptions = ({
+  tenantId,
+  companyId,
+  params,
+  options,
+}: {
+  tenantId: string;
+  companyId: string;
+  params: ISirePeriodListParams;
+  options?: SirePeriodListOptions;
+}) =>
+  queryOptions<PageSirePeriodSummary, XhandlerAxiosError>({
+    placeholderData: keepPreviousData,
+    ...options,
+    queryKey: sireKeys.listQuery(tenantId, companyId, params),
+    queryFn: async () =>
+      (
+        await listSirePeriods({
+          path: { tenantId, companyId },
+          query: params,
+          throwOnError: true,
+        })
+      ).data,
+  });
+
+export const useSirePeriodsListQuery = ({
+  companyId,
+  params,
+  options,
+}: {
+  companyId: string;
+  params: ISirePeriodListParams;
+  options?: SirePeriodListOptions;
+}) => {
+  const tenantId = useSelectedTenantId();
+  return useQuery(
+    sirePeriodsListQueryOptions({ tenantId, companyId, params, options }),
+  );
 };
 
 type SirePeriodOptions = Omit<
@@ -103,8 +173,8 @@ type SirePeriodOptions = Omit<
 >;
 
 /**
- * `GET …/sire/{book}/{period}`. A period nobody has requested yet is a `404` (the API lists no
- * periods), which the page shows as "not requested".
+ * `GET …/sire/{book}/{period}`. A period nobody has requested yet is a `404`, which the page
+ * shows as "not requested"; `GET …/sire` lists the requested ones.
  */
 export const sirePeriodQueryOptions = ({
   tenantId,
@@ -147,6 +217,9 @@ const useSireWriteSuccess = () => {
   const queryClient = useQueryClient();
   return async (data: SirePeriodView, path: ISirePeriodPath) => {
     queryClient.setQueryData(sireKeys.period(tenantId, path), data);
+    void queryClient.invalidateQueries({
+      queryKey: sireKeys.list(tenantId, path.companyId),
+    });
     void queryClient.invalidateQueries({ queryKey: jobKeys.list(tenantId) });
   };
 };

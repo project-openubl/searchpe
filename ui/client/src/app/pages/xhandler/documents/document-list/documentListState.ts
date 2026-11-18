@@ -23,9 +23,20 @@ export const DOCUMENT_LIST_STATE = defineListState({
       tipo: z.array(schemaFromGuard(isTipoComprobante)).max(1),
       estado: z.array(schemaFromGuard(isDocumentStatus)).max(1),
       serie: z.string(),
+      // The buyer: their RUC/DNI exactly, or the start of their name (DESIGN.md §12).
+      comprador: z.string(),
+      nombreComprador: z.string(),
       desde: isoDateOrEmpty,
       hasta: isoDateOrEmpty,
     }),
-    defaultValue: { tipo: [], estado: [], serie: "", desde: "", hasta: "" },
+    defaultValue: {
+      tipo: [],
+      estado: [],
+      serie: "",
+      comprador: "",
+      nombreComprador: "",
+      desde: "",
+      hasta: "",
+    },
   }),
 });

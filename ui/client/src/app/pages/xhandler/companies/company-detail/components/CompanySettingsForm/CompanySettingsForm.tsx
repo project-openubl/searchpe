@@ -163,14 +163,14 @@ export const CompanySettingsForm: React.FC<ICompanySettingsFormProps> = ({
               control={control}
               name="email_subject"
               label="Asunto"
-              helperText="El asunto actual no se muestra; lo que escribas lo reemplaza y vacío vuelve al predeterminado."
+              helperText="Vacío usa el asunto predeterminado."
               isDisabled={isReadOnly}
             />
             <ControlledTextField
               control={control}
               name="email_body"
               label="Mensaje"
-              helperText="El mensaje actual no se muestra; lo que escribas lo reemplaza y vacío vuelve al predeterminado."
+              helperText="Vacío usa el mensaje predeterminado."
               isMultiline
               isDisabled={isReadOnly}
             />

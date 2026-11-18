@@ -21,10 +21,10 @@ import type { XhandlerAxiosError } from "../utils/openapiErrorTypes";
 
 export const AdapterTokensQueryKey = "adapter-tokens";
 
-/** The spec types a token row as a free map (the resource returns `Map<String, Object>`). */
+/** A token as `listAdapterTokens` returns it (never the token itself). */
 export type AdapterTokenRecord = ListAdapterTokensResponses[200][number];
 
-/** The fields `AdapterResource.listTokens` writes, read defensively off the free map. */
+/** A token row with defaults for the fields the spec leaves optional. */
 export interface IAdapterTokenRow {
   id: string;
   kind: string;

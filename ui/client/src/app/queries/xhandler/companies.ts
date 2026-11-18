@@ -156,16 +156,27 @@ const useCompanyWrite = <TVars>({
   });
 };
 
+export interface ICompanyCreateVariables {
+  body: CreateCompany;
+  /** A fresh UUID per user intent, reused when the same submission is retried. */
+  idempotencyKey: string;
+}
+
 /** `POST …/companies` (admin): answers `201` with the new company. */
 export const useCompanyCreateMutation = (
-  options?: IMutationCallbacks<CompanyView, CreateCompany, XhandlerAxiosError>,
+  options?: IMutationCallbacks<
+    CompanyView,
+    ICompanyCreateVariables,
+    XhandlerAxiosError
+  >,
 ) =>
-  useCompanyWrite<CreateCompany>({
+  useCompanyWrite<ICompanyCreateVariables>({
     request: async ({ tenantId, variables }) =>
       (
         await createCompany({
           path: { tenantId },
-          body: variables,
+          body: variables.body,
+          headers: { "Idempotency-Key": variables.idempotencyKey },
           throwOnError: true,
         })
       ).data,

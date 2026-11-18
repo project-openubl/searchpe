@@ -36,11 +36,18 @@ import {
   type TenantRole,
   useTenantRole,
 } from "@app/hooks/useTenantRole";
-import { useNotificationSettingsMutation } from "@app/queries/xhandler/notifications";
-import { useTenantDetailQuery } from "@app/queries/xhandler/tenants";
+import {
+  useNotificationSettingsMutation,
+  useNotificationSettingsQuery,
+} from "@app/queries/xhandler/notifications";
+import {
+  useTenantDetailQuery,
+  useTenantUpdateMutation,
+} from "@app/queries/xhandler/tenants";
 import { getMutationErrorMessage } from "@app/utils/apiError";
 
 import { notificationEmailSchema } from "./notificationEmailSchema";
+import { tenantNameSchema } from "./tenantNameSchema";
 
 const TENANT_STATUS_LABELS: Record<string, string> = {
   active: "Activa",
@@ -130,6 +137,11 @@ export const TenantSettings: React.FC = () => {
               <CardBody>{tenantBody}</CardBody>
             </Card>
           </StackItem>
+          {tenant ? (
+            <StackItem>
+              <TenantNameCard key={tenant.name} name={tenant.name ?? ""} />
+            </StackItem>
+          ) : null}
           <StackItem>
             <NotificationEmailCard />
           </StackItem>
@@ -139,24 +151,113 @@ export const TenantSettings: React.FC = () => {
   );
 };
 
-/** Write-only: the API has no read for the address, so the field starts empty. */
+/** Renames the organization (admin); the form starts with the current name. */
+const TenantNameCard: React.FC<{ name: string }> = ({ name }) => {
+  const formId = useId();
+  const { addNotification } = useNotifications();
+  const { disabledProps } = useTenantRole();
+  const { submitError, setSubmitError, clearSubmitError } = useSubmitError();
+  const { control, handleSubmit } = useForm({
+    resolver: yupResolver(tenantNameSchema),
+    defaultValues: { name },
+    mode: "onTouched",
+  });
+
+  const rename = useTenantUpdateMutation({
+    onSuccess: (data) =>
+      addNotification({
+        variant: "success",
+        title: `La organización ahora se llama ${data.name}`,
+      }),
+    onError: (error) =>
+      setSubmitError(
+        getMutationErrorMessage({
+          error,
+          fallback: "No se pudo cambiar el nombre de la organización",
+        }),
+      ),
+  });
+
+  const onSubmit = handleSubmit((values) => {
+    clearSubmitError();
+    rename.mutate({ name: values.name });
+  });
+
+  return (
+    <Card>
+      <CardTitle component="h2">Nombre de la organización</CardTitle>
+      <CardBody>
+        <Form id={formId} onSubmit={onSubmit} maxWidth="600px">
+          <FormSubmitError error={submitError} />
+          <ControlledTextField
+            control={control}
+            name="name"
+            label="Nombre"
+            isRequired
+          />
+          <ActionGroup>
+            <GatedButton
+              type="submit"
+              form={formId}
+              isLoading={rename.isPending}
+              isDisabled={rename.isPending}
+              {...disabledProps("admin")}
+            >
+              Guardar nombre
+            </GatedButton>
+          </ActionGroup>
+        </Form>
+      </CardBody>
+    </Card>
+  );
+};
+
+/** The notification address, loaded first so the form starts with it. */
 const NotificationEmailCard: React.FC = () => {
+  const { data, isLoading, error } = useNotificationSettingsQuery();
+
+  const body = (() => {
+    if (isLoading)
+      return <Spinner aria-label="Cargando correo de notificaciones" />;
+    if (error || !data) {
+      const message = getMutationErrorMessage({
+        error,
+        fallback: "No se pudo cargar el correo de notificaciones",
+      });
+      return (
+        <Alert variant="danger" isInline title={message.title}>
+          {message.description}
+        </Alert>
+      );
+    }
+    return <NotificationEmailForm current={data.notification_email ?? ""} />;
+  })();
+
+  return (
+    <Card>
+      <CardTitle component="h2">Correo de notificaciones</CardTitle>
+      <CardBody>{body}</CardBody>
+    </Card>
+  );
+};
+
+const NotificationEmailForm: React.FC<{ current: string }> = ({ current }) => {
   const formId = useId();
   const { addNotification } = useNotifications();
   const { disabledProps } = useTenantRole();
   const { submitError, setSubmitError, clearSubmitError } = useSubmitError();
   const { control, handleSubmit } = useForm({
     resolver: yupResolver(notificationEmailSchema),
-    defaultValues: { notification_email: "" },
+    defaultValues: { notification_email: current },
     mode: "onTouched",
   });
 
   const save = useNotificationSettingsMutation({
-    onSuccess: (_data, { notification_email }) =>
+    onSuccess: (data) =>
       addNotification({
         variant: "success",
-        title: notification_email
-          ? `Los avisos llegarán a ${notification_email}`
+        title: data.notification_email
+          ? `Los avisos llegarán a ${data.notification_email}`
           : "Se quitó el correo de notificaciones",
       }),
     onError: (error) =>
@@ -174,31 +275,26 @@ const NotificationEmailCard: React.FC = () => {
   });
 
   return (
-    <Card>
-      <CardTitle component="h2">Correo de notificaciones</CardTitle>
-      <CardBody>
-        <Form id={formId} onSubmit={onSubmit} maxWidth="600px">
-          <FormSubmitError error={submitError} />
-          <ControlledTextField
-            control={control}
-            name="notification_email"
-            label="Correo"
-            type="email"
-            helperText="El correo actual no se muestra. Escribe el nuevo, o déjalo vacío para quitarlo."
-          />
-          <ActionGroup>
-            <GatedButton
-              type="submit"
-              form={formId}
-              isLoading={save.isPending}
-              isDisabled={save.isPending}
-              {...disabledProps("admin")}
-            >
-              Guardar
-            </GatedButton>
-          </ActionGroup>
-        </Form>
-      </CardBody>
-    </Card>
+    <Form id={formId} onSubmit={onSubmit} maxWidth="600px">
+      <FormSubmitError error={submitError} />
+      <ControlledTextField
+        control={control}
+        name="notification_email"
+        label="Correo"
+        type="email"
+        helperText="Déjalo vacío para quitarlo."
+      />
+      <ActionGroup>
+        <GatedButton
+          type="submit"
+          form={formId}
+          isLoading={save.isPending}
+          isDisabled={save.isPending}
+          {...disabledProps("admin")}
+        >
+          Guardar
+        </GatedButton>
+      </ActionGroup>
+    </Form>
   );
 };

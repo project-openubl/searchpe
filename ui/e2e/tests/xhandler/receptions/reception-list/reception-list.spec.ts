@@ -31,7 +31,10 @@ test("lists a company's receptions and filters them by issue date", async ({
     .getByRole("button", { name: /acciones|Kebab toggle/i })
     .click();
   await page.getByRole("menuitem", { name: "Ver detalle" }).click();
+  // Read by id: its validity as SUNAT answered last
+  const detail = page.getByRole("dialog");
+  await expect(detail.getByText("Validez en SUNAT")).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Descargar XML" }),
+    detail.getByRole("button", { name: "Descargar XML" }),
   ).toBeVisible();
 });

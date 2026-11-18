@@ -1,5 +1,5 @@
 import type React from "react";
-import { useId } from "react";
+import { useId, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -39,6 +39,8 @@ export const CompanyCreate: React.FC = () => {
   const { addNotification } = useNotifications();
   const { can } = useTenantRole();
   const { submitError, setSubmitError, clearSubmitError } = useSubmitError();
+  // One key per registration intent: a retry of the same submission reuses it.
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
 
   const { control, handleSubmit, formState } = useForm({
     resolver: yupResolver(companyCreateSchema),
@@ -65,9 +67,12 @@ export const CompanyCreate: React.FC = () => {
     clearSubmitError();
     createCompany.mutate(
       {
-        ruc: values.ruc,
-        razon_social: values.razon_social,
-        nombre_comercial: values.nombre_comercial || undefined,
+        body: {
+          ruc: values.ruc,
+          razon_social: values.razon_social,
+          nombre_comercial: values.nombre_comercial || undefined,
+        },
+        idempotencyKey,
       },
       {
         onSuccess: (company) =>

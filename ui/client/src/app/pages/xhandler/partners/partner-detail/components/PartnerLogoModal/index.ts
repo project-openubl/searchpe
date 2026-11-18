@@ -1,0 +1,1 @@
+export { PartnerLogoModal } from "./PartnerLogoModal";

@@ -9,6 +9,29 @@
           }
         }
       },
+      "AdapterTokenView" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "created_by" : {
+            "type" : "string"
+          },
+          "created_at" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "revoked_at" : {
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
       "AddMember" : {
         "type" : "object",
         "required" : [ "kind", "subject", "role" ],
@@ -97,6 +120,23 @@
           "billing_name" : {
             "type" : "string",
             "maxLength" : 300
+          },
+          "billing_email" : {
+            "type" : "string"
+          }
+        }
+      },
+      "BillingView" : {
+        "type" : "object",
+        "properties" : {
+          "usage" : {
+            "$ref" : "#/components/schemas/Usage"
+          },
+          "billing_ruc" : {
+            "type" : "string"
+          },
+          "billing_name" : {
+            "type" : "string"
           },
           "billing_email" : {
             "type" : "string"
@@ -221,6 +261,14 @@
           },
           "libro_reclamaciones_url" : {
             "type" : "string"
+          },
+          "email_subject" : {
+            "type" : "string",
+            "description" : "Asunto del correo al comprador; null usa el predeterminado."
+          },
+          "email_body" : {
+            "type" : "string",
+            "description" : "Cuerpo del correo al comprador; null usa el predeterminado."
           }
         }
       },
@@ -812,6 +860,17 @@
           "confirm_name" : {
             "type" : "string",
             "pattern" : "\\S"
+          }
+        }
+      },
+      "ExitView" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "delete_after" : {
+            "type" : "string"
           }
         }
       },
@@ -1502,6 +1561,45 @@
           }
         }
       },
+      "PageSirePeriodSummary" : {
+        "description" : "Una página de resultados (`?limit=&offset=`). No incluye el total: una página con menos de `limit` elementos es la última.",
+        "type" : "object",
+        "required" : [ "items", "limit", "offset" ],
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SirePeriodSummary"
+            },
+            "description" : "Los elementos de la página, como mucho `limit`."
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Tamaño de página aplicado (por defecto 50, máximo 200)."
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Elementos saltados antes de esta página."
+          }
+        }
+      },
+      "PartnerBrandingView" : {
+        "type" : "object",
+        "properties" : {
+          "partner_id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "branding" : {
+            "$ref" : "#/components/schemas/Branding"
+          },
+          "has_logo" : {
+            "type" : "boolean",
+            "description" : "Si el socio subió un logo; los PDF de sus cuentas lo usan cuando la empresa no tiene uno."
+          }
+        }
+      },
       "PartnerTenant" : {
         "type" : "object",
         "properties" : {
@@ -1527,6 +1625,119 @@
           },
           "role" : {
             "type" : "string"
+          }
+        }
+      },
+      "PersonalData" : {
+        "type" : "object",
+        "properties" : {
+          "request" : {
+            "$ref" : "#/components/schemas/DataSubjectRequestView"
+          },
+          "documents" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PersonalDocument"
+            }
+          },
+          "drafts" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PersonalDraft"
+            }
+          }
+        }
+      },
+      "PersonalDocument" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "issuer_ruc" : {
+            "type" : "string"
+          },
+          "tipo_comprobante" : {
+            "type" : "string"
+          },
+          "serie_numero" : {
+            "type" : "string"
+          },
+          "fecha_emision" : {
+            "type" : "string"
+          },
+          "nombre" : {
+            "type" : "string"
+          },
+          "moneda" : {
+            "type" : "string"
+          },
+          "total" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        }
+      },
+      "PersonalDraft" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "issuer_ruc" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "tipo_comprobante" : {
+            "type" : "string"
+          },
+          "serie" : {
+            "type" : "string"
+          },
+          "nombre" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "created_at" : {
+            "type" : "string"
+          },
+          "deleted_at" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Plan" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "production_per_month" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "beta_per_day" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "sandbox_per_day" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "custom_smtp" : {
+            "type" : "boolean"
+          },
+          "webhooks" : {
+            "type" : "boolean"
           }
         }
       },
@@ -1763,6 +1974,17 @@
           }
         }
       },
+      "RevokedView" : {
+        "type" : "object",
+        "properties" : {
+          "company_id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "emission_mode" : {
+            "type" : "string"
+          }
+        }
+      },
       "RouteChange" : {
         "type" : "object",
         "required" : [ "submission_route" ],
@@ -1946,6 +2168,41 @@
           }
         }
       },
+      "SirePeriodSummary" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "book" : {
+            "type" : "string"
+          },
+          "period" : {
+            "type" : "string"
+          },
+          "sunat_env" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "detail" : {
+            "type" : "string"
+          },
+          "proposal_file" : {
+            "type" : "boolean"
+          },
+          "replacement_file" : {
+            "type" : "boolean"
+          },
+          "created_at" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "updated_at" : {
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
       "SirePeriodView" : {
         "type" : "object",
         "properties" : {
@@ -2063,6 +2320,12 @@
             "items" : {
               "$ref" : "#/components/schemas/Queue"
             }
+          },
+          "sunat" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SunatEnvironment"
+            }
           }
         }
       },
@@ -2077,6 +2340,46 @@
           "content_base64" : {
             "type" : "string",
             "pattern" : "\\S"
+          }
+        }
+      },
+      "SunatEndpoint" : {
+        "type" : "object",
+        "properties" : {
+          "service" : {
+            "type" : "string",
+            "description" : "Servicio de SUNAT: invoice (comprobantes y resúmenes), despatch (guías) o perception (percepciones y retenciones)."
+          },
+          "breaker_state" : {
+            "type" : "string",
+            "description" : "closed (responde), open (caído: no se le envía) o half_open (probando si volvió)."
+          },
+          "breaker_until" : {
+            "description" : "Hasta cuándo queda abierto el disyuntor; luego se prueba de nuevo.",
+            "type" : "string",
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "paused" : {
+            "type" : "boolean",
+            "description" : "Pausado por la plataforma: no se le envía."
+          }
+        }
+      },
+      "SunatEnvironment" : {
+        "type" : "object",
+        "properties" : {
+          "environment" : {
+            "type" : "string",
+            "description" : "production, beta o fake."
+          },
+          "available" : {
+            "type" : "boolean"
+          },
+          "endpoints" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SunatEndpoint"
+            }
           }
         }
       },
@@ -2169,6 +2472,70 @@
         "type" : "string",
         "format" : "uuid",
         "pattern" : "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+      },
+      "UpdateMember" : {
+        "type" : "object",
+        "required" : [ "role" ],
+        "properties" : {
+          "role" : {
+            "type" : "string",
+            "pattern" : "admin|operator|viewer"
+          }
+        }
+      },
+      "UpdateSeries" : {
+        "type" : "object",
+        "properties" : {
+          "next_number" : {
+            "type" : "integer",
+            "format" : "int64",
+            "maximum" : 99999999,
+            "minimum" : 1
+          },
+          "active" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "UpdateTenant" : {
+        "type" : "object",
+        "required" : [ "name" ],
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "pattern" : "\\S",
+            "maxLength" : 200
+          }
+        }
+      },
+      "Usage" : {
+        "type" : "object",
+        "properties" : {
+          "plan" : {
+            "$ref" : "#/components/schemas/Plan"
+          },
+          "source" : {
+            "type" : "string"
+          },
+          "synced_at" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "stale" : {
+            "type" : "boolean"
+          },
+          "production_this_month" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "beta_today" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "sandbox_today" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
       },
       "Versions" : {
         "type" : "object",
@@ -2490,6 +2857,57 @@
       }
     },
     "/api/v1/partners/{partnerId}/branding" : {
+      "get" : {
+        "operationId" : "getPartnerBranding",
+        "parameters" : [ {
+          "name" : "partnerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PartnerBrandingView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Get Branding",
+        "tags" : [ "Partner Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
+      },
       "put" : {
         "operationId" : "setPartnerBranding",
         "parameters" : [ {
@@ -2516,8 +2934,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "type" : "object",
-                  "additionalProperties" : { }
+                  "$ref" : "#/components/schemas/PartnerBrandingView"
                 }
               }
             }
@@ -2550,6 +2967,120 @@
           }
         },
         "summary" : "Branding",
+        "tags" : [ "Partner Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
+      }
+    },
+    "/api/v1/partners/{partnerId}/logo" : {
+      "put" : {
+        "operationId" : "uploadPartnerLogo",
+        "parameters" : [ {
+          "name" : "partnerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "image/png" : {
+              "schema" : {
+                "type" : "string",
+                "format" : "binary"
+              }
+            },
+            "image/jpeg" : {
+              "schema" : {
+                "type" : "string",
+                "format" : "binary"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PartnerBrandingView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Upload Logo",
+        "tags" : [ "Partner Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
+      },
+      "delete" : {
+        "operationId" : "deletePartnerLogo",
+        "parameters" : [ {
+          "name" : "partnerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Logo del socio eliminado."
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Delete Logo",
         "tags" : [ "Partner Resource" ],
         "security" : [ {
           "bearer" : [ ]
@@ -3212,6 +3743,70 @@
       }
     },
     "/api/v1/tenants/{tenantId}" : {
+      "put" : {
+        "operationId" : "updateTenant",
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateTenant"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TenantView"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Update",
+        "tags" : [ "Tenant Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
+      },
       "get" : {
         "operationId" : "getTenant",
         "parameters" : [ {
@@ -3348,8 +3943,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "type" : "object",
-                  "additionalProperties" : { }
+                  "$ref" : "#/components/schemas/BillingView"
                 }
               }
             }
@@ -3410,8 +4004,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "type" : "object",
-                  "additionalProperties" : { }
+                  "$ref" : "#/components/schemas/BillingView"
                 }
               }
             }
@@ -3525,6 +4118,12 @@
           "schema" : {
             "$ref" : "#/components/schemas/UUID"
           }
+        }, {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "requestBody" : {
           "content" : {
@@ -3538,11 +4137,21 @@
         },
         "responses" : {
           "201" : {
-            "description" : "Empresa creada.",
+            "description" : "Empresa creada (también la respuesta repetida de una Idempotency-Key ya usada).",
             "content" : {
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/CompanyView"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "Máximo de empresas sin verificar, o Idempotency-Key en proceso.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
                 }
               }
             }
@@ -3667,8 +4276,7 @@
                 "schema" : {
                   "type" : "array",
                   "items" : {
-                    "type" : "object",
-                    "additionalProperties" : { }
+                    "$ref" : "#/components/schemas/AdapterTokenView"
                   }
                 }
               }
@@ -5677,8 +6285,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "type" : "object",
-                  "additionalProperties" : { }
+                  "$ref" : "#/components/schemas/RevokedView"
                 }
               }
             }
@@ -6023,6 +6630,73 @@
           }
         },
         "summary" : "List",
+        "tags" : [ "Reception Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/receptions/{receptionId}" : {
+      "get" : {
+        "operationId" : "getReception",
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "receptionId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReceptionView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Get",
         "tags" : [ "Reception Resource" ],
         "security" : [ {
           "bearer" : [ ]
@@ -6623,6 +7297,12 @@
           "schema" : {
             "$ref" : "#/components/schemas/UUID"
           }
+        }, {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "requestBody" : {
           "content" : {
@@ -6636,11 +7316,21 @@
         },
         "responses" : {
           "201" : {
-            "description" : "Serie creada.",
+            "description" : "Serie creada (también la respuesta repetida de una Idempotency-Key ya usada).",
             "content" : {
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/SeriesView"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "La serie ya existe, o Idempotency-Key en proceso.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
                 }
               }
             }
@@ -6673,6 +7363,96 @@
           }
         },
         "summary" : "Create Series",
+        "tags" : [ "Company Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/series/{seriesId}" : {
+      "put" : {
+        "summary" : "Cambia el siguiente número de una serie, o la activa o desactiva",
+        "operationId" : "updateSeries",
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "seriesId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateSeries"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "La serie actualizada.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SeriesView"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "El siguiente número retrocedería por debajo de los ya usados.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
         "tags" : [ "Company Resource" ],
         "security" : [ {
           "bearer" : [ ]
@@ -6747,6 +7527,87 @@
         },
         "summary" : "Settings",
         "tags" : [ "Company Environment Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/companies/{companyId}/sire" : {
+      "get" : {
+        "operationId" : "listSirePeriods",
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "book",
+          "in" : "query",
+          "schema" : {
+            "description" : "rvie (ventas) o rce (compras); sin filtro, ambos.",
+            "type" : "string"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageSirePeriodSummary"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "List",
+        "tags" : [ "Sire Resource" ],
         "security" : [ {
           "bearer" : [ ]
         } ]
@@ -7364,8 +8225,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "type" : "object",
-                  "additionalProperties" : { }
+                  "$ref" : "#/components/schemas/PersonalData"
                 }
               }
             }
@@ -7416,6 +8276,20 @@
           "in" : "query",
           "schema" : {
             "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "customer_nombre",
+          "in" : "query",
+          "schema" : {
+            "description" : "Inicio del nombre o razón social del comprador, sin distinguir mayúsculas.",
+            "type" : "string"
+          }
+        }, {
+          "name" : "customer_numero",
+          "in" : "query",
+          "schema" : {
+            "description" : "Número de documento del comprador (RUC, DNI, …), exacto.",
+            "type" : "string"
           }
         }, {
           "name" : "from",
@@ -8900,8 +9774,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "type" : "object",
-                  "additionalProperties" : { }
+                  "$ref" : "#/components/schemas/ExitView"
                 }
               }
             }
@@ -9379,6 +10252,12 @@
           "schema" : {
             "$ref" : "#/components/schemas/UUID"
           }
+        }, {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "requestBody" : {
           "content" : {
@@ -9392,11 +10271,21 @@
         },
         "responses" : {
           "201" : {
-            "description" : "Miembro agregado.",
+            "description" : "Miembro agregado (también la respuesta repetida de una Idempotency-Key ya usada).",
             "content" : {
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/MemberView"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "El miembro ya pertenece a la cuenta, o Idempotency-Key en proceso.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
                 }
               }
             }
@@ -9429,6 +10318,150 @@
           }
         },
         "summary" : "Add",
+        "tags" : [ "Member Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
+      }
+    },
+    "/api/v1/tenants/{tenantId}/members/{memberId}" : {
+      "put" : {
+        "summary" : "Cambia el rol de un miembro",
+        "operationId" : "updateMember",
+        "parameters" : [ {
+          "name" : "memberId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateMember"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Miembro con su nuevo rol.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MemberView"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "Dejaría a la cuenta sin propietario.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "Member Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
+      },
+      "delete" : {
+        "summary" : "Quita a un miembro de la cuenta",
+        "operationId" : "removeMember",
+        "parameters" : [ {
+          "name" : "memberId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Miembro quitado de la cuenta."
+          },
+          "409" : {
+            "description" : "Dejaría a la cuenta sin propietario.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
         "tags" : [ "Member Resource" ],
         "security" : [ {
           "bearer" : [ ]
@@ -9588,8 +10621,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "type" : "object",
-                  "additionalProperties" : { }
+                  "$ref" : "#/components/schemas/NotificationSettings"
                 }
               }
             }
@@ -9622,6 +10654,57 @@
           }
         },
         "summary" : "Settings",
+        "tags" : [ "Notification Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
+      },
+      "get" : {
+        "summary" : "Correo al que se envían las notificaciones de la cuenta",
+        "operationId" : "getNotificationSettings",
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotificationSettings"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
         "tags" : [ "Notification Resource" ],
         "security" : [ {
           "bearer" : [ ]
@@ -10220,6 +11303,12 @@
           "schema" : {
             "$ref" : "#/components/schemas/UUID"
           }
+        }, {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "requestBody" : {
           "content" : {
@@ -10233,11 +11322,21 @@
         },
         "responses" : {
           "201" : {
-            "description" : "Webhook creado; el secreto se muestra solo esta vez.",
+            "description" : "Webhook creado; el secreto se muestra solo esta vez (la respuesta repetida de una Idempotency-Key ya usada no lo trae).",
             "content" : {
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/WebhookView"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "Idempotency-Key en proceso, o RUC sin verificar.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
                 }
               }
             }
@@ -10277,6 +11376,64 @@
       }
     },
     "/api/v1/tenants/{tenantId}/webhooks/{webhookId}" : {
+      "get" : {
+        "operationId" : "getWebhook",
+        "parameters" : [ {
+          "name" : "tenantId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "webhookId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WebhookView"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Sin token o con un token inválido (sin cuerpo)."
+          },
+          "4XX" : {
+            "description" : "Error de la solicitud: `kind` estable, `message` en español.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "5XX" : {
+            "description" : "Error del servicio (p. ej. 502 cuando falla el motor).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Get",
+        "tags" : [ "Webhook Resource" ],
+        "security" : [ {
+          "bearer" : [ ]
+        } ]
+      },
       "delete" : {
         "operationId" : "deleteWebhook",
         "parameters" : [ {

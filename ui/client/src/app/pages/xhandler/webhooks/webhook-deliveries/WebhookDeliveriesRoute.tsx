@@ -9,6 +9,6 @@ const routeApi = getRouteApi(
 );
 
 export const WebhookDeliveriesRoute: React.FC = () => {
-  const { webhook } = routeApi.useLoaderData();
-  return <WebhookDeliveries webhook={webhook} />;
+  const { webhookId } = routeApi.useLoaderData();
+  return <WebhookDeliveries webhookId={webhookId} />;
 };

@@ -68,7 +68,10 @@ const CreateWebhookForm: React.FC<ICreateWebhookFormProps> = ({ onClose }) => {
   const { submitError, setSubmitError, clearSubmitError } = useSubmitError();
   // The one-time secret is shown from this state; the mutation (gcTime 0) drops its copy
   // once the modal closes.
-  const [secret, setSecret] = useState<string | null>(null);
+  // Undefined until created; null when the answer was a replay that no longer carries it.
+  const [secret, setSecret] = useState<string | null | undefined>(undefined);
+  // One per opening of the modal: a retry of the same submission is the same request.
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
   const { control, handleSubmit } = useForm({
     resolver: yupResolver(webhookSchema),
     defaultValues: { url: "", events: ["*"] },
@@ -93,12 +96,40 @@ const CreateWebhookForm: React.FC<ICreateWebhookFormProps> = ({ onClose }) => {
   const onSubmit = handleSubmit((values) => {
     clearSubmitError();
     create.mutate(
-      { url: values.url, events: toEvents(values.events) },
-      { onSuccess: (webhook) => setSecret(webhook.secret ?? "") },
+      {
+        body: { url: values.url, events: toEvents(values.events) },
+        idempotencyKey,
+      },
+      { onSuccess: (webhook) => setSecret(webhook.secret ?? null) },
     );
   });
 
-  if (secret !== null) {
+  if (secret === null) {
+    return (
+      <>
+        <ModalHeader
+          title="Webhook creado"
+          labelId="create-webhook-modal-title"
+        />
+        <ModalBody>
+          <Alert
+            variant="info"
+            isInline
+            title="El secreto ya se mostró al crear el webhook"
+          >
+            Esta solicitud repitió una anterior que ya creó el webhook, así que
+            el secreto no se vuelve a mostrar. Si no lo copiaste, elimina el
+            webhook y créalo de nuevo.
+          </Alert>
+        </ModalBody>
+        <ModalFooter>
+          <Button onClick={onClose}>Listo</Button>
+        </ModalFooter>
+      </>
+    );
+  }
+
+  if (secret !== undefined) {
     return (
       <>
         <ModalHeader

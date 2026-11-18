@@ -4,30 +4,41 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 
 import {
+  Alert,
   Breadcrumb,
   BreadcrumbItem,
   Card,
   CardBody,
+  CardTitle,
   Content,
   ContentVariants,
+  Flex,
+  FlexItem,
   PageSection,
+  Spinner,
   Tab,
   Tabs,
   TabTitleText,
 } from "@patternfly/react-core";
 
+import { ApiErrorText } from "@app/components/ApiErrorText";
+import { ConfirmActionModal } from "@app/components/ConfirmActionModal";
 import { DocumentTitle } from "@app/components/DocumentTitle";
+import { GatedButton } from "@app/components/GatedButton";
 import { useNotifications } from "@app/hooks/useNotifications";
 import { useSubmitError } from "@app/hooks/useSubmitError";
 import {
   isPartnerRole,
   PARTNER_ROLE_LABELS,
   useMyPartnersQuery,
+  usePartnerBrandingQuery,
+  usePartnerLogoDeleteMutation,
   useSetPartnerBrandingMutation,
 } from "@app/queries/xhandler/partners";
 import { getMutationErrorMessage } from "@app/utils/apiError";
 
 import { PartnerBrandingForm } from "./components/PartnerBrandingForm";
+import { PartnerLogoModal } from "./components/PartnerLogoModal";
 import { PartnerTenantsTab } from "./components/PartnerTenantsTab";
 
 interface IPartnerDetailProps {
@@ -66,6 +77,23 @@ export const PartnerDetail: React.FC<IPartnerDetailProps> = ({ partnerId }) => {
         }),
       ),
   });
+
+  const branding = usePartnerBrandingQuery({ partnerId });
+  const [isLogoOpen, setIsLogoOpen] = useState(false);
+  const [isDeleteLogoOpen, setIsDeleteLogoOpen] = useState(false);
+  const deleteLogo = usePartnerLogoDeleteMutation(partnerId, {
+    onSuccess: () =>
+      addNotification({ variant: "success", title: "Se quitó el logo" }),
+    onError: (error) =>
+      addNotification({
+        variant: "danger",
+        ...getMutationErrorMessage({
+          error,
+          fallback: "No se pudo quitar el logo",
+        }),
+      }),
+  });
+  const hasLogo = branding.data?.has_logo === true;
 
   const title = partner?.name ?? "Socio";
   const role = partner?.role;
@@ -107,20 +135,95 @@ export const PartnerDetail: React.FC<IPartnerDetailProps> = ({ partnerId }) => {
                   organizaciones. Al guardar se reemplaza la marca actual: los
                   campos vacíos se quitan.
                 </Content>
-                <PartnerBrandingForm
-                  submitError={submitError}
-                  isSaving={setBranding.isPending}
-                  gateProps={gateProps}
-                  onSave={(branding) => {
-                    clearSubmitError();
-                    setBranding.mutate(branding);
-                  }}
-                />
+                {branding.isLoading ? (
+                  <Spinner size="lg" aria-label="Cargando la marca" />
+                ) : branding.error ? (
+                  <Alert
+                    variant="danger"
+                    isInline
+                    title="No se pudo cargar la marca"
+                  >
+                    <ApiErrorText
+                      error={getMutationErrorMessage({
+                        error: branding.error,
+                        fallback: "No se pudo cargar la marca",
+                      })}
+                    />
+                  </Alert>
+                ) : (
+                  <PartnerBrandingForm
+                    branding={branding.data?.branding}
+                    submitError={submitError}
+                    isSaving={setBranding.isPending}
+                    gateProps={gateProps}
+                    onSave={(values) => {
+                      clearSubmitError();
+                      setBranding.mutate(values);
+                    }}
+                  />
+                )}
+              </CardBody>
+            </Card>
+            <Card isPlain>
+              <CardTitle>Logo</CardTitle>
+              <CardBody>
+                <Flex
+                  alignItems={{ default: "alignItemsCenter" }}
+                  spaceItems={{ default: "spaceItemsMd" }}
+                >
+                  <FlexItem>
+                    <Content component={ContentVariants.p}>
+                      {hasLogo
+                        ? "Tus organizaciones usan tu logo en los PDF de las empresas que no tienen uno propio."
+                        : "Sin logo: los PDF de las empresas sin logo propio salen sin logo."}
+                    </Content>
+                  </FlexItem>
+                  <FlexItem>
+                    <GatedButton
+                      variant="secondary"
+                      onClick={() => setIsLogoOpen(true)}
+                      {...gateProps}
+                    >
+                      {hasLogo ? "Cambiar logo" : "Subir logo"}
+                    </GatedButton>
+                  </FlexItem>
+                  {hasLogo ? (
+                    <FlexItem>
+                      <GatedButton
+                        variant="link"
+                        isDanger
+                        onClick={() => setIsDeleteLogoOpen(true)}
+                        {...gateProps}
+                      >
+                        Quitar logo
+                      </GatedButton>
+                    </FlexItem>
+                  ) : null}
+                </Flex>
               </CardBody>
             </Card>
           </Tab>
         </Tabs>
       </PageSection>
+      <PartnerLogoModal
+        isOpen={isLogoOpen}
+        partnerId={partnerId}
+        onClose={() => setIsLogoOpen(false)}
+      />
+      <ConfirmActionModal
+        isOpen={isDeleteLogoOpen}
+        title="¿Quitar el logo?"
+        body="Los PDF de las empresas sin logo propio saldrán sin logo."
+        confirmLabel="Quitar logo"
+        cancelLabel="Volver"
+        isConfirming={deleteLogo.isPending}
+        onConfirm={() =>
+          deleteLogo.mutate(undefined, {
+            onSuccess: () => setIsDeleteLogoOpen(false),
+          })
+        }
+        onCancel={() => setIsDeleteLogoOpen(false)}
+      />
     </>
   );
 };

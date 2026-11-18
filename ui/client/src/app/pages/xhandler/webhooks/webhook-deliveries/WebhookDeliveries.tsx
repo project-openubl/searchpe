@@ -19,7 +19,7 @@ import {
 } from "@patternfly/react-data-view";
 import { ActionsColumn, type IAction } from "@patternfly/react-table";
 
-import type { DeliveryView, WebhookView } from "@app/client/xhandler";
+import type { DeliveryView } from "@app/client/xhandler";
 import { ClearFiltersButton } from "@app/components/ClearFiltersButton";
 import { dataViewBodyStates } from "@app/components/dataViewStates";
 import { DocumentTitle } from "@app/components/DocumentTitle";
@@ -36,6 +36,7 @@ import { useSelectedTenantId } from "@app/hooks/useSelectedTenantId";
 import { useTenantRole } from "@app/hooks/useTenantRole";
 import {
   DELIVERY_STATUSES,
+  useSuspenseWebhookQuery,
   useWebhookDeliveriesQuery,
   useWebhookRedeliverMutation,
 } from "@app/queries/xhandler/webhooks";
@@ -58,15 +59,15 @@ const formatTime = (value: string | undefined): string =>
   value ? dayjs(value).format(RENDER_DATETIME_FORMAT) : "-";
 
 interface IWebhookDeliveriesProps {
-  webhook: WebhookView;
+  webhookId: string;
 }
 
 /** Every delivery of one webhook, newest first; failed or pending ones can be sent again. */
 export const WebhookDeliveries: React.FC<IWebhookDeliveriesProps> = ({
-  webhook,
+  webhookId,
 }) => {
   const tenantId = useSelectedTenantId();
-  const webhookId = webhook.id ?? "";
+  const { data: webhook } = useSuspenseWebhookQuery({ webhookId });
   const { addNotification } = useNotifications();
   const { can, disabledProps } = useTenantRole();
 

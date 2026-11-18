@@ -19,10 +19,13 @@ test("opens a webhook's deliveries from the list", async ({
     "the organization has no webhook (its plan has none)",
   );
 
+  const url = (await first.textContent())?.trim() ?? "";
   await first.click();
   await expect(
     page.getByRole("heading", { level: 1, name: "Entregas del webhook" }),
   ).toBeVisible();
+  // The header reads the webhook by id
+  await expect(page.getByText(url, { exact: true })).toBeVisible();
   await expect(
     page.getByRole("grid", { name: "Tabla de entregas" }),
   ).toBeVisible();

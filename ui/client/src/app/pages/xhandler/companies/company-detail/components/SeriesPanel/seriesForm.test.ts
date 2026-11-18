@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { seriesSchema, tipoComprobanteLabel } from "./seriesForm";
+import {
+  seriesNextNumberSchema,
+  seriesSchema,
+  tipoComprobanteLabel,
+} from "./seriesForm";
 
 describe("series form", () => {
   it("names the document types and shows unknown codes as returned", () => {
@@ -31,5 +35,24 @@ describe("series form", () => {
         next_number: "0",
       }),
     ).rejects.toThrow("El número empieza en 1");
+  });
+
+  it("moves an existing series' next number forward only", async () => {
+    const schema = seriesNextNumberSchema(42);
+    await expect(schema.validate({ next_number: "42" })).resolves.toEqual({
+      next_number: 42,
+    });
+    await expect(schema.validate({ next_number: "500" })).resolves.toEqual({
+      next_number: 500,
+    });
+    await expect(schema.validate({ next_number: "41" })).rejects.toThrow(
+      "no puede ser menor que 42",
+    );
+    await expect(schema.validate({ next_number: "" })).rejects.toThrow(
+      "Ingresa el siguiente número",
+    );
+    await expect(schema.validate({ next_number: "100000000" })).rejects.toThrow(
+      "8 dígitos",
+    );
   });
 });

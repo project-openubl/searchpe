@@ -1,5 +1,5 @@
 import type React from "react";
-import { useId } from "react";
+import { useId, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -61,6 +61,8 @@ const SeriesCreateForm: React.FC<ISeriesCreateFormProps> = ({
   const formId = useId();
   const { addNotification } = useNotifications();
   const { submitError, setSubmitError, clearSubmitError } = useSubmitError();
+  // One key per opening of the form: a retry of the same submission reuses it.
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
   const { control, handleSubmit } = useForm({
     resolver: yupResolver(seriesSchema),
     defaultValues: { tipo_comprobante: "01", serie: "" },
@@ -86,9 +88,12 @@ const SeriesCreateForm: React.FC<ISeriesCreateFormProps> = ({
     clearSubmitError();
     create.mutate(
       {
-        tipo_comprobante: values.tipo_comprobante,
-        serie: values.serie,
-        next_number: values.next_number,
+        body: {
+          tipo_comprobante: values.tipo_comprobante,
+          serie: values.serie,
+          next_number: values.next_number,
+        },
+        idempotencyKey,
       },
       { onSuccess: onClose },
     );

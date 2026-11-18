@@ -52,9 +52,8 @@ describe("AddMemberModal", () => {
 
     await expect.poll(() => mutate.mock.calls.length).toBe(1);
     expect(mutate.mock.calls[0][0]).toEqual({
-      kind: "client",
-      subject: "erp-bodega",
-      role: "operator",
+      body: { kind: "client", subject: "erp-bodega", role: "operator" },
+      idempotencyKey: expect.any(String),
     });
   });
 });

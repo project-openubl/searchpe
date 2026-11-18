@@ -8,6 +8,7 @@ import {
 
 import {
   downloadReceptionFile,
+  getReception,
   listReceptions,
   type ListReceptionsData,
   type PageReceptionView,
@@ -63,6 +64,15 @@ export const receptionKeys = {
   list: (tenantId: string, companyId: string) =>
     [...receptionKeys.all(), tenantId, companyId, "list"] as const,
 
+  detail: (tenantId: string, companyId: string, receptionId: string) =>
+    [
+      ...receptionKeys.all(),
+      tenantId,
+      companyId,
+      "detail",
+      receptionId,
+    ] as const,
+
   listQuery: (
     tenantId: string,
     companyId: string,
@@ -113,6 +123,44 @@ export const useReceptionsListQuery = ({
   return useQuery(
     receptionsListQueryOptions({ tenantId, companyId, params, options }),
   );
+};
+
+/** `GET …/receptions/{id}`: one received document, with its latest validity check. */
+export const receptionDetailQueryOptions = ({
+  tenantId,
+  companyId,
+  receptionId,
+}: {
+  tenantId: string;
+  companyId: string;
+  receptionId: string;
+}) =>
+  queryOptions<ReceptionView, XhandlerAxiosError>({
+    queryKey: receptionKeys.detail(tenantId, companyId, receptionId),
+    queryFn: async () =>
+      (
+        await getReception({
+          path: { tenantId, companyId, receptionId },
+          throwOnError: true,
+        })
+      ).data,
+  });
+
+/** The detail of a reception opened from its list row: the row shows until the read answers. */
+export const useReceptionQuery = ({
+  companyId,
+  reception,
+}: {
+  companyId: string;
+  reception: ReceptionView | null;
+}) => {
+  const tenantId = useSelectedTenantId();
+  const receptionId = reception?.id ?? "";
+  return useQuery({
+    ...receptionDetailQueryOptions({ tenantId, companyId, receptionId }),
+    placeholderData: reception ?? undefined,
+    enabled: !!tenantId && !!receptionId,
+  });
 };
 
 export interface IReceptionFileVariables {

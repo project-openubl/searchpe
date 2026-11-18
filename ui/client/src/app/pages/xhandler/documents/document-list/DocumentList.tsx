@@ -79,6 +79,12 @@ export const DocumentList: React.FC = () => {
   const debouncedSerie = useDebouncedValue({
     value: filters.serie.trim().toUpperCase(),
   });
+  const debouncedComprador = useDebouncedValue({
+    value: filters.comprador.trim(),
+  });
+  const debouncedNombreComprador = useDebouncedValue({
+    value: filters.nombreComprador.trim(),
+  });
 
   const { data, isLoading, error } = useDocumentsListQuery({
     params: {
@@ -86,6 +92,8 @@ export const DocumentList: React.FC = () => {
       tipo_comprobante: filters.tipo[0],
       status: filters.estado[0],
       serie: debouncedSerie || undefined,
+      customer_numero: debouncedComprador || undefined,
+      customer_nombre: debouncedNombreComprador || undefined,
       from: filters.desde || undefined,
       to: filters.hasta || undefined,
     },
@@ -158,6 +166,8 @@ export const DocumentList: React.FC = () => {
     filters.tipo.length > 0 ||
     filters.estado.length > 0 ||
     Boolean(debouncedSerie) ||
+    Boolean(debouncedComprador) ||
+    Boolean(debouncedNombreComprador) ||
     Boolean(filters.desde) ||
     Boolean(filters.hasta);
 
@@ -216,6 +226,16 @@ export const DocumentList: React.FC = () => {
                   filterId="serie"
                   title="Serie"
                   placeholder="Filtrar por serie (F001)"
+                />
+                <DataViewTextFilter
+                  filterId="comprador"
+                  title="RUC/DNI del comprador"
+                  placeholder="Filtrar por RUC o DNI del comprador"
+                />
+                <DataViewTextFilter
+                  filterId="nombreComprador"
+                  title="Nombre del comprador"
+                  placeholder="Filtrar por nombre del comprador (empieza con)"
                 />
                 <SingleSelectFilter
                   filterId="tipo"

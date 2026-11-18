@@ -56,3 +56,13 @@ export class ConformityListPage extends DataViewList {
     await this.page.goto(`${companyPath}/conformidad`);
   }
 }
+
+export class SirePeriodListPage extends DataViewList {
+  constructor(page: Page) {
+    super(page, "Periodos de SIRE", "Tabla de periodos de SIRE");
+  }
+
+  async goto(companyPath: string) {
+    await this.page.goto(`${companyPath}/sire/periodos`);
+  }
+}

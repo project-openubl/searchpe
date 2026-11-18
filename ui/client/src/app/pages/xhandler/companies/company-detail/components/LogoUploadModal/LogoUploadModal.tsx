@@ -24,8 +24,7 @@ import { useNotifications } from "@app/hooks/useNotifications";
 import { useSubmitError } from "@app/hooks/useSubmitError";
 import { useCompanyLogoMutation } from "@app/queries/xhandler/companies";
 import { getMutationErrorMessage } from "@app/utils/apiError";
-
-import { logoFileProblem } from "./logoFile";
+import { logoFileProblem } from "@app/utils/logoFile";
 
 const schema = object({
   file: mixed<File>()
