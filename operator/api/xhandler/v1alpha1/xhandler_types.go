@@ -356,6 +356,12 @@ type UISpec struct {
 	// +optional
 	OIDCClientID string `json:"oidcClientId,omitempty"`
 
+	// The platform's own Libro de Reclamaciones (https), linked from every page of the UI
+	// (Ley 32495). Not shown when empty.
+	// +kubebuilder:validation:Pattern=`^https://`
+	// +optional
+	LibroReclamacionesURL string `json:"libroReclamacionesUrl,omitempty"`
+
 	// A ConfigMap key with the CA certificates (PEM) the UI trusts on top of the system's
 	// (NODE_EXTRA_CA_CERTS): the CA of a Searchpe with TLS, for instance.
 	// +optional

@@ -594,6 +594,9 @@ func uiDeployment(cr *xhandlerv1alpha1.XHandler, image string, pullPolicy corev1
 		c.value("OIDC_SERVER_URL", oidc.ServerURL)
 	}
 	c.value("OIDC_CLIENT_ID", uiOIDCClientID(cr))
+	if cr.Spec.UI != nil && cr.Spec.UI.LibroReclamacionesURL != "" {
+		c.value("LIBRO_RECLAMACIONES_URL", cr.Spec.UI.LibroReclamacionesURL)
+	}
 	mounts := []*corev1ac.VolumeMountApplyConfiguration{corev1ac.VolumeMount().WithName("tmp").WithMountPath("/tmp")}
 	volumes := []*corev1ac.VolumeApplyConfiguration{emptyDirVolume("tmp")}
 	if cr.Spec.UI != nil && cr.Spec.UI.CABundleConfigMap != nil {

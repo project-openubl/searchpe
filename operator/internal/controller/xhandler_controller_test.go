@@ -877,9 +877,10 @@ func TestXHandlerUISearchpe(t *testing.T) {
 	cr := newXHandler(t, xhandlerv1alpha1.XHandlerSpec{
 		OIDC: &xhandlerv1alpha1.OIDCSpec{ServerURL: testOIDCServer, ClientID: "xhandler-service"},
 		UI: &xhandlerv1alpha1.UISpec{
-			SearchpeRef:       "searchpe",
-			Instances:         ptr.To[int32](1),
-			CABundleConfigMap: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "searchpe-ca"}, Key: "service-ca.crt"},
+			SearchpeRef:           "searchpe",
+			Instances:             ptr.To[int32](1),
+			LibroReclamacionesURL: "https://example.com/libro",
+			CABundleConfigMap:     &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "searchpe-ca"}, Key: "service-ca.crt"},
 		},
 	})
 	reconcileXHandler(t, nil, cr)
@@ -906,11 +907,12 @@ func TestXHandlerUISearchpe(t *testing.T) {
 		t.Errorf("UI image %s, want %s", container.Image, testUIImage)
 	}
 	assertEnv(t, container, map[string]string{
-		"XHANDLER_API_URL":    "http://xh-api:8080",
-		"SEARCHPE_API_URL":    "https://searchpe-searchpe-service:8443",
-		"OIDC_SERVER_URL":     testOIDCServer,
-		"OIDC_CLIENT_ID":      "xhandler-ui",
-		"NODE_EXTRA_CA_CERTS": "/etc/xhandler-ui/ca/ca.crt",
+		"XHANDLER_API_URL":        "http://xh-api:8080",
+		"SEARCHPE_API_URL":        "https://searchpe-searchpe-service:8443",
+		"OIDC_SERVER_URL":         testOIDCServer,
+		"OIDC_CLIENT_ID":          "xhandler-ui",
+		"NODE_EXTRA_CA_CERTS":     "/etc/xhandler-ui/ca/ca.crt",
+		"LIBRO_RECLAMACIONES_URL": "https://example.com/libro",
 	})
 	if container.ReadinessProbe.HTTPGet == nil || container.ReadinessProbe.HTTPGet.Path != "/healthz" ||
 		container.LivenessProbe.HTTPGet == nil || container.LivenessProbe.HTTPGet.Path != "/healthz" {

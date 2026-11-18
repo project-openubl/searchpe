@@ -779,6 +779,12 @@ spec:
                     format: int32
                     minimum: 0
                     type: integer
+                  libroReclamacionesUrl:
+                    description: |-
+                      The platform's own Libro de Reclamaciones (https), linked from every page of the UI
+                      (Ley 32495). Not shown when empty.
+                    pattern: ^https://
+                    type: string
                   oidcClientId:
                     default: xhandler-ui
                     description: |-
